@@ -271,7 +271,7 @@ files under `file://`.
 Shader compile/load failures are loud. Missing required WGSL records
 `wgsl.manifest.failed` and stops startup.
 
-## Performance Budget
+## Frame Budget
 
 The target frame budget is 16ms. AZR-586 uses this practical split:
 
