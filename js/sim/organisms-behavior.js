@@ -230,18 +230,27 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
         CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
     }
 
-    var shouldForageOrganism = (world.tick + pooledIndex) % foragingInterval === 0;
-    var nearestFood = shouldForageOrganism ? findNearestFoodInBuckets(x, y, arrays.vision[pooledIndex]) : null;
+    var vision = arrays.vision[pooledIndex];
+    var movementTendency = arrays.movementTendency[pooledIndex];
+    var shouldForageOrganism = world.food.length > 0 && vision > 0 && (world.tick + pooledIndex) % foragingInterval === 0;
+    var nearestFood = shouldForageOrganism ? findNearestFoodInBuckets(x, y, vision) : null;
 
     if (nearestFood) {
       arrays.directionX[pooledIndex] = getDirectionXToTile(x, nearestFood.x);
       arrays.directionY[pooledIndex] = getDirectionYToTile(y, nearestFood.y);
-    } else if (chance(arrays.movementTendency[pooledIndex])) {
+    } else if (movementTendency > 0 && chance(movementTendency)) {
       chooseRoamingDirection(pooledOrganism, pooledOrganism.traits);
     }
 
-    var nextX = getWrappedWorldX(x + arrays.directionX[pooledIndex]);
-    var nextY = getClampedWorldY(y + arrays.directionY[pooledIndex]);
+    var directionX = arrays.directionX[pooledIndex];
+    var directionY = arrays.directionY[pooledIndex];
+    var nextX = x;
+    var nextY = y;
+
+    if (directionX !== 0 || directionY !== 0) {
+      nextX = getWrappedWorldX(x + directionX);
+      nextY = getClampedWorldY(y + directionY);
+    }
 
     if (nextX !== x || nextY !== y) {
       var requiredTravelKm = getTileGreatCircleDistanceKm(x, y, nextX, nextY);

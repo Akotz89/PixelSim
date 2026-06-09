@@ -41,6 +41,7 @@ assert.ok(
 
 const restoreEntitiesSource = read("js/systems/persistence-restore-entities.js");
 const saveDataSource = read("js/systems/persistence-save-data.js");
+const stateSource = read("js/systems/state.js");
 assert.strictEqual(
   restoreEntitiesSource.indexOf("function(value)" + " { return value; }"),
   -1,
@@ -48,6 +49,85 @@ assert.strictEqual(
 );
 assert.strictEqual(saveDataSource.indexOf("legacy" + "ConfigSchema"), -1, "new saves should not carry the old full config blob");
 assert.ok(saveDataSource.indexOf("config: createSaveConfigDelta()") >= 0, "new saves should store delta config");
+
+const worldBlockStart = stateSource.indexOf("const world = {");
+const worldBlockEnd = stateSource.indexOf("\n};", worldBlockStart);
+assert.ok(worldBlockStart >= 0 && worldBlockEnd > worldBlockStart, "state.js should expose a world object literal");
+
+const worldKeys = Array.from(stateSource.slice(worldBlockStart, worldBlockEnd).matchAll(/^  ([A-Za-z0-9_]+):/gm)).map(function(match) {
+  return match[1];
+});
+const saveKeys = new Set(Array.from(saveDataSource.matchAll(/^    ([A-Za-z0-9_]+):/gm)).map(function(match) {
+  return match[1];
+}));
+const runtimeOnlyWorldKeys = new Set([
+  "organismBuckets",
+  "organismsByLineage",
+  "foodPositions",
+  "foodBuckets",
+  "planetTiles",
+  "planetSummary",
+  "planetView",
+  "fertileTiles",
+  "birthsThisTick",
+  "deathsThisTick",
+  "populationDeltaThisTick",
+  "reproductionScarcityPressure",
+  "foodSpawnedThisTick",
+  "foodConsumedThisTick",
+  "foodHarvestedThisTick",
+  "foodRecoveryPressure",
+  "foodRecoveryAttemptsThisTick",
+  "isPaused",
+  "isCameraInteracting",
+  "isMenuOpen",
+  "menuPage",
+  "needsRender",
+  "prng",
+  "interpolation",
+  "fps",
+  "tps",
+  "updateMs",
+  "drawMs",
+  "maxUpdateMs",
+  "maxDrawMs",
+  "inspectedTile",
+  "inspectedSurface",
+  "inspectedEntity",
+  "ecosystemSummary",
+  "simulationAlerts",
+  "populationTraitSummary",
+  "lineageSummary",
+  "lineageSummaryText",
+  "timelineFilter",
+  "selectedTimelineEvent",
+  "activeObservationOverlay",
+  "overlayPerformance",
+  "spotlightEvent",
+  "spotlightState",
+  "biologyPopulationById",
+  "biologyRepresentativeById",
+  "settlementsById",
+  "settlementBuckets",
+  "settlementByLineage",
+  "rootSettlementByLineage",
+  "settlementChildOutpostCountByParentId",
+  "settlementSummary",
+  "earlyProgressionSummary",
+  "settlementRoutesByKey",
+  "settlementRouteStatsById",
+  "planetaryBodiesById",
+  "starSystemsById",
+  "empireSectorBySystemId"
+]);
+const uncoveredWorldKeys = worldKeys.filter(function(key) {
+  return !saveKeys.has(key) && !runtimeOnlyWorldKeys.has(key);
+});
+assert.deepStrictEqual(
+  uncoveredWorldKeys,
+  [],
+  "every top-level world key should be saved or intentionally listed as runtime-only/derived"
+);
 
 const context = {
   console,

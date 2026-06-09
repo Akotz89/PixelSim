@@ -187,11 +187,14 @@ bash .codex/setup.sh
 npm test
 ```
 
-`npm test` is the CI gate and runs the fast Node-based unit and integration
-suite listed in `package.json`. Visual/browser captures stay separate because
-they require a rendered browser surface or screenshot review:
+`npm test` is the CI gate and runs the Node-based unit and integration suite
+listed in `package.json`, including seed/tick simulation, persistence schema,
+and settlement progression checks. Browser-backed persistence parity and visual
+captures stay separate because they require Playwright or a rendered browser
+surface:
 
 ```bash
+npm run test:persistence
 npm run test:visual
 node tests/planet-zoom-anchor.test.js
 ```
