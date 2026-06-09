@@ -124,12 +124,18 @@ PS.config.refreshFromConstants = function () {
     movementTendencyMin: CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
     movementTendencyMax: CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX,
     terrainAffinityMin: CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-    terrainAffinityMax: CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
+    terrainAffinityMax: CONFIG.TRAIT_TERRAIN_AFFINITY_MAX,
+    intelligenceMin: CONFIG.TRAIT_INTELLIGENCE_MIN,
+    intelligenceMax: CONFIG.TRAIT_INTELLIGENCE_MAX,
+    socialityMin: CONFIG.TRAIT_SOCIALITY_MIN,
+    socialityMax: CONFIG.TRAIT_SOCIALITY_MAX
   };
 
   PS.config.settlements = {
     spatialBucketSize: CONFIG.SETTLEMENT_SPATIAL_BUCKET_SIZE,
     minLineagePopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+    minLineageIntelligence: CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE,
+    minLineageSociality: CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY,
     radius: CONFIG.SETTLEMENT_RADIUS,
     growthInterval: CONFIG.SETTLEMENT_GROWTH_INTERVAL,
     colonyLevel: CONFIG.SETTLEMENT_COLONY_LEVEL

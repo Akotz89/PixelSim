@@ -64,6 +64,28 @@ var TRAIT_DEFINITIONS = [
     evolvable: true,
     integer: false
   },
+  {
+    id: "intelligence",
+    label: "Intelligence",
+    category: "cognition",
+    min: CONFIG.TRAIT_INTELLIGENCE_MIN,
+    max: CONFIG.TRAIT_INTELLIGENCE_MAX,
+    defaultValue: CONFIG.TRAIT_INTELLIGENCE_DEFAULT,
+    mutationStep: CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP,
+    evolvable: true,
+    integer: false
+  },
+  {
+    id: "sociality",
+    label: "Sociality",
+    category: "behavior",
+    min: CONFIG.TRAIT_SOCIALITY_MIN,
+    max: CONFIG.TRAIT_SOCIALITY_MAX,
+    defaultValue: CONFIG.TRAIT_SOCIALITY_DEFAULT,
+    mutationStep: CONFIG.TRAIT_SOCIALITY_MUTATION_STEP,
+    evolvable: true,
+    integer: false
+  },
 
   // ── Morphology traits (not evolvable yet, set at creation) ──
   {

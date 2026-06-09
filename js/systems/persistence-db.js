@@ -79,7 +79,9 @@ function copyTraitHistorySampleForSave(sample) {
     metabolism: sample.metabolism,
     reproductionEnergy: sample.reproductionEnergy,
     movementTendency: sample.movementTendency,
-    terrainAffinity: sample.terrainAffinity
+    terrainAffinity: sample.terrainAffinity,
+    intelligence: sample.intelligence,
+    sociality: sample.sociality
   };
 }
 

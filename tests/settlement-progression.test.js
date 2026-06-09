@@ -66,6 +66,23 @@ function countOrganismsInRadiusForLineage() {
   return 12;
 }
 
+var indexedOrganismsByLineage = {};
+
+function getIndexedOrganismsForLineage(lineageId) {
+  return indexedOrganismsByLineage[String(lineageId)] || [];
+}
+
+function ensureOrganismTraits(organism) {
+  organism.traits = organism.traits || {};
+  organism.traits.intelligence = Number.isFinite(Number(organism.traits.intelligence))
+    ? organism.traits.intelligence
+    : CONFIG.TRAIT_INTELLIGENCE_DEFAULT;
+  organism.traits.sociality = Number.isFinite(Number(organism.traits.sociality))
+    ? organism.traits.sociality
+    : CONFIG.TRAIT_SOCIALITY_DEFAULT;
+  return organism.traits;
+}
+
 function isFertile() {
   return true;
 }
@@ -74,6 +91,56 @@ world.tick = 10000;
 world.settlements = [];
 world.settlementRoutes = [];
 PS.sim.settlements.ensureState();
+
+var lowReadinessLineage = {
+  id: 7,
+  activeCount: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+  peakPopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION,
+  isExtinct: false
+};
+indexedOrganismsByLineage[String(lowReadinessLineage.id)] = [];
+for (var lowIndex = 0; lowIndex < CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION; lowIndex++) {
+  indexedOrganismsByLineage[String(lowReadinessLineage.id)].push({
+    x: 10 + lowIndex,
+    y: 10,
+    lineageId: lowReadinessLineage.id,
+    traits: {
+      intelligence: CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE - 0.1,
+      sociality: CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY + 0.1
+    }
+  });
+}
+assert.strictEqual(canFoundSettlement(lowReadinessLineage), false, "low-intelligence lineage should not found settlements");
+assert.ok(
+  lowReadinessLineage.settlementReadiness.intelligence < CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE,
+  "low-intelligence lineage should record readiness evidence"
+);
+
+var highReadinessLineage = {
+  id: 8,
+  activeCount: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+  peakPopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION,
+  isExtinct: false
+};
+indexedOrganismsByLineage[String(highReadinessLineage.id)] = [];
+for (var highIndex = 0; highIndex < CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION; highIndex++) {
+  indexedOrganismsByLineage[String(highReadinessLineage.id)].push({
+    x: 30 + highIndex,
+    y: 12,
+    lineageId: highReadinessLineage.id,
+    traits: {
+      intelligence: CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE + 0.1,
+      sociality: CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY + 0.1
+    }
+  });
+}
+assert.strictEqual(canFoundSettlement(highReadinessLineage), true, "high-intelligence social lineage should found settlements");
+assert.ok(foundSettlementForLineage(highReadinessLineage), "high-readiness lineage should create a settlement");
+assert.strictEqual(world.settlements.length, 1, "only high-readiness lineage should found a settlement");
+
+world.settlements = [];
+world.settlementRoutes = [];
+PS.sim.settlements.rebuildIndexes();
 
 var seamLineage = {
   id: 99,

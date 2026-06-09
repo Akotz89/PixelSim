@@ -7,6 +7,8 @@ PS.core.traitSchema = (function() {
     { key: "reproductionEnergy", configPrefix: "TRAIT_REPRODUCTION_ENERGY" },
     { key: "movementTendency", configPrefix: "TRAIT_MOVEMENT_TENDENCY" },
     { key: "terrainAffinity", configPrefix: "TRAIT_TERRAIN_AFFINITY" },
+    { key: "intelligence", configPrefix: "TRAIT_INTELLIGENCE" },
+    { key: "sociality", configPrefix: "TRAIT_SOCIALITY" },
     { key: "bodySize", configPrefix: "TRAIT_BODY_SIZE" },
     { key: "limbCount", configPrefix: "TRAIT_LIMB_COUNT", integer: true },
     { key: "bodyShape", configPrefix: "TRAIT_BODY_SHAPE", integer: true },

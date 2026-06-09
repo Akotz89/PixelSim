@@ -56,6 +56,18 @@ function makeInitialOrganismTraits(typeId) {
       CONFIG.TRAIT_TERRAIN_AFFINITY_MAX,
       CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
     ),
+    intelligence: varyTraitValue(
+      CONFIG.TRAIT_INTELLIGENCE_DEFAULT,
+      CONFIG.TRAIT_INTELLIGENCE_MIN,
+      CONFIG.TRAIT_INTELLIGENCE_MAX,
+      CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP
+    ),
+    sociality: varyTraitValue(
+      CONFIG.TRAIT_SOCIALITY_DEFAULT,
+      CONFIG.TRAIT_SOCIALITY_MIN,
+      CONFIG.TRAIT_SOCIALITY_MAX,
+      CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
+    ),
     bodySize: CONFIG.TRAIT_BODY_SIZE_DEFAULT,
     limbCount: CONFIG.TRAIT_LIMB_COUNT_DEFAULT,
     bodyShape: CONFIG.TRAIT_BODY_SHAPE_DEFAULT,
@@ -107,6 +119,18 @@ function inheritOrganismTraits(parentTraits) {
       CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
       CONFIG.TRAIT_TERRAIN_AFFINITY_MAX,
       CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
+    ),
+    intelligence: inheritTraitValue(
+      parentTraits.intelligence,
+      CONFIG.TRAIT_INTELLIGENCE_MIN,
+      CONFIG.TRAIT_INTELLIGENCE_MAX,
+      CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP
+    ),
+    sociality: inheritTraitValue(
+      parentTraits.sociality,
+      CONFIG.TRAIT_SOCIALITY_MIN,
+      CONFIG.TRAIT_SOCIALITY_MAX,
+      CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
     ),
     bodySize: parentTraits.bodySize,
     limbCount: parentTraits.limbCount,
@@ -275,7 +299,9 @@ function getTraitDivergenceScore(parentTraits, childTraits) {
     Math.abs(childTraits.metabolism - parentTraits.metabolism) / CONFIG.TRAIT_METABOLISM_MUTATION_STEP +
     Math.abs(childTraits.reproductionEnergy - parentTraits.reproductionEnergy) / CONFIG.TRAIT_REPRODUCTION_ENERGY_MUTATION_STEP +
     Math.abs(childTraits.movementTendency - parentTraits.movementTendency) / CONFIG.TRAIT_MOVEMENT_TENDENCY_MUTATION_STEP +
-    Math.abs(childTraits.terrainAffinity - parentTraits.terrainAffinity) / CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
+    Math.abs(childTraits.terrainAffinity - parentTraits.terrainAffinity) / CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP +
+    Math.abs(childTraits.intelligence - parentTraits.intelligence) / CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP +
+    Math.abs(childTraits.sociality - parentTraits.sociality) / CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
   );
 }
 

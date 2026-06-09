@@ -298,7 +298,9 @@ function refreshLineageRegistry() {
     metabolism: 0,
     reproductionEnergy: 0,
     movementTendency: 0,
-    terrainAffinity: 0
+    terrainAffinity: 0,
+    intelligence: 0,
+    sociality: 0
   };
 
   world.organismBuckets = {};
@@ -335,12 +337,16 @@ function refreshLineageRegistry() {
     var reproductionEnergy = poolIndex >= 0 ? pooledArrays.reproductionEnergy[poolIndex] : traits.reproductionEnergy;
     var movementTendency = poolIndex >= 0 ? pooledArrays.movementTendency[poolIndex] : traits.movementTendency;
     var terrainAffinity = poolIndex >= 0 ? pooledArrays.terrainAffinity[poolIndex] : traits.terrainAffinity;
+    var intelligence = poolIndex >= 0 ? pooledArrays.intelligence[poolIndex] : traits.intelligence;
+    var sociality = poolIndex >= 0 ? pooledArrays.sociality[poolIndex] : traits.sociality;
 
     traitTotals.vision += vision;
     traitTotals.metabolism += metabolism;
     traitTotals.reproductionEnergy += reproductionEnergy;
     traitTotals.movementTendency += movementTendency;
     traitTotals.terrainAffinity += terrainAffinity;
+    traitTotals.intelligence += intelligence;
+    traitTotals.sociality += sociality;
 
     record.activeCount++;
     record.lastSeenTick = world.tick;
@@ -377,7 +383,9 @@ function refreshLineageRegistry() {
       metabolism: traitTotals.metabolism / world.organisms.length,
       reproductionEnergy: traitTotals.reproductionEnergy / world.organisms.length,
       movementTendency: traitTotals.movementTendency / world.organisms.length,
-      terrainAffinity: traitTotals.terrainAffinity / world.organisms.length
+      terrainAffinity: traitTotals.terrainAffinity / world.organisms.length,
+      intelligence: traitTotals.intelligence / world.organisms.length,
+      sociality: traitTotals.sociality / world.organisms.length
     };
   }
 

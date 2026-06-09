@@ -35,11 +35,45 @@ function makeSettlementAt(lineageId, x, y, options) {
   };
 }
 
+function getLineageSettlementTraitReadiness(lineageId) {
+  var organisms = getOrganismsForLineage(lineageId);
+  var count = organisms.length;
+  var totalIntelligence = 0;
+  var totalSociality = 0;
+
+  for (var i = 0; i < organisms.length; i++) {
+    var traits = ensureOrganismTraits(organisms[i]);
+    totalIntelligence += Number(traits.intelligence) || 0;
+    totalSociality += Number(traits.sociality) || 0;
+  }
+
+  return {
+    population: count,
+    intelligence: count > 0 ? totalIntelligence / count : 0,
+    sociality: count > 0 ? totalSociality / count : 0
+  };
+}
+
+function isLineageSettlementReady(lineage) {
+  if (!lineage) {
+    return false;
+  }
+
+  var readiness = getLineageSettlementTraitReadiness(lineage.id);
+
+  lineage.settlementReadiness = readiness;
+  return (
+    readiness.intelligence >= CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE &&
+    readiness.sociality >= CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY
+  );
+}
+
 function canFoundSettlement(lineage) {
   return (
     lineage &&
     lineage.activeCount >= CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION &&
     lineage.peakPopulation >= CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION &&
+    isLineageSettlementReady(lineage) &&
     !lineage.isExtinct &&
     !getRootSettlementForLineage(lineage.id)
   );

@@ -49,6 +49,8 @@ function makeOrganismArrays(capacity) {
     reproductionEnergy: new Float32Array(capacity),
     movementTendency: new Float32Array(capacity),
     terrainAffinity: new Float32Array(capacity),
+    intelligence: new Float32Array(capacity),
+    sociality: new Float32Array(capacity),
     bodySize: new Float32Array(capacity),
     limbCount: new Uint8Array(capacity),
     bodyShape: new Uint8Array(capacity),
@@ -87,6 +89,7 @@ function createOrganismFacade(index, arrays) {
   ];
   var traitFields = [
     "vision", "metabolism", "reproductionEnergy", "movementTendency", "terrainAffinity",
+    "intelligence", "sociality",
     "bodySize", "limbCount", "bodyShape", "appendageType", "camouflage", "thermalTolerance", "waterDependency"
   ];
 

@@ -28,7 +28,9 @@ function makeTraitHistorySample(summary) {
     metabolism: summary.metabolism,
     reproductionEnergy: summary.reproductionEnergy,
     movementTendency: summary.movementTendency,
-    terrainAffinity: summary.terrainAffinity
+    terrainAffinity: summary.terrainAffinity,
+    intelligence: summary.intelligence,
+    sociality: summary.sociality
   };
 }
 
@@ -88,7 +90,9 @@ function drawTraitHistory() {
   traitHistoryCanvas.textContent = latest
     ? "TRAIT HISTORY: vision " + Number(latest.vision || 0).toFixed(1) +
       " metabolism " + Number(latest.metabolism || 0).toFixed(1) +
-      " reproduce " + Number(latest.reproductionEnergy || 0).toFixed(0)
+      " reproduce " + Number(latest.reproductionEnergy || 0).toFixed(0) +
+      " intelligence " + Number(latest.intelligence || 0).toFixed(2) +
+      " sociality " + Number(latest.sociality || 0).toFixed(2)
     : "TRAIT HISTORY: Waiting for samples";
 }
 

@@ -245,6 +245,18 @@ function restoreTraitHistorySample(sample) {
       CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT,
       CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
       CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
+    ),
+    intelligence: restoreClampedNumber(
+      sample.intelligence,
+      CONFIG.TRAIT_INTELLIGENCE_DEFAULT,
+      CONFIG.TRAIT_INTELLIGENCE_MIN,
+      CONFIG.TRAIT_INTELLIGENCE_MAX
+    ),
+    sociality: restoreClampedNumber(
+      sample.sociality,
+      CONFIG.TRAIT_SOCIALITY_DEFAULT,
+      CONFIG.TRAIT_SOCIALITY_MIN,
+      CONFIG.TRAIT_SOCIALITY_MAX
     )
   };
 }
