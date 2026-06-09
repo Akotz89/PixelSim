@@ -229,37 +229,11 @@ PS.render.surfaceRender.releaseRenderCanvas = function (renderItem) {
 };
 
 PS.render.surfaceRender.releaseGpuChunkTexture = function (renderKey) {
-  if (
-    !renderKey ||
-    !PS.render.webglEngine ||
-    typeof PS.render.webglEngine.releaseCanvasTexture !== "function"
-  ) {
-    return false;
-  }
-
-  return PS.render.webglEngine.releaseCanvasTexture(
-    "surface-chunks",
-    PS.render.surfaceWebgl && PS.render.surfaceWebgl.state ? PS.render.surfaceWebgl.state.gl : null,
-    renderKey,
-    false
-  );
+  return !!renderKey && false;
 };
 
 PS.render.surfaceRender.releaseGpuMaterialTexture = function (renderKey) {
-  if (
-    !renderKey ||
-    !PS.render.webglEngine ||
-    typeof PS.render.webglEngine.releaseCanvasTexture !== "function"
-  ) {
-    return false;
-  }
-
-  return PS.render.webglEngine.releaseCanvasTexture(
-    "surface-materials",
-    PS.render.surfaceWebgl && PS.render.surfaceWebgl.state ? PS.render.surfaceWebgl.state.gl : null,
-    renderKey,
-    false
-  );
+  return !!renderKey && false;
 };
 
 PS.render.surfaceRender.storeCompletedChunk = function (address, renderChunk) {

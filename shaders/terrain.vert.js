@@ -1,1 +1,0 @@
-PS.assets.registerText("shaders/terrain.vert", "#version 300 es\n\nin vec2 a_position;\nin vec2 a_uv;\n\nout vec2 v_uv;\n\nvoid main() {\n  v_uv = a_uv;\n  gl_Position = vec4(a_position, 0.0, 1.0);\n}\n");

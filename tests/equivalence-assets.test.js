@@ -11,24 +11,24 @@ function read(file) {
 
 const namespaceSource = read("js/core/namespace.js");
 const equivalenceSource = read("js/assets/equivalence.js");
-const entityWebglSource = read("js/render/entity-webgl.js");
-const webgl2RendererSource = read("js/render/webgl2-renderer.js");
+const batcherSource = read("js/render/surface-tile-batcher.js");
+const webgpuSurfaceTileSource = read("js/render/webgpu-surface-tile.js");
 
 assert.ok(
   namespaceSource.indexOf("js/assets/equivalence.js") > namespaceSource.indexOf("js/assets/sprite-sheet.js"),
   "equivalence selector should load after sprite sheet support"
 );
 assert.ok(
-  namespaceSource.indexOf("js/assets/equivalence.js") < namespaceSource.indexOf("js/render/entity-webgl.js"),
-  "equivalence selector should load before entity WebGL selection"
+  namespaceSource.indexOf("js/assets/equivalence.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js"),
+  "equivalence selector should load before terrain batch selection"
 );
 assert.ok(
-  entityWebglSource.indexOf("selectEquivalenceCell") >= 0,
-  "entity WebGL should select accepted equivalence cells before submitting fallback atlas cells"
+  batcherSource.indexOf("selectAcceptedTerrainCell") >= 0,
+  "terrain batcher should select accepted equivalence terrain cells before submitting atlas cells"
 );
 assert.ok(
-  webgl2RendererSource.indexOf("equivalenceAssetSelections") >= 0,
-  "renderer stats should expose accepted equivalence asset selection counts"
+  webgpuSurfaceTileSource.indexOf("equivalenceSelectedUses") >= 0,
+  "WebGPU surface tile stats should expose accepted equivalence asset selection counts"
 );
 
 function makeLoadedSheet(cellIds) {
@@ -110,24 +110,7 @@ const context = {
       }
     },
     render: {},
-    atlas: {
-      pages: [],
-      getTraitOrganismCell() {
-        return { name: "entity.organism.trait.1.1.1.0.0.0.0", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getFoodCell() {
-        return { name: "entity.food.0", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getSettlementCell() {
-        return { name: "entity.settlement.0", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getSettlementWorldUiCell() {
-        return { name: "entity.settlement.world-ui.population", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getRepresentativeIntentCell() {
-        return { name: "entity.intent.work", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      }
-    }
+    atlas: { pages: [] }
   },
   Number,
   String,
@@ -147,17 +130,15 @@ const context = {
   }
 };
 
-context.PS.render.entityWebgl = {};
 vm.createContext(context);
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
-vm.runInContext(entityWebglSource, context, { filename: "js/render/entity-webgl.js" });
 
-context.PS.render.entityWebgl.resetFrameStats();
-context.PS.render.entityWebgl.getOrganismCell({ x: 1, y: 1, traits: { bodySize: 1 }, lineageId: 1 }, "citizen");
-context.PS.render.entityWebgl.getFoodCell({ x: 1, y: 1 }, "stockpile");
-context.PS.render.entityWebgl.getFoodCell({ x: 1, y: 1 }, "vegetation");
-context.PS.render.entityWebgl.getSettlementCell({ id: 1 }, "settlement");
-context.PS.render.entityWebgl.getSettlementWorldUiCell({ id: 1 }, "population");
+context.PS.assets.equivalence.resetFrameStats();
+context.PS.assets.equivalence.select("citizen", "entity.fallback");
+context.PS.assets.equivalence.select("stockpile", "entity.food.fallback");
+context.PS.assets.equivalence.select("vegetation", "entity.vegetation.fallback");
+context.PS.assets.equivalence.select("settlement", "entity.settlement.fallback");
+context.PS.assets.equivalence.select("worldUi", "entity.settlement.world-ui.population");
 context.PS.assets.equivalence.select("workStatus", "entity.intent.work");
 context.PS.assets.equivalence.select("effect", "entity.effect.fallback");
 context.PS.assets.equivalence.selectCell("terrain", "grass-lush.0", "terrainGround", "terrain.fallback");

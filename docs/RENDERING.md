@@ -1,32 +1,41 @@
 # Pixeldarium Rendering
 
-Date: 2026-06-05
+Date: 2026-06-05 | Updated: 2026-06-08 (WebGPU+WASM migration)
 
-Linear scope: AZR-586. This document describes the current WebGL2 rendering
-pipeline and the next-step constraints for the visual stack.
+Linear scope: AZR-585 (legacy WebGL2 doc), AZR-843–AZR-851 (WebGPU migration).
 
-## Pipeline Stages
+## WebGPU Render Pipeline
+
+WebGPU is the required renderer path. WASM handles CPU-heavy simulation compute.
+Both are vanilla browser APIs.
 
 ```mermaid
 flowchart TB
-  World["window.world"] --> Camera["PS.camera\nview, zoom, anchors"]
-  Camera --> Lod["PS.render.lod\nzoom tier and blend"]
-  Lod --> Pipeline["PS.render.pipeline\nlayer filtering"]
-  Pipeline --> DrawOrder["PS.render.drawOrder\n0-17 layer queue"]
-  DrawOrder --> Terrain["surfaceRender + surfaceTileWebgl\nready terrain chunks"]
-  DrawOrder --> Entities["entities + entityWebgl\norganisms, food, settlements"]
-  DrawOrder --> Particles["particles\nweather and events"]
-  Terrain --> Renderer["WebGL2Renderer"]
-  Entities --> Renderer
-  Particles --> Renderer
-  Renderer --> WebGL["webglEngine + presenter"]
-  WebGL --> Canvas["#game-webgl"]
-  World --> UI["DOM UI overlays\nHUD, menu, debug text"]
+  World["window.world"] --> Camera["PS.camera"]
+  WASM["wasm/ sidecars\nRust compute\n(tectonics, rivers)"] --> GPUBuf["GPU simulation\nstorage buffers"]
+  Camera --> GPUpipeline["PS.render.webgpuRenderer\ncommand encoder frame loop"]
+  GPUBuf --> GPUpipeline
+  GPUpipeline --> GBuf["WebGPU G-Buffer\ndiffuse + normal attachments"]
+  GBuf --> Comp["webgpu-compositor\nfull-screen blit"]
+  Comp --> Check{"navigator.gpu?"}
+  Check -->|Yes| WebGPUOut["WebGPU swap-chain\n#game-webgpu canvas"]
+  Check -->|No| Stop["WebGPU required\nstartup stops"]
+  World --> UI["DOM UI overlays"]
 ```
 
-The active production path is raw WebGL2. The runtime uses one visible canvas:
-`#game-webgl`. Canvas2D is not a renderer, fallback, copy-back target, or
-acceptance path.
+Key runtime properties:
+
+- **Compute shaders (WGSL):** Simulation data (heat, LBM ocean, moisture)
+  runs as WebGPU compute passes. No ping-pong FBO workarounds.
+- **Storage buffers:** Simulation state lives in `GPUBuffer` with read+write
+  access in place. No copy-to-texture hack needed.
+- **WASM zero-copy bridge:** Rust-computed data (elevation, river networks)
+  writes to WASM linear memory; `device.queue.writeBuffer` uploads it directly
+  to GPU with no intermediate JS allocation.
+- **WGSL shader sidecars:** `.wgsl.js` files set `window.SHADER_*_WGSL`
+  globals, loaded via plain `<script src>`.
+- **Explicit pipelines:** WebGPU has no global state machine. Each render pass
+  uses a declared `GPURenderPipeline` with explicit bind groups.
 
 The draw-order layer table is defined in `js/render/draw-order.js`:
 
@@ -57,29 +66,30 @@ flush. Other layers flush in numeric order.
 ## Runtime Stage Responsibilities
 
 Terrain rendering builds chunk addresses from the camera and surface LOD. Ready
-chunk payloads provide `cellCache` arrays. `PS.render.surfaceTileWebgl` converts
-those cells to atlas instances grouped by atlas page and draws each page with
-`gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount)`.
+chunk payloads provide `cellCache` arrays. `PS.render.surfaceTileBatcher`
+converts those cells to atlas instances grouped by atlas page.
+`PS.render.webgpuSurfaceTile` uploads those instance buffers and draws each page
+with the `terrain-tile.wgsl` WebGPU pipeline.
 
 Surface features are currently represented through terrain material families,
 subcell variation, atlas selection, and future layer slots such as
 `TERRAIN_DECORATION`, `VEGETATION_TRUNK`, and `VEGETATION_CANOPY`.
 
 Entity sprites are watcher-facing facades for organisms, food, settlements, and
-future civilization actors. `PS.render.entityWebgl` and `PS.atlas` provide the
-current WebGL2 entity path.
+future civilization actors. Entity layers route through the WebGPU entity
+renderer and WGSL atlas shaders.
 
 Shadows, particles, routes, selections, debug overlays, and screen UI have
 dedicated draw-order slots. Some slots are architecture-ready before every
 visual family has a full production renderer.
 
-G-buffer support lives in `js/render/webgl-gbuffer.js`. It creates albedo,
-normal/height, and depth/stencil attachments for local rendering experiments
-and downstream lighting/atmosphere work.
+G-buffer support uses WebGPU targets and WGSL. The shader inventory includes
+`gbuffer-terrain.wgsl` and `gbuffer-compose.wgsl` for explicit WebGPU
+attachments and compose passes.
 
-DOM UI overlays remain outside the WebGL draw stack. HUD, panels, menu,
+DOM UI overlays remain outside the WebGPU draw stack. HUD, panels, menu,
 timeline, debug text, and the loading screen are HTML/CSS surfaces layered over
-the WebGL canvas.
+the GPU canvas.
 
 ## Coordinate Systems
 
@@ -93,7 +103,7 @@ Tile coordinates are integer grid positions on the current world grid. Tile X
 wraps around the planet and tile Y clamps at the poles. `tileToWorld()` and
 `worldToTile()` convert between tile and world positions.
 
-Screen coordinates are pixels on `#game-webgl`. `clientToScreen()` maps DOM
+Screen coordinates are pixels on `#game-webgpu`. `clientToScreen()` maps DOM
 pointer coordinates to canvas pixels. `latLonToScreen()`,
 `worldToScreen()`, `screenToLatLon()`, and `screenToWorld()` are the main
 camera conversion functions for input and rendering.
@@ -158,7 +168,7 @@ Organism atlas identity is generated from bounded watcher-facing trait buckets:
 lineage `0..15`, body size `1..6`, body shape `0..7`, limb count `0..12`,
 appendage type `0..7`, camouflage `0..4`, thermal tolerance `0..4`, water
 dependency `0..4`, and animation/RANMAP variant `0..3`. These keys cache
-procedural pixel sprites before WebGL2 consumes the atlas page, so traits change
+procedural pixel sprites before renderer consumption, so traits change
 visible morphology without per-frame sprite generation.
 Terrain, surface-color, and atlas terrain base colors consume the `terrain`
 palette from `PS.assets` before generating packed color LUTs or atlas pixels.
@@ -182,7 +192,7 @@ Settlement and route aggregate pressure can also become terrain cell identity:
 `production` for settlements; `track`, `road`, `canal`, and `dock` for routes;
 and `border` for border influence. The civilization key is derived from the
 ready surface sample plus current settlement/route aggregate state, then cached
-with the terrain atlas cell so WebGL terrain batches can show footprints,
+with the terrain atlas cell so WebGPU terrain batches can show footprints,
 fields, roadbeds, canals, docks, production blocks, and borders without adding
 an entity draw path.
 Food/resource entity cells use bounded atlas identities:
@@ -195,15 +205,15 @@ nodes do not collapse to one visual language.
 Accepted equivalence sheets from `assets/pixeldarium-equivalence/` can override
 bounded settlement, vegetation, citizen, stockpile, work-status, material/effect,
 and world-UI facade cells. The runtime still loads the reviewed PNG and sprite
-metadata, but WebGL uses the matching `.rgba.json` sidecar as a file-safe texture
-source because `file://` image elements are not origin-clean for `gl.texImage2D`.
+metadata, but WebGPU uses the matching `.rgba.json` sidecar as a file-safe texture
+source because direct `file://` image pixels are not a reliable upload source.
 The decoded RGBA sidecar becomes an atlas page only after the sheet image,
 metadata, and pixel data are loaded. If a declared sidecar is corrupt or
 incomplete, the accepted sheet is not promoted for rendering.
 
-`PS.render.surfaceTileWebgl` groups terrain instances by atlas page. Ready
+`PS.render.surfaceTileBatcher` groups terrain instances by atlas page. Ready
 chunk cells are appended into pooled growable `Float32Array` page buffers, then
-finalized into typed upload ranges before WebGL submission. Each terrain
+finalized into typed upload ranges before WebGPU submission. Each terrain
 instance currently packs 10 floats:
 
 ```text
@@ -215,9 +225,9 @@ shade bucket into the fractional portion. The terrain shaders use it to flip
 and subtly brighten/darken repeated material cells without changing the chunk
 grid or adding a draw-call family.
 
-The configured terrain upload limit is
-`CONFIG.PLANET_SURFACE_TILE_WEBGL_MAX_INSTANCES`, currently 8192 instances per
-upload segment. Larger visible batches are split into multiple page draws.
+The configured terrain upload target is 8192 instances per upload segment in
+`PS.render.webgpuSurfaceTile.maxInstances`. Larger visible batches are split
+into multiple page draws.
 
 `PS.spriteBatch` supports up to 16384 sprite instances. Each sprite instance
 packs 12 floats:
@@ -226,9 +236,9 @@ packs 12 floats:
 worldX, worldY, u0, v0, u1, v1, tintR, tintG, tintB, tintA, scale, flipH
 ```
 
-This is not the final AZR-383 single data-texture tilemap. The current terrain
-path is a transitional instanced atlas renderer that keeps WebGL2 ownership of
-pixel throughput while the data-texture shader work is prepared.
+This is not the final AZR-383-style single data-texture tilemap. The current
+terrain path is a WebGPU instanced atlas renderer while the data-texture shader
+work is prepared.
 
 Settlement readiness facades are pre-settlement watcher markers. They are
 derived from aggregate lineage active/peak population progress, capped by
@@ -239,9 +249,9 @@ twice. They do not create or persist settlements.
 
 ## Shader Reference
 
-Shader sources are loaded from `shaders/` by `PS.render.shaderManager`.
-`file://` support is preserved by `.js` sidecars when direct text fetch is not
-available.
+WGSL shader sources are loaded from `shaders/` by `PS.render.wgslShaders`.
+`file://` support is preserved by `.wgsl.js` sidecars when direct text fetch is
+not available. Required WGSL shader failures stop startup.
 
 Runtime-owned JSON metadata that is loaded from `assets/manifest.json` must also
 ship a `.json.js` sidecar through `PS.assets.registerJSON(...)`. This preserves
@@ -250,20 +260,16 @@ files under `file://`.
 
 | Shader | Files | Purpose |
 | --- | --- | --- |
-| `sprite-batch` | `sprite-batch.vert`, `sprite-batch.frag` | Instanced sprite quads with atlas UVs, tint, scale, and horizontal flip. |
-| `terrain-tile` | `terrain-tile.vert`, `terrain-tile.frag` | Instanced terrain atlas quads from ready surface cells. |
-| `gbuffer-compose` | `gbuffer-compose.vert`, `gbuffer-compose.frag` | Full-screen source texture compose pass. |
-| `gbuffer-terrain` | `gbuffer-terrain.vert`, `gbuffer-terrain.frag` | Writes material albedo and normal/height data into local G-buffer attachments. |
-| `globe-sphere` | `globe-sphere.vert`, `globe-sphere.frag` | Samples terrain and overlay textures onto an interactive globe projection. |
-| `surface-underlay` | `surface-underlay.vert`, `surface-underlay.frag` | Full-screen aggregate terrain underlay for filled local/region zoom while detailed chunks stream. |
-| `surface-chunk` | `surface-chunk.vert`, `surface-chunk.frag` | Surface chunk shader slot for chunk rendering experiments. |
-| `entity-atlas` | `entity-atlas.vert`, `entity-atlas.frag` | Entity atlas rendering path for organisms and other facades. |
-| `shadow` | `shadow.vert`, `shadow.frag` | Shadow rendering slot. |
-| `particle` | `particle.vert`, `particle.frag` | Particle and weather rendering slot. |
+| `terrain-tile` | `terrain-tile.wgsl` | Instanced terrain atlas quads from ready surface cells. |
+| `terrain` | `terrain.wgsl` | Terrain material shader inventory for the WebGPU terrain stack. |
+| `gbuffer-terrain` | `gbuffer-terrain.wgsl` | Writes material albedo and normal/height data into local G-buffer attachments. |
+| `globe-sphere` | `globe-sphere.wgsl` | Samples terrain and overlay textures onto an interactive globe projection. |
+| `surface-underlay` | `surface-underlay.wgsl` | Full-screen aggregate terrain underlay for filled local/region zoom while detailed chunks stream. |
+| `surface-chunk` | `surface-chunk.wgsl` | Surface chunk shader slot for chunk rendering experiments. |
+| `heat-diffusion` | `heat-diffusion.wgsl` | WebGPU compute pass for thermal diffusion. |
 
-Shader compile failures are loud. `ShaderManager.compile()` records fallback
-errors in `PS.runtime` and uses a magenta fallback program only as a visible
-failure signal.
+Shader compile/load failures are loud. Missing required WGSL records
+`wgsl.manifest.failed` and stops startup.
 
 ## Performance Budget
 
@@ -284,7 +290,7 @@ Relevant current limits:
 - Frame budget history: `CONFIG.FRAME_BUDGET_HISTORY_LIMIT = 120`.
 - Close-band ready surface chunks:
   `CONFIG.PLANET_SURFACE_CLOSE_VISIBLE_CHUNK_LIMIT = 192`.
-- Terrain instances per upload segment: `CONFIG.PLANET_SURFACE_TILE_WEBGL_MAX_INSTANCES = 8192`.
+- Terrain instance upload target: `PS.render.webgpuSurfaceTile.maxInstances = 8192`.
 - Terrain RANMAP variation stays inside the existing 10-float instance encoding:
   integer `0|1` for horizontal flip plus a fractional shade bucket in `0..0.24`.
 - Ready surface chunk edge feathering stays inside the existing terrain
@@ -295,7 +301,7 @@ Relevant current limits:
 - Authored material families added for AZR-365 are finite registered tile IDs:
   `river_shallow`, `tidal_mud`, `lava_flow`, `lichen_tundra`, and `reed_mat`.
   They still use the existing 16x16 terrain atlas cell, feature key, and
-  chunk/page WebGL batching path.
+  chunk/page WebGPU batching path.
 - Local ecology terrain encoding: enabled with
   `CONFIG.PLANET_SURFACE_ECOLOGY_ENABLED`, starts at
   `CONFIG.PLANET_SURFACE_ECOLOGY_MIN_ZOOM = 4`, and samples a bounded
@@ -304,21 +310,17 @@ Relevant current limits:
   atlas cell after organic/nutrient pressure is known. It adds no new draw-call
   family and uses only the existing food/organism pressure buckets plus a
   bounded `ecoform.0..3` sub-tile phase.
-- Entity instances: `CONFIG.PLANET_ENTITY_WEBGL_MAX_INSTANCES = 8192`.
+- Entity instance WebGPU limits are pending AZR-847.
 - Orbit event markers: `CONFIG.PLANET_ORBIT_EVENT_MARKER_MAX_MARKERS = 24`.
 - Watched representative intent markers: `CONFIG.PLANET_REPRESENTATIVE_INTENT_MAX_MARKERS = 128`.
 - Active particle cap: `CONFIG.PARTICLE_MAX_ACTIVE = 10000`.
 
 Renderer stats are available through `PS.render.renderer.getStats()`. Key fields
-include `drawCalls`, `tilemapDraws`, `tilemapWebglDraws`, `tilemapFallbacks`,
-`terrainDraws`, `terrainPageDraws`, `entityDraws`, `orbitEventMarkerDraws`,
-`intentEntityDraws`, `equivalenceAssetSelections`,
-`equivalenceAssetRendered`, `equivalenceAssetMissing`,
-`stockpileEntityDraws`, `workStatusEntityDraws`, `effectEntityDraws`,
-`observationOverlayActive`, `observationOverlayUploads`,
-`observationOverlaySamples`, `rendererGpuFrameMs`, `overBudget`,
-`singleVisibleCanvas`, and
-`directPresentsThisFrame`.
+include `drawCalls`, `tilemapDraws`, `tilemapWebgpuDraws`, `tilemapMisses`,
+`terrainDraws`, `terrainPageDraws`, `terrainLastFrameMs`, `globeDraws`,
+`globeLastFrameMs`, `webgpuContextActive`, `webgpuClearSubmitted`,
+`rendererGpuFrameMs`, `overBudget`, `singleVisibleCanvas`, and
+`directSingleCanvas`.
 Frame budget stats are available through
 `PS.debug.performance.getFrameStats()`, including sim, render, overhead, total,
 over-budget, and dropped catch-up frame counts.
@@ -326,7 +328,7 @@ over-budget, and dropped catch-up frame counts.
 ## Readiness And LOD Contract
 
 Rendering consumes ready data. Surface chunks must be completed and carry a
-ready `cellCache` before `surfaceTileWebgl` draws them. Pending chunks stay in
+ready `cellCache` before `webgpuSurfaceTile` draws them. Pending chunks stay in
 the worker/cache lifecycle and must not block the frame.
 
 Local and settlement bands use a bounded ready-chunk working set. Candidate
@@ -362,6 +364,6 @@ For any future rendering, streaming, observation, or performance change, record:
 - new constraint or encoding limit introduced,
 - metric proving the bottleneck moved.
 
-For current rendering work, the important constraints are: WebGL2 owns
+For current rendering work, the important constraints are: WebGPU owns
 production pixel throughput, chunks align render/worker/cache/LOD boundaries,
-and Canvas2D remains outside the runtime.
+required WGSL readiness gates startup, and Canvas2D remains outside the runtime.

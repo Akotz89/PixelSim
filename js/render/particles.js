@@ -63,7 +63,7 @@ PS.render.ParticleSystem = function (maxParticles) {
   this.program = null;
   this.quadBuffer = null;
   this.instanceBuffer = null;
-  this.instanceData = new Float32Array(this.maxParticles * 7);
+  this.instanceData = new Float32Array(this.maxParticles * 8);
   this.locations = null;
   this.stats = {
     active: 0,
@@ -321,72 +321,24 @@ PS.render.ParticleSystem.prototype.getAlpha = function (index) {
 };
 
 PS.render.ParticleSystem.prototype.ensureRenderResources = function () {
-  var gl;
-  var stride;
-
-  this.target = PS.render.webglEngine && PS.render.webglEngine.ensureTarget
-    ? PS.render.webglEngine.ensureTarget("particles", canvas.width, canvas.height, { alpha: false })
-    : null;
-  if (!this.target || !this.target.gl) {
-    return false;
-  }
-
-  gl = this.target.gl;
-  if (!this.program) {
-    this.program = PS.render.shaderManager.getProgram(gl, "particle");
-    this.quadBuffer = PS.render.webglEngine.ensureBuffer(this.target, "particle-quad");
-    this.instanceBuffer = PS.render.webglEngine.ensureBuffer(this.target, "particle-instances");
-    PS.render.webglEngine.updateBuffer(this.target, "particle-quad", new Float32Array([
-      -0.5, -0.5,
-      0.5, -0.5,
-      -0.5, 0.5,
-      0.5, 0.5
-    ]), gl.STATIC_DRAW);
-    stride = 7 * Float32Array.BYTES_PER_ELEMENT;
-    this.locations = {
-      corner: gl.getAttribLocation(this.program, "a_corner"),
-      center: gl.getAttribLocation(this.program, "a_center"),
-      size: gl.getAttribLocation(this.program, "a_size"),
-      color: gl.getAttribLocation(this.program, "a_color"),
-      canvasSize: gl.getUniformLocation(this.program, "u_canvasSize"),
-      stride: stride
-    };
-  }
-
-  return !!this.program;
+  return Boolean(
+    PS.render.webgpuEntity &&
+    typeof PS.render.webgpuEntity.drawParticleRects === "function"
+  );
 };
 
 PS.render.ParticleSystem.prototype.configureAttributes = function () {
-  var gl = this.target.gl;
-  var loc = this.locations;
-  var floatSize = Float32Array.BYTES_PER_ELEMENT;
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-  gl.enableVertexAttribArray(loc.corner);
-  gl.vertexAttribPointer(loc.corner, 2, gl.FLOAT, false, 2 * floatSize, 0);
-  gl.vertexAttribDivisor(loc.corner, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-  gl.enableVertexAttribArray(loc.center);
-  gl.vertexAttribPointer(loc.center, 2, gl.FLOAT, false, loc.stride, 0);
-  gl.vertexAttribDivisor(loc.center, 1);
-  gl.enableVertexAttribArray(loc.size);
-  gl.vertexAttribPointer(loc.size, 1, gl.FLOAT, false, loc.stride, 2 * floatSize);
-  gl.vertexAttribDivisor(loc.size, 1);
-  gl.enableVertexAttribArray(loc.color);
-  gl.vertexAttribPointer(loc.color, 4, gl.FLOAT, false, loc.stride, 3 * floatSize);
-  gl.vertexAttribDivisor(loc.color, 1);
+  return false;
 };
 
 PS.render.ParticleSystem.prototype.render = function () {
   var startedAt = performance.now();
   var visible = 0;
-  var gl;
   var i;
   var offset;
 
   if (!this.ensureRenderResources()) {
-    this.stats.lastError = "Particle WebGL resources unavailable";
+    this.stats.lastError = "Particle WebGPU renderer unavailable";
     return false;
   }
 
@@ -403,14 +355,15 @@ PS.render.ParticleSystem.prototype.render = function () {
       this.stats.culled++;
       continue;
     }
-    offset = visible * 7;
-    this.instanceData[offset] = this.x[i];
-    this.instanceData[offset + 1] = this.y[i];
+    offset = visible * 8;
+    this.instanceData[offset] = this.x[i] - this.size[i] / 2;
+    this.instanceData[offset + 1] = this.y[i] - this.size[i] / 2;
     this.instanceData[offset + 2] = this.size[i];
-    this.instanceData[offset + 3] = this.red[i];
-    this.instanceData[offset + 4] = this.green[i];
-    this.instanceData[offset + 5] = this.blue[i];
-    this.instanceData[offset + 6] = this.getAlpha(i);
+    this.instanceData[offset + 3] = this.size[i];
+    this.instanceData[offset + 4] = this.red[i];
+    this.instanceData[offset + 5] = this.green[i];
+    this.instanceData[offset + 6] = this.blue[i];
+    this.instanceData[offset + 7] = this.getAlpha(i);
     visible++;
   }
 
@@ -420,23 +373,13 @@ PS.render.ParticleSystem.prototype.render = function () {
     return false;
   }
 
-  gl = this.target.gl;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.disable(gl.DEPTH_TEST);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.useProgram(this.program);
-  gl.uniform2f(this.locations.canvasSize, canvas.width, canvas.height);
-  this.configureAttributes();
-  PS.render.webglEngine.updateBuffer(
-    this.target,
-    "particle-instances",
-    this.instanceData.subarray(0, visible * 7),
-    gl.STREAM_DRAW
-  );
-  gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, visible);
   this.stats.visible = visible;
+  if (!PS.render.webgpuEntity.drawParticleRects(this.instanceData.subarray(0, visible * 8))) {
+    this.stats.lastError = "Particle WebGPU draw returned no visible instances";
+    this.stats.renderMs = performance.now() - startedAt;
+    this.stats.lastFrameMs = this.stats.updateMs + this.stats.renderMs;
+    return false;
+  }
   this.stats.drawCalls++;
   this.stats.renderMs = performance.now() - startedAt;
   this.stats.lastFrameMs = this.stats.updateMs + this.stats.renderMs;

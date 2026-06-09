@@ -79,10 +79,10 @@ This architecture document is being created through the GDS Architecture Workflo
 
 | ID | Risk | Mitigation |
 |----|------|-----------|
-| A-1 | Canvas 2D insufficient for 60 FPS planet rendering | WebGL2 raw API fallback (still no-library) |
-| A-3 | N-body gravity too expensive for 10k particles in JS | Spatial partitioning, reduced particle count, Web Workers |
-| R-1 | Memory pressure from 10k+ agents + lineage history | Object pooling, typed arrays, selective history pruning |
-| R-2 | Single-threaded bottleneck (sim + render) | Web Worker for simulation, main thread for render only |
+| A-1 | Canvas 2D insufficient for 60 FPS planet rendering | WebGPU primary (still no-library — navigator.gpu is a browser built-in) |
+| A-3 | N-body gravity too expensive for 10k particles in JS | WASM compute (Rust via wasm-pack, base64-sidecar pattern, no CDN) |
+| A-5 | Single-threaded bottleneck (sim + render) | WASM Web Worker (blob URL init for file:// compat) |
+| R-2 | Memory pressure from 10k+ agents + lineage history | Object pooling, typed arrays, selective history pruning |
 | R-3 | 12 epoch models in one codebase = spaghetti | Strict module boundaries, epoch registry pattern |
 
 ---
@@ -107,9 +107,10 @@ This architecture document is being created through the GDS Architecture Workflo
 
 | Category | API | Role | Status |
 |----------|-----|------|--------|
-| Rendering | Canvas 2D | Primary pixel rendering | ✅ In use |
-| Rendering | WebGL2 (raw) | GPU fallback if Canvas 2D insufficient | ⏳ Evaluate |
-| Threading | Web Workers | Offload simulation from render thread | ⏳ Evaluate |
+| Rendering | WebGPU (navigator.gpu) | Primary GPU renderer, WGSL shaders | ✅ Target (M-GPU-0) |
+| Rendering | WebGL2 (raw) | Fallback for browsers without WebGPU | ⏳ Maintained during migration |
+| Compute | WASM (WebAssembly) | CPU-heavy sim: tectonics, rivers, erosion | ⏳ M-Sim-3 |
+| Threading | Web Worker (blob URL) | WASM compute off main thread | ⏳ AZR-855 |
 | Threading | OffscreenCanvas | Background terrain chunk generation | ⏳ Evaluate |
 | Storage | IndexedDB | Save/load world state | ⏳ Planned |
 | Audio | Web Audio API | Procedural soundscapes | 🔵 Deferred (Phase 5) |
@@ -147,26 +148,33 @@ These must be made in Step 4:
 
 | # | Category | Decision | Rationale |
 |---|----------|----------|-----------|
-| D1 | Rendering | WebGL2 from the start | Planet rendering is inherently GPU workload (~2M pixels/frame). Canvas 2D is a CPU detour. |
-| D2 | Sim Loop | Decoupled accumulator | Handles 12-order-of-magnitude time compression. Deterministic fixed dt. Migratable to Web Worker. |
+| D1 | Rendering | WebGPU primary + WASM compute | Planet rendering is a GPU workload. WebGPU is the native web GPU API; WASM handles CPU-bound serial work. Both are vanilla browser built-ins. WebGL2 is the fallback. |
+| D2 | Sim Loop | Decoupled accumulator | Handles 12-order-of-magnitude time compression. Deterministic fixed dt. WASM worker owns sim tick; main thread owns render. |
 | D3 | Data Model | Hybrid (classes + typed arrays) | Complex entities (settlements) use classes. Mass entities (organisms, particles) use typed arrays. |
 | D4 | Script Loading | Classic `<script>` + `PS.*` namespace | Works on `file://`. No build tools. Namespace convention keeps growing codebase organized. |
 | D5 | State | Centralized `PS.world` + event bus | Trivial save/load serialization. Event bus decouples UI from sim. Matches existing pattern. |
 | D6 | Epochs | Hybrid registry + always-on layers | Epoch modules register behavior. Shared systems (geology, climate) persist across all epochs. |
 | D7 | Spatial | Chunk-aligned index | Natural LOD alignment with rendering. N-body cosmological sim uses separate octree. |
 
-### D1: Rendering Pipeline — WebGL2
+### D1: Rendering Pipeline — WebGPU Primary + WASM Compute
 
-**Approach:** Raw WebGL2 API calls. No abstraction library. Custom shaders for terrain rendering, entity sprites, overlays, and atmospheric effects.
+**Approach:** WebGPU (`navigator.gpu`) for rendering and GPU compute. WASM
+(Rust compiled via `wasm-pack`) for CPU-heavy serial simulation. WGSL compute
+shaders replace WebGL2 ping-pong FBOs for simulation data passes.
 
-**Architecture:**
-- Vertex/fragment shaders for globe projection (equirectangular → sphere)
-- Texture atlas for terrain tiles (uploaded as GPU textures)
-- Instanced rendering for organisms/entities (one draw call per entity type)
-- Framebuffer objects for overlay compositing
-- Resolution-independent rendering (render to framebuffer, scale to display)
+Both WebGPU and WASM are **native browser APIs** — they satisfy the
+zero-external-dependencies constraint. The wasm-pack build step is a
+development tool (not a runtime dependency); the compiled binary is
+base64-encoded to a `.wasm.js` sidecar and committed.
 
-**Fallback:** Canvas 2D for browsers without WebGL2 support (increasingly rare). Feature-detect on startup.
+- WGSL vertex/fragment shaders for terrain, globe projection, entity sprites
+- WebGPU compute shaders for heat diffusion, ocean LBM, moisture simulation
+- WASM for tectonics, river networks, erosion (serial CPU algorithms)
+- G-Buffer rendering: diffuse + normal attachments, full-screen compositor blit
+- Texture atlas as `GPUTexture` arrays
+
+**Fallback:** WebGL2 for browsers without `navigator.gpu` (Safari < 18, older
+Chromium). Feature-detect in `PS.gpu.init()`.
 
 ### D2: Simulation Loop — Decoupled Accumulator
 
@@ -337,19 +345,6 @@ Every error is a bug that must be fixed. The simulation should hard-crash and di
 - The developer (Aaron) decides when to add resilience — it is never the default
 - Use `PS.assert(condition, message)` for invariant checks in development
 
-**Example:**
-```
-PS.assert = function(condition, msg) {
-    if (!condition) {
-        PS.sim.pause();
-        throw new Error('[PS ASSERT] ' + msg);
-    }
-};
-
-// Usage:
-PS.assert(organism.energy >= 0, 'Negative energy on organism ' + i);
-```
-
 ### Logging
 
 **Strategy:** Structured with categories. Filter by system AND level.
@@ -357,100 +352,55 @@ PS.assert(organism.energy >= 0, 'Negative energy on organism ' + i);
 **API:**
 ```
 PS.log(category, level, message)
-
-// Examples:
-PS.log('render', 'info', 'Chunk 42,17 loaded');
-PS.log('sim', 'warn', 'Tick took 45ms (target: 16ms)');
-PS.log('epoch', 'debug', 'Primordial chemistry progress: 0.73');
-PS.log('organisms', 'error', 'Invalid trait value at index 1042');
 ```
-
-**Levels:** ERROR > WARN > INFO > DEBUG (default: INFO)
-**Filter:** `PS.config.logLevel = 'debug'` and `PS.config.logCategories = ['render', 'sim']`
-**Performance:** Zero logging calls in the inner tick loop (organism update, spatial queries). Logging only at system boundaries and milestone events.
-**Destination:** `console.log` / `console.warn` / `console.error` with formatted prefix.
 
 ### Configuration
 
 **Strategy:** Centralized `PS.config` with nested structure.
 
-**Structure:**
-```
-PS.config = {
-    logLevel: 'info',
-    logCategories: [], // empty = all
-
-    sim: {
-        tickRate: 60,
-        maxTicksPerFrame: 10,
-        timeScale: 1.0,
-    },
-    render: {
-        chunkSize: 64,
-        maxZoom: 20,
-        minZoom: 1,
-        targetFPS: 60,
-    },
-    organisms: {
-        maxCount: 20000,
-        mutationRate: 0.01,
-        baseFoodValue: 10,
-    },
-    geology: {
-        plateCount: 12,
-        driftRate: 0.001,
-        volcanicActivity: 0.5,
-    },
-    // ... per-system config
-};
-```
-
-**Rules:**
-- Constants (never change): `Object.freeze(PS.config.constants)`
-- Balancing values (tweakable): mutable, exposed to debug console
-- All in `js/core/config.js`, one file to find everything
-- Presets: `PS.config.applyPreset('superEarth')` loads a named initial-condition set
-
 ### Event System
 
-**Pattern:** `PS.events` — string-keyed pub/sub with sync dispatch (confirmed from D5).
-
-**Naming convention:** `system.action` or `system.noun.action`
-```
-organism.born
-organism.died
-epoch.transitioned
-settlement.founded
-settlement.destroyed
-greatfilter.triggered
-time.paused
-time.resumed
-camera.zoomed
-```
-
-**Event history buffer:** Last 1000 events stored in ring buffer for debug inspection. Accessible via debug console: `PS.debug.eventHistory()`.
+**Pattern:** `PS.events` — string-keyed pub/sub with sync dispatch.
 
 ### Debug Tools
 
-All debug tools built-in. All available during development. Activated via hotkey or debug console.
+All debug tools built-in. All available during development.
 
-| Tool | Activation | Description |
-|------|-----------|-------------|
-| **Performance overlay** | F3 | FPS, tick time, entity count, memory usage |
-| **Debug console** | ` (backtick) | Command input. Tweak PS.config values, inspect state. |
-| **Visual overlays** | F4 | Chunk boundaries, spatial index grid, collision radii, trait value heat maps |
-| **State inspector** | Shift+Click entity | Panel showing all entity properties |
-| **System profiler** | F5 | Per-system tick time breakdown (which epoch/system is slowest) |
-| **Seed display** | Always visible | Current seed + one-click copy button |
+### WebGPU Device Loss Recovery
 
-**Debug console commands:**
+**Problem:** Browsers can reclaim the GPU device at any time (tab
+backgrounding, memory pressure, driver crash). All WebGPU state (GPUBuffer,
+GPUTexture, GPUShaderModule, GPURenderPipeline) is invalidated.
+
+**Pattern:** `device.lost` is a Promise (not a DOM event like WebGL2). Wire
+it immediately after `requestDevice()`. On resolution, request a fresh adapter
+and device, then rebuild all GPU objects.
+
+```javascript
+PS.gpu.init = async function(canvas) {
+    var adapter = await navigator.gpu.requestAdapter();
+    PS.gpu.device = await adapter.requestDevice();
+
+    PS.gpu.device.lost.then(function(info) {
+        PS.gpu.state.isDeviceLost = true;
+        PS.gpu.state.deviceLossCount++;
+        PS.events.emit(PS.events.types.RENDER_GL_CONTEXT_LOST);
+        setTimeout(function() { PS.gpu.recover(); }, 1000);
+    });
+};
+
+PS.gpu.recover = async function() {
+    await PS.gpu.init(PS.gpu.state.canvas); // new adapter + device
+    PS.render.rebuildShaders();
+    PS.render.rebuildTextures();
+    PS.gpu.state.isDeviceLost = false;
+    PS.events.emit(PS.events.types.RENDER_GL_CONTEXT_RESTORED);
+};
 ```
-> PS.config.organisms.mutationRate = 0.1
-> PS.debug.spawnOrganism(100, 200)
-> PS.debug.triggerEvent('asteroid')
-> PS.debug.dumpWorldState()
-> PS.debug.profileTick(100) // profile next 100 ticks
-```
+
+**Rule:** Every render subsystem must implement `rebuildShaders()` and
+`rebuildTextures()`/`rebuildBuffers()`. GPU resources (pipelines, textures,
+buffers, bind groups) are NEVER assumed to persist after a device loss.
 
 ---
 
@@ -460,22 +410,6 @@ All debug tools built-in. All available during development. Activated via hotkey
 
 **Pattern:** Domain-driven, organized by game systems.
 
-**Rationale:** Each epoch, system, and concern gets its own directory. AI agents work on one domain at a time without touching unrelated code. The current 12-file flat structure cannot scale to the 45+ files the architecture requires.
-
-### File Size Policy
-
-- **Target:** 150-500 lines per file
-- **Hard cap:** 500 lines — split before exceeding
-- **Function length:** ~20 lines max
-- **Source:** 2026 AI coding agent best practices consensus
-
-Current monoliths to decompose:
-- `render.js` (4,200 lines) → 8 files in `js/render/`
-- `planet.js` (3,000 lines) → merged into `js/render/globe.js` + `js/render/terrain.js`
-- `settlements.js` (2,100 lines) → `js/sim/settlements.js` + `js/sim/civilizations.js`
-- `persistence.js` (2,000 lines) → `js/systems/persistence.js` (trimmed)
-- `ui.js` (1,700 lines) → 4 files in `js/ui/`
-
 ### Directory Structure
 
 ```
@@ -484,104 +418,15 @@ Pixeldarium/
 ├── style.css                           # All styles
 ├── js/
 │   ├── core/                           # Foundation (load first)
-│   │   ├── namespace.js                # PS = {} (~20 lines)
-│   │   ├── config.js                   # PS.config
-│   │   ├── events.js                   # PS.events pub/sub
-│   │   ├── math.js                     # PS.math (noise, RNG, vectors)
-│   │   ├── assert.js                   # PS.assert
-│   │   └── log.js                      # PS.log structured logger
-│   │
-│   ├── render/                         # WebGL2 rendering
-│   │   ├── gl.js                       # PS.gl — context, shader compilation
-│   │   ├── camera.js                   # PS.camera — zoom, pan, projection
-│   │   ├── globe.js                    # PS.render.globe — sphere projection
-│   │   ├── terrain.js                  # PS.render.terrain — chunk rendering
-│   │   ├── entities.js                 # PS.render.entities — sprites
-│   │   ├── overlays.js                 # PS.render.overlays — data viz
-│   │   ├── atmosphere.js               # PS.render.atmosphere — sky, clouds
-│   │   └── pipeline.js                 # PS.render.pipeline — frame orchestration
-│   │
+│   ├── render/                         # WebGPU rendering
 │   ├── systems/                        # Core simulation infrastructure
-│   │   ├── world.js                    # PS.world — central state
-│   │   ├── time.js                     # PS.time — accumulator, scale
-│   │   ├── spatial.js                  # PS.spatial — chunk indexing
-│   │   └── persistence.js              # PS.persistence — save/load
-│   │
 │   ├── sim/                            # Simulation modules
-│   │   ├── organisms.js                # PS.sim.organisms — typed array pool
-│   │   ├── evolution.js                # PS.sim.evolution — mutation, traits
-│   │   ├── food.js                     # PS.sim.food — food web, energy
-│   │   ├── settlements.js              # PS.sim.settlements — growth, collapse
-│   │   ├── civilizations.js            # PS.sim.civilizations — tech, culture
-│   │   └── great-filters.js            # PS.sim.greatfilters — detection
-│   │
 │   ├── layers/                         # Always-on shared simulation layers
-│   │   ├── geology.js                  # PS.layers.geology
-│   │   ├── atmosphere.js               # PS.layers.atmosphere
-│   │   ├── climate.js                  # PS.layers.climate
-│   │   └── ocean.js                    # PS.layers.ocean
-│   │
 │   ├── epochs/                         # Epoch-specific modules
-│   │   ├── registry.js                 # PS.epochs — registration, transitions
-│   │   ├── cosmological.js             # Epoch 0
-│   │   ├── primordial.js               # Epoch 1
-│   │   ├── microbial.js                # Epochs 2-3
-│   │   ├── complex-life.js             # Epochs 4-5
-│   │   ├── civilization.js             # Epochs 6-9
-│   │   └── space-age.js                # Epochs 10-12
-│   │
 │   ├── ui/                             # User interface
-│   │   ├── hud.js                      # PS.ui.hud
-│   │   ├── panels.js                   # PS.ui.panels
-│   │   ├── controls.js                 # PS.ui.controls
-│   │   └── notifications.js            # PS.ui.notifications
-│   │
 │   ├── debug/                          # Debug tools
-│   │   ├── console.js                  # PS.debug.console
-│   │   ├── profiler.js                 # PS.debug.profiler
-│   │   ├── inspector.js                # PS.debug.inspector
-│   │   ├── overlays.js                 # PS.debug.overlays
-│   │   └── performance.js              # PS.debug.performance
-│   │
 │   └── main.js                         # PS.init() entry point
-│
-├── shaders/                            # GLSL source files
-│   ├── terrain.vert / terrain.frag
-│   ├── entity.vert / entity.frag
-│   └── atmosphere.vert / atmosphere.frag
-│
-├── data/                               # Presets, initial conditions
-│   └── presets.js                      # PS.presets
-│
-└── tests/                              # Test files
 ```
-
-### System-to-Location Mapping
-
-| System | Location | Namespace |
-|--------|----------|-----------|
-| Planet Rendering | `js/render/` | `PS.render.*` |
-| Cosmological Sim | `js/epochs/cosmological.js` | `PS.epochs.cosmological` |
-| Geological Sim | `js/layers/geology.js` | `PS.layers.geology` |
-| Organism Engine | `js/sim/organisms.js` + `evolution.js` | `PS.sim.organisms`, `PS.sim.evolution` |
-| Intelligence | `js/epochs/complex-life.js` | `PS.epochs.complexLife` |
-| Settlements | `js/sim/settlements.js` | `PS.sim.settlements` |
-| Great Filters | `js/sim/great-filters.js` | `PS.sim.greatfilters` |
-| Orbital Mechanics | `js/epochs/space-age.js` | `PS.epochs.spaceAge` |
-| Time Scale | `js/systems/time.js` | `PS.time` |
-| Observation Tools | `js/ui/` | `PS.ui.*` |
-| State/Save | `js/systems/persistence.js` | `PS.persistence` |
-
-### Naming Conventions
-
-| Element | Convention | Example |
-|---------|-----------|---------|
-| Files | lowercase-kebab-case.js | `complex-life.js`, `great-filters.js` |
-| Classes | PascalCase | `Settlement`, `TectonicPlate` |
-| Functions | camelCase | `updatePosition`, `findNearby` |
-| Constants | UPPER_SNAKE | `MAX_ORGANISMS`, `SIM_TICK_MS` |
-| Namespace | PS.camelCase | `PS.sim.organisms`, `PS.render.terrain` |
-| Events | dot.separated | `organism.born`, `epoch.transitioned` |
 
 ### Architectural Boundaries
 
@@ -593,187 +438,6 @@ Pixeldarium/
 6. **Debug tools are optional.** Removing the `js/debug/` directory should not break the game.
 
 ---
-
-## Implementation Patterns
-
-These patterns ensure consistent implementation across all AI agents.
-
-### Novel Patterns
-
-#### Multi-Scale Rendering Pipeline
-
-**Purpose:** Seamless zoom from galaxy (100 AU) to organism (1 pixel) without pop-in or loading screens.
-
-**Pattern:** Level-of-detail (LOD) tiers driven by camera zoom level. Each tier activates/deactivates render subsystems.
-
-```
-// Zoom level → render tier
-const RENDER_TIERS = [
-    { zoom: [1, 3],   name: 'galaxy',    renders: ['stars', 'orbits'] },
-    { zoom: [3, 6],   name: 'planet',    renders: ['globe', 'atmosphere'] },
-    { zoom: [6, 10],  name: 'continent', renders: ['terrain', 'biomes', 'settlements'] },
-    { zoom: [10, 15], name: 'region',    renders: ['terrain', 'organisms', 'structures'] },
-    { zoom: [15, 20], name: 'local',     renders: ['terrain', 'organisms', 'details'] },
-];
-
-PS.render.pipeline.frame = function(alpha) {
-    const tier = RENDER_TIERS.find(t => PS.camera.zoom >= t.zoom[0] && PS.camera.zoom < t.zoom[1]);
-    for (const system of tier.renders) {
-        PS.render[system].draw(alpha);
-    }
-};
-```
-
-#### Adaptive Time System
-
-**Purpose:** Time compression spanning 12+ orders of magnitude with epoch-variable tick granularity.
-
-**Pattern:** Each epoch defines what "one tick" represents. The accumulator loop adjusts accordingly.
-
-```
-PS.time = {
-    scale: 1.0,                    // user-controlled multiplier
-    tickMeanings: {
-        cosmological: 10_000_000,  // 1 tick = 10M years
-        primordial: 100_000,       // 1 tick = 100K years
-        microbial: 10_000,         // 1 tick = 10K years
-        complexLife: 1_000,        // 1 tick = 1K years
-        tribal: 1,                 // 1 tick = 1 year
-        settled: 0.1,              // 1 tick = ~1 month
-        industrial: 0.01,          // 1 tick = ~3.6 days
-    },
-    
-    yearsPerTick() {
-        return this.tickMeanings[PS.epochs.current] || 1;
-    }
-};
-```
-
-#### Epoch Transition Detection
-
-**Purpose:** Detect when simulation conditions satisfy the next epoch's requirements without scripted triggers.
-
-**Pattern:** Each epoch module registers a `detect()` function. The sim loop polls neighboring epoch detectors.
-
-```
-PS.epochs.register('microbial', {
-    detect() {
-        // Check if abiogenesis conditions are met
-        return PS.world.chemistry.aminoAcidConcentration > 0.7
-            && PS.world.temperature.oceanAvg > 280
-            && PS.world.temperature.oceanAvg < 370
-            && PS.world.geology.hydroThermalVents > 0;
-    },
-    // ...
-});
-```
-
-### Standard Patterns
-
-#### Communication: Event-Based + Domain-Local
-
-**Rule:** Cross-domain → `PS.events`. Same domain → direct calls.
-
-```
-// Cross-domain (render reacting to sim):
-PS.events.on('organism.born', (data) => {
-    PS.render.entities.markDirty(data.chunkX, data.chunkY);
-});
-
-// Same domain (sim calling within sim):
-PS.sim.evolution.mutate(parentIndex, childIndex);
-```
-
-#### Entity Creation: Object Pool + Free-List
-
-**Mass entities (organisms, particles):**
-```
-PS.sim.organisms.spawn = function(x, y, parentIndex) {
-    PS.assert(this.freeList.length > 0, 'Organism pool exhausted');
-    const i = this.freeList.pop();
-    this.x[i] = x;
-    this.y[i] = y;
-    this.alive[i] = 1;
-    this.energy[i] = PS.config.organisms.baseEnergy;
-    // Inherit + mutate traits from parent
-    PS.sim.evolution.inherit(parentIndex, i);
-    this.count++;
-    PS.events.emit('organism.born', { index: i, x, y });
-    return i;
-};
-
-PS.sim.organisms.kill = function(i) {
-    this.alive[i] = 0;
-    this.freeList.push(i);
-    this.count--;
-    PS.events.emit('organism.died', { index: i });
-};
-```
-
-**Complex entities (settlements):**
-```
-PS.sim.settlements.found = function(x, y, founder) {
-    const s = new Settlement(x, y, founder);
-    this.list.push(s);
-    PS.events.emit('settlement.founded', { id: s.id, x, y });
-    return s;
-};
-```
-
-#### State Transitions: Behavior Tree for Organisms
-
-**Pattern:** Organisms use a lightweight behavior tree that evaluates priorities each tick.
-
-```
-// Organism behavior priority (evaluated top to bottom):
-// 1. Flee (if predator nearby and energy > flee threshold)
-// 2. Eat (if food nearby and energy < hungry threshold)
-// 3. Reproduce (if energy > reproduce threshold and mate nearby)
-// 4. Explore (random walk)
-
-PS.sim.organisms.behave = function(i) {
-    if (this.energy[i] < FLEE_THRESHOLD && PS.spatial.hasPredator(this.x[i], this.y[i], i)) {
-        return this.flee(i);
-    }
-    if (this.energy[i] < HUNGRY_THRESHOLD) {
-        const food = PS.spatial.findFood(this.x[i], this.y[i]);
-        if (food >= 0) return this.eat(i, food);
-    }
-    if (this.energy[i] > REPRODUCE_THRESHOLD) {
-        const mate = PS.spatial.findMate(this.x[i], this.y[i], i);
-        if (mate >= 0) return this.reproduce(i, mate);
-    }
-    return this.explore(i);
-};
-```
-
-#### Data Access: PS.world + PS.config
-
-**Rule:** All runtime state → `PS.world`. All tunable values → `PS.config`. No other data stores.
-
-```
-// Reading state:
-const temp = PS.world.climate.temperature[chunkIndex];
-const pop = PS.sim.organisms.count;
-
-// Tweaking at runtime (via debug console):
-PS.config.organisms.mutationRate = 0.05;
-```
-
-### Consistency Rules
-
-| Pattern | Convention | Enforcement |
-|---------|-----------|-------------|
-| New file | Must register with `PS.*` namespace | Code review |
-| Cross-domain calls | Must use `PS.events`, never direct | Architectural boundary rule |
-| Entity lifecycle | Must use pool `spawn/kill`, never `new/delete` for mass entities | PS.assert on pool invariants |
-| Config access | Must go through `PS.config.*`, never hardcode magic numbers | Code review |
-| Error handling | Must let errors propagate, never swallow with try-catch | PS.assert for invariants |
-| Logging | Must use `PS.log(category, level, msg)`, never raw `console.log` | Code review |
-
-### WebGL2 Context Loss Recovery
-
-**Problem:** Browsers can reclaim GPU memory at any time (tab backgrounding, memory pressure, driver crash). When this happens, all WebGL state (textures, buffers, shaders, programs) is destroyed.
 
 **Pattern:** Listen for `webglcontextlost` / `webglcontextrestored` events. Pause simulation, rebuild all GPU resources on restore.
 

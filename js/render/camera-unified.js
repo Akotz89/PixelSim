@@ -229,7 +229,23 @@ PS.camera.unified = PS.camera.unified || {
   },
 
   isLocalView: function () {
-    return this.syncFromPlanetView().zoom >= 1;
+    var zoom = this.syncFromPlanetView().zoom;
+    var alphas = PS.render && PS.render.lod && typeof PS.render.lod.getLayerAlphas === "function"
+      ? PS.render.lod.getLayerAlphas(zoom)
+      : null;
+
+    return alphas ? alphas.tiles >= 0.999 && alphas.globe <= 0.001 : zoom >= 1.4;
+  },
+
+  isTransitioning: function () {
+    var zoom = this.syncFromPlanetView().zoom;
+    var alphas = PS.render && PS.render.lod && typeof PS.render.lod.getLayerAlphas === "function"
+      ? PS.render.lod.getLayerAlphas(zoom)
+      : null;
+
+    return alphas
+      ? alphas.globe > 0.01 && alphas.tiles > 0.01
+      : zoom >= 0.8 && zoom < 1.4;
   },
 
   worldToScreen: function (worldX, worldY) {
@@ -414,7 +430,7 @@ PS.camera.unified = PS.camera.unified || {
     var maxX;
     var maxY;
 
-    if (points.length < 4 || (!this.isLocalView() && isGlobeRenderMode())) {
+    if (points.length < 4 || (!this.isLocalView() && !this.isTransitioning() && isGlobeRenderMode())) {
       return {
         minX: 0,
         minY: 0,

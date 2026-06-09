@@ -67,20 +67,40 @@ PS.core.Noise2D.prototype.gradient = function (hash, x, y) {
 };
 
 PS.core.Noise2D.prototype.perlin = function (x, y) {
-  var xi = Math.floor(Number(x) || 0) & 255;
-  var yi = Math.floor(Number(y) || 0) & 255;
-  var xf = (Number(x) || 0) - Math.floor(Number(x) || 0);
-  var yf = (Number(y) || 0) - Math.floor(Number(y) || 0);
-  var u = this.fade(xf);
-  var v = this.fade(yf);
-  var aa = this.permutation[this.permutation[xi] + yi];
-  var ab = this.permutation[this.permutation[xi] + yi + 1];
-  var ba = this.permutation[this.permutation[xi + 1] + yi];
-  var bb = this.permutation[this.permutation[xi + 1] + yi + 1];
-  var top = this.lerp(this.gradient(aa, xf, yf), this.gradient(ba, xf - 1, yf), u);
-  var bottom = this.lerp(this.gradient(ab, xf, yf - 1), this.gradient(bb, xf - 1, yf - 1), u);
+  var px = Number(x) || 0;
+  var py = Number(y) || 0;
+  var x0 = Math.floor(px);
+  var y0 = Math.floor(py);
+  var xi = x0 & 255;
+  var yi = y0 & 255;
+  var xf = px - x0;
+  var yf = py - y0;
+  var u = xf * xf * xf * (xf * (xf * 6 - 15) + 10);
+  var v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
+  var permutation = this.permutation;
+  var aa = permutation[permutation[xi] + yi];
+  var ab = permutation[permutation[xi] + yi + 1];
+  var ba = permutation[permutation[xi + 1] + yi];
+  var bb = permutation[permutation[xi + 1] + yi + 1];
+  var xf1 = xf - 1;
+  var yf1 = yf - 1;
+  var gaaH = aa & 7;
+  var gabH = ab & 7;
+  var gbaH = ba & 7;
+  var gbbH = bb & 7;
+  var gaa = ((gaaH & 1) ? -(gaaH < 4 ? xf : yf) : (gaaH < 4 ? xf : yf)) +
+    ((gaaH & 2) ? -2 * (gaaH < 4 ? yf : xf) : 2 * (gaaH < 4 ? yf : xf));
+  var gba = ((gbaH & 1) ? -(gbaH < 4 ? xf1 : yf) : (gbaH < 4 ? xf1 : yf)) +
+    ((gbaH & 2) ? -2 * (gbaH < 4 ? yf : xf1) : 2 * (gbaH < 4 ? yf : xf1));
+  var gab = ((gabH & 1) ? -(gabH < 4 ? xf : yf1) : (gabH < 4 ? xf : yf1)) +
+    ((gabH & 2) ? -2 * (gabH < 4 ? yf1 : xf) : 2 * (gabH < 4 ? yf1 : xf));
+  var gbb = ((gbbH & 1) ? -(gbbH < 4 ? xf1 : yf1) : (gbbH < 4 ? xf1 : yf1)) +
+    ((gbbH & 2) ? -2 * (gbbH < 4 ? yf1 : xf1) : 2 * (gbbH < 4 ? yf1 : xf1));
+  var top = gaa + (gba - gaa) * u;
+  var bottom = gab + (gbb - gab) * u;
+  var value = (top + (bottom - top) * v) * 0.5;
 
-  return PS.math.clamp(this.lerp(top, bottom, v) * 0.5, -1, 1);
+  return value < -1 ? -1 : (value > 1 ? 1 : value);
 };
 
 PS.core.Noise2D.prototype.simplex = function (x, y) {

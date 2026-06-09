@@ -1,15 +1,15 @@
 # Pixeldarium Architecture
 
-Date: 2026-06-05
+Date: 2026-06-05 | Updated: 2026-06-08 (WebGPU+WASM migration)
 
 Linear scope: AZR-585. This document describes the current runtime
-architecture, not the older planning-only target.
+architecture and the WebGPU+WASM runtime direction.
 
 ## System Overview
 
 ```mermaid
 flowchart TB
-  HTML["index.html\n#game-webgl + UI shell"] --> Loader["core/loader\nscript-tag manifest"]
+  HTML["index.html\n#game-webgpu + UI shell"] --> Loader["core/loader\nscript-tag manifest"]
   Loader --> Assets["assets/\nmanifest, data, shaders"]
   Loader --> Core["core/\nnamespace, config, events, math, registries"]
   Core --> State["systems/state\nwindow.world"]
@@ -23,11 +23,14 @@ flowchart TB
   Camera --> Surface["render/surface-*\nchunk addresses, samples,\nstreaming, cache"]
   Surface --> SurfaceWorker["workers/surface-chunk\nready cell caches"]
   SurfaceWorker --> Surface
-  Surface --> Renderer["render/webgl2-renderer\nWebGL2 facade"]
-  Sim --> Entities["render/entities + entity-webgl\nrepresentative facades"]
+  Surface --> Renderer["render/webgpu-pipeline\nWebGPU primary renderer"]
+  Sim --> Entities["render/entities + webgpu-entity\nrepresentative facades"]
   Entities --> Renderer
-  Renderer --> WebGL["render/webgl-*\npresenter, targets, compositor,\ng-buffer, tile atlas"]
-  WebGL --> Screen["single visible WebGL2 canvas"]
+  Renderer --> GPU["render/webgpu-*\ngpu.js, targets, gbuffer,\ncompositor"]
+  GPU --> RequiredCheck{"navigator.gpu\navailable?"}
+  RequiredCheck -->|Yes| WebGPUCanvas["WebGPU canvas #game-webgpu"]
+  RequiredCheck -->|No| Stop["WebGPU required\nstartup stops loudly"]
+  WASM["wasm/ + workers/sim-worker\nRust compute: tectonics,\nrivers, erosion"] --> GPU
   State --> UI["ui/\nhud, controls, timeline,\ninspection, observation"]
   State --> Debug["debug/\nconsole, profiler, performance,\ninspector"]
   UI --> State
@@ -39,11 +42,16 @@ flowchart TB
 Pixeldarium follows the mandatory decisions in `AGENTS.md` and the scale model
 in `docs/optimization-operating-model.md`.
 
-- Rendering is raw WebGL2 through the visible `#game-webgl` canvas. Canvas2D is
-  not a runtime requirement, fallback target, or acceptance path.
+- Rendering uses WebGPU (`navigator.gpu`) as the required GPU API. WebGL2 is
+  legacy migration debt only, not a runtime fallback or acceptance path.
+  Canvas2D is not a renderer, fallback target, or acceptance path.
+- Compute shaders (WGSL) run simulation data passes on the GPU. WASM (Rust,
+  compiled via `wasm-pack`) handles CPU-heavy serial computation (tectonics,
+  river networks, erosion). Both are vanilla browser APIs — not dependencies.
 - The runtime is vanilla script-tag JavaScript under the `PS.*` namespace. No
   ES modules, runtime packages, CDNs, or build step are required to open
-  `index.html` from `file://`.
+  `index.html` from `file://`. WASM sidecars (.wasm.js) are pre-encoded and
+  committed; no WASM compilation happens in the browser.
 - Simulation runs on a fixed-timestep accumulator. Rendering consumes the most
   recent world state with interpolation and must not drive simulation ticks.
 - Aggregate state is authoritative at planetary scale. Representative
@@ -52,36 +60,36 @@ in `docs/optimization-operating-model.md`.
   boundary where the system has enough data to align them.
 - Generated data crosses worker, asset, shader, GPU, and zoom boundaries only
   through explicit readiness state. The renderer consumes ready or stale data
-  rather than blocking on just-requested work.
-- LOD preserves what the player can understand at each zoom level. Orbit view
-  shows fields and ranges; local view spends detail on terrain materials,
-  representative entities, and inspection.
-- Packed data must keep explicit range limits. Tile/material IDs, atlas cells,
-  variation indices, local chunk coordinates, representative IDs, and layer
-  masks need migration plans before their ranges are exceeded.
+  rather than blocking on just-requested work, but missing WebGPU support is a
+  startup failure rather than a renderer fallback.
+- LOD preserves what the player can understand at each zoom level.
+- Packed data must keep explicit range limits with migration plans.
 
 ## Runtime Data Flow
 
-`index.html` creates the single WebGL canvas and static UI shell. It loads
+`index.html` creates the single GPU canvas and static UI shell. It loads
 `js/core/namespace.js`, which defines `window.PS` and the ordered script
 manifest. `js/core/loader.js` appends each script in order, records loader
 state, and crashes loudly on missing scripts.
 
 After the manifest finishes, `startGame()` runs this startup sequence:
 
-1. Load sprite and asset manifest data through `PS.assets.AssetLoader`.
-2. Load runtime data from `data/entities.json`, `data/tiles.json`,
+1. Initialize required WebGPU support through `PS.gpu.initialize()`. Missing
+   `navigator.gpu`, adapter, device, queue, or canvas context is a startup
+   failure.
+2. Load sprite and asset manifest data through `PS.assets.AssetLoader`.
+3. Load runtime data from `data/entities.json`, `data/tiles.json`,
    `data/biomes.json`, `data/transitions.json`, `data/particles.json`, and
    `data/animations.json`.
-3. Load shader sources from `shaders/` with `.js` sidecar fallback for
-   `file://` use.
-4. Set up controls, seed the world, reset time, draw the first frame, update
+4. Load required WGSL shader sources from `shaders/` with `.wgsl.js` sidecars
+   for `file://` use. Required WGSL failures stop startup.
+5. Set up controls, seed the world, reset time, draw the first frame, update
    HUD state, hide the loading screen, then start `requestAnimationFrame`.
 
 Every animation frame, `gameLoop()` asks `PS.time.runFrame()` to execute zero or
 more fixed simulation ticks. `updateWorld()` mutates `window.world`; `drawWorld()`
 then sends camera, terrain, entity, particle, and UI-facing state through the
-render pipeline to the active WebGL2 renderer.
+render pipeline to the active WebGPU renderer.
 
 ## Module Responsibilities
 
@@ -91,7 +99,7 @@ entities, and animation definitions.
 
 `assets/` loads manifests, JSON data, image sheets, and shader text. The loader
 tracks startup status so runtime systems can distinguish loaded data from
-fallback data.
+unavailable data.
 
 `systems/` owns the shared `world` object, fixed-time utilities, persistence,
 deep-time accounting, object pools, spatial indexes, and the tile grid.
@@ -102,8 +110,8 @@ modifiers, and simulation-facing worker helpers.
 
 `render/` owns camera state, LOD classification, globe projection, surface
 sampling and streaming, terrain material classification, draw ordering,
-particles, entity atlas lookup, sprite batching, and the active WebGL2
-presentation stack.
+particles, entity atlas lookup, sprite batching, and the WebGPU presentation
+stack.
 
 `layers/` owns always-on environmental layers such as geology and atmosphere.
 They run across epochs and feed long-lived world fields rather than a separate
@@ -128,11 +136,12 @@ promoted only after a ready payload is available.
 `data/` contains runtime JSON and JSON-sidecar sources for entities, tiles,
 biomes, transitions, particles, and animations.
 
-`shaders/` contains file-backed WebGL2 shader sources plus `.js` sidecars used
-when direct file fetch is unavailable.
+`shaders/` contains file-backed WGSL shader sources plus `.wgsl.js` sidecars
+used when direct file fetch is unavailable.
 
 `tests/` contains Node-based source, manifest, architecture, and behavior
-checks. Browser smoke tests are used for rendered WebGL evidence.
+checks. Browser smoke tests are used for rendered WebGPU startup and runtime
+evidence.
 
 ## Key Abstractions
 
@@ -166,17 +175,18 @@ surface rendering.
 `PS.render.surfaceWorker` builds chunk cell payloads asynchronously. The main
 thread consumes ready `cellCache` data and skips pending chunks.
 
-`PS.render.surfaceTileWebgl` converts ready surface cells into atlas-page WebGL2
-batches. The current path is a transitional instanced atlas path, not the final
-single data-texture shader.
+`PS.render.surfaceTileBatcher` converts ready surface cells into atlas-page
+instance batches. It is renderer-neutral CPU batching. `PS.render.webgpuSurfaceTile`
+uploads those batches through WebGPU buffers and atlas textures.
 
-`PS.render.webglEngine` owns the shared WebGL2 context, targets, textures, and
-upload helpers. `PS.render.webglPresenter` owns direct presentation to the
-single visible canvas.
+`PS.render.webgpuGlobe` draws orbit/planet views with `globe-sphere.wgsl`.
+`PS.render.webgpuSurfaceUnderlay` owns aggregate surface underlay shaders.
+`PS.render.webgpuTargets` owns offscreen WebGPU texture targets.
 
-`PS.render.WebGL2Renderer` is the active renderer facade. Terrain, entity,
-particle, shadow, light, and sprite submissions go through it so render stats
-and future renderer swaps have one boundary.
+`PS.render.WebGPURenderer` is the active renderer facade. Terrain and globe
+submissions go through it so render stats and future WebGPU passes have one
+boundary. Entity and particle layers are explicit no-ops until their WebGPU
+renderers land.
 
 `PS.ranmap` provides deterministic per-tile visual randomization for atlas
 variation without allocating random objects during iteration.
@@ -185,7 +195,8 @@ variation without allocating random objects during iteration.
 
 Surface rendering is chunk-addressed. A chunk address includes the zoom level,
 sample meters, chunk sample size, and chunk coordinates. Chunk keys are reused
-by the cache, worker requests, dirty invalidation, and WebGL2 consumption.
+by the cache, worker requests, dirty invalidation, and WebGPU terrain
+consumption.
 
 Chunk lifecycle states are represented by cache collections and payload fields:
 
@@ -207,7 +218,7 @@ region zooms preserve broad fields, ranges, and event understanding.
 Simulation currently runs on the main thread through the fixed accumulator.
 Surface chunk preparation can run through a Web Worker when the browser supports
 `Worker`, `Blob`, and `URL`. The worker returns transferable buffers and ready
-cell metadata; the main thread owns promotion, cache eviction, and WebGL2 upload.
+cell metadata; the main thread owns promotion, cache eviction, and WebGPU upload.
 
 `workers/sim-worker.js` exists as a future worker entry point, but it is not the
 authoritative simulation loop today. Moving simulation off the main thread must
@@ -216,19 +227,19 @@ ownership.
 
 ## Initialization Order
 
-1. Browser parses `index.html` and creates `#game-webgl`, UI elements, loading
+1. Browser parses `index.html` and creates `#game-webgpu`, UI elements, loading
    screen, and debug-output error box.
 2. `namespace.js` defines `window.PS`, runtime error capture, and the script
    manifest.
 3. `loader.js` validates and loads every manifest script in order.
 4. `main.js` waits for `PS.core.loaderPromise` and calls `startGame()`.
-5. Startup assets, data, and shaders load. Data registries and shader manager
-   readiness are recorded.
+5. WebGPU initializes, then startup assets, data, and required WGSL shaders
+   load. Data registries and WGSL shader manager readiness are recorded.
 6. Controls are bound, world state is seeded, typed-array pools and tile grid
    reset, RANMAP and particle definitions initialize, and always-on layers and
    epochs prepare their state.
-7. The first `drawWorld()` call initializes the WebGL2 presenter and renderer
-   stack, draws a nonblank frame, and updates UI state.
+7. The first `drawWorld()` call uses the active WebGPU renderer, draws the
+   globe or ready local terrain, and updates UI state.
 8. The loading screen hides and `requestAnimationFrame(gameLoop)` begins.
 9. Each frame runs fixed simulation ticks, renders if needed, records timing,
    and updates HUD/debug surfaces on cadence.
@@ -236,7 +247,7 @@ ownership.
 ## Encoding Limits And Migration Risks
 
 - Tile IDs, material IDs, atlas pages, atlas cells, variations, and flags must
-  stay within the packed values consumed by WebGL2 shader and atlas paths.
+  stay within the packed values consumed by WebGPU shader and atlas paths.
 - Surface chunk local coordinates are bounded by configured chunk samples and
   tile size. Increasing them changes worker payload size, cache pressure, and
   upload cost.
@@ -257,8 +268,8 @@ Architecture changes should be verified with the narrowest relevant checks:
 - `git diff --check`
 - `node tests/no-canvas2d-source.test.js`
 - `rg -n "agent-studio|tools/agent-studio" index.html js`
-- Browser file-open smoke for rendered UI, console errors, input, and nonblank
-  WebGL pixels when rendering behavior changes.
+- Browser smoke for rendered UI, console errors, input, WebGPU/WGSL readiness,
+  and nonblank pixels when rendering behavior changes.
 
 For rendering, streaming, mass simulation, performance, or observation changes,
 implementation notes must state the bottleneck, representation or lifecycle

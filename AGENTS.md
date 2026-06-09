@@ -10,9 +10,23 @@ no server, runs from `file://` protocol.
 
 These 7 decisions are locked. Do not deviate without explicit user approval.
 
-### D1: WebGL2 Raw API
-All rendering MUST use WebGL2 (`canvas.getContext("webgl2")`). No Canvas 2D
-for simulation rendering. No Three.js, PixiJS, or abstractions.
+### D1: WebGPU Primary + WASM Compute
+All rendering MUST use WebGPU (`navigator.gpu`). WebGL2 is legacy migration
+debt only, not a runtime fallback or acceptance path. Browsers without WebGPU
+must show a WebGPU-required failure state and stop startup. No Canvas 2D for
+simulation rendering. No Three.js, PixiJS, or external abstractions.
+
+WASM (WebAssembly via `WebAssembly.*`) is the compute backend for CPU-heavy
+simulation work (tectonic, river pathfinding, erosion). WASM modules are
+compiled offline with `wasm-pack` and committed as `.wasm.js` base64 sidecars
+— identical pattern to WGSL shader sidecars. No WASM compilation at runtime.
+
+WebGPU compute shaders (WGSL) replace the WebGL2 ping-pong FBO pattern for
+all simulation data passes. Shaders load via `.wgsl.js` sidecars that set
+`window.SHADER_*_WGSL` globals.
+
+Web Workers are permitted for WASM simulation work. Workers init from a blob
+URL (not a direct `file://` path) to work under the `file://` protocol.
 
 ### D2: Decoupled Accumulator Loop
 Fixed-timestep simulation at 60 TPS, decoupled from render via accumulator
@@ -50,7 +64,13 @@ state, perception contract, new constraint, and verification metric.
 ```
 js/
   core/       namespace.js, config.js, events.js, assert.js, log.js, math.js
-  render/     webgl.js, shaders.js, camera.js, globe.js, terrain.js, entities.js
+  render/     gpu.js, wgsl-shader-manager.js, webgpu-targets.js,
+              webgpu-gbuffer.js, webgpu-compositor.js, webgpu-renderer.js,
+              webgpu-surface-tile.js, webgpu-globe.js, webgpu-entity.js,
+              webgpu-surface-underlay.js, surface-tile-batcher.js,
+              camera.js, globe.js, terrain.js, entities.js
+  wasm/       (committed .wasm.js base64 sidecars — dev build output)
+  workers/    sim-worker.js (WASM simulation, blob URL init)
   sim/        loop.js, world.js, organisms.js, food.js, terrain.js
   layers/     geology.js, atmosphere.js, ocean.js, biosphere.js
   spatial/    grid.js, chunks.js, queries.js
@@ -91,9 +111,24 @@ before WSL receives them. Put multi-step bash bodies in a checked-in or scratch
 ## Runtime Constraints
 
 - Must work from `file://` protocol (no server required)
-- No npm, no node_modules, no build step
-- No external CDN dependencies
+- No external CDN dependencies at runtime
+- No external libraries or frameworks at runtime
 - GitHub Pages deploys from main branch root
+
+**Native browser APIs** — WebGPU (`navigator.gpu`), WASM (`WebAssembly`), and
+Web Workers are all browser built-ins and are explicitly permitted and preferred.
+They are NOT external dependencies.
+
+**WASM build exception** — `wasm-pack` is a development-time compiler tool
+(like ImageMagick for sprites, or Python for palette processing). The compiled
+`.wasm` binary is base64-encoded into a `.wasm.js` sidecar and committed to
+the repo. No npm, no node_modules, no runtime build step. The browser only
+ever loads a plain `<script src="wasm/X.wasm.js">` tag.
+
+**Worker blob URL pattern** — Web Workers under `file://` must be initialized
+from a blob URL (construct worker source in a JS string, create a Blob, use
+`URL.createObjectURL`). Direct `new Worker('path/to/file.js')` is blocked by
+browser null-origin policy on `file://`.
 
 ## Agent Studio Handoff
 
@@ -138,8 +173,9 @@ All planning documents: `skills/planning-artifacts/gdds/gdd-Pixeldarium-2026-06-
 
 ## Linear Integration
 
-- Project: Pixeldarium (AZR team)
-- Epics: AZR-254 to AZR-267 (E0-E13), AZR-404 (AI Pipeline Tooling)
-- Stories: AZR-268 to AZR-339
-- Pipeline issues: AZR-414 to AZR-417
+- **Linear project: Pixeldarium** (AZR team) — GAME RUNTIME ONLY
+- Do NOT file pipeline, tooling, art production, or Agent Studio issues here.
+  Those belong in the "Pixeldarium Agent Studio" Linear project.
+- Epics: AZR-254 to AZR-267 (E0-E13), AZR-825 (Simulation-First Planet Engine)
 - Branch naming: `aaronkotz89/azr-NNN-title`
+- See AZR-885 for the audit that enforced this boundary.

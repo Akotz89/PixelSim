@@ -14,12 +14,67 @@ const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const grassMeta = JSON.parse(fs.readFileSync(grassMetaPath, "utf8"));
 const handoffManifest = JSON.parse(fs.readFileSync(handoffManifestPath, "utf8"));
 const png = fs.readFileSync(grassPngPath);
+const terrainAtlasExpectations = {
+  grass: [88, 138, 66],
+  forest: [49, 96, 43],
+  desert: [188, 151, 82],
+  water: [69, 127, 148],
+  ocean: [35, 61, 103],
+  mountain: [93, 96, 101],
+  tundra: [143, 153, 134],
+  wetland: [70, 96, 62]
+};
 
 function pngSize(buffer) {
   return {
     width: buffer.readUInt32BE(16),
     height: buffer.readUInt32BE(20)
   };
+}
+
+function inflatePng(buffer) {
+  const zlib = require("zlib");
+  let offset = 8;
+  const chunks = [];
+
+  while (offset < buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.toString("ascii", offset + 4, offset + 8);
+    if (type === "IDAT") {
+      chunks.push(buffer.subarray(offset + 8, offset + 8 + length));
+    }
+    if (type === "IEND") {
+      break;
+    }
+    offset += length + 12;
+  }
+
+  return zlib.inflateSync(Buffer.concat(chunks));
+}
+
+function centerRgb(buffer) {
+  const size = pngSize(buffer);
+  const bytesPerPixel = 4;
+  const rowLength = size.width * bytesPerPixel + 1;
+  const raw = inflatePng(buffer);
+  const x = 16;
+  const y = 16;
+  const offset = y * rowLength + 1 + x * bytesPerPixel;
+
+  assert.strictEqual(raw[y * rowLength], 0, "terrain atlas PNG should use unfiltered rows");
+  return [raw[offset], raw[offset + 1], raw[offset + 2]];
+}
+
+function assertNearRgb(actual, expected, label) {
+  actual.forEach((channel, index) => {
+    assert.ok(
+      Math.abs(channel - expected[index]) <= 10,
+      label + " center channel " + index + " expected near " + expected[index] + " but got " + channel
+    );
+  });
+  actual.forEach((channel) => {
+    assert.ok(channel > 8 && channel < 248, label + " should avoid pure/neon channel values");
+  });
 }
 
 ["terrain", "vegetation", "creatures", "transitions", "effects", "ui"].forEach((directory) => {
@@ -35,6 +90,26 @@ assert.strictEqual(manifest.sheets.terrain_grass.sprites.length, 8, "terrain gra
 assert.deepStrictEqual(manifest.sheets.terrain_grass.sprites[7], { id: "terrain.grass.7", rect: [224, 0, 32, 32] }, "last grass sprite rect should match 8th tile");
 assert.deepStrictEqual(grassMeta.names, manifest.sheets.terrain_grass.sprites.map((sprite) => sprite.id), "grass grid metadata should match manifest sprite IDs");
 assert.deepStrictEqual(pngSize(png), { width: 256, height: 32 }, "grass PNG should be 256x32");
+
+Object.keys(terrainAtlasExpectations).forEach((atlasId) => {
+  const sheetId = "terrain_" + atlasId;
+  const sheet = manifest.sheets[sheetId];
+  const metaPath = path.join(root, "assets", "terrain", atlasId + ".json");
+  const pngPath = path.join(root, "assets", "terrain", atlasId + ".png");
+  const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
+  const atlasPng = fs.readFileSync(pngPath);
+
+  assert.ok(sheet, "manifest should include " + sheetId + " sheet");
+  assert.strictEqual(sheet.path, "assets/terrain/" + atlasId + ".png", sheetId + " path should match terrain atlas PNG");
+  assert.strictEqual(sheet.meta, "assets/terrain/" + atlasId + ".json", sheetId + " metadata path should match terrain atlas JSON");
+  assert.strictEqual(sheet.tileSize, 32, sheetId + " tile size should be 32");
+  assert.strictEqual(sheet.sprites.length, 8, sheetId + " should declare 8 sprite rects");
+  assert.deepStrictEqual(sheet.sprites[7], { id: "terrain." + atlasId + ".7", rect: [224, 0, 32, 32] }, sheetId + " last sprite rect should match 8th tile");
+  assert.deepStrictEqual(meta.names, sheet.sprites.map((sprite) => sprite.id), sheetId + " metadata should match manifest sprite IDs");
+  assert.deepStrictEqual(pngSize(atlasPng), { width: 256, height: 32 }, sheetId + " PNG should be 256x32");
+  assertNearRgb(centerRgb(atlasPng), terrainAtlasExpectations[atlasId], sheetId);
+});
+
 assert.strictEqual(handoffManifest.runtimeUse, true, "accepted visual handoff should be runtime-owned");
 assert.strictEqual(handoffManifest.acceptedSheetCount, 15, "visual handoff should include accepted sheets only");
 assert.ok(handoffManifest.rejected.includes("creature_npc_original_v0"), "visual handoff should record rejected/superseded creature v0");
@@ -61,8 +136,8 @@ function createContext() {
     set(url) {
       this._src = url;
       imageLoads.push(url);
-      this.width = url === "assets/terrain/grass.png" ? 256 : 1;
-      this.height = url === "assets/terrain/grass.png" ? 32 : 1;
+      this.width = String(url).startsWith("assets/terrain/") ? 256 : 1;
+      this.height = String(url).startsWith("assets/terrain/") ? 32 : 1;
       this.onload();
     },
     get() {
@@ -98,6 +173,9 @@ function createContext() {
           }
           if (url === "assets/terrain/grass.json") {
             return Promise.resolve(grassMeta);
+          }
+          if (url.startsWith("assets/terrain/") && url.endsWith(".json")) {
+            return Promise.resolve(JSON.parse(fs.readFileSync(path.join(root, url), "utf8")));
           }
           if (url.startsWith("assets/pixeldarium-equivalence/") && url.endsWith(".json")) {
             return Promise.resolve(JSON.parse(fs.readFileSync(path.join(root, url), "utf8")));

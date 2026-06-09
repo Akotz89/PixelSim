@@ -84,8 +84,6 @@ const source = [
   "js/systems/pools.js",
   "js/systems/tile-grid.js",
   "js/render/ranmap.js",
-  "js/render/sprite-shaders.js",
-  "js/render/sprite-batch.js",
   "js/render/tile-iterator.js",
   "js/render/particles.js",
   "js/render/entity-atlas.js",
@@ -98,20 +96,18 @@ const source = [
   "js/render/terrain-hydrology.js",
   "js/render/terrain-seeding.js",
   "js/render/pipeline-compat.js",
-  "js/render/shader-manager.js",
-  "js/render/gl.js",
-  "js/render/webgl-presenter.js",
-  "js/render/webgl-engine.js",
-  "js/render/webgl-targets.js",
-  "js/render/webgl-compositor.js",
-  "js/render/webgl-gbuffer.js",
-  "js/render/webgl-globe-shaders.js",
-  "js/render/webgl-globe.js",
+  "js/render/wgsl-shader-manager.js",
+  "js/render/gpu.js",
+  "js/render/webgpu-targets.js",
+  "js/render/webgpu-compositor.js",
+  "js/render/webgpu-gbuffer.js",
+  "js/render/webgpu-globe.js",
   "js/render/surface-worker-client.js",
-  "js/render/surface-tile-webgl.js",
-  "js/render/entity-webgl.js",
+  "js/render/surface-tile-batcher.js",
+  "js/render/webgpu-surface-tile.js",
+  "js/render/webgpu-entity.js",
   "js/render/renderer.js",
-  "js/render/webgl2-renderer.js",
+  "js/render/webgpu-renderer.js",
   "js/render/draw-order.js",
   "js/render/camera.js",
   "js/render/lod.js",
@@ -203,9 +199,10 @@ seedTerrain();
 
 assert.strictEqual(typeof PS.render.raster, "undefined", "Canvas2D raster runtime should stay removed");
 assert.strictEqual(typeof PS.render.surfaceRender.chunks, "undefined", "Canvas2D surface chunk renderer should stay removed");
-assert.strictEqual(typeof PS.render.surfaceTileWebgl.makeBatches, "function", "WebGL2 surface tile batching should be available");
+assert.strictEqual(typeof PS.render.webgpuSurfaceTile.makeBatches, "function", "WebGPU surface tile batching should be available");
 assert.strictEqual(typeof PS.atlas.drawTerrainDetailOverlay, "function", "terrain atlas detail overlay should be available");
 assert.strictEqual(typeof PS.render.surfaceWorker.getSubcellBasePatchSize, "function", "worker-ready surface chunk encoding should expose patch sizing");
+assert.strictEqual(PS.render.surfaceNoise.getRegionalContext(null).seaLevelDelta, 0, "missing regional tile context should not throw during local surface generation");
 
 var cursorX = 1225;
 var cursorY = 410;
@@ -221,7 +218,7 @@ world.planetView = {
 
 var localBefore = getPlanetLatLonFromCanvasPoint(cursorX, cursorY);
 
-assert.ok(adjustPlanetZoomAtCanvasPoint(0.25, cursorX, cursorY), "planet zoom should accept fractional wheel delta");
+assert.ok(setPlanetZoomLevelAtCanvasPoint(initialZoom + 0.25, cursorX, cursorY), "planet zoom should accept fractional direct zoom");
 assertNear(getPlanetView().zoomLevel, initialZoom + 0.25, 1e-12, "fractional zoom should be retained");
 
 var localAfter = getPlanetLatLonFromCanvasPoint(cursorX, cursorY);
@@ -308,12 +305,12 @@ var cellCache = [
   { sample: { biome: "desert" }, screenX: 0, screenY: CONFIG.TILE_SIZE },
   { sample: { biome: "mountain" }, screenX: CONFIG.TILE_SIZE, screenY: CONFIG.TILE_SIZE }
 ];
-var batches = PS.render.surfaceTileWebgl.makeBatches(batchAddress, cellCache, 1);
+var batches = PS.render.webgpuSurfaceTile.makeBatches(batchAddress, cellCache, 1);
 
-assert.strictEqual(batches.count, 4, "WebGL2 surface batching should include ready terrain cells");
-assert.ok(Object.keys(batches.pages).length >= 1, "WebGL2 surface batching should group instances by atlas page");
-assert.strictEqual(batches.materialCounts[oceanCell.name] >= 1, true, "WebGL2 surface batching should retain material identity");
-assert.strictEqual(cellCache[0].terrainAtlasCell.name, oceanCell.name, "WebGL2 batches should consume atlas cells instead of Canvas2D rasters");
+assert.strictEqual(batches.count, 4, "WebGPU surface batching should include ready terrain cells");
+assert.ok(Object.keys(batches.pages).length >= 1, "WebGPU surface batching should group instances by atlas page");
+assert.strictEqual(batches.materialCounts[oceanCell.name] >= 1, true, "WebGPU surface batching should retain material identity");
+assert.strictEqual(cellCache[0].terrainAtlasCell.name, oceanCell.name, "WebGPU batches should consume atlas cells instead of Canvas2D rasters");
 
-console.log("planet zoom anchor WebGL test passed");
+console.log("planet zoom anchor WebGPU test passed");
 `, context);

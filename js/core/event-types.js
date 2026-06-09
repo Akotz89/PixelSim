@@ -10,8 +10,8 @@ PS.eventTypes.SETTLEMENT_FOUNDED = "settlement.founded";
 
 PS.eventTypes.TERRAIN_INVALIDATED = "terrain.invalidated";
 PS.eventTypes.ATLAS_REBUILT = "atlas.rebuilt";
-PS.eventTypes.RENDER_GL_CONTEXT_LOST = "render.gl.contextlost";
-PS.eventTypes.RENDER_GL_CONTEXT_RESTORED = "render.gl.contextrestored";
+PS.eventTypes.RENDER_CONTEXT_LOST = "render.contextlost";
+PS.eventTypes.RENDER_BACKEND_READY = "render.backend";
 
 PS.eventTypes.TILE_INSPECTED = "tile.inspected";
 PS.eventTypes.MENU_TOGGLED = "menu.toggled";
@@ -47,11 +47,11 @@ PS.eventPayloads[PS.eventTypes.TERRAIN_INVALIDATED] = {
 PS.eventPayloads[PS.eventTypes.ATLAS_REBUILT] = {
   jsdoc: "@payload { atlasId, textureWidth, textureHeight, entryCount, version }"
 };
-PS.eventPayloads[PS.eventTypes.RENDER_GL_CONTEXT_LOST] = {
-  jsdoc: "@payload { count }"
+PS.eventPayloads[PS.eventTypes.RENDER_CONTEXT_LOST] = {
+  jsdoc: "@payload { reason }"
 };
-PS.eventPayloads[PS.eventTypes.RENDER_GL_CONTEXT_RESTORED] = {
-  jsdoc: "@payload { count }"
+PS.eventPayloads[PS.eventTypes.RENDER_BACKEND_READY] = {
+  jsdoc: "@payload { backend }"
 };
 PS.eventPayloads[PS.eventTypes.TILE_INSPECTED] = {
   jsdoc: "@payload { tileX, tileY, surfacePosition, entityType, representativeId, tick }"

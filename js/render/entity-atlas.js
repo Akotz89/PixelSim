@@ -1091,6 +1091,219 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
   }
 };
 
+PS.atlas.getImageDimension = function (image, key) {
+  if (!image) {
+    return 0;
+  }
+
+  return Math.max(
+    0,
+    Math.round(
+      Number(image[key]) ||
+      Number(image["natural" + key.charAt(0).toUpperCase() + key.slice(1)]) ||
+      0
+    )
+  );
+};
+
+PS.atlas.addExternalPage = function (image, sourceId) {
+  var width = PS.atlas.getImageDimension(image, "width");
+  var height = PS.atlas.getImageDimension(image, "height");
+  var page;
+
+  if (width <= 0 || height <= 0) {
+    throw new Error("External atlas image must expose width and height");
+  }
+
+  page = {
+    pageIndex: PS.atlas.pages.length,
+    width: width,
+    height: height,
+    image: image,
+    externalImage: true,
+    sourceId: sourceId || "",
+    version: 1
+  };
+
+  PS.atlas.pages.push(page);
+  return page;
+};
+
+PS.atlas.addExternalCell = function (page, sourceCell, overrideExisting) {
+  var name = String(sourceCell && sourceCell.name || "");
+  var x = Math.max(0, Math.round(Number(sourceCell && sourceCell.x) || 0));
+  var y = Math.max(0, Math.round(Number(sourceCell && sourceCell.y) || 0));
+  var width = Math.max(1, Math.round(Number(sourceCell && sourceCell.w) || Number(sourceCell && sourceCell.width) || 0));
+  var height = Math.max(1, Math.round(Number(sourceCell && sourceCell.h) || Number(sourceCell && sourceCell.height) || 0));
+  var cell;
+
+  if (!name) {
+    return null;
+  }
+
+  if (PS.atlas.cells[name] && !overrideExisting) {
+    return PS.atlas.cells[name];
+  }
+
+  cell = {
+    name: name,
+    pageIndex: page.pageIndex,
+    x: x,
+    y: y,
+    w: width,
+    h: height,
+    u0: x / page.width,
+    v0: y / page.height,
+    u1: (x + width) / page.width,
+    v1: (y + height) / page.height,
+    externalImage: true,
+    sourceId: page.sourceId || ""
+  };
+
+  PS.atlas.cells[name] = cell;
+  PS.atlas.stats.generatedCells++;
+  return cell;
+};
+
+PS.atlas.getSheetCells = function (sheet) {
+  if (!sheet) {
+    return [];
+  }
+
+  if (typeof sheet.getCells === "function") {
+    return sheet.getCells();
+  }
+
+  if (sheet.sheet && typeof sheet.sheet.getCells === "function") {
+    return sheet.sheet.getCells();
+  }
+
+  if (Array.isArray(sheet.cells)) {
+    return sheet.cells;
+  }
+
+  if (sheet.cells) {
+    return Object.keys(sheet.cells).map(function (name) {
+      return sheet.cells[name];
+    });
+  }
+
+  return [];
+};
+
+PS.atlas.getSheetImage = function (sheet) {
+  if (!sheet) {
+    return null;
+  }
+
+  return sheet.image || (sheet.sheet && sheet.sheet.image) || null;
+};
+
+PS.atlas.buildFromSheets = function (sheets, options) {
+  var settings = options || {};
+  var overrideExisting = settings.overrideExisting !== false;
+  var built = [];
+
+  if (!settings.append) {
+    PS.atlas.reset();
+  }
+
+  (sheets || []).forEach(function (sheet, index) {
+    var image = PS.atlas.getSheetImage(sheet);
+    var sourceId = String(sheet && sheet.id || sheet && sheet.path || "sheet." + index);
+    var page;
+
+    if (!image) {
+      return;
+    }
+
+    page = PS.atlas.addExternalPage(image, sourceId);
+    PS.atlas.getSheetCells(sheet).forEach(function (sourceCell) {
+      var cell = PS.atlas.addExternalCell(page, sourceCell, overrideExisting);
+
+      if (cell) {
+        built.push(cell);
+      }
+    });
+  });
+
+  PS.atlas.initialized = PS.atlas.pages.length > 0;
+  return {
+    pages: PS.atlas.pages,
+    cells: PS.atlas.cells,
+    builtCells: built
+  };
+};
+
+PS.atlas.build = function (generated) {
+  var entries = generated && (generated.cells || generated.sprites || generated);
+
+  PS.atlas.reset();
+
+  if (Array.isArray(entries)) {
+    entries.forEach(function (entry) {
+      PS.atlas.allocateCell(entry.name, entry.w || entry.width, entry.h || entry.height);
+    });
+  } else {
+    Object.keys(entries || {}).forEach(function (name) {
+      var entry = entries[name] || {};
+      PS.atlas.allocateCell(entry.name || name, entry.w || entry.width, entry.h || entry.height);
+    });
+  }
+
+  PS.atlas.initialized = PS.atlas.pages.length > 0;
+  return {
+    pages: PS.atlas.pages,
+    cells: PS.atlas.cells
+  };
+};
+
+PS.atlas.buildHybrid = function (generated, sheets) {
+  PS.atlas.build(generated || {});
+  return PS.atlas.buildFromSheets(sheets || [], {
+    append: true,
+    overrideExisting: true
+  });
+};
+
+PS.atlas.uploadToGL = function (gl) {
+  if (!gl || typeof gl.createTexture !== "function") {
+    throw new Error("GPU context is required for atlas upload");
+  }
+
+  return PS.atlas.pages.map(function (page) {
+    var texture = gl.createTexture();
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    if (typeof gl.texParameteri === "function") {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+
+    if (page.externalImage && page.image) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, page.image);
+    } else {
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        page.width,
+        page.height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        page.data
+      );
+    }
+
+    page.texture = texture;
+    return texture;
+  });
+};
+
 PS.atlas.getCell = function (name) {
   return PS.atlas.cells[String(name || "")] || null;
 };

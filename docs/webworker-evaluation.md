@@ -61,3 +61,42 @@ If a later phase adopts workers, the main-thread to worker contract should use t
 - summary result buffers for HUD and render interpolation
 
 The worker should own fixed-step simulation state. The main thread should own rendering, input, IndexedDB persistence, and UI.
+
+---
+
+## WASM Worker Update — 2026-06-07
+
+> **The decision above applies only to plain JS workers. It does NOT block
+> WASM workers.** WASM workers use a different initialization pattern.
+
+### Why the original decision does not apply to WASM
+
+The evaluation above tested `new Worker('js/workers/sim-worker.js')` — a
+direct file path — which fails under `file://` because the browser assigns a
+null origin to the page and blocks file-path worker loading.
+
+**WASM workers use a blob URL**, not a file path. The worker source is
+inlined as a JS string, wrapped in a `Blob`, and initialized via
+`URL.createObjectURL(blob)`. This pattern works under `file://` in Chrome,
+Edge, and Safari without any server or headers.
+
+The WASM binary itself is not fetched at runtime either — it is
+base64-encoded into a `.wasm.js` sidecar (set `window.WASM_*_B64`) and
+loaded via a plain `<script src>` tag. The worker decodes and initializes
+it synchronously using `Uint8Array.fromBase64(window.WASM_X_B64)` and the
+wasm-bindgen init function.
+
+### SharedArrayBuffer status
+
+`SharedArrayBuffer` was unavailable in the original evaluation because
+`file://` cannot set `Cross-Origin-Isolation` headers. This remains true.
+
+For the WASM worker integration (AZR-855), the bridge uses **Transferable
+`ArrayBuffer`** (not SharedArrayBuffer): the worker transfers ownership of
+the result buffer to the main thread, which zero-copy uploads it to the GPU
+via `device.queue.writeBuffer()`. No SharedArrayBuffer required.
+
+### Current implementation plan
+
+See AZR-855 (WASM Web Worker bridge) for the blob URL worker architecture
+and zero-copy WASM-to-GPU data transfer design.

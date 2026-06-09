@@ -1,0 +1,17 @@
+{
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 8,
+  "rows": 1,
+  "names": [
+    "terrain.desert.0",
+    "terrain.desert.1",
+    "terrain.desert.2",
+    "terrain.desert.3",
+    "terrain.desert.4",
+    "terrain.desert.5",
+    "terrain.desert.6",
+    "terrain.desert.7"
+  ]
+}

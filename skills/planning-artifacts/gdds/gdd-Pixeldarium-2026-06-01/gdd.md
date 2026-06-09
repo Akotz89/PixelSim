@@ -478,7 +478,7 @@ Progression is epoch-based and emergent. See "Epoch Architecture" in Simulation 
 
 ### Art Style
 
-**Pixel art at all scales.** Every entity, terrain feature, and structure is rendered as pixels on a canvas — no SVG, no WebGL, no 3D models. The aesthetic is Songs of Syx meets Google Earth:
+**Pixel art at all scales.** Every entity, terrain feature, and structure is rendered as discrete pixels via WebGPU — no SVG, no 3D models, no Canvas 2D. The aesthetic is Songs of Syx meets Google Earth:
 
 - **Globe view:** Procedural terrain coloring per pixel. Continents, oceans, ice caps, biome bands visible. Atmospheric haze and cloud layer overlay.
 - **Regional view:** Biome detail. River systems visible. Mountain ranges. Coastline detail. Individual terrain features.
@@ -525,8 +525,8 @@ Progression is epoch-based and emergent. See "Epoch Architecture" in Simulation 
 
 ### Asset Requirements
 
-- **No pre-made assets.** All visuals are procedurally generated via Canvas 2D API.
-- **No image files.** Terrain, organisms, structures, UI elements — all rendered programmatically.
+- **No pre-made assets.** All visuals are procedurally generated via WebGPU render passes and WGSL shaders.
+- **No image files loaded from disk.** Terrain, organisms, structures, UI elements — all rendered programmatically via GPU.
 - **Font:** System font stack only. No Google Fonts (that would be an external dependency).
 
 ---
@@ -601,14 +601,16 @@ See `epics.md` for detailed breakdown. Summary table:
 
 ### Assumptions
 
-- [ASSUMPTION: A-1: Browser rendering APIs provide sufficient performance for pixel-level procedural generation at 60 FPS. If Canvas 2D is insufficient, raw WebGL2 API may be needed — this is still "no libraries" but changes the rendering approach significantly.]
+- [RESOLVED: A-1: WebGPU (navigator.gpu) is the rendering API. It is a native browser built-in — not an external library. WebGL2 is the fallback. Both satisfy the zero-external-dependencies constraint.]
 - [ASSUMPTION: A-2: IndexedDB storage is sufficient for world-state snapshots needed for timeline scrubbing. If snapshot sizes exceed browser storage limits (~50-100 MB per snapshot), compression or selective checkpointing will be needed.]
-- [ASSUMPTION: A-3: Spatial-partitioning gravity approximation for the cosmological epoch is achievable at 60 FPS with up to 10,000 particles in the browser. Needs profiling.]
+- [ASSUMPTION: A-3: Spatial-partitioning gravity approximation for the cosmological epoch is achievable at 60 FPS with up to 10,000 particles in the browser. WASM compute (Rust) handles N-body if JS proves insufficient.]
 - [ASSUMPTION: A-4: A single browser tab can maintain <500 MB memory footprint while tracking 10,000+ agents across a full planetary simulation. Memory pooling and object reuse will be critical.]
-- [ASSUMPTION: A-5: Web Workers are acceptable under the "no libraries" constraint for offloading simulation computation from the render thread. They use standard browser API, no external code.]
+- [RESOLVED: A-5: Web Workers are used for WASM compute. Workers initialize via blob URL (not direct file:// path). WASM binary is base64-encoded in a .wasm.js sidecar. No external dependencies. SharedArrayBuffer not required — Transferable ArrayBuffer zero-copy bridge used instead.]
 
 ### Dependencies
 
-- Modern web browser with Canvas 2D API support
+- Modern web browser with WebGPU support (Chrome 113+, Edge 113+, Safari 18+)
+- WebGL2 fallback for older browsers
 - IndexedDB for persistence
 - No server, no build tools, no runtime dependencies
+- wasm-pack (development tool only, not a browser dependency)

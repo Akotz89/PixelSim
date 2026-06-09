@@ -13,8 +13,6 @@ const particleData = JSON.parse(read("data/particles.json"));
 const namespaceSource = read("js/core/namespace.js");
 const particleSource = read("js/render/particles.js");
 const pipelineSource = read("js/render/pipeline.js");
-const shaderVertex = read("shaders/particle.vert");
-const shaderFragment = read("shaders/particle.frag");
 
 assert.ok(particleData.effects.rain, "particle data should define rain");
 assert.strictEqual(particleData.effects.rain.rate, 200, "rain should emit 200 particles per second");
@@ -24,11 +22,9 @@ assert.ok(particleData.effects.settlement_activity, "particle data should define
 assert.ok(namespaceSource.indexOf("js/render/particles.js") >= 0, "runtime manifest should load particles");
 assert.ok(pipelineSource.indexOf("PS.render.particles.update") >= 0, "render pipeline should update particles");
 assert.ok(pipelineSource.indexOf("PS.render.particles.render") >= 0, "render pipeline should render particles");
-assert.ok(shaderVertex.indexOf("drawArraysInstanced") < 0, "particle vertex shader should stay shader-only");
-assert.ok(shaderVertex.indexOf("a_corner") >= 0 && shaderVertex.indexOf("a_center") >= 0, "particle shader should use instanced quad attributes");
-assert.ok(shaderFragment.indexOf("v_color") >= 0, "particle fragment shader should use per-particle color");
 assert.strictEqual(particleSource.indexOf("getContext(\"2d\""), -1, "particle runtime must not use Canvas2D");
-assert.ok(particleSource.indexOf("drawArraysInstanced") >= 0, "particle renderer should submit one instanced draw");
+assert.strictEqual(particleSource.toLowerCase().indexOf("webgl"), -1, "active particle runtime must not reference WebGL");
+assert.ok(particleSource.indexOf("drawParticleRects") >= 0, "particle rendering should submit visible instances through the WebGPU particle shader");
 
 const context = {
   PS: { render: {} },
@@ -56,6 +52,14 @@ const context = {
 
 vm.createContext(context);
 vm.runInContext(particleSource, context, { filename: "js/render/particles.js" });
+
+const particleDraws = [];
+context.PS.render.webgpuEntity = {
+  drawParticleRects(values) {
+    particleDraws.push(Array.from(values));
+    return values && values.length > 0;
+  }
+};
 
 function advance(system, seconds) {
   const step = 1 / 60;
@@ -99,6 +103,10 @@ const settlementActivity = system.createEmitter("settlement_activity", {
 });
 assert.strictEqual(settlementActivity.burst(24), 24, "settlement activity should support bounded burst emission");
 assert.strictEqual(system.getActiveCount(), 376, "settlement activity should add visual particles without starting an emitter");
+assert.strictEqual(system.render(), true, "visible particles should render through the WebGPU particle shader path");
+assert.strictEqual(system.getStats().lastError, "", "successful WebGPU particle draw should clear the last error");
+assert.strictEqual(system.getStats().drawCalls, 1, "successful particle render should count a WebGPU draw call");
+assert.ok(particleDraws[0] && particleDraws[0].length % 8 === 0, "particle renderer should upload rect/color instance data");
 
 context.PS.render.projection = {
   getInterpolatedProjection() {

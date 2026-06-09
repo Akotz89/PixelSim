@@ -226,49 +226,83 @@ function loadStartupData() {
 }
 
 function loadStartupShaders() {
-  if (!PS.render || !PS.render.shaderManager || typeof PS.render.shaderManager.loadManifest !== "function") {
-    return Promise.resolve({ loaded: false, reason: "ShaderManager unavailable" });
-  }
-
   var loader = PS.assets && PS.assets.startupLoader ? PS.assets.startupLoader : null;
 
-  return PS.render.shaderManager.loadManifest(PS.render.shaderManifest, loader).then(function (entries) {
-    var manifestStatus = PS.render.shaderManager.lastManifestStatus || {
-      total: PS.render.shaderManifest ? PS.render.shaderManifest.length : entries.length,
-      loaded: entries.length,
-      failed: 0
-    };
+  function registerWgslManifests() {
+    var registrars = [
+      PS.render.webgpuGlobe,
+      PS.render.webgpuSurfaceUnderlay,
+      PS.render.webgpuSurfaceTile,
+      PS.render.webgpuCompositor,
+      PS.render.webgpuPointLights,
+      PS.render.webgpuEntity,
+      PS.sim && PS.sim.heatDiffusion
+    ];
 
-    if (typeof PS.render.shaderManager.shouldAutoHotReload === "function" && PS.render.shaderManager.shouldAutoHotReload()) {
-      PS.render.shaderManager.enableHotReload(1500, loader);
+    for (var i = 0; i < registrars.length; i += 1) {
+      if (registrars[i] && typeof registrars[i].registerManifest === "function") {
+        registrars[i].registerManifest();
+      }
+    }
+  }
+
+  function loadRequiredWgslShaders(status) {
+    var manifest = PS.render.wgslShaderManifest || [];
+
+    if (!PS.render.wgslShaders || typeof PS.render.wgslShaders.loadManifest !== "function" || manifest.length === 0) {
+      return Promise.resolve(status);
     }
 
-    PS.assets.startupShaderStatus = {
-      loaded: manifestStatus.loaded > 0,
-      shaders: entries.length,
-      total: manifestStatus.total,
-      failed: manifestStatus.failed,
-      fallback: manifestStatus.failed > 0,
-      failedShaders: manifestStatus.failedShaders || []
-    };
+    return PS.render.wgslShaders.loadManifest(manifest, loader).then(function (entries) {
+      var manifestStatus = PS.render.wgslShaders.lastManifestStatus || {
+        total: manifest.length,
+        loaded: entries.length,
+        failed: 0,
+        failedShaders: []
+      };
 
-    if (manifestStatus.failed > 0 && PS.runtime && typeof PS.runtime.recordError === "function") {
-      PS.runtime.recordError("shader.manifest.partial", PS.assets.startupShaderStatus);
+      PS.assets.startupWgslShaderStatus = {
+        loaded: manifestStatus.loaded === manifestStatus.total && manifestStatus.failed === 0,
+        shaders: entries.length,
+        total: manifestStatus.total,
+        failed: manifestStatus.failed,
+        failedShaders: manifestStatus.failedShaders || []
+      };
+
+      if (manifestStatus.failed > 0 || manifestStatus.loaded !== manifestStatus.total) {
+        throw new Error("Required WGSL shaders failed to load");
+      }
+
+      status.wgsl = PS.assets.startupWgslShaderStatus;
+      return status;
+    });
+  }
+
+  registerWgslManifests();
+
+  PS.assets.startupShaderStatus = {
+    loaded: true,
+    shaders: 0,
+    total: 0,
+    failed: 0,
+    wgslOnly: true
+  };
+
+  return loadRequiredWgslShaders(PS.assets.startupShaderStatus).catch(function (error) {
+    var message = error && error.message ? error.message : String(error);
+
+    if (message.indexOf("Required WGSL shaders failed to load") >= 0) {
+      if (PS.runtime && typeof PS.runtime.recordError === "function") {
+        PS.runtime.recordError("wgsl.manifest.failed", PS.assets.startupWgslShaderStatus || { reason: message });
+      }
+      throw error;
     }
-
-    return PS.assets.startupShaderStatus;
-  }).catch(function (error) {
-    PS.assets.startupShaderStatus = {
-      loaded: false,
-      fallback: true,
-      reason: error && error.message ? error.message : String(error)
-    };
 
     if (PS.runtime && typeof PS.runtime.recordError === "function") {
-      PS.runtime.recordError("shader.manifest.fallback", PS.assets.startupShaderStatus);
+      PS.runtime.recordError("wgsl.manifest.failed", { reason: message });
     }
 
-    return PS.assets.startupShaderStatus;
+    throw error;
   });
 }
 
@@ -378,7 +412,9 @@ function gameLoop() {
 function startGame() {
   updateLoadingScreen({ total: 0, loaded: 0, failed: 0, percent: 0 }, "Loading...");
 
-  return loadStartupAssets().then(function () {
+  return PS.gpu.initialize().then(function () {
+    return loadStartupAssets();
+  }).then(function () {
     return loadStartupData();
   }).then(function () {
     return loadStartupShaders();

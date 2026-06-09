@@ -18,9 +18,10 @@ assert.ok(
   "organism atlas identity sidecar should load after atlas core"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/entity-atlas-organisms.js") < namespaceSource.indexOf("js/render/entity-webgl.js"),
-  "organism atlas identity sidecar should load before entity WebGL consumes atlas cells"
+  namespaceSource.indexOf("js/render/entity-atlas-organisms.js") < namespaceSource.indexOf("js/render/entity-atlas-intents.js"),
+  "organism atlas identity sidecar should load before later atlas consumers"
 );
+assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
 
 const context = {
   PS: {

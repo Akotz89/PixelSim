@@ -1,1 +1,0 @@
-PS.assets.registerText("shaders/surface-chunk.frag", "#version 300 es\nprecision mediump float;\nuniform sampler2D u_chunk;\nuniform float u_alpha;\nin vec2 v_uv;\nout vec4 outColor;\nvoid main() {\n  vec4 color = texture(u_chunk, v_uv);\n  outColor = vec4(color.rgb, color.a * u_alpha);\n}\n");

@@ -186,20 +186,28 @@ PS.assets.AssetLoader.prototype._loadJSONWithScriptFallback = function (url) {
 PS.assets.AssetLoader.prototype._loadJSONSource = function (url) {
   var self = this;
 
+  if (PS.assets.jsonData && Object.prototype.hasOwnProperty.call(PS.assets.jsonData, url)) {
+    return Promise.resolve(PS.assets.jsonData[url]);
+  }
+
   if (typeof window !== "undefined" && window.location && window.location.protocol === "file:") {
     return this._loadJSONWithScriptFallback(url);
   }
 
   if (typeof fetch !== "function") {
-    return this._loadJSONWithXHR(url);
+    return this._loadJSONWithXHR(url).catch(function () {
+      return self._loadJSONWithScriptFallback(url);
+    });
   }
 
   return this._loadJSONWithFetch(url).catch(function (error) {
     if (typeof XMLHttpRequest === "function") {
-      return self._loadJSONWithXHR(url);
+      return self._loadJSONWithXHR(url).catch(function () {
+        return self._loadJSONWithScriptFallback(url);
+      });
     }
 
-    throw error;
+    return self._loadJSONWithScriptFallback(url);
   });
 };
 

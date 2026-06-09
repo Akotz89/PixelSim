@@ -99,5 +99,76 @@ PS.render.lod.getPreloadSurfaceLodIndex = function () {
   return current;
 };
 
+PS.render.lod.smoothstep = function (edge0, edge1, value) {
+  var span = Number(edge1) - Number(edge0);
+  var t = span === 0
+    ? 0
+    : clamp((Number(value) - Number(edge0)) / span, 0, 1);
+
+  return t * t * (3 - 2 * t);
+};
+
+PS.render.lod.interpolateAlphaKeyframes = function (keyframes, zoomLevel) {
+  var zoom = Number.isFinite(Number(zoomLevel)) ? Number(zoomLevel) : 0;
+  var frames = Array.isArray(keyframes) ? keyframes : [];
+
+  if (frames.length <= 0) {
+    return 0;
+  }
+
+  if (zoom <= frames[0].zoom) {
+    return frames[0].value;
+  }
+
+  for (var i = 1; i < frames.length; i += 1) {
+    var previous = frames[i - 1];
+    var next = frames[i];
+
+    if (zoom <= next.zoom) {
+      var amount = PS.render.lod.smoothstep(previous.zoom, next.zoom, zoom);
+      return previous.value + (next.value - previous.value) * amount;
+    }
+  }
+
+  return frames[frames.length - 1].value;
+};
+
+PS.render.lod.getLayerAlphas = function (zoomLevel) {
+  var zoom = Number.isFinite(Number(zoomLevel))
+    ? Number(zoomLevel)
+    : world && world.planetView
+      ? Number(world.planetView.zoomLevel) || 0
+      : 0;
+  var globe = PS.render.lod.interpolateAlphaKeyframes([
+    { zoom: 0.0, value: 1.0 },
+    { zoom: 0.9, value: 0.7 },
+    { zoom: 1.1, value: 0.2 },
+    { zoom: 1.4, value: 0.0 },
+    { zoom: 2.5, value: 0.0 }
+  ], zoom);
+  var underlay = PS.render.lod.interpolateAlphaKeyframes([
+    { zoom: 0.0, value: 0.0 },
+    { zoom: 0.9, value: 0.2 },
+    { zoom: 1.1, value: 0.8 },
+    { zoom: 1.4, value: 0.4 },
+    { zoom: 2.5, value: 0.0 }
+  ], zoom);
+  var tiles = PS.render.lod.interpolateAlphaKeyframes([
+    { zoom: 0.0, value: 0.0 },
+    { zoom: 0.9, value: 0.0 },
+    { zoom: 1.1, value: 0.3 },
+    { zoom: 1.4, value: 1.0 },
+    { zoom: 2.5, value: 1.0 }
+  ], zoom);
+
+  return {
+    globe: clamp(globe, 0, 1),
+    continent: clamp(Math.max(underlay, 1 - Math.max(globe, tiles)), 0, 1),
+    underlay: clamp(underlay, 0, 1),
+    tiles: clamp(tiles, 0, 1),
+    sprites: clamp(tiles, 0, 1)
+  };
+};
+
 PS.render.lod.rebuildShaders = function () {};
 PS.render.lod.rebuildTextures = function () {};

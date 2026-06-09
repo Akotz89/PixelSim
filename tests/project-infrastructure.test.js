@@ -139,6 +139,64 @@ async function waitForServer(server) {
         PS.core.loaderState &&
         PS.core.loaderState.status === "complete";
     }, null, { timeout: 10000 });
+
+    await page.waitForFunction(function() {
+      return window.PS &&
+        PS.gpu &&
+        (PS.gpu.status === "ready" || PS.gpu.status === "failed");
+    }, null, { timeout: 10000 });
+
+    const gpuEvidence = await page.evaluate(function() {
+      return {
+        navigatorGpu: !!(navigator && navigator.gpu),
+        status: PS.gpu ? PS.gpu.status : "missing",
+        isWebGPU: !!(PS.gpu && PS.gpu.isWebGPU),
+        contextClaimed: !!(PS.gpu && PS.gpu.context),
+        error: PS.gpu ? PS.gpu.error : null,
+        noticeText: document.getElementById("webgpu-required-notice")
+          ? document.getElementById("webgpu-required-notice").textContent
+          : "",
+        startupAssets: PS.assets ? PS.assets.startupStatus || null : null,
+        startupData: PS.assets ? PS.assets.startupDataStatus || null : null
+      };
+    });
+
+    if (gpuEvidence.status === "failed") {
+      const requiredEvidence = await page.evaluate(function() {
+        return {
+          loaderStatus: PS.core.loaderState.status,
+          manifestCount: PS.core.manifest.length,
+          loadedCount: PS.core.loaderState.loaded.length,
+          gpuStatus: PS.gpu.status,
+          isWebGPU: PS.gpu.isWebGPU,
+          hasContextDeferredFlag: Object.prototype.hasOwnProperty.call(PS.gpu, "contextDeferred"),
+          gpuRequired: PS.gpu.required,
+          gpuError: PS.gpu.error,
+          noticeText: document.getElementById("webgpu-required-notice").textContent,
+          startupAssets: PS.assets.startupStatus || null,
+          startupData: PS.assets.startupDataStatus || null,
+          loadingText: document.getElementById("loading-progress-text").textContent
+        };
+      });
+
+      assert.deepStrictEqual(consoleErrors, [], "WebGPU-required stop should not emit console errors");
+      assert.deepStrictEqual(pageErrors, [], "WebGPU-required stop should be handled by startup");
+      assert.strictEqual(requiredEvidence.loaderStatus, "complete", "dynamic script loader should still complete");
+      assert.ok(requiredEvidence.manifestCount > 100, "script manifest should include the game runtime scripts");
+      assert.strictEqual(requiredEvidence.loadedCount, requiredEvidence.manifestCount, "loader should load every manifest script");
+      assert.strictEqual(requiredEvidence.gpuRequired, true, "WebGPU should be mandatory");
+      assert.strictEqual(requiredEvidence.gpuStatus, "failed", "startup should stop when WebGPU cannot initialize");
+      assert.strictEqual(requiredEvidence.isWebGPU, false, "failed WebGPU init should not mark the GPU layer ready");
+      assert.strictEqual(requiredEvidence.hasContextDeferredFlag, false, "GPU bootstrap should not expose deferred canvas ownership");
+      assert.ok(requiredEvidence.gpuError && requiredEvidence.gpuError.length > 0, "GPU error should explain the requirement");
+      assert.ok(requiredEvidence.noticeText.length > 0, "page should show the WebGPU-required notice");
+      assert.ok(requiredEvidence.loadingText.length > 0, "loading text should show the WebGPU-required notice");
+      assert.strictEqual(requiredEvidence.startupAssets, null, "asset startup should not run after WebGPU-required failure");
+      assert.strictEqual(requiredEvidence.startupData, null, "data startup should not run after WebGPU-required failure");
+      console.log("project infrastructure checks passed", JSON.stringify({ webgpu: "required-stop" }));
+      return;
+    }
+
     await page.waitForFunction(function() {
       return window.PS &&
         PS.assets &&
@@ -165,7 +223,7 @@ async function waitForServer(server) {
       const lushTile = PS.core.TileRegistry && typeof PS.core.TileRegistry.get === "function"
         ? PS.core.TileRegistry.get("grass_lush")
         : null;
-      const webglCanvas = document.getElementById("game-webgl");
+      const gpuCanvas = document.getElementById("game-webgpu");
 
       return {
         loaderStatus: PS.core.loaderState.status,
@@ -176,6 +234,8 @@ async function waitForServer(server) {
         }),
         startupAssets: PS.assets.startupStatus,
         startupData: PS.assets.startupDataStatus,
+        gpuContextDeferred: PS.gpu ? PS.gpu.contextDeferred : null,
+        gpuContextClaimed: !!(PS.gpu && PS.gpu.context),
         tileRegistryCount: PS.core.TileRegistry ? PS.core.TileRegistry.list().length : 0,
         lushTile: lushTile ? {
           id: lushTile.id,
@@ -199,10 +259,10 @@ async function waitForServer(server) {
             hasCanvasPage: !!PS.atlas.pages[0].canvas
           }
           : null,
-        webglCanvas: webglCanvas ? {
-          id: webglCanvas.id,
-          width: webglCanvas.width,
-          height: webglCanvas.height
+        gpuCanvas: gpuCanvas ? {
+          id: gpuCanvas.id,
+          width: gpuCanvas.width,
+          height: gpuCanvas.height
         } : null,
         canvas2dSurfaceLoaded: !!document.getElementById("game"),
         loadingScreenHidden: loadingScreen ? loadingScreen.hidden : null,
@@ -213,6 +273,10 @@ async function waitForServer(server) {
 
     assert.deepStrictEqual(consoleErrors, [], "dev-server page should not emit console errors");
     assert.deepStrictEqual(pageErrors, [], "dev-server page should not throw page errors");
+    assert.strictEqual(gpuEvidence.status, "ready", "WebGPU should initialize before runtime assets");
+    assert.strictEqual(gpuEvidence.isWebGPU, true, "PS.gpu should expose WebGPU readiness");
+    assert.strictEqual(gpuEvidence.contextDeferred, true, "startup should defer visible WebGPU canvas ownership during migration");
+    assert.strictEqual(gpuEvidence.contextClaimed, false, "startup should not claim the visible canvas before WebGPU presenter ownership");
     assert.strictEqual(bootEvidence.loaderStatus, "complete", "dynamic script loader should complete");
     assert.ok(bootEvidence.manifestCount > 100, "script manifest should include the game runtime scripts");
     assert.strictEqual(bootEvidence.loadedCount, bootEvidence.manifestCount, "loader should load every manifest script");
@@ -222,6 +286,8 @@ async function waitForServer(server) {
       "dev-server page should include namespace and loader bootstrap scripts"
     );
     assert.strictEqual(bootEvidence.startupAssets.loaded, true, "startup should load the asset manifest before game start");
+    assert.strictEqual(bootEvidence.gpuContextDeferred, true, "boot evidence should retain deferred visible-canvas ownership");
+    assert.strictEqual(bootEvidence.gpuContextClaimed, false, "boot evidence should prove WebGPU did not steal the visible canvas");
     assert.strictEqual(bootEvidence.startupAssets.fallback, false, "HTTP startup should not fall back from the asset manifest");
     assert.ok(
       bootEvidence.startupAssets.loadedSheets.indexOf("terrain_grass") >= 0,
@@ -246,8 +312,8 @@ async function waitForServer(server) {
     assert.strictEqual(bootEvidence.biomesLoaded, bootEvidence.startupData.biomes, "startup should retain loaded biome data");
     assert.strictEqual(bootEvidence.transitionResolverReady, false, "Canvas2D terrain transition resolver should not load in runtime");
     assert.strictEqual(bootEvidence.spriteSystemLoaded, false, "runtime should not load the Canvas2D sprite system");
-    assert.strictEqual(bootEvidence.atlasLoaded, true, "runtime should load the packed WebGL entity atlas");
-    assert.ok(bootEvidence.atlasStats.cellCount > 0, "packed WebGL atlas should generate runtime cells");
+    assert.strictEqual(bootEvidence.atlasLoaded, true, "runtime should load the packed WebGPU entity atlas");
+    assert.ok(bootEvidence.atlasStats.cellCount > 0, "packed WebGPU atlas should generate runtime cells");
     assert.deepStrictEqual(
       bootEvidence.atlasPageData,
       {
@@ -257,12 +323,12 @@ async function waitForServer(server) {
         isUint8Array: true,
         hasCanvasPage: false
       },
-      "packed WebGL atlas should use a typed RGBA page, not a canvas page"
+      "packed WebGPU atlas should use a typed RGBA page, not a canvas page"
     );
     assert.deepStrictEqual(
-      bootEvidence.webglCanvas,
-      { id: "game-webgl", width: 1600, height: 850 },
-      "runtime should expose the WebGL presentation canvas"
+      bootEvidence.gpuCanvas,
+      { id: "game-webgpu", width: 1600, height: 850 },
+      "runtime should expose the WebGPU presentation canvas"
     );
     assert.strictEqual(bootEvidence.canvas2dSurfaceLoaded, false, "runtime should not expose a separate Canvas2D game surface");
     assert.strictEqual(bootEvidence.loadingScreenHidden, true, "loading screen should hide after startup completes");

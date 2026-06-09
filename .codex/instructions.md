@@ -25,7 +25,13 @@ Key constraints that affect every edit:
 3. **Files < 500 lines** — Split if approaching limit
 4. **var only** — Use `var`, not `let` or `const` (broadest compat)
 5. **Hard crash on errors** — Use `PS.assert()`, never silently swallow
-6. **No dependencies** — No npm, no CDN, no frameworks *in runtime*
+6. **No external dependencies** — No npm, no CDN, no frameworks at runtime
+7. **WebGPU required** — Use `navigator.gpu` / `PS.gpu`. WebGL2 is not a fallback or acceptance path.
+8. **WASM compute** — CPU-heavy sim work uses Rust compiled via `wasm-pack`.
+   The .wasm binary is base64-encoded to a .wasm.js sidecar before commit.
+   `wasm-pack` is a dev tool, not a runtime dep. No browser-time compilation.
+9. **WGSL shaders** — Shaders are .wgsl.js sidecars setting `window.SHADER_*_WGSL`.
+10. **Workers via blob URL** — `new Worker(blobUrl)` pattern required for file://.
 
 ## AI Game Studio Workflow
 
@@ -77,13 +83,17 @@ pip install Pillow numpy
 
 ```
 js/core/    — namespace, config, events, assert, log, math
-js/render/  — webgl, shaders, camera, globe, terrain, entities
+js/render/  — gpu.js (WebGPU primary), wgsl-shader-manager.js, webgpu-*.js
+              surface-tile-batcher.js, camera.js, entities.js
 js/sim/     — loop, world, organisms, food, terrain
 js/layers/  — geology, atmosphere, ocean, biosphere
 js/spatial/ — grid, chunks, queries
 js/epochs/  — registry, epoch-*.js
 js/ui/      — hud, menu, panels, inspect
 js/persist/ — save, load, migrate
+js/workers/ — sim-worker.js (WASM compute, blob URL init)
+wasm/       — X.wasm.js sidecars (base64-encoded wasm-pack output)
+shaders/    — X.wgsl.js (WGSL compute/render)
 tools/agent-studio/          — AI asset production (see AGENTS.md)
 tools/agent-studio/scripts/  — Python post-processing pipeline
 tools/agent-studio/source/   — Palette, style refs

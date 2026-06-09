@@ -1,14 +1,16 @@
 # Pixeldarium Top-Down Simulation Art Contract
 
-The controlling art contract lives in the private Agent Studio repo:
+The controlling runtime-facing art contract is
+`docs/pixeldarium-art-bible.md`.
 
-`/mnt/c/Users/Aaron/Azyrra/projects/pixeldarium-agent-studio/source/style/top-down-simulation-art-bible-v0.1.md`
-
-Runtime integration must still follow `docs/agent-studio-handoff.md`.
+Agent Studio may keep richer production notes in the private studio repo, but
+runtime integration must follow `docs/agent-studio-handoff.md` and the
+repo-local art bible.
 
 Summary:
 
-- target a very high straight-down simulation-map view;
+- target a very high straight-down simulation-map view with top-down 3/4
+  readability where small sprites need identity;
 - make terrain dominate before buildings;
 - represent settlements as small rectilinear footprints, farms, yards, roads,
   canals, docks, and production blocks;
@@ -25,7 +27,7 @@ Foundation Art Pack v0.1 candidate outputs now cover:
 - micro actor/resource speckles;
 - overlay, light, route, selection, and particle symbols.
 - side-by-side diffuse/normal candidate sheets using `#8080FF` flat normal
-  fallback.
+  production placeholders before runtime acceptance.
 
 This document is a pointer only. The playable runtime must not load Agent
 Studio files or raw generated assets.

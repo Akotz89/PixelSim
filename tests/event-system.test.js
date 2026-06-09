@@ -72,7 +72,7 @@ assert.strictEqual(runtimeErrors[0].kind, "event.handler.error", "handler error 
 const runtimeFiles = [
   "js/core/events.js",
   "js/epochs/primordial.js",
-  "js/render/gl.js",
+  "js/render/gpu.js",
   "js/ui/spotlight.js"
 ];
 

@@ -4009,6 +4009,559 @@
           ]
         }
       ]
+    },
+    "terrain_forest": {
+      "path": "assets/terrain/forest.png",
+      "meta": "assets/terrain/forest.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.forest.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.forest.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_desert": {
+      "path": "assets/terrain/desert.png",
+      "meta": "assets/terrain/desert.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.desert.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.desert.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_water": {
+      "path": "assets/terrain/water.png",
+      "meta": "assets/terrain/water.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.water.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.water.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_ocean": {
+      "path": "assets/terrain/ocean.png",
+      "meta": "assets/terrain/ocean.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.ocean.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ocean.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_mountain": {
+      "path": "assets/terrain/mountain.png",
+      "meta": "assets/terrain/mountain.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.mountain.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.mountain.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_tundra": {
+      "path": "assets/terrain/tundra.png",
+      "meta": "assets/terrain/tundra.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.tundra.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.tundra.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_wetland": {
+      "path": "assets/terrain/wetland.png",
+      "meta": "assets/terrain/wetland.json",
+      "tileSize": 32,
+      "sprites": [
+        {
+          "id": "terrain.wetland.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.wetland.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
     }
   },
   "handoffs": {

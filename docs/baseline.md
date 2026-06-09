@@ -46,7 +46,7 @@
 
 | Aspect | Current | Target (Post-E0) |
 |--------|---------|-------------------|
-| Rendering API | Canvas 2D (`ctx.fillRect`) | WebGL2 raw API |
+| Rendering API | Canvas 2D (`ctx.fillRect`) | WebGPU raw API |
 | Namespace | ~773 global functions | PS.* namespace |
 | Sim loop | rAF + accumulator (coupled) | Decoupled accumulator |
 | Entity storage | JS arrays + objects | Typed arrays (SoA) |

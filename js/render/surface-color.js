@@ -263,31 +263,38 @@ PS.render.surfaceColor.getSurfaceColor = function (sample) {
 // All hex constants pre-parsed to uint32. Zero string allocation in the
 // entire getSurfaceColorPacked() call chain.
 
-// Pre-parsed surface color constants
+// Pre-parsed surface color constants — MUST match terrain.js defaultBiomeColors.
+// Pixeldarium-original terrain palette for runtime rendering.
 PS.render.surfaceColor._pc = {
-  whitecap:      0xb7e9f4,
-  deepOcean:     0x08365f,
-  shallowOcean:  0x16658a,
-  deepWater:     0x020b1f,
-  clearingDark:  0x2e6835,
-  clearingLight: 0x7c8f3e,
-  denseCanopy:   0x082716,
-  woodland:      0x123f23,
-  brush:         0x346337,
-  grass:         0x2f6531,
-  rockDark:      0x454640,
-  rockLight:     0x7c7b6f,
-  sandDark:      0x755f2d,
-  sandLight:     0xb9964e,
-  scrub:         0x334739,
-  iceDark:       0x9cc8d8,
-  iceLight:      0xeaf6f8,
-  snow:          0xe5f3f7,
-  slopeGray:     0x56544c,
-  snowWhite:     0xf1f6f4,
-  riverBlue:     0x1d5265,
-  coastYellow:   0xaaa05e,
-  shallowTeal:   0x7fb7a7
+  // Water surfaces
+  whitecap:      0xd0e8f0,   // bright sea foam
+  deepOcean:     0x263d61,   // deep blue water
+  shallowOcean:  0x4a7f91,   // shallow blue-green water
+  deepWater:     0x2a3855,   // very deep ocean shadow
+  // Vegetation surfaces
+  clearingDark:  0x3f7138,   // cool forest clearing
+  clearingLight: 0x5a8830,   // lighter forest clearing
+  denseCanopy:   0x1e3a0a,   // very dark forest interior
+  woodland:      0x3f7138,   // woodland canopy
+  brush:         0x557820,   // mid scrub
+  grass:         0x5f8a45,   // open grassland
+  // Rock surfaces
+  rockDark:      0x4e545b,   // cool basalt shadow
+  rockLight:     0x706a5a,   // lighter rock face
+  // Sand surfaces
+  sandDark:      0x7b6038,   // dry soil shadow
+  sandLight:     0xc6aa68,   // sunlit dry soil
+  // Cold surfaces
+  scrub:         0x4a5545,   // cold scrub tundra
+  iceDark:       0x8eb5c8,   // ice shadow
+  iceLight:      0xd6edf3,   // snow peak
+  snow:          0xe8edf5,   // bright snow
+  // Overlay tints
+  slopeGray:     0x505762,   // steep slope gray
+  snowWhite:     0xf2f5f8,   // snow blend white
+  riverBlue:     0x347b88,   // river blue-green
+  coastYellow:   0xb7ad6e,   // shoreline reed tint
+  shallowTeal:   0x648c8c    // lake teal
 };
 PS.render.surfaceColor._surfacePaletteVersion = -1;
 

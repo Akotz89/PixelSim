@@ -326,15 +326,13 @@ PS.render.getSubsystems = function () {
   return [
     PS.camera,
     PS.render.lod,
-    PS.render.webglEngine,
-    PS.render.webglCompositor,
-    PS.render.webglGbuffer,
-    PS.render.webglGlobe,
-    PS.render.surfaceUnderlayWebgl,
-    PS.render.surfaceTileWebgl,
-    PS.render.entityWebgl,
+    PS.render.webgpuGlobe,
+    PS.render.webgpuSurfaceUnderlay,
+    PS.render.webgpuSurfaceTile,
+    PS.render.webgpuPointLights,
+    PS.render.webgpuEntity,
+    PS.render.webgpuRenderer,
     PS.render.renderer,
-    PS.render.webgl2Renderer,
     PS.render.terrain,
     PS.render.surfaceStreaming,
     PS.render.entities,
@@ -389,6 +387,8 @@ PS.render.pipeline.registerLayer("settlement.routes", {
   drawLayer: PS.render.DrawLayer.ROUTE_OVERLAY,
   family: "settlement",
   semantic: "routes, paths, and supply links",
+  minBand: "region",
+  maxBand: "settlement",
   minTier: "region",
   maxTier: "local",
   draw: function () { PS.render.entities.drawSettlementRoutes(); }
@@ -539,10 +539,14 @@ PS.render.pipeline.registerLayer("lighting.ambient", {
   order: 110,
   drawLayer: PS.render.DrawLayer.PARTICLE_BELOW,
   family: "lighting",
-  semantic: "day/night cycle tint overlay",
+  semantic: "additive point lights over the deferred WebGPU terrain composite",
   minTier: "galaxy",
   maxTier: "local",
-  draw: function () {}
+  draw: function () {
+    if (PS.render.webgpuPointLights && typeof PS.render.webgpuPointLights.drawQueued === "function") {
+      PS.render.webgpuPointLights.drawQueued({ loadOp: "load" });
+    }
+  }
 });
 
 PS.render.pipeline.registerLayer("status.selection", {

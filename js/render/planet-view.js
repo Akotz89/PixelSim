@@ -163,7 +163,13 @@ function getPlanetViewFootprintKm() {
 }
 
 function isPlanetLocalView() {
-  return getPlanetView().zoomLevel >= 1;
+  var view = getPlanetView();
+
+  if (PS.camera && PS.camera.unified && typeof PS.camera.unified.isLocalView === "function") {
+    return PS.camera.unified.isLocalView();
+  }
+
+  return view.zoomLevel >= 1.4;
 }
 
 function getPlanetLocalViewFootprint() {

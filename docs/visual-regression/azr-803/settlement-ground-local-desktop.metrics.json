@@ -1,0 +1,39 @@
+{
+  "zoomBand": "local",
+  "image": {
+    "width": 1600,
+    "height": 850,
+    "nonblankCoverage": 1,
+    "coarseColorCount": 38,
+    "luminanceMin": 11.58,
+    "luminanceMax": 213,
+    "luminanceMean": 141.25,
+    "contrastRange": 201.42
+  },
+  "distinctAcceptedFamilies": 10,
+  "acceptedFamilies": [
+    "citizen",
+    "effect",
+    "settlement",
+    "stockpile",
+    "terrainGround",
+    "terrainTransition",
+    "terrainWater",
+    "vegetation",
+    "workStatus",
+    "worldUi"
+  ],
+  "terrainMaterialDraws": 65,
+  "terrainTransitionDraws": 67,
+  "settlementDraws": 1,
+  "routeDraws": 1,
+  "shadowDraws": 1,
+  "vegetationDraws": 2,
+  "citizenDraws": 4,
+  "stockpileDraws": 1,
+  "workStatusDraws": 1,
+  "effectDraws": 1,
+  "worldUiDraws": 3,
+  "particleVisible": 24,
+  "particleDrawCalls": 3
+}

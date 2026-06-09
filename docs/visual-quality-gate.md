@@ -16,7 +16,7 @@ Every visual or camera issue must state:
 
 - Which zoom bands are affected.
 - What the watcher must understand at each affected band.
-- Whether the change alters WebGL2 draw calls, texture uploads, worker
+- Whether the change alters WebGPU draw calls, buffer/texture uploads, worker
   promotion, entity batches, overlay batches, or UI occlusion.
 - The stale or placeholder representation shown while newer data is pending.
 - The screenshot, browser smoke, or pixel-sample evidence used for review.
@@ -98,7 +98,7 @@ representative views:
 Performance evidence must include the metric that proves the bottleneck moved.
 Acceptable metrics include frame time, draw call count, terrain upload time,
 worker round-trip time, promotion latency, visible chunk count, entity batch
-count, or sampled WebGL pixel coverage.
+count, or sampled WebGPU pixel coverage.
 
 ## Required Verification Commands
 
@@ -119,5 +119,5 @@ For direct runtime evidence, open:
 file:///C:/Users/Aaron/Azyrra/projects/pixeldarium/index.html
 ```
 
-and record loader/generation readiness, WebGL pixel samples, runtime errors,
+and record loader/generation readiness, WebGPU pixel samples, runtime errors,
 and wheel/drag camera movement.

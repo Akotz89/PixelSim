@@ -11,7 +11,8 @@
 | [Legacy UI Assessment](legacy-ui-assessment.md) | `docs/legacy-ui-assessment.md` | Completed UI runtime shard retirement record |
 | [Legacy Runtime Assessment](legacy-runtime-assessment.md) | `docs/legacy-runtime-assessment.md` | AZR-352 non-UI legacy runtime inventory and migration decisions |
 | [Architecture](ARCHITECTURE.md) | `docs/ARCHITECTURE.md` | AZR-585 current runtime architecture, data flow, initialization order, and optimization boundaries |
-| [Rendering](RENDERING.md) | `docs/RENDERING.md` | AZR-586 current WebGL2 rendering pipeline, coordinate systems, zoom bands, atlas, shaders, and frame budget |
+| [Rendering](RENDERING.md) | `docs/RENDERING.md` | AZR-586 current WebGPU rendering pipeline, coordinate systems, zoom bands, atlas, shaders, and frame budget |
+| [Pixeldarium Art Bible](pixeldarium-art-bible.md) | `docs/pixeldarium-art-bible.md` | AZR-420 original pixel-art dimensions, sheet layouts, animation specs, naming, palette rules, and WebGPU-only asset contract |
 | [Visual Quality Gate](visual-quality-gate.md) | `docs/visual-quality-gate.md` | AZR-364 Google-Earth smoothness and Songs-of-Syx-style simulation readability checklist |
 | [Biological Model Decision](biological-model-decision.md) | `docs/biological-model-decision.md` | AZR-361 aggregate population and representative organism model gate |
 | [Optimization Operating Model](optimization-operating-model.md) | `docs/optimization-operating-model.md` | Scale-first rendering/simulation rules derived from the YouTube deep-dive analysis |

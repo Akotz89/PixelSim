@@ -1,17 +1,24 @@
 PS.render = PS.render || {};
 PS.render.terrain = PS.render.terrain || {};
 
+// Original Pixeldarium fallback biome colors. Runtime palette registrations in
+// js/assets/registry.js override these when the asset registry is loaded.
 PS.render.terrain.defaultBiomeColors = {
-  forest: "#123f23",
-  grassland: "#23552d",
-  desert: "#56451f",
-  wetland: "#1d4f43",
-  mountain: "#62675f",
-  mountains: "#62675f",
-  barren: "#3f3d32",
-  tundra: "#29383a",
-  ice: "#a8d4e8",
-  ocean: "#06172b"
+  grassland:  "#23552d",
+  forest:     "#123f23",
+  desert:     "#56451f",
+  wetland:    "#1d4f43",
+  mountain:   "#62675f",
+  mountains:  "#62675f",
+  barren:     "#3f3d32",
+  tundra:     "#29383a",
+  ice:        "#a8d4e8",
+  ocean:      "#06172b",
+  lake:       "#0d4f76",
+  woodland:   "#2f5f2f",
+  pasture:    "#4f6040",
+  volcanic:   "#241817",
+  jungle:     "#0f4d25"
 };
 PS.render.terrain.defaultBiomeColor = "#07080f";
 PS.render.terrain._biomePaletteVersion = -1;
@@ -538,7 +545,7 @@ PS.render.terrain.invalidateCache = function () {
   return true;
 };
 
-PS.render.terrain.drawLocalSurface = function (alpha) {
+PS.render.terrain.drawLocalSurface = function (alpha, options) {
   if (
     !PS.render.surfaceStreaming ||
     !PS.render.surfaceRender ||
@@ -558,10 +565,6 @@ PS.render.terrain.drawLocalSurface = function (alpha) {
   var pendingChunks = 0;
   var placeholderChunks = 0;
   var readyChunks = [];
-
-  if (PS.render.surfaceUnderlayWebgl && typeof PS.render.surfaceUnderlayWebgl.draw === "function") {
-    PS.render.surfaceUnderlayWebgl.draw(alpha);
-  }
 
   localSurfaceRenderChunkCache.stats.lastVisibleChunks = queue.visibleCount || 0;
   localSurfaceRenderChunkCache.stats.lastVisibleQueueChunks = queue.visibleCount || 0;
@@ -607,7 +610,7 @@ PS.render.terrain.drawLocalSurface = function (alpha) {
     if (PS.render.renderer.drawTilemap({
       chunks: readyChunks,
       alpha: alpha,
-      options: { skipPresent: false }
+      options: Object.assign({ skipPresent: false }, options || {})
     }, PS.camera && PS.camera.unified ? PS.camera.unified.getState() : null)) {
       drawnChunks = readyChunks.length;
     } else {
@@ -619,9 +622,9 @@ PS.render.terrain.drawLocalSurface = function (alpha) {
   localSurfaceRenderChunkCache.stats.lastGeneratedThisPass = generatedThisPass;
   localSurfaceRenderChunkCache.stats.lastPlaceholderChunks = placeholderChunks;
 
-  if (PS.render.surfaceTileWebgl && PS.render.surfaceTileWebgl.state) {
-    PS.render.surfaceTileWebgl.state.lastFrameMs = Math.max(
-      PS.render.surfaceTileWebgl.state.lastFrameMs || 0,
+  if (PS.render.webgpuSurfaceTile && PS.render.webgpuSurfaceTile.state) {
+    PS.render.webgpuSurfaceTile.state.lastFrameMs = Math.max(
+      PS.render.webgpuSurfaceTile.state.lastFrameMs || 0,
       performance.now() - startedAt
     );
   }
@@ -630,19 +633,34 @@ PS.render.terrain.drawLocalSurface = function (alpha) {
 };
 
 PS.render.terrain.draw = function () {
-  if (typeof isPlanetLocalView === "function" && isPlanetLocalView()) {
-    return PS.render.terrain.drawLocalSurface(1);
+  var zoomLevel = world && world.planetView ? Number(world.planetView.zoomLevel) || 0 : 0;
+  var layerAlphas = PS.render.lod && typeof PS.render.lod.getLayerAlphas === "function"
+    ? PS.render.lod.getLayerAlphas(zoomLevel)
+    : { globe: typeof isPlanetLocalView === "function" && isPlanetLocalView() ? 0 : 1, tiles: typeof isPlanetLocalView === "function" && isPlanetLocalView() ? 1 : 0 };
+  var projection = PS.render.projection && typeof PS.render.projection.getProjection === "function"
+    ? PS.render.projection.getProjection()
+    : typeof getPlanetGlobeProjection === "function"
+      ? getPlanetGlobeProjection()
+      : typeof getPlanetProjection === "function"
+        ? getPlanetProjection()
+        : null;
+  var globeDrawn = false;
+  var tilesDrawn = false;
+
+  if (layerAlphas.globe > 0.01 && PS.render.webgpuGlobe && typeof PS.render.webgpuGlobe.draw === "function") {
+    globeDrawn = PS.render.webgpuGlobe.draw(projection, {
+      alpha: layerAlphas.globe,
+      loadOp: "clear"
+    });
   }
 
-  var projection = typeof getPlanetGlobeProjection === "function"
-    ? getPlanetGlobeProjection()
-    : typeof getPlanetProjection === "function"
-      ? getPlanetProjection()
-    : null;
+  if (layerAlphas.tiles > 0.01) {
+    tilesDrawn = PS.render.terrain.drawLocalSurface(layerAlphas.tiles, {
+      loadOp: globeDrawn ? "load" : "clear"
+    });
+  }
 
-  return PS.render.webglGlobe && typeof PS.render.webglGlobe.draw === "function"
-    ? PS.render.webglGlobe.draw(projection)
-    : false;
+  return Boolean(globeDrawn || tilesDrawn);
 };
 
 PS.render.terrain.advanceSurfaceWork = function (maxChunksOverride) {

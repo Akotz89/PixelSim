@@ -1,1 +1,0 @@
-PS.assets.registerText("shaders/gbuffer-compose.frag", "#version 300 es\nprecision mediump float;\nuniform sampler2D u_source;\nin vec2 v_uv;\nout vec4 outColor;\nvoid main() {\n  outColor = texture(u_source, v_uv);\n}\n");

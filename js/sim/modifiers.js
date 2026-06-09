@@ -1,7 +1,7 @@
 // ── Modifier Engine (AZR-493) ──────────────────────────────────────
 // Composable additive/multiplicative stat modifier system.
 //
-// SoS formula: finalValue = clamp((base + positiveAdds) × multiplier + negativeAdds, min, max)
+// Formula: finalValue = clamp((base + positiveAdds) × multiplier + negativeAdds, min, max)
 //
 // Usage:
 //   var stat = PS.modifiers.createStat("vision", { base: 20, min: 8, max: 36 });
@@ -79,7 +79,7 @@ PS.modifiers = {
   },
 
   // ── Compute final value for a stat ──
-  // SoS formula: (base + positiveAdds) × (1 + totalMul) + negativeAdds
+  // Positive additions are multiplied before negative additions are applied.
 
   compute: function (statId) {
     var stat = PS.modifiers.stats[statId];

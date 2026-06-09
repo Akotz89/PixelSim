@@ -341,12 +341,15 @@ PS.camera.setZoom = function (zoomLevel) {
 
 PS.camera.focusLatLonAtCanvasPoint = function (latitude, longitude, canvasX, canvasY) {
   var scale = PS.camera.getScale();
-  var sampleX = (Number(canvasX) || 0) / CONFIG.TILE_SIZE;
-  var sampleY = (Number(canvasY) || 0) / CONFIG.TILE_SIZE;
+  var targetCanvas = typeof canvas !== "undefined" && canvas ? canvas : null;
+  var viewportCenterX = targetCanvas ? (Number(targetCanvas.width) || 0) / 2 : 0;
+  var viewportCenterY = targetCanvas ? (Number(targetCanvas.height) || 0) / 2 : 0;
+  var sampleOffsetX = ((Number(canvasX) || 0) - viewportCenterX) / CONFIG.TILE_SIZE;
+  var sampleOffsetY = ((Number(canvasY) || 0) - viewportCenterY) / CONFIG.TILE_SIZE;
   var targetMeters = getSurfaceMeterCoordinate(latitude, longitude);
   var centerMeters = {
-    eastMeters: targetMeters.eastMeters - (sampleX - WORLD_WIDTH / 2) * scale.metersPerSample,
-    northMeters: targetMeters.northMeters + (sampleY - WORLD_HEIGHT / 2) * scale.metersPerSample
+    eastMeters: targetMeters.eastMeters - sampleOffsetX * scale.metersPerSample,
+    northMeters: targetMeters.northMeters + sampleOffsetY * scale.metersPerSample
   };
   var centerLatLon = PS.render.globe.getLatLonFromSurfaceMeters(centerMeters.eastMeters, centerMeters.northMeters);
 

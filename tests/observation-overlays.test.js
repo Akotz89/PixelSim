@@ -85,14 +85,14 @@ const expectedIds = [
   "observation.microbial"
 ];
 const manifest = context.PS.render.overlays.getManifest();
-const webglGlobeSource = read("js/render/webgl-globe.js");
-const shaderSource = read("shaders/globe-sphere.frag");
+const webgpuGlobeSource = read("js/render/webgpu-globe.js");
+const shaderSource = read("shaders/globe-sphere.wgsl");
 
 expectedIds.forEach((id) => {
   const entry = manifest.find((overlay) => overlay.id === id);
 
   assert.ok(entry, `${id} should be registered`);
-  assert.ok(entry.blendMode === "screen" || entry.blendMode === "lighter", `${id} should expose WebGL blend metadata`);
+  assert.ok(entry.blendMode === "screen" || entry.blendMode === "lighter", `${id} should expose WebGPU blend metadata`);
   assert.strictEqual(entry.shortcut, "O", `${id} should expose keyboard shortcut metadata`);
 });
 
@@ -122,10 +122,10 @@ assert.ok(atmosphereSample.alpha > 0, "atmosphere overlay should encode gas comp
 assert.ok(microbialSample.alpha > 0, "microbial overlay should encode bloom intensity into texture alpha");
 assert.strictEqual(noneSample.red + noneSample.green + noneSample.blue + noneSample.alpha, 0, "inactive overlay samples should be transparent");
 
-assert.ok(webglGlobeSource.indexOf("uploadObservationOverlayTexture") >= 0, "WebGL globe should upload active observation overlay texture");
-assert.ok(webglGlobeSource.indexOf('compositor = "webgl2"') >= 0, "WebGL globe should record webgl2 compositor evidence");
-assert.ok(shaderSource.indexOf("uniform sampler2D u_overlay") >= 0, "WebGL shader should accept observation overlay texture");
-assert.ok(shaderSource.indexOf("u_overlayMode") >= 0, "WebGL shader should expose overlay blend mode");
-assert.strictEqual(webglGlobeSource.indexOf("fillRect"), -1, "observation overlay upload should not depend on Canvas2D drawing");
+assert.ok(webgpuGlobeSource.indexOf("uploadObservationOverlayTexture") >= 0, "WebGPU globe should upload active observation overlay texture");
+assert.ok(webgpuGlobeSource.indexOf("lastUsedObservationOverlay") >= 0, "WebGPU globe should record overlay compositor evidence");
+assert.ok(shaderSource.indexOf("overlay_texture: texture_2d<f32>") >= 0, "WGSL globe shader should accept observation overlay texture");
+assert.ok(shaderSource.indexOf("overlay_mode") >= 0, "WGSL globe shader should expose overlay blend mode");
+assert.strictEqual(webgpuGlobeSource.indexOf("fillRect"), -1, "observation overlay upload should not depend on Canvas2D drawing");
 
 console.log("observation overlay checks passed");
