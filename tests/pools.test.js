@@ -46,6 +46,7 @@ const source = [
   "config.js",
   "const WORLD_WIDTH = 320; const WORLD_HEIGHT = 170;",
   "js/core/utils.js",
+  "js/core/trait-schema.js",
   "js/core/config.js",
   "js/core/world-grid.js",
   "js/systems/pool-manager.js",

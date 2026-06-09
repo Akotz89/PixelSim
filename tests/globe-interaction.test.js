@@ -11,6 +11,9 @@ const source = [
   "js/systems/persistence-save-data.js",
   "js/systems/persistence-restore-core.js",
   "js/systems/persistence-io.js",
+  "js/ui/inspect.js",
+  "js/ui/camera-input.js",
+  "js/ui/persistence-controls.js",
   "js/ui/interaction.js",
   "js/ui/touch.js"
 ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");

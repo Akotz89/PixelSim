@@ -1,0 +1,224 @@
+var planetDragState = {
+  active: false,
+  moved: false,
+  skipNextClick: false,
+  lastClientX: 0,
+  lastClientY: 0,
+  velocityX: 0,
+  velocityY: 0,
+  lastMoveTime: 0,
+  inertiaHandle: null
+};
+var cameraInteractionTimer = null;
+
+function markCameraInteracting() {
+  world.isCameraInteracting = true;
+
+  if (cameraInteractionTimer !== null && typeof window.clearTimeout === "function") {
+    window.clearTimeout(cameraInteractionTimer);
+  }
+
+  if (typeof window.setTimeout === "function") {
+    cameraInteractionTimer = window.setTimeout(function() {
+      world.isCameraInteracting = false;
+      cameraInteractionTimer = null;
+      invalidateTerrainCache();
+      world.needsRender = true;
+    }, Math.max(40, Number(CONFIG.PLANET_CAMERA_INTERACTION_SETTLE_MS) || 140));
+  }
+}
+
+function getCanvasPointFromEvent(event) {
+  return getCanvasPointFromClient(event.clientX, event.clientY);
+}
+
+function getCanvasPointFromClient(clientX, clientY) {
+  return PS.camera && PS.camera.unified
+    ? PS.camera.unified.clientToScreen(clientX, clientY)
+    : { canvasX: Number(clientX) || 0, canvasY: Number(clientY) || 0 };
+}
+
+function getTileFromCanvasEvent(event) {
+  var point = getCanvasPointFromEvent(event);
+  var planetTile = typeof getPlanetTileFromCanvasPoint === "function"
+    ? getPlanetTileFromCanvasPoint(point.canvasX, point.canvasY)
+    : null;
+
+  if (planetTile) {
+    return planetTile;
+  }
+
+  return {
+    x: clamp(Math.floor(point.canvasX / CONFIG.TILE_SIZE), 0, WORLD_WIDTH - 1),
+    y: clamp(Math.floor(point.canvasY / CONFIG.TILE_SIZE), 0, WORLD_HEIGHT - 1)
+  };
+}
+
+function getSurfacePositionFromCanvasEvent(event) {
+  if (typeof getPlanetLatLonFromCanvasPoint !== "function") {
+    return null;
+  }
+
+  var point = getCanvasPointFromEvent(event);
+  return getPlanetLatLonFromCanvasPoint(point.canvasX, point.canvasY);
+}
+
+function zoomPlanetView(delta, anchorPoint) {
+  markCameraInteracting();
+
+  var didZoom = anchorPoint && typeof adjustPlanetZoomAtCanvasPoint === "function"
+    ? adjustPlanetZoomAtCanvasPoint(delta, anchorPoint.canvasX, anchorPoint.canvasY)
+    : adjustPlanetZoom(delta);
+
+  if (!didZoom) {
+    return false;
+  }
+
+  world.needsRender = true;
+  return true;
+}
+
+function redrawPlanetView() {
+  world.needsRender = true;
+}
+
+function beginPlanetDrag(event) {
+  if (typeof event.button === "number" && event.button !== 0) {
+    return;
+  }
+
+  if (PS.ui.touch.track(event) && PS.ui.touch.beginIfReady()) {
+    if (typeof event.preventDefault === "function") {
+      event.preventDefault();
+    }
+
+    return;
+  }
+
+  planetDragState.active = true;
+  planetDragState.moved = false;
+  planetDragState.lastClientX = Number(event.clientX) || 0;
+  planetDragState.lastClientY = Number(event.clientY) || 0;
+  planetDragState.velocityX = 0;
+  planetDragState.velocityY = 0;
+  planetDragState.lastMoveTime = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  canvas.classList.add("dragging");
+
+  if (planetDragState.inertiaHandle !== null && typeof window.cancelAnimationFrame === "function") {
+    window.cancelAnimationFrame(planetDragState.inertiaHandle);
+    planetDragState.inertiaHandle = null;
+  }
+
+  if (typeof canvas.setPointerCapture === "function" && typeof event.pointerId !== "undefined") {
+    canvas.setPointerCapture(event.pointerId);
+  }
+}
+
+function updatePlanetDrag(event) {
+  if (PS.ui.touch.update(event)) {
+    return;
+  }
+
+  if (!planetDragState.active) {
+    return;
+  }
+
+  var clientX = Number(event.clientX) || 0;
+  var clientY = Number(event.clientY) || 0;
+  var now = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+  var deltaX = clientX - planetDragState.lastClientX;
+  var deltaY = clientY - planetDragState.lastClientY;
+  var elapsed = Math.max(1, now - planetDragState.lastMoveTime);
+
+  if (deltaX === 0 && deltaY === 0) {
+    return;
+  }
+
+  planetDragState.lastClientX = clientX;
+  planetDragState.lastClientY = clientY;
+  planetDragState.lastMoveTime = now;
+  planetDragState.velocityX = deltaX / elapsed * 16;
+  planetDragState.velocityY = deltaY / elapsed * 16;
+
+  if (Math.abs(deltaX) + Math.abs(deltaY) > 2) {
+    planetDragState.moved = true;
+  }
+
+  if (typeof panPlanetViewByScreenDelta === "function") {
+    markCameraInteracting();
+    panPlanetViewByScreenDelta(deltaX, deltaY);
+    redrawPlanetView();
+  }
+
+  if (typeof event.preventDefault === "function") {
+    event.preventDefault();
+  }
+}
+
+function continuePlanetDragInertia() {
+  var velocityX = planetDragState.velocityX * 0.86;
+  var velocityY = planetDragState.velocityY * 0.86;
+
+  planetDragState.velocityX = velocityX;
+  planetDragState.velocityY = velocityY;
+
+  if (Math.abs(velocityX) + Math.abs(velocityY) < 0.35 || planetDragState.active) {
+    planetDragState.inertiaHandle = null;
+    return;
+  }
+
+  if (typeof panPlanetViewByScreenDelta === "function") {
+    markCameraInteracting();
+    panPlanetViewByScreenDelta(velocityX, velocityY);
+    redrawPlanetView();
+  }
+
+  if (typeof window.requestAnimationFrame === "function") {
+    planetDragState.inertiaHandle = window.requestAnimationFrame(continuePlanetDragInertia);
+  } else {
+    planetDragState.inertiaHandle = null;
+  }
+}
+
+function endPlanetDrag(event) {
+  if (PS.ui.touch.end(event)) {
+    if (!planetDragState.active) {
+      return;
+    }
+  }
+
+  if (!planetDragState.active) {
+    return;
+  }
+
+  planetDragState.active = false;
+  planetDragState.skipNextClick = planetDragState.moved;
+  canvas.classList.remove("dragging");
+
+  if (typeof canvas.releasePointerCapture === "function" && event && typeof event.pointerId !== "undefined") {
+    canvas.releasePointerCapture(event.pointerId);
+  }
+
+  if (
+    planetDragState.moved &&
+    Math.abs(planetDragState.velocityX) + Math.abs(planetDragState.velocityY) >= 0.65 &&
+    typeof window.requestAnimationFrame === "function"
+  ) {
+    planetDragState.inertiaHandle = window.requestAnimationFrame(continuePlanetDragInertia);
+  }
+}
+
+function panPlanetViewFromKeyboard(eastSamples, northSamples) {
+  if (typeof panPlanetViewBySamples !== "function") {
+    return false;
+  }
+
+  panPlanetViewBySamples(eastSamples, northSamples);
+  markCameraInteracting();
+  redrawPlanetView();
+  return true;
+}
+
+function prepareTouchInput() {
+  PS.ui.touch.prepare();
+}
