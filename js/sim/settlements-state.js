@@ -232,27 +232,72 @@ function getOrganismsForLineage(lineageId) {
   return getIndexedOrganismsForLineage(lineageId);
 }
 
+function getSettlementWrappedX(x) {
+  return PS.worldGrid && typeof PS.worldGrid.getWrappedX === "function"
+    ? PS.worldGrid.getWrappedX(x)
+    : clamp(Math.round(Number(x) || 0), 0, WORLD_WIDTH - 1);
+}
+
+function getSettlementClampedY(y) {
+  return PS.worldGrid && typeof PS.worldGrid.getClampedY === "function"
+    ? PS.worldGrid.getClampedY(y)
+    : clamp(Math.round(Number(y) || 0), 0, WORLD_HEIGHT - 1);
+}
+
+function getSettlementWrappedDeltaX(fromX, toX) {
+  if (PS.worldGrid && typeof PS.worldGrid.getWrappedDeltaX === "function") {
+    return PS.worldGrid.getWrappedDeltaX(fromX, toX);
+  }
+
+  var width = Math.max(1, WORLD_WIDTH);
+  var delta = getSettlementWrappedX(toX) - getSettlementWrappedX(fromX);
+
+  if (delta > width / 2) {
+    delta -= width;
+  } else if (delta < -width / 2) {
+    delta += width;
+  }
+
+  return delta;
+}
+
+function getSettlementWrappedManhattanDistance(fromX, fromY, toX, toY) {
+  return Math.abs(getSettlementWrappedDeltaX(fromX, toX)) +
+    Math.abs(getSettlementClampedY(toY) - getSettlementClampedY(fromY));
+}
+
 function getLineageCenter(organisms) {
-  var totalX = 0;
+  var angle;
+  var averageAngle;
+  var sumSinX = 0;
+  var sumCosX = 0;
   var totalY = 0;
+  var width = Math.max(1, WORLD_WIDTH);
 
   for (var i = 0; i < organisms.length; i++) {
-    totalX += organisms[i].x;
+    angle = getSettlementWrappedX(organisms[i].x) / width * Math.PI * 2;
+    sumSinX += Math.sin(angle);
+    sumCosX += Math.cos(angle);
     totalY += organisms[i].y;
   }
 
+  averageAngle = Math.atan2(sumSinX / organisms.length, sumCosX / organisms.length);
+  if (averageAngle < 0) {
+    averageAngle += Math.PI * 2;
+  }
+
   return {
-    x: clamp(Math.round(totalX / organisms.length), 0, WORLD_WIDTH - 1),
-    y: clamp(Math.round(totalY / organisms.length), 0, WORLD_HEIGHT - 1)
+    x: getSettlementWrappedX(Math.round(averageAngle / (Math.PI * 2) * width)),
+    y: getSettlementClampedY(Math.round(totalY / organisms.length))
   };
 }
 
 function getDistanceToSettlement(settlement, x, y) {
-  return Math.abs(settlement.x - x) + Math.abs(settlement.y - y);
+  return getSettlementWrappedManhattanDistance(settlement.x, settlement.y, x, y);
 }
 
 function getDistanceBetweenSettlements(a, b) {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+  return getSettlementWrappedManhattanDistance(a.x, a.y, b.x, b.y);
 }
 
 function restoreSettlementGrowthNumber(value, fallback) {
@@ -281,9 +326,8 @@ function countSettlementClaimedTiles(settlement) {
   for (var y = minY; y <= maxY; y++) {
     var rowDistance = Math.abs(settlement.y - y);
     var rowRadius = radius - rowDistance;
-    var minX = Math.max(0, settlement.x - rowRadius);
-    var maxX = Math.min(WORLD_WIDTH - 1, settlement.x + rowRadius);
-    claimedTiles += maxX - minX + 1;
+    var rowWidth = Math.min(WORLD_WIDTH, rowRadius * 2 + 1);
+    claimedTiles += rowWidth;
   }
 
   return Math.min(claimedTiles, WORLD_WIDTH * WORLD_HEIGHT);

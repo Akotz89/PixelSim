@@ -75,6 +75,43 @@ world.settlements = [];
 world.settlementRoutes = [];
 PS.sim.settlements.ensureState();
 
+var seamLineage = {
+  id: 99,
+  activeCount: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+  peakPopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION,
+  isExtinct: false
+};
+
+var seamOrganisms = [];
+for (var seamIndex = 0; seamIndex < CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION; seamIndex++) {
+  seamOrganisms.push({
+    x: seamIndex % 3 === 0 ? 0 : (seamIndex % 3 === 1 ? 1 : WORLD_WIDTH - 1),
+    y: 20,
+    lineageId: seamLineage.id
+  });
+}
+world.organisms = seamOrganisms;
+
+var seamSettlement = makeSettlement(seamLineage, seamOrganisms);
+assert.ok(seamSettlement, "wrap seam lineage should found a settlement");
+assert.ok(
+  seamSettlement.x <= 1 || seamSettlement.x >= WORLD_WIDTH - 1,
+  "wrap seam settlement should be founded near the actual cluster center"
+);
+
+var westSettlement = PS.sim.settlements.makeAt(1, 0, 20, { isColony: true });
+var eastSettlement = PS.sim.settlements.makeAt(1, WORLD_WIDTH - 1, 20, { isColony: true });
+assert.strictEqual(
+  getDistanceBetweenSettlements(westSettlement, eastSettlement),
+  1,
+  "settlement distance should use wrapped horizontal distance"
+);
+
+world.organisms = [];
+world.settlements = [];
+world.settlementRoutes = [];
+PS.sim.settlements.rebuildIndexes();
+
 var capital = PS.sim.settlements.makeAt(1, 20, 20, { isColony: true });
 capital.storedFood = 500;
 capital.development = 600;

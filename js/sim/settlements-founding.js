@@ -12,8 +12,8 @@ function makeSettlementAt(lineageId, x, y, options) {
   return {
     id: allocateSettlementId(),
     lineageId: lineageId,
-    x: clamp(Math.round(x), 0, WORLD_WIDTH - 1),
-    y: clamp(Math.round(y), 0, WORLD_HEIGHT - 1),
+    x: getSettlementWrappedX(x),
+    y: getSettlementClampedY(y),
     foundedTick: world.tick,
     radius: CONFIG.SETTLEMENT_RADIUS,
     population: 0,
@@ -69,14 +69,18 @@ function getDistanceToNearestSettlement(x, y, searchRadius) {
     isBoundedSearch
       ? searchRadius
       : Math.max(WORLD_WIDTH, WORLD_HEIGHT);
-  var minBucketX = Math.floor(Math.max(0, x - normalizedRadius) / bucketSize);
-  var maxBucketX = Math.floor(Math.min(WORLD_WIDTH - 1, x + normalizedRadius) / bucketSize);
-  var minBucketY = Math.floor(Math.max(0, y - normalizedRadius) / bucketSize);
-  var maxBucketY = Math.floor(Math.min(WORLD_HEIGHT - 1, y + normalizedRadius) / bucketSize);
+  var bucketXs = PS.worldGrid && typeof PS.worldGrid.getWrappedBucketIndexes === "function"
+    ? PS.worldGrid.getWrappedBucketIndexes(x, normalizedRadius, bucketSize, WORLD_WIDTH)
+    : [Math.floor(getSettlementWrappedX(x) / bucketSize)];
+  var bucketYs = PS.worldGrid && typeof PS.worldGrid.getClampedBucketIndexes === "function"
+    ? PS.worldGrid.getClampedBucketIndexes(y, normalizedRadius, bucketSize, WORLD_HEIGHT)
+    : [Math.floor(getSettlementClampedY(y) / bucketSize)];
   var nearestDistance = Infinity;
 
-  for (var bucketY = minBucketY; bucketY <= maxBucketY; bucketY++) {
-    for (var bucketX = minBucketX; bucketX <= maxBucketX; bucketX++) {
+  for (var bucketYIndex = 0; bucketYIndex < bucketYs.length; bucketYIndex++) {
+    for (var bucketXIndex = 0; bucketXIndex < bucketXs.length; bucketXIndex++) {
+      var bucketY = bucketYs[bucketYIndex];
+      var bucketX = bucketXs[bucketXIndex];
       var bucket = buckets[bucketX + ":" + bucketY];
 
       if (!bucket) {
@@ -85,7 +89,7 @@ function getDistanceToNearestSettlement(x, y, searchRadius) {
 
       for (var i = 0; i < bucket.length; i++) {
         var settlement = bucket[i];
-        var distance = Math.abs(settlement.x - x) + Math.abs(settlement.y - y);
+        var distance = getDistanceToSettlement(settlement, x, y);
 
         if (isBoundedSearch && distance > normalizedRadius) {
           continue;
@@ -107,15 +111,19 @@ function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
   var buckets = world.settlementBuckets;
   var bucketSize = getSettlementBucketSize();
   var normalizedRadius = Math.max(0, Math.round(Number(searchRadius) || 0));
-  var minBucketX = Math.floor(Math.max(0, x - normalizedRadius) / bucketSize);
-  var maxBucketX = Math.floor(Math.min(WORLD_WIDTH - 1, x + normalizedRadius) / bucketSize);
-  var minBucketY = Math.floor(Math.max(0, y - normalizedRadius) / bucketSize);
-  var maxBucketY = Math.floor(Math.min(WORLD_HEIGHT - 1, y + normalizedRadius) / bucketSize);
+  var bucketXs = PS.worldGrid && typeof PS.worldGrid.getWrappedBucketIndexes === "function"
+    ? PS.worldGrid.getWrappedBucketIndexes(x, normalizedRadius, bucketSize, WORLD_WIDTH)
+    : [Math.floor(getSettlementWrappedX(x) / bucketSize)];
+  var bucketYs = PS.worldGrid && typeof PS.worldGrid.getClampedBucketIndexes === "function"
+    ? PS.worldGrid.getClampedBucketIndexes(y, normalizedRadius, bucketSize, WORLD_HEIGHT)
+    : [Math.floor(getSettlementClampedY(y) / bucketSize)];
   var nearestSettlement = null;
   var nearestDistance = Infinity;
 
-  for (var bucketY = minBucketY; bucketY <= maxBucketY; bucketY++) {
-    for (var bucketX = minBucketX; bucketX <= maxBucketX; bucketX++) {
+  for (var bucketYIndex = 0; bucketYIndex < bucketYs.length; bucketYIndex++) {
+    for (var bucketXIndex = 0; bucketXIndex < bucketXs.length; bucketXIndex++) {
+      var bucketY = bucketYs[bucketYIndex];
+      var bucketX = bucketXs[bucketXIndex];
       var bucket = buckets[bucketX + ":" + bucketY];
 
       if (!bucket) {
@@ -124,7 +132,7 @@ function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
 
       for (var i = 0; i < bucket.length; i++) {
         var settlement = bucket[i];
-        var distance = Math.abs(settlement.x - x) + Math.abs(settlement.y - y);
+        var distance = getDistanceToSettlement(settlement, x, y);
 
         if (distance > normalizedRadius) {
           continue;
@@ -176,8 +184,8 @@ function getOutpostPlacement(parentSettlement) {
       var dxValues = dxMagnitude === 0 ? [0] : [-dxMagnitude, dxMagnitude];
 
       for (var dxIndex = 0; dxIndex < dxValues.length; dxIndex++) {
-        var candidateX = clamp(parentSettlement.x + dxValues[dxIndex], 0, WORLD_WIDTH - 1);
-        var candidateY = clamp(parentSettlement.y + dy, 0, WORLD_HEIGHT - 1);
+        var candidateX = getSettlementWrappedX(parentSettlement.x + dxValues[dxIndex]);
+        var candidateY = getSettlementClampedY(parentSettlement.y + dy);
 
         if (getDistanceToNearestSettlement(candidateX, candidateY, minDistance - 1) < minDistance) {
           continue;
@@ -186,8 +194,7 @@ function getOutpostPlacement(parentSettlement) {
         var score =
           countFoodNearTile(candidateX, candidateY, CONFIG.SETTLEMENT_RADIUS) * 4 +
           (isFertile(candidateX, candidateY) ? 2 : 0) -
-          Math.abs(parentSettlement.x - candidateX) * 0.01 -
-          Math.abs(parentSettlement.y - candidateY) * 0.01;
+          getSettlementWrappedManhattanDistance(parentSettlement.x, parentSettlement.y, candidateX, candidateY) * 0.01;
 
         if (score > bestScore) {
           bestScore = score;
