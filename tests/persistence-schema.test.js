@@ -38,10 +38,16 @@ assert.ok(
   manifest.indexOf("js/systems/persistence-config.js") < manifest.indexOf("js/systems/persistence-restore-entities.js"),
   "persistence config schema should load before restore applies save config"
 );
+assert.ok(manifest.includes("js/ui/dom-refs.js"), "manifest should load DOM refs");
+assert.ok(
+  manifest.indexOf("js/ui/dom-refs.js") < manifest.indexOf("js/systems/state.js"),
+  "DOM refs should load before state consumes canvas dimensions"
+);
 
 const restoreEntitiesSource = read("js/systems/persistence-restore-entities.js");
 const saveDataSource = read("js/systems/persistence-save-data.js");
 const stateSource = read("js/systems/state.js");
+const domRefsSource = read("js/ui/dom-refs.js");
 assert.strictEqual(
   restoreEntitiesSource.indexOf("function(value)" + " { return value; }"),
   -1,
@@ -49,18 +55,91 @@ assert.strictEqual(
 );
 assert.strictEqual(saveDataSource.indexOf("legacy" + "ConfigSchema"), -1, "new saves should not carry the old full config blob");
 assert.ok(saveDataSource.indexOf("config: createSaveConfigDelta()") >= 0, "new saves should store delta config");
+assert.strictEqual(stateSource.indexOf("document.getElementById"), -1, "state.js should not query DOM elements directly");
+assert.strictEqual(stateSource.indexOf("document.querySelectorAll"), -1, "state.js should not query DOM collections directly");
+assert.ok(domRefsSource.indexOf("document.getElementById") >= 0, "DOM references should live in dom-refs.js");
 
-const worldBlockStart = stateSource.indexOf("const world = {");
-const worldBlockEnd = stateSource.indexOf("\n};", worldBlockStart);
-assert.ok(worldBlockStart >= 0 && worldBlockEnd > worldBlockStart, "state.js should expose a world object literal");
+function makeElement() {
+  return {
+    width: 0,
+    height: 0,
+    style: {},
+    classList: { add: function() {}, remove: function() {}, toggle: function() {} },
+    querySelector: function() {
+      return makeElement();
+    },
+    addEventListener: function() {},
+    removeEventListener: function() {},
+    getContext: function() {
+      return {};
+    }
+  };
+}
 
-const worldKeys = Array.from(stateSource.slice(worldBlockStart, worldBlockEnd).matchAll(/^  ([A-Za-z0-9_]+):/gm)).map(function(match) {
-  return match[1];
-});
+const stateContext = {
+  console,
+  window: {
+    addEventListener: function() {}
+  },
+  document: {
+    getElementById: function() {
+      return makeElement();
+    },
+    querySelectorAll: function() {
+      return [];
+    }
+  },
+  Math,
+  Object
+};
+stateContext.window.window = stateContext.window;
+stateContext.window.document = stateContext.document;
+vm.createContext(stateContext);
+runFile(stateContext, "config.js");
+runFile(stateContext, "js/ui/dom-refs.js");
+runFile(stateContext, "js/systems/state.js");
+
+const worldKeys = vm.runInContext("Object.keys(world)", stateContext);
+const worldGroupNames = [
+  "simulation",
+  "spatial",
+  "flow",
+  "ui",
+  "camera",
+  "render",
+  "history",
+  "biology",
+  "settlementState",
+  "space"
+];
+assert.deepStrictEqual(
+  worldGroupNames.filter(function(groupName) {
+    return worldKeys.indexOf(groupName) < 0;
+  }),
+  [],
+  "world should expose grouped state buckets"
+);
+assert.strictEqual(vm.runInContext("world.simulation.tick = 12; world.tick", stateContext), 12, "flat world aliases should read grouped state");
+assert.strictEqual(vm.runInContext("world.tick = 34; world.simulation.tick", stateContext), 34, "flat world aliases should write grouped state");
+assert.strictEqual(
+  vm.runInContext("world.ui.isPaused = true; world.isPaused", stateContext),
+  true,
+  "legacy UI aliases should remain backward-compatible"
+);
 const saveKeys = new Set(Array.from(saveDataSource.matchAll(/^    ([A-Za-z0-9_]+):/gm)).map(function(match) {
   return match[1];
 }));
 const runtimeOnlyWorldKeys = new Set([
+  "simulation",
+  "spatial",
+  "flow",
+  "ui",
+  "camera",
+  "render",
+  "history",
+  "biology",
+  "settlementState",
+  "space",
   "organismBuckets",
   "organismsByLineage",
   "foodPositions",

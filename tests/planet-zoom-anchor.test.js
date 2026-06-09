@@ -75,6 +75,7 @@ const source = [
   "js/assets/registry.js",
   "js/assets/loader.js",
   "js/assets/sprite-sheet.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/utils.js",
   "js/core/world-grid.js",

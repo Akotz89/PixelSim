@@ -30,6 +30,7 @@ PS.core.manifest = [
   "js/core/data-loader.js",
   "js/assets/sprite-sheet.js",
   "js/assets/equivalence.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/systems/world.js",
   "js/core/utils.js",

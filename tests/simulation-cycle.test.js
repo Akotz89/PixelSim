@@ -50,6 +50,7 @@ const context = {
 const source = [
   "js/core/namespace.js",
   "config.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/prng.js",
   "js/core/utils.js",

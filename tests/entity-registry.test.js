@@ -94,6 +94,7 @@ const organismSource = [
   "js/core/namespace.js",
   "config.js",
   "js/core/entity-registry.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/utils.js",
   "js/core/trait-schema.js",
