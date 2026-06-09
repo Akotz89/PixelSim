@@ -1,3 +1,5 @@
+// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
+// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
 function updateStarMapState() {
   if (!updateStarMapReadiness()) {

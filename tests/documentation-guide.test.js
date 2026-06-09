@@ -14,6 +14,7 @@ const gettingStarted = read("docs/GETTING_STARTED.md");
 const conventions = read("docs/CODING_CONVENTIONS.md");
 const index = read("docs/index.md");
 const packageJson = JSON.parse(read("package.json"));
+const scaffoldingWarning = "SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.";
 
 [
   "core/",
@@ -67,5 +68,16 @@ const packageJson = JSON.parse(read("package.json"));
 assert.ok(index.includes("GETTING_STARTED.md"), "docs index should link the getting started guide");
 assert.ok(index.includes("CODING_CONVENTIONS.md"), "docs index should link coding conventions");
 assert.ok(packageJson.scripts.test.includes("tests/documentation-guide.test.js"), "npm test should include documentation guide checks");
+
+[
+  "js/sim/civilizations-orbital.js",
+  "js/sim/civilizations-probes.js",
+  "js/sim/civilizations-stars.js",
+  "js/sim/civilizations-empire.js"
+].forEach((file) => {
+  const source = read(file);
+  assert.ok(source.startsWith("// " + scaffoldingWarning), file + " should declare civilization scaffolding warning");
+  assert.ok(source.includes("Freeze new features here"), file + " should freeze new features until real gameplay prerequisites exist");
+});
 
 console.log("documentation guide checks passed");
