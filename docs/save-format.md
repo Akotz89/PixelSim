@@ -1,6 +1,6 @@
-# Pixeldarium Save Format — Version 1
+# Pixeldarium Save Format — Version 3
 
-**Current version**: `PIXELDARIUM_SAVE_VERSION = 1` (`js/systems/persistence-db.js`)
+**Current version**: `PIXELDARIUM_SAVE_VERSION = 3` (`js/systems/persistence-db.js`)
 **Config reference**: `CONFIG.SAVE_FORMAT_VERSION = 1` (config.js)  
 **Storage**: IndexedDB database `pixeldarium`, object store `saves`, key `latest`  
 **Export**: JSON file download via Export JSON button
@@ -10,13 +10,30 @@
 ```json
 {
   "id": "latest",
-  "version": 1,
+  "version": 3,
   "savedAt": "ISO-8601 timestamp",
   "worldWidth": 320,
   "worldHeight": 170,
   "tileSize": 5
 }
 ```
+
+## Config Delta
+
+`config` is schema versioned separately from the save envelope and stores only
+runtime constants that differ from `PS.config.captureDefaults()`:
+
+```json
+{
+  "schemaVersion": 1,
+  "constants": {
+    "STARTING_FOOD": 500
+  }
+}
+```
+
+Older camelCase config snapshots still load through `applySaveConfig()`, but new
+saves do not write the legacy full-config blob.
 
 ## Top-Level State Fields
 

@@ -119,22 +119,7 @@ function inheritOrganismTraits(parentTraits) {
 }
 
 function copyTraitsForLineage(traits) {
-  traits = normalizeOrganismTraits(traits);
-
-  return {
-    vision: traits.vision,
-    metabolism: traits.metabolism,
-    reproductionEnergy: traits.reproductionEnergy,
-    movementTendency: traits.movementTendency,
-    terrainAffinity: traits.terrainAffinity,
-    bodySize: traits.bodySize,
-    limbCount: traits.limbCount,
-    bodyShape: traits.bodyShape,
-    appendageType: traits.appendageType,
-    camouflage: traits.camouflage,
-    thermalTolerance: traits.thermalTolerance,
-    waterDependency: traits.waterDependency
-  };
+  return PS.core.traitSchema.copy(traits);
 }
 
 function allocateLineageId() {
@@ -320,86 +305,7 @@ function ensureOrganismTraits(organism) {
 }
 
 function normalizeOrganismTraits(traits) {
-  traits = traits || {};
-
-  if (typeof traits.vision !== "number") {
-    traits.vision = CONFIG.TRAIT_VISION_DEFAULT;
-  }
-
-  if (typeof traits.metabolism !== "number") {
-    traits.metabolism = CONFIG.TRAIT_METABOLISM_DEFAULT;
-  }
-
-  if (typeof traits.reproductionEnergy !== "number") {
-    traits.reproductionEnergy = CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT;
-  }
-
-  if (typeof traits.movementTendency !== "number") {
-    traits.movementTendency = CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT;
-  }
-
-  if (typeof traits.terrainAffinity !== "number") {
-    traits.terrainAffinity = CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT;
-  }
-
-  if (typeof traits.bodySize !== "number") {
-    traits.bodySize = CONFIG.TRAIT_BODY_SIZE_DEFAULT;
-  }
-
-  if (typeof traits.limbCount !== "number") {
-    traits.limbCount = CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
-  }
-
-  if (typeof traits.bodyShape !== "number") {
-    traits.bodyShape = CONFIG.TRAIT_BODY_SHAPE_DEFAULT;
-  }
-
-  if (typeof traits.appendageType !== "number") {
-    traits.appendageType = CONFIG.TRAIT_APPENDAGE_TYPE_DEFAULT;
-  }
-
-  if (typeof traits.camouflage !== "number") {
-    traits.camouflage = CONFIG.TRAIT_CAMOUFLAGE_DEFAULT;
-  }
-
-  if (typeof traits.thermalTolerance !== "number") {
-    traits.thermalTolerance = CONFIG.TRAIT_THERMAL_TOLERANCE_DEFAULT;
-  }
-
-  if (typeof traits.waterDependency !== "number") {
-    traits.waterDependency = CONFIG.TRAIT_WATER_DEPENDENCY_DEFAULT;
-  }
-
-  traits.vision = clamp(traits.vision, CONFIG.TRAIT_VISION_MIN, CONFIG.TRAIT_VISION_MAX);
-  traits.metabolism = clamp(traits.metabolism, CONFIG.TRAIT_METABOLISM_MIN, CONFIG.TRAIT_METABOLISM_MAX);
-  traits.reproductionEnergy = clamp(
-    traits.reproductionEnergy,
-    CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-    CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX
-  );
-  traits.movementTendency = clamp(
-    traits.movementTendency,
-    CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-    CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX
-  );
-  traits.terrainAffinity = clamp(
-    traits.terrainAffinity,
-    CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-    CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
-  );
-  traits.bodySize = clamp(traits.bodySize, CONFIG.TRAIT_BODY_SIZE_MIN, CONFIG.TRAIT_BODY_SIZE_MAX);
-  traits.limbCount = clamp(Math.round(traits.limbCount), CONFIG.TRAIT_LIMB_COUNT_MIN, CONFIG.TRAIT_LIMB_COUNT_MAX);
-  traits.bodyShape = clamp(Math.round(traits.bodyShape), CONFIG.TRAIT_BODY_SHAPE_MIN, CONFIG.TRAIT_BODY_SHAPE_MAX);
-  traits.appendageType = clamp(Math.round(traits.appendageType), CONFIG.TRAIT_APPENDAGE_TYPE_MIN, CONFIG.TRAIT_APPENDAGE_TYPE_MAX);
-  traits.camouflage = clamp(traits.camouflage, CONFIG.TRAIT_CAMOUFLAGE_MIN, CONFIG.TRAIT_CAMOUFLAGE_MAX);
-  traits.thermalTolerance = clamp(
-    traits.thermalTolerance,
-    CONFIG.TRAIT_THERMAL_TOLERANCE_MIN,
-    CONFIG.TRAIT_THERMAL_TOLERANCE_MAX
-  );
-  traits.waterDependency = clamp(traits.waterDependency, CONFIG.TRAIT_WATER_DEPENDENCY_MIN, CONFIG.TRAIT_WATER_DEPENDENCY_MAX);
-
-  return traits;
+  return PS.core.traitSchema.normalize(traits);
 }
 
 function makeOrganism(x, y, lineageId, typeId) {

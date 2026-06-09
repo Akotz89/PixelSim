@@ -32,22 +32,7 @@ function openPixeldariumDatabase() {
 }
 
 function copyOrganismTraitsForSave(traits) {
-  traits = normalizeOrganismTraits(traits);
-
-  return {
-    vision: traits.vision,
-    metabolism: traits.metabolism,
-    reproductionEnergy: traits.reproductionEnergy,
-    movementTendency: traits.movementTendency,
-    terrainAffinity: traits.terrainAffinity,
-    bodySize: traits.bodySize,
-    limbCount: traits.limbCount,
-    bodyShape: traits.bodyShape,
-    appendageType: traits.appendageType,
-    camouflage: traits.camouflage,
-    thermalTolerance: traits.thermalTolerance,
-    waterDependency: traits.waterDependency
-  };
+  return PS.core.traitSchema.copy(traits);
 }
 
 function copyOrganismForSave(organism) {
