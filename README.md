@@ -184,9 +184,19 @@ bash .codex/setup.sh
 ### Running Tests
 
 ```bash
-node tests/planet-zoom-anchor.test.js
-node tests/food-index.test.js
+npm test
 ```
+
+`npm test` is the CI gate and runs the fast Node-based unit and integration
+suite listed in `package.json`. Visual/browser captures stay separate because
+they require a rendered browser surface or screenshot review:
+
+```bash
+npm run test:visual
+node tests/planet-zoom-anchor.test.js
+```
+
+Run narrow tests while editing, then run `npm test` before handing work off.
 
 ### Architecture Documentation
 
