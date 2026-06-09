@@ -150,6 +150,9 @@ function loadStartupData() {
   PS.assets.startupLoader = loader;
 
   return Promise.all([
+    PS.core && PS.core.DataLoader && typeof PS.core.DataLoader.loadConfig === "function"
+      ? PS.core.DataLoader.loadConfig(loader)
+      : loader.loadJSON("data/config.json"),
     loader.loadJSON("data/entities.json"),
     loader.loadJSON("data/tiles.json"),
     loader.loadJSON("data/biomes.json"),
@@ -159,14 +162,15 @@ function loadStartupData() {
     loader.loadJSON("data/keybindings.json"),
     loader.loadJSON("data/audio.json")
   ]).then(function (results) {
-    var entitiesData = results[0];
-    var tilesData = results[1];
-    var biomesData = results[2];
-    var transitionsData = results[3];
-    var particlesData = results[4];
-    var animationsData = results[5];
-    var keybindingsData = results[6];
-    var audioData = results[7];
+    var configStatus = results[0];
+    var entitiesData = results[1];
+    var tilesData = results[2];
+    var biomesData = results[3];
+    var transitionsData = results[4];
+    var particlesData = results[5];
+    var animationsData = results[6];
+    var keybindingsData = results[7];
+    var audioData = results[8];
     var tileCount = 0;
     var biomeCount = Array.isArray(biomesData && biomesData.biomes) ? biomesData.biomes.length : 0;
     var transitionPairs = Array.isArray(transitionsData && transitionsData.pairs) ? transitionsData.pairs.length : 0;
@@ -208,6 +212,8 @@ function loadStartupData() {
 
     PS.assets.startupDataStatus = {
       loaded: true,
+      config: configStatus && configStatus.loaded === true,
+      configValues: configStatus && configStatus.valueCount ? configStatus.valueCount : 0,
       entities: PS.core && PS.core.EntityRegistry ? PS.core.EntityRegistry.list().length : 0,
       tiles: tileCount,
       biomes: biomeCount,

@@ -44,14 +44,48 @@ PS.debug.console = {
   },
   run: function(command) {
     var parts = String(command || "").trim().split(/\s+/);
+    var key;
+    var valueText;
+    var value;
 
-    if (parts[0] === "set" && parts.length >= 3 && Object.prototype.hasOwnProperty.call(CONFIG, parts[1])) {
-      CONFIG[parts[1]] = Number.isFinite(Number(parts[2])) ? Number(parts[2]) : parts.slice(2).join(" ");
-      PS.ui.notifications && PS.ui.notifications.show("Config set", parts[1], "info");
-      return CONFIG[parts[1]];
+    if (parts[0] === "set" && parts.length >= 3) {
+      key = parts[1].replace(/^CONFIG\./, "");
+      valueText = parts.slice(2).join(" ");
+      value = Number.isFinite(Number(valueText)) ? Number(valueText) : valueText;
+
+      if (PS.config && typeof PS.config.setConstant === "function") {
+        value = PS.config.setConstant(key, value);
+      } else if (Object.prototype.hasOwnProperty.call(CONFIG, key)) {
+        CONFIG[key] = value;
+      } else {
+        PS.ui.notifications && PS.ui.notifications.show("Config error", "Unknown CONFIG key", "warn");
+        return null;
+      }
+
+      PS.ui.notifications && PS.ui.notifications.show("Config set", "CONFIG." + key, "info");
+      return value;
     }
 
-    PS.ui.notifications && PS.ui.notifications.show("Debug console", "Use: set CONFIG_KEY value", "warn");
+    if (parts[0] === "get" && parts.length === 2) {
+      key = parts[1].replace(/^CONFIG\./, "");
+      if (Object.prototype.hasOwnProperty.call(CONFIG, key)) {
+        return CONFIG[key];
+      }
+      PS.ui.notifications && PS.ui.notifications.show("Config error", "Unknown CONFIG key", "warn");
+      return null;
+    }
+
+    if (parts[0] === "reset" && (parts[1] === "CONFIG" || parts[1] === "config")) {
+      if (PS.core && PS.core.DataLoader && PS.assets && PS.assets.startupLoader) {
+        return PS.core.DataLoader.loadConfig(PS.assets.startupLoader);
+      }
+      if (PS.config && typeof PS.config.resetConstants === "function") {
+        return PS.config.resetConstants();
+      }
+      return null;
+    }
+
+    PS.ui.notifications && PS.ui.notifications.show("Debug console", "Use: set/get/reset CONFIG", "warn");
     return null;
   }
 };
