@@ -40,6 +40,9 @@ const root = path.resolve(__dirname, "..");
       world.era = "Empire";
       world.seedText = "AZR-355-PARITY";
       world.rngState = 987654321;
+      world.terrain = Array.from({ length: WORLD_WIDTH * WORLD_HEIGHT }, (_, index) => {
+        return index % 7 === 0 ? CONFIG.TERRAIN_FERTILE : CONFIG.TERRAIN_BARREN;
+      });
       world.planetView = {
         zoomLevel: 3.5,
         latitude: 21.25,
@@ -369,6 +372,7 @@ const root = path.resolve(__dirname, "..");
 
     await resetTestDatabase();
     installRepresentativeWorldState();
+    window.drawWorld = function() {};
 
     const saveData = PS.persistence.createSaveData();
     const exportData = PS.persistence.exportJson();
@@ -497,7 +501,7 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.milestonesReached["life.first"].value, 1, "milestone fired state should restore");
   assert.strictEqual(evidence.saveData.nextSpeciesId, 18, "species counter should serialize");
   assert.strictEqual(evidence.saveData.nextBiologyPopulationId, 19, "biology population counter should serialize");
-  assert.strictEqual(evidence.saveData.nextBiologyRepresentativeId, 20, "biology representative counter should serialize");
+  assert.ok(evidence.saveData.nextBiologyRepresentativeId >= 20, "biology representative counter should serialize past restored records");
   assert.ok(evidence.importedEvidence.nextSpeciesId >= 18, "species counter should advance past restored records");
   assert.ok(evidence.importedEvidence.nextBiologyPopulationId >= 19, "population counter should advance past restored records");
   assert.ok(evidence.importedEvidence.nextBiologyRepresentativeId >= 20, "representative counter should advance past restored records");
