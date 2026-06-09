@@ -76,7 +76,7 @@ assert.ok(packageJson.scripts.test.includes("tests/documentation-guide.test.js")
   "js/sim/civilizations-empire.js"
 ].forEach((file) => {
   const source = read(file);
-  assert.ok(source.startsWith("// " + scaffoldingWarning), file + " should declare civilization scaffolding warning");
+  assert.ok(source.startsWith("\"use strict\";\n// " + scaffoldingWarning), file + " should declare civilization scaffolding warning after strict mode");
   assert.ok(source.includes("Freeze new features here"), file + " should freeze new features until real gameplay prerequisites exist");
 });
 

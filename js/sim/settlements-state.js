@@ -1,3 +1,4 @@
+"use strict";
 function ensureSettlementState() {
   if (!Array.isArray(world.settlements)) {
     world.settlements = [];

@@ -1,3 +1,4 @@
+"use strict";
 PS.render = PS.render || {};
 
 var webgpuPointLightsState = PS.render.webgpuPointLights && PS.render.webgpuPointLights.state

@@ -1,3 +1,4 @@
+"use strict";
 PS.eventTypes = PS.eventTypes || {};
 
 PS.eventTypes.MILESTONE_REACHED = "milestone.reached";

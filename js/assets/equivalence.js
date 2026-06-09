@@ -1,3 +1,4 @@
+"use strict";
 PS.assets = PS.assets || {};
 PS.assets.equivalence = PS.assets.equivalence || {};
 

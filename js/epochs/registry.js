@@ -1,3 +1,4 @@
+"use strict";
 PS.epochs = {
   entries: {},
   order: [],

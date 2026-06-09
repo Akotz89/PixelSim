@@ -1,3 +1,4 @@
+"use strict";
 PS.render = PS.render || {};
 
 PS.atlas = PS.atlas || {

@@ -1,3 +1,4 @@
+"use strict";
 // ── Spatial Tile Grid (AZR-491) ────────────────────────────────────
 // Intrusive doubly-linked list per tile. O(1) insert/remove/move.
 // Replaces the string-keyed hash-bucket spatial index.

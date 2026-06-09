@@ -1,4 +1,4 @@
-
+"use strict";
 function updateEventLog() {
   var events = Array.isArray(world.eventLog) ? world.eventLog : [];
 

@@ -9,6 +9,18 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
+function collectJavaScriptFiles(dir, files) {
+  fs.readdirSync(path.join(root, dir), { withFileTypes: true }).forEach(function(entry) {
+    const relativePath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      collectJavaScriptFiles(relativePath, files);
+    } else if (entry.isFile() && relativePath.endsWith(".js")) {
+      files.push(relativePath);
+    }
+  });
+}
+
 const indexSource = read("index.html");
 const namespaceSource = read("js/core/namespace.js");
 const scriptSources = Array.from(indexSource.matchAll(/<script\s+src="([^"]+)"/g)).map(function(match) {
@@ -55,6 +67,12 @@ manifest.forEach(function(scriptPath) {
   seen[scriptPath] = true;
   assert.ok(scriptPath.indexOf("js/legacy/") === -1, "manifest should not include legacy runtime script " + scriptPath);
   assert.ok(fs.existsSync(path.join(root, scriptPath)), "manifest script should exist: " + scriptPath);
+});
+
+const strictModeFiles = [];
+collectJavaScriptFiles("js", strictModeFiles);
+strictModeFiles.forEach(function(file) {
+  assert.ok(read(file).startsWith("\"use strict\";"), file + " should start with strict mode");
 });
 
 console.log("script manifest checks passed");

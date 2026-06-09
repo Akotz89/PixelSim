@@ -1,3 +1,4 @@
+"use strict";
 function setPersistenceStatus(message, isError) {
   setElementText(persistenceStatus, message);
   persistenceStatus.classList.toggle("error", Boolean(isError));

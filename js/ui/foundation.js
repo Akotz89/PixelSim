@@ -1,3 +1,4 @@
+"use strict";
 function updateHud() {
   var fertilePercent = world.planetSummary
     ? Math.round(world.planetSummary.fertileLandPercent)

@@ -1,3 +1,4 @@
+"use strict";
 function getInspectSurfacePosition(tileX, tileY) {
   var surfacePosition = world.inspectedSurface;
 

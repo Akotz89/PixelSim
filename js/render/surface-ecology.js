@@ -1,3 +1,4 @@
+"use strict";
 PS.render = PS.render || {};
 PS.render.surface = PS.render.surface || {};
 PS.render.surface.ecology = PS.render.surface.ecology || {

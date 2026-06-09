@@ -1,3 +1,4 @@
+"use strict";
 // Pixeldarium - planet.js
 // Earth-scale projection helpers for the planet-sized simulation map.
 

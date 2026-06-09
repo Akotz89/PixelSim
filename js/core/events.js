@@ -1,3 +1,4 @@
+"use strict";
 PS.events = PS.events || {};
 
 PS.events.listeners = PS.events.listeners || {};

@@ -1,3 +1,4 @@
+"use strict";
 PS.layers = {
   entries: {},
   order: [],

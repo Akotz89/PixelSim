@@ -1,3 +1,4 @@
+"use strict";
 PS.systems = PS.systems || {};
 
 function definePooledNumber(target, name, arrays, key, index) {

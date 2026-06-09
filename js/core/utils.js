@@ -1,3 +1,4 @@
+"use strict";
 function normalizeSeedText(seedValue) {
   var seedText = String(seedValue == null ? "" : seedValue).trim();
   return seedText || String(CONFIG.DEFAULT_SEED || "PIXELDARIUM");

@@ -1,3 +1,4 @@
+"use strict";
 PS.debug = PS.debug || {};
 
 PS.debug.overlays = {

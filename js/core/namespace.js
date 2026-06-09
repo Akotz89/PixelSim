@@ -1,3 +1,4 @@
+"use strict";
 var PS = window.PS || {};
 
 PS.meta = PS.meta || {};

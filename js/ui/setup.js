@@ -1,4 +1,4 @@
-
+"use strict";
 window.setupControls = function() {
   var tabButtons = menuTabs.querySelectorAll("[data-menu-target]");
 

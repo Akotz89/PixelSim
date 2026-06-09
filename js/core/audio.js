@@ -1,3 +1,4 @@
+"use strict";
 PS.audio = PS.audio || {
   manifest: { music: {}, ambient: {}, sfx: {}, events: {}, biomes: {} },
   context: null,

@@ -1,3 +1,4 @@
+"use strict";
 // ── Modifier Engine (AZR-493) ──────────────────────────────────────
 // Composable additive/multiplicative stat modifier system.
 //

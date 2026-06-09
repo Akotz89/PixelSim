@@ -1,3 +1,4 @@
+"use strict";
 PS.config = PS.config || {};
 
 PS.config.defaults = PS.config.defaults || {};

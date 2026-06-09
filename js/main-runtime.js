@@ -1,3 +1,4 @@
+"use strict";
 function reportRuntimeError(error) {
   var box = document.getElementById("debug-output");
   var message = error && error.stack ? error.stack : String(error);

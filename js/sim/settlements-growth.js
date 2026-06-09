@@ -1,4 +1,4 @@
-
+"use strict";
 function normalizeSettlementGrowth(settlement) {
   settlement.storedFood = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.storedFood, 0)));
   settlement.development = Math.max(0, restoreSettlementGrowthNumber(settlement.development, 0));

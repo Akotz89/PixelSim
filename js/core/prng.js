@@ -1,3 +1,4 @@
+"use strict";
 PS.core = PS.core || {};
 
 PS.core.PRNG_MASK_64 = (1n << 64n) - 1n;

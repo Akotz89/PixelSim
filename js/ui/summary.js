@@ -1,4 +1,4 @@
-
+"use strict";
 function getDistanceLabel(distance, distanceKm) {
   if (!Number.isFinite(distance)) {
     return "-";

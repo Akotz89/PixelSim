@@ -1,4 +1,4 @@
-
+"use strict";
 function makeSettlement(lineage, organisms) {
   var center = getLineageCenter(organisms);
   return makeSettlementAt(lineage.id, center.x, center.y, {

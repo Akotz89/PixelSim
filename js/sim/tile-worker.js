@@ -1,3 +1,4 @@
+"use strict";
 // ── Staggered Tile Worker (AZR-492) ────────────────────────────────
 // Distributes tile-based work evenly across frames using a persistent
 // cursor and pre-shuffled visitation order.

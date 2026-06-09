@@ -1,3 +1,4 @@
+"use strict";
 // ── RANMAP: Deterministic Per-Tile Random (AZR-499) ────────────────
 // Precomputed random value per tile for visual variety.
 // Used for sprite variant selection, sub-pixel jitter, rotation/flip, and

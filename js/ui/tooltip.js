@@ -1,3 +1,4 @@
+"use strict";
 PS.ui = PS.ui || {};
 
 PS.ui.tooltip = PS.ui.tooltip || {

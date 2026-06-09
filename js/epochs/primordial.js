@@ -1,3 +1,4 @@
+"use strict";
 PS.epochs = PS.epochs || {};
 
 var PRIMORDIAL_FIELD_WIDTH = 32;

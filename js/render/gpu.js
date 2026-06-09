@@ -1,3 +1,4 @@
+"use strict";
 PS.gpu = PS.gpu || {};
 
 PS.gpu.required = true;

@@ -1,3 +1,4 @@
+"use strict";
 function getPlanetLocalReferenceGridInfo(targetPixels) {
   return PS.render.reference.getLocalGridInfo(targetPixels);
 }

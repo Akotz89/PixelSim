@@ -1,4 +1,4 @@
-
+"use strict";
 function getOrganismTravelKmPerTick() {
   return Math.max(0, Number(CONFIG.ORGANISM_TRAVEL_KM_PER_DAY) || 0) *
     Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0);

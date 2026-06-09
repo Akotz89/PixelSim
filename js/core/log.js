@@ -1,3 +1,4 @@
+"use strict";
 PS.log = function (category, level, message, details) {
   var normalizedCategory = String(category || "core");
   var normalizedLevel = String(level || "INFO").toUpperCase();

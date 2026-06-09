@@ -1,4 +1,4 @@
-
+"use strict";
 function getEcosystemRecoveryAction(summary) {
   if (!summary || !summary.stabilityProfile) {
     return "observe";

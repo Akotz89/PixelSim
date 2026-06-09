@@ -1,4 +1,4 @@
-
+"use strict";
 function transferSettlementRouteFood(route, parentSettlement, childSettlement) {
   var transferInterval = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_ROUTE_TRANSFER_INTERVAL) || 1));
 

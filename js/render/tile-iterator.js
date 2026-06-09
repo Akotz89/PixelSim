@@ -1,3 +1,4 @@
+"use strict";
 // ── Viewport Tile Iterator ─────────────────────────────────────────
 // Zero-allocation row-by-row tile iterator for render passes.
 // Walks only on-screen tiles, providing tile coords and screen positions.

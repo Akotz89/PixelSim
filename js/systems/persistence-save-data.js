@@ -1,4 +1,4 @@
-
+"use strict";
 function getProbeMissionsForSave() {
   if (typeof updateProbeMissionReadiness === "function") {
     updateProbeMissionReadiness();

@@ -1,3 +1,4 @@
+"use strict";
 // Pixeldarium - terrain.js
 // Terrain generation and fertile land helpers.
 

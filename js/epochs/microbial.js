@@ -1,3 +1,4 @@
+"use strict";
 PS.epochs = PS.epochs || {};
 
 var MICROBIAL_FIELD_WIDTH = 40;

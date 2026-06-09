@@ -1,3 +1,4 @@
+"use strict";
 PS.systems = PS.systems || {};
 
 PS.deepTime = (function() {

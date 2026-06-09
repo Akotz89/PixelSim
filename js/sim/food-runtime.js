@@ -1,3 +1,4 @@
+"use strict";
 function makeFood(x, y) {
   var tileX = getWrappedWorldX(x);
   var tileY = getClampedWorldY(y);

@@ -1,3 +1,4 @@
+"use strict";
 PS.init = function() {
   if (PS.isInitialized) {
     return false;

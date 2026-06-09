@@ -1,3 +1,4 @@
+"use strict";
 PS.sim = PS.sim || {};
 
 var REPRESENTATIVE_HISTORY_LIMIT = 12;

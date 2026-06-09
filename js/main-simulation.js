@@ -1,4 +1,4 @@
-
+"use strict";
 function compareSimulationAlerts(left, right) {
   if (left.priority !== right.priority) {
     return left.priority - right.priority;

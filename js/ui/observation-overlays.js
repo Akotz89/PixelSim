@@ -1,3 +1,4 @@
+"use strict";
 PS.ui = PS.ui || {};
 PS.render = PS.render || {};
 PS.render.overlays = PS.render.overlays || {

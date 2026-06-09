@@ -1,3 +1,4 @@
+"use strict";
 function getGeologyConfig() {
   var constants = typeof CONFIG !== "undefined" ? CONFIG : {};
 

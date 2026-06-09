@@ -1,3 +1,4 @@
+"use strict";
 PS.math = PS.math || {};
 
 PS.math.normalizeSeedText = function (seedValue) {

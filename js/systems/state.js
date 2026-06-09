@@ -1,3 +1,4 @@
+"use strict";
 const canvas = document.getElementById("game-webgpu");
 
 const gameWrap = document.getElementById("game-wrap");

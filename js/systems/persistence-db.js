@@ -1,3 +1,4 @@
+"use strict";
 const PIXELDARIUM_DB_NAME = "pixeldarium";
 const PIXELDARIUM_DB_VERSION = 1;
 const PIXELDARIUM_SAVE_STORE = "saves";

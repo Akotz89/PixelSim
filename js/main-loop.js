@@ -1,4 +1,4 @@
-
+"use strict";
 function toggleSimulationPaused() {
   return setSimulationPaused(!world.isPaused);
 }

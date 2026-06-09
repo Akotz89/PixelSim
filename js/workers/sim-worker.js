@@ -1,3 +1,4 @@
+"use strict";
 self.onmessage = function(event) {
   var message = event.data || {};
 

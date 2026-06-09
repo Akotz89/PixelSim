@@ -1,4 +1,4 @@
-
+"use strict";
 function getPlanetSurfaceChunkParentAddress(address, parentZoomLevelIndex) {
   return PS.render.surface.getChunkParentAddress(address, parentZoomLevelIndex);
 }

@@ -1,3 +1,4 @@
+"use strict";
 PS.worldGrid = PS.worldGrid || {};
 
 PS.worldGrid.getWrappedX = function (x) {

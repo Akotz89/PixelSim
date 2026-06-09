@@ -1,3 +1,4 @@
+"use strict";
 // ── Trait Registry (AZR-493) ───────────────────────────────────────
 // Data-driven trait definitions replacing the 48 CONFIG.TRAIT_* entries.
 // Each trait is declared once; the registry provides defaults, ranges,

@@ -1,3 +1,4 @@
+"use strict";
 PS.render = PS.render || {};
 PS.render.pipeline = PS.render.pipeline || {};
 PS.render.pipeline.layers = PS.render.pipeline.layers || [];

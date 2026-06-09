@@ -1,3 +1,4 @@
+"use strict";
 function varyTraitValue(defaultValue, minValue, maxValue, stepValue) {
   return clamp(defaultValue + (randomInt(3) - 1) * stepValue, minValue, maxValue);
 }

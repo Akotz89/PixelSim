@@ -1,4 +1,4 @@
-
+"use strict";
 function getTerrainRidgedNoise(x, y, scale, seedOffset) {
   var base = getTerrainFractalNoise(x, y, scale, seedOffset, 4, 0.54);
   var ridge = 1 - Math.abs(base * 2 - 1);

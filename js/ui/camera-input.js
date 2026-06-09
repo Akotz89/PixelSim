@@ -1,3 +1,4 @@
+"use strict";
 var planetDragState = {
   active: false,
   moved: false,

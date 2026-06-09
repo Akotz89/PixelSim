@@ -1,4 +1,4 @@
-
+"use strict";
 function saveWorldToIndexedDB() {
   return openPixeldariumDatabase().then(function(db) {
     return new Promise(function(resolve, reject) {

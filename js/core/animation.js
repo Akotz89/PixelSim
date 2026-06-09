@@ -1,3 +1,4 @@
+"use strict";
 PS.animation = PS.animation || {};
 
 PS.animation.AnimationDefinition = {

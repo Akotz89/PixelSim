@@ -1,3 +1,4 @@
+"use strict";
 PS.render = PS.render || {};
 PS.render.lod = PS.render.lod || {};
 

@@ -1,3 +1,4 @@
+"use strict";
 PS.camera = PS.camera || {};
 
 PS.camera.unified = PS.camera.unified || {

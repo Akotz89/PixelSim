@@ -1,3 +1,4 @@
+"use strict";
 PS.atlas = PS.atlas || {};
 
 PS.atlas.getTerrainDetailColor = function (palette, kind) {

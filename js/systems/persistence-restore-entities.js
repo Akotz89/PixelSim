@@ -1,4 +1,4 @@
-
+"use strict";
 function restorePlanetaryBodies(bodies) {
   if (!Array.isArray(bodies)) {
     return [];

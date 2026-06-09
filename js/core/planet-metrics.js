@@ -1,3 +1,4 @@
+"use strict";
 PS.planet = PS.planet || {};
 PS.planet.metrics = PS.planet.metrics || {};
 

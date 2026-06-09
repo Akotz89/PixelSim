@@ -1,3 +1,4 @@
+"use strict";
 PS.sim = PS.sim || {};
 
 PS.sim.organisms = {

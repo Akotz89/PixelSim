@@ -1,4 +1,4 @@
-
+"use strict";
 function applyWorldSaveData(saveData) {
   var readySaveData = PS.systems.saveMigration.migrate(saveData);
 

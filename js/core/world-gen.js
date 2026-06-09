@@ -1,3 +1,4 @@
+"use strict";
 PS.core = PS.core || {};
 PS.core.worldGen = PS.core.worldGen || {};
 

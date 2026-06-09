@@ -1,3 +1,4 @@
+"use strict";
 PS.assert = function (condition, message) {
   if (condition) {
     return;

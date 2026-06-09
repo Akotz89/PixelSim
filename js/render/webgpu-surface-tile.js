@@ -1,3 +1,4 @@
+"use strict";
 PS.render = PS.render || {};
 
 var webgpuSurfaceTileState = PS.render.webgpuSurfaceTile && PS.render.webgpuSurfaceTile.state

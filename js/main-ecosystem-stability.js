@@ -1,4 +1,4 @@
-
+"use strict";
 function recordBalanceTransition(previousSnapshot, currentSnapshot, key, target, label, valueKey) {
   if (
     previousSnapshot[key] !== "unknown" &&

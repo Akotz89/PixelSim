@@ -1,4 +1,4 @@
-
+"use strict";
 function formatSignedNumber(value, decimals) {
   var numberValue = Number(value) || 0;
   var fixedValue = Math.abs(numberValue).toFixed(decimals);

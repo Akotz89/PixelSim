@@ -1,4 +1,4 @@
-
+"use strict";
 function findNearestFood(organism, searchRadius) {
   return findNearestFoodInBuckets(organism.x, organism.y, searchRadius);
 }

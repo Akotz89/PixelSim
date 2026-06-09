@@ -1,3 +1,4 @@
+"use strict";
 PS.camera = PS.camera || {};
 PS.camera.stats = PS.camera.stats || {
   lastZoomFrom: 0,

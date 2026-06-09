@@ -1,4 +1,4 @@
-
+"use strict";
 function removeFoodInRadius(x, y, radius, limit) {
   var foods = collectFoodInRadius(x, y, radius, limit);
 
