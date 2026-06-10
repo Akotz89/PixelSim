@@ -214,6 +214,13 @@ const rockMountainVariants = [
   { id: "mossy-lichen", label: "Mossy lichen", snow: 0, moss: 0.52, crackBias: 0.26, ledges: true, base: [76, 78, 73], high: [126, 126, 116], low: [39, 43, 40] }
 ];
 
+const waterTileVariants = [
+  { id: "deep-swell", label: "Deep water swell", depth: "deep", base: [29, 63, 101], high: [68, 116, 151], low: [12, 31, 67], foam: 0.02, glint: 0.12, waveBend: 0 },
+  { id: "deep-glint", label: "Deep water glint", depth: "deep", base: [34, 75, 116], high: [84, 134, 164], low: [17, 39, 78], foam: 0.03, glint: 0.22, waveBend: 3 },
+  { id: "shallow-gradient", label: "Shallow depth gradient", depth: "shallow", base: [62, 128, 151], high: [117, 179, 190], low: [35, 88, 124], foam: 0.11, glint: 0.12, waveBend: 5 },
+  { id: "shore-foam", label: "Shore foam", depth: "shallow", base: [76, 145, 160], high: [151, 204, 204], low: [42, 99, 128], foam: 0.22, glint: 0.16, waveBend: 8 }
+];
+
 function renderRockMountainExport() {
   const exportColumns = rockMountainVariants.length;
   const exportWidth = tileSize * exportColumns;
@@ -273,6 +280,78 @@ function renderRockMountainExport() {
           r = mix(r, variant.low[0], 0.18);
           g = mix(g, variant.low[1], 0.18);
           b = mix(b, variant.low[2], 0.18);
+        }
+
+        pixels[offset] = clampByte(r);
+        pixels[offset + 1] = clampByte(g);
+        pixels[offset + 2] = clampByte(b);
+        pixels[offset + 3] = 255;
+      }
+    }
+  });
+
+  return {
+    width: exportWidth,
+    height: exportHeight,
+    pixels
+  };
+}
+
+function renderWaterExport() {
+  const exportColumns = waterTileVariants.length;
+  const exportWidth = tileSize * exportColumns;
+  const exportHeight = tileSize;
+  const pixels = Buffer.alloc(exportWidth * exportHeight * 4);
+
+  waterTileVariants.forEach((variant, variantIndex) => {
+    for (let y = 0; y < tileSize; y++) {
+      for (let x = 0; x < tileSize; x++) {
+        const noise = hash(x, y, 1300 + variantIndex * 131);
+        const px = variantIndex * tileSize + x;
+        const offset = (y * exportWidth + px) * 4;
+        const gradient = variant.depth === "shallow" ? y / (tileSize - 1) : 0.15;
+        const wave = Math.sin((x + variant.waveBend) * 0.62 + y * 0.28) + Math.sin(x * 0.18 - y * 0.43 + variantIndex);
+        const crest = wave > 1.15 || ((x + Math.floor(y / 2) + variantIndex * 3) % 13 < 2 && wave > 0.4);
+        const glint = ((noise >>> 8) & 255) / 255 < variant.glint && wave > 0.75;
+        const foam = variant.depth === "shallow" && (
+          y < 6 + variantIndex ||
+          ((x + y * 3 + variantIndex * 5) % 17 < 2 && y < 18) ||
+          ((noise & 255) / 255 < variant.foam && wave > 0.2)
+        );
+        let amount = 0.22 + (((noise >>> 16) & 63) / 255);
+        let target = wave > 0.25 ? variant.high : variant.low;
+        let r = mix(variant.base[0], target[0], amount);
+        let g = mix(variant.base[1], target[1], amount);
+        let b = mix(variant.base[2], target[2], amount);
+
+        if (gradient) {
+          r = mix(r, variant.high[0], gradient * 0.28);
+          g = mix(g, variant.high[1], gradient * 0.28);
+          b = mix(b, variant.high[2], gradient * 0.28);
+        }
+
+        if (crest) {
+          r = mix(r, variant.high[0], 0.36);
+          g = mix(g, variant.high[1], 0.36);
+          b = mix(b, variant.high[2], 0.36);
+        }
+
+        if (glint) {
+          r = mix(r, 181, 0.42);
+          g = mix(g, 218, 0.42);
+          b = mix(b, 220, 0.42);
+        }
+
+        if (foam) {
+          r = mix(r, 220, 0.58);
+          g = mix(g, 238, 0.58);
+          b = mix(b, 232, 0.58);
+        }
+
+        if (x === 0 || y === 0 || x === tileSize - 1 || y === tileSize - 1) {
+          r = mix(r, variant.low[0], 0.12);
+          g = mix(g, variant.low[1], 0.12);
+          b = mix(b, variant.low[2], 0.12);
         }
 
         pixels[offset] = clampByte(r);
@@ -422,6 +501,7 @@ fs.writeFileSync(
 );
 
 const rockMountainExport = renderRockMountainExport();
+const waterTileExport = renderWaterExport();
 const rockMountainMeta = {
   type: "grid",
   tileWidth: tileSize,
@@ -437,6 +517,22 @@ const rockMountainMeta = {
   sourceIssue: "AZR-522",
   notes: "Standalone candidate export for rock/mountain terrain tiles. Runtime split-atlas terrain sheets remain under assets/terrain/."
 };
+const waterTileMeta = {
+  type: "grid",
+  tileWidth: tileSize,
+  tileHeight: tileSize,
+  columns: waterTileVariants.length,
+  rows: 1,
+  names: waterTileVariants.map((variant) => "terrain.water." + variant.id),
+  variants: waterTileVariants.map((variant, index) => ({
+    id: "terrain.water." + variant.id,
+    label: variant.label,
+    depth: variant.depth,
+    rect: [index * tileSize, 0, tileSize, tileSize]
+  })),
+  sourceIssue: "AZR-523",
+  notes: "Standalone candidate export for water terrain tiles. Runtime split-atlas terrain sheets remain under assets/terrain/."
+};
 
 fs.writeFileSync(
   path.join(terrainExportDir, "rock-tiles.png"),
@@ -446,9 +542,22 @@ fs.writeFileSync(
   path.join(terrainExportDir, "rock-tiles-atlas.json"),
   JSON.stringify(rockMountainMeta, null, 2) + "\n"
 );
+fs.writeFileSync(
+  path.join(terrainExportDir, "water-tiles.png"),
+  encodePng(waterTileExport.pixels, waterTileExport.width, waterTileExport.height)
+);
+fs.writeFileSync(
+  path.join(terrainExportDir, "water-tiles-atlas.json"),
+  JSON.stringify(waterTileMeta, null, 2) + "\n"
+);
 
 console.log("terrain biome atlases built", JSON.stringify({
   atlases: atlases.map((entry) => entry.file),
   manifestSheets: Object.keys(sheetAliases),
-  exports: ["exports/terrain/rock-tiles.png", "exports/terrain/rock-tiles-atlas.json"]
+  exports: [
+    "exports/terrain/rock-tiles.png",
+    "exports/terrain/rock-tiles-atlas.json",
+    "exports/terrain/water-tiles.png",
+    "exports/terrain/water-tiles-atlas.json"
+  ]
 }));

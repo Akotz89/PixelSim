@@ -9,15 +9,19 @@ const grassMetaPath = path.join(root, "assets/terrain/grass.json");
 const grassPngPath = path.join(root, "assets/terrain/grass.png");
 const rockExportMetaPath = path.join(root, "exports/terrain/rock-tiles-atlas.json");
 const rockExportPngPath = path.join(root, "exports/terrain/rock-tiles.png");
+const waterExportMetaPath = path.join(root, "exports/terrain/water-tiles-atlas.json");
+const waterExportPngPath = path.join(root, "exports/terrain/water-tiles.png");
 const handoffManifestPath = path.join(root, "assets/pixeldarium-equivalence/handoff-manifest.json");
 const loaderSource = fs.readFileSync(path.join(root, "js/assets/loader.js"), "utf8");
 const spriteSheetSource = fs.readFileSync(path.join(root, "js/assets/sprite-sheet.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const grassMeta = JSON.parse(fs.readFileSync(grassMetaPath, "utf8"));
 const rockExportMeta = JSON.parse(fs.readFileSync(rockExportMetaPath, "utf8"));
+const waterExportMeta = JSON.parse(fs.readFileSync(waterExportMetaPath, "utf8"));
 const handoffManifest = JSON.parse(fs.readFileSync(handoffManifestPath, "utf8"));
 const png = fs.readFileSync(grassPngPath);
 const rockExportPng = fs.readFileSync(rockExportPngPath);
+const waterExportPng = fs.readFileSync(waterExportPngPath);
 const terrainAtlasExpectations = {
   grass: [88, 138, 66],
   stone: [72, 72, 72],
@@ -95,6 +99,21 @@ function averageRgb(raw, size, x0, y0, w, h) {
   }
 
   return total.map((channel) => channel / Math.max(1, count));
+}
+
+function maxRgb(raw, size, x0, y0, w, h) {
+  const max = [0, 0, 0];
+
+  for (let y = y0; y < y0 + h; y += 1) {
+    for (let x = x0; x < x0 + w; x += 1) {
+      const rgb = pixelRgb(raw, size, x, y);
+      max[0] = Math.max(max[0], rgb[0]);
+      max[1] = Math.max(max[1], rgb[1]);
+      max[2] = Math.max(max[2], rgb[2]);
+    }
+  }
+
+  return max;
 }
 
 function assertNearRgb(actual, expected, label) {
@@ -179,6 +198,32 @@ const snowBase = averageRgb(rockExportRaw, rockExportSize, 96, 23, 32, 6);
 assert.ok(snowTop[0] > snowBase[0] + 55 && snowTop[2] > snowBase[2] + 45, "snow-capped variant should have a bright cool snow top over rock base");
 const mossTile = averageRgb(rockExportRaw, rockExportSize, 160, 8, 32, 18);
 assert.ok(mossTile[1] > mossTile[0] + 6 && mossTile[1] > mossTile[2] + 12, "mossy variant should have readable green lichen patches");
+
+const waterExportSize = pngSize(waterExportPng);
+const waterExportRaw = inflatePng(waterExportPng);
+assert.deepStrictEqual(waterExportSize, { width: 128, height: 32 }, "AZR-523 water export should contain four 32x32 terrain tiles");
+assert.strictEqual(waterExportMeta.type, "grid", "AZR-523 water export atlas should use grid metadata");
+assert.strictEqual(waterExportMeta.tileWidth, 32, "AZR-523 water export tile width should be 32");
+assert.strictEqual(waterExportMeta.tileHeight, 32, "AZR-523 water export tile height should be 32");
+assert.strictEqual(waterExportMeta.columns, 4, "AZR-523 water export should include 4 variants");
+assert.strictEqual(waterExportMeta.rows, 1, "AZR-523 water export should use one terrain row");
+assert.deepStrictEqual(waterExportMeta.names, waterExportMeta.variants.map((variant) => variant.id), "AZR-523 water export names should match variant IDs");
+assert.deepStrictEqual(waterExportMeta.variants.map((variant) => variant.depth), ["deep", "deep", "shallow", "shallow"], "AZR-523 water export should include two deep and two shallow variants");
+assert.deepStrictEqual(waterExportMeta.variants.map((variant) => variant.rect), [
+  [0, 0, 32, 32],
+  [32, 0, 32, 32],
+  [64, 0, 32, 32],
+  [96, 0, 32, 32]
+], "AZR-523 water export rects should cover the four source tiles");
+assert.strictEqual(waterExportMeta.sourceIssue, "AZR-523", "AZR-523 water export should identify its Linear source");
+const deepWater = averageRgb(waterExportRaw, waterExportSize, 0, 8, 64, 18);
+const shallowWater = averageRgb(waterExportRaw, waterExportSize, 64, 8, 64, 18);
+assert.ok(deepWater[2] > deepWater[1] && deepWater[1] > deepWater[0], "deep water variants should stay blue-dominant");
+assert.ok(shallowWater[0] > deepWater[0] + 25 && shallowWater[1] > deepWater[1] + 35, "shallow water variants should be visibly lighter than deep water");
+const deepGlintMax = maxRgb(waterExportRaw, waterExportSize, 32, 0, 32, 32);
+assert.ok(deepGlintMax[1] > 145 && deepGlintMax[2] > 165, "deep glint variant should include bright wave highlights");
+const shoreFoam = averageRgb(waterExportRaw, waterExportSize, 96, 1, 32, 8);
+assert.ok(shoreFoam[0] > shallowWater[0] + 45 && shoreFoam[1] > shallowWater[1] + 25, "shore variant should include bright foam pixels");
 
 assert.strictEqual(handoffManifest.runtimeUse, true, "accepted visual handoff should be runtime-owned");
 assert.strictEqual(handoffManifest.acceptedSheetCount, 15, "visual handoff should include accepted sheets only");
