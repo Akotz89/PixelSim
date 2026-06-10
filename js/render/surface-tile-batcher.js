@@ -85,6 +85,10 @@ PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample,
 };
 
 PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biome, sample, tileX, tileY) {
+  if (sample && sample.acceptedTerrainCellName) {
+    return String(sample.acceptedTerrainCellName);
+  }
+
   var surface = String(sample && sample.detail && sample.detail.surface || "").toLowerCase();
   var signals = sample && sample.detail && sample.detail.materialSignals ? sample.detail.materialSignals : {};
   var variant = PS.ranmap && PS.ranmap.variant ? PS.ranmap.variant(tileX, tileY, 2) : Math.abs((Math.round(tileX) + Math.round(tileY)) % 2);
@@ -217,6 +221,7 @@ PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample
   var selected;
   var transitionPhase = Math.abs(Math.round(Number(tileX) || 0) + Math.round(Number(tileY) || 0)) % 256;
   var terrainPhase = Math.abs(Math.round(Number(tileX) || 0) * 3 + Math.round(Number(tileY) || 0) * 5) % 256;
+  var hasAcceptedTerrainCell = Boolean(sample && sample.acceptedTerrainCellName);
 
   if (transitionCellName && transitionPhase === 0 && PS.assets && PS.assets.equivalence && typeof PS.assets.equivalence.selectCell === "function") {
     selected = PS.assets.equivalence.selectCell("transitions", transitionCellName, "terrainTransition", fallbackCell && fallbackCell.name ? fallbackCell.name : "");
@@ -229,11 +234,11 @@ PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample
   }
 
   if (
-    PS.render.surfaceTileBatcher.canSelectAcceptedTerrainMaterial(sample) &&
+    (hasAcceptedTerrainCell || PS.render.surfaceTileBatcher.canSelectAcceptedTerrainMaterial(sample)) &&
     PS.assets &&
     PS.assets.equivalence &&
     typeof PS.assets.equivalence.selectCell === "function" &&
-    terrainPhase === 0
+    (hasAcceptedTerrainCell || terrainPhase === 0)
   ) {
     var terrainCellName = PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY);
     var use = terrainCellName.indexOf("water-") === 0 ? "terrainWater" : "terrainGround";
@@ -377,7 +382,12 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       !(sample && sample.acceptedTransitionCellName)
     );
     if (canAttemptAccepted) {
-      var acceptedKey = atlasKey + "|equiv|" + (PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) || PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY) || "terrain");
+      var acceptedKey = atlasKey + "|equiv|" + (
+        PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) ||
+        PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY) ||
+        PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY) ||
+        "terrain"
+      );
       var acceptedSelection = cellData.terrainEquivalenceKey === acceptedKey ? cellData.terrainEquivalenceSelection || null : null;
       if (!acceptedSelection) {
         acceptedSelection = PS.render.surfaceTileBatcher.selectAcceptedTerrainCell(biome, sample, tileX, tileY, cell);

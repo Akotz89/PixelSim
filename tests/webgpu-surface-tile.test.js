@@ -260,6 +260,63 @@ assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return en
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "terrain-tile"; }), "terrain tile shader should be in WGSL manifest");
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "gbuffer-terrain"; }), "gbuffer terrain shader should be in WGSL manifest");
 
+const fallbackTerrainCell = {
+  name: "fallback.grass",
+  pageIndex: 0,
+  u0: 0,
+  v0: 0,
+  u1: 0.5,
+  v1: 0.5
+};
+const acceptedTerrainCell = {
+  name: "equivalence.terrain_materials_v0.rock-mountain.0",
+  pageIndex: 0,
+  u0: 0.5,
+  v0: 0,
+  u1: 1,
+  v1: 0.5
+};
+let acceptedTerrainSelection = null;
+
+context.PS.atlas.getTerrainCell = function () {
+  return fallbackTerrainCell;
+};
+context.PS.assets = {
+  equivalence: {
+    selectCell(family, cellName, use, fallbackCellId) {
+      acceptedTerrainSelection = { family, cellName, use, fallbackCellId };
+      return {
+        renderCell: acceptedTerrainCell
+      };
+    }
+  }
+};
+
+const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 0,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: {
+    biome: "grassland",
+    acceptedTerrainCellName: "rock-mountain.0",
+    detail: {
+      surface: "grass"
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1);
+
+assert.strictEqual(acceptedTerrainBatches.equivalenceTerrain, 1, "explicit accepted terrain cells should count as equivalence terrain draws");
+assert.strictEqual(acceptedTerrainSelection.family, "terrain", "explicit accepted terrain cell should use the terrain equivalence family");
+assert.strictEqual(acceptedTerrainSelection.cellName, "rock-mountain.0", "explicit accepted terrain cell name should be passed to the selector");
+assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit accepted non-water terrain should use terrainGround stats");
+assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
+
 const drew = surfaceTile.drawBatches({
   pages: {
     0: new Float32Array([
