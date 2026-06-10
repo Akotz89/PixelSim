@@ -61,7 +61,12 @@ fn sample_height(input: VertexOut, offset: vec2<f32>) -> f32 {
 }
 
 fn sample_split_normal(input: VertexOut) -> vec3<f32> {
-  let normal_uv = vec2<f32>(fract(input.uv.x + 0.5), input.uv.y);
+  let tile_width = abs(input.uv_rect.z - input.uv_rect.x);
+  let normal_offset = tile_width * 8.0;
+  let normal_min_x = input.uv_rect.x + normal_offset + tile.texel_size.x * 0.5;
+  let normal_max_x = input.uv_rect.z + normal_offset - tile.texel_size.x * 0.5;
+  let normal_u = clamp(input.uv.x + normal_offset, min(normal_min_x, normal_max_x), max(normal_min_x, normal_max_x));
+  let normal_uv = vec2<f32>(normal_u, input.uv.y);
   let normal_sample = textureSampleLevel(atlas_texture, atlas_sampler, normal_uv, 0.0).rgb;
   return normalize(normal_sample * 2.0 - vec3<f32>(1.0, 1.0, 1.0));
 }

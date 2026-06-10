@@ -89,7 +89,9 @@ assert.strictEqual(terrainTileWgsl.indexOf("color.a * input.alpha"), -1, "terrai
   "@location(4) normal_mode: f32",
   "fn sample_split_normal",
   "fn sample_procedural_normal",
-  "fract(input.uv.x + 0.5)",
+  "let tile_width = abs(input.uv_rect.z - input.uv_rect.x)",
+  "let normal_offset = tile_width * 8.0",
+  "let normal_u = clamp(input.uv.x + normal_offset",
   "let normal_sample = textureSampleLevel(atlas_texture, atlas_sampler, normal_uv, 0.0).rgb",
   "normal_sample * 2.0 - vec3<f32>(1.0, 1.0, 1.0)",
   "if (input.normal_mode >= 0.5)",
@@ -100,6 +102,21 @@ assert.strictEqual(terrainTileWgsl.indexOf("color.a * input.alpha"), -1, "terrai
   assert.ok(gbufferTerrainWgsl.indexOf(required) >= 0, "gbuffer terrain WGSL should contain " + required);
 });
 assert.strictEqual(gbufferTerrainWgsl.indexOf("color.r - color.g"), -1, "gbuffer terrain normals should not be derived from color channels");
+assert.strictEqual(gbufferTerrainWgsl.indexOf("fract(input.uv.x + 0.5)"), -1, "split atlas normal UVs should not wrap variant 7 back to the albedo half");
+
+function mapSplitNormalU(uvX, uv0, uv1, texelSizeX) {
+  var tileWidth = Math.abs(uv1 - uv0);
+  var normalOffset = tileWidth * 8;
+  var normalMinX = uv0 + normalOffset + texelSizeX * 0.5;
+  var normalMaxX = uv1 + normalOffset - texelSizeX * 0.5;
+  var minX = Math.min(normalMinX, normalMaxX);
+  var maxX = Math.max(normalMinX, normalMaxX);
+  return Math.max(minX, Math.min(maxX, uvX + normalOffset));
+}
+
+assert.ok(mapSplitNormalU(0.4375, 0.4375, 0.5, 1 / 512) >= 0.9375, "variant 7 left edge should map into the normal half");
+assert.ok(mapSplitNormalU(0.5, 0.4375, 0.5, 1 / 512) > 0.99, "variant 7 right edge should stay near the normal tile edge");
+assert.ok(mapSplitNormalU(0.5, 0.4375, 0.5, 1 / 512) < 1, "variant 7 right edge should clamp before u=1 instead of wrapping to zero");
 
 assert.ok(
   surfaceTileSource.indexOf("ensureGbufferPipeline") >= 0 &&
@@ -332,6 +349,12 @@ assert.strictEqual(acceptedTerrainSelection.family, "terrain", "explicit accepte
 assert.strictEqual(acceptedTerrainSelection.cellName, "rock-mountain.0", "explicit accepted terrain cell name should be passed to the selector");
 assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit accepted non-water terrain should use terrainGround stats");
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
+Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
+  var page = acceptedTerrainBatches.pages[pageIndex];
+  for (let offset = 10; offset < page.length; offset += 11) {
+    assert.strictEqual(page.data[offset], 0, "non-split terrain instances should keep procedural G-buffer normal sampling");
+  }
+});
 
 const splitPageData = new Uint8Array(512 * 32 * 4);
 for (let i = 0; i < splitPageData.length; i += 4) {
