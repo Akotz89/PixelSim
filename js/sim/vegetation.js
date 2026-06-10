@@ -81,5 +81,291 @@ PS.vegetation = PS.vegetation || {
     this.ensure();
     this.data[this.tileIndex(tx, ty)] = 0;
     return this.get(tx, ty);
+  },
+
+  hash: function (x, y, salt) {
+    var hash = 2166136261;
+    hash ^= this.wrapX(x) & 65535;
+    hash = Math.imul(hash, 16777619) >>> 0;
+    hash ^= this.clampY(y) & 65535;
+    hash = Math.imul(hash, 16777619) >>> 0;
+    hash ^= Math.round(Number(salt) || 0) & 65535;
+    hash = Math.imul(hash, 16777619) >>> 0;
+    return hash >>> 0;
+  },
+
+  roll: function (x, y, salt) {
+    if (PS.ranmap && PS.ranmap.data && typeof PS.ranmap.normalizedBits === "function") {
+      return PS.ranmap.normalizedBits(x + salt * 17, y + salt * 31, 0, 16);
+    }
+
+    return this.hash(x, y, salt) / 4294967295;
+  },
+
+  variant: function (x, y, salt, count) {
+    var max = Math.max(1, Math.round(Number(count) || 1));
+
+    if (PS.ranmap && PS.ranmap.data && typeof PS.ranmap.variant === "function") {
+      return PS.ranmap.variant(x + salt * 11, y + salt * 23, max);
+    }
+
+    return this.hash(x, y, salt) % max;
+  },
+
+  normalizeBiome: function (tile) {
+    var biome = tile && tile.biome ? String(tile.biome).toLowerCase() : "unknown";
+    var moisture = Number(tile && tile.moisture);
+    var elevation = Number(tile && tile.elevation);
+    var highland = Number(tile && tile.highlandLift);
+    var river = Number(tile && tile.riverStrength);
+
+    if (biome === "temperate") { biome = "grassland"; }
+    if (biome === "arid") { biome = "desert"; }
+    if (biome === "ice") { biome = "tundra"; }
+    if (biome === "grassland" && (moisture > 1.45 || river > 0.3)) {
+      biome = "wetland";
+    }
+    if (biome !== "ocean" && (elevation > 0.74 || highland > 0.58 || biome === "mountain")) {
+      biome = "mountain";
+    }
+
+    return biome;
+  },
+
+  getRulesForTile: function (tile) {
+    var biome = this.normalizeBiome(tile);
+    var moisture = Math.max(0, Math.min(1, Number(tile && tile.moisture) / 2.2 || 0));
+    var elevation = Number(tile && tile.elevation) || 0;
+
+    if (biome === "forest") {
+      return {
+        biome: biome,
+        tree: Math.max(0.54, Math.min(0.70, 0.58 + moisture * 0.12 - Math.max(0, elevation - 0.6) * 0.10)),
+        bush: 0.10,
+        flower: 0.03,
+        mushroom: 0.02,
+        rock: 0,
+        tuft: 0,
+        maxTreeFootprint: 3
+      };
+    }
+
+    if (biome === "grassland") {
+      return {
+        biome: biome,
+        tree: 0.05 + moisture * 0.10,
+        bush: 0.20,
+        flower: 0.08,
+        mushroom: 0,
+        rock: 0.05,
+        tuft: 0.07,
+        maxTreeFootprint: 1
+      };
+    }
+
+    if (biome === "desert") {
+      return {
+        biome: biome,
+        tree: 0.02,
+        bush: 0.03,
+        flower: 0,
+        mushroom: 0,
+        rock: 0.05,
+        tuft: 0,
+        maxTreeFootprint: 1
+      };
+    }
+
+    if (biome === "tundra") {
+      return {
+        biome: biome,
+        tree: 0,
+        bush: 0.02,
+        flower: 0.03,
+        mushroom: 0,
+        rock: 0.05,
+        tuft: 0,
+        maxTreeFootprint: 1
+      };
+    }
+
+    if (biome === "wetland") {
+      return {
+        biome: biome,
+        tree: 0.10,
+        bush: 0,
+        flower: 0,
+        mushroom: 0.05,
+        rock: 0,
+        tuft: 0.30,
+        maxTreeFootprint: 1
+      };
+    }
+
+    if (biome === "mountain") {
+      return {
+        biome: biome,
+        tree: elevation < 0.92 ? 0.02 : 0,
+        bush: 0.05,
+        flower: 0,
+        mushroom: 0,
+        rock: 0.20,
+        tuft: 0,
+        maxTreeFootprint: 1
+      };
+    }
+
+    return {
+      biome: biome,
+      tree: 0,
+      bush: 0,
+      flower: 0,
+      mushroom: 0,
+      rock: 0,
+      tuft: 0,
+      maxTreeFootprint: 1
+    };
+  },
+
+  canPlaceFootprint: function (tx, ty, size) {
+    this.ensure();
+    var footprint = Math.max(1, Math.round(Number(size) || 1));
+
+    for (var oy = 0; oy < footprint; oy++) {
+      var y = this.clampY(ty + oy);
+      for (var ox = 0; ox < footprint; ox++) {
+        if (this.getType(tx + ox, y) !== this.TYPES.NONE) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  },
+
+  canPlaceTreeFootprint: function (tx, ty, size) {
+    return this.canPlaceFootprint(tx, ty, size);
+  },
+
+  markFootprint: function (tx, ty, size, type, variant) {
+    var footprint = Math.max(1, Math.round(Number(size) || 1));
+    var placed = 0;
+
+    for (var oy = 0; oy < footprint; oy++) {
+      var y = this.clampY(ty + oy);
+      for (var ox = 0; ox < footprint; ox++) {
+        if (this.getType(tx + ox, y) === this.TYPES.NONE) {
+          this.set(tx + ox, y, type, variant);
+          placed++;
+        }
+      }
+    }
+
+    return placed;
+  },
+
+  placeTreePass: function (tiles, footprint, type, stats) {
+    for (var y = 0; y < this.height; y++) {
+      for (var x = 0; x < this.width; x++) {
+        var tile = tiles[y * this.width + x];
+        var rules = this.getRulesForTile(tile);
+
+        if (rules.maxTreeFootprint < footprint || this.roll(x, y, 1) >= rules.tree) {
+          continue;
+        }
+
+        if (footprint === 3 && this.roll(x, y, 21) >= 0.16) {
+          continue;
+        }
+
+        if (footprint === 2 && this.roll(x, y, 22) >= 0.34) {
+          continue;
+        }
+
+        if (this.canPlaceTreeFootprint(x, y, footprint)) {
+          var placed = this.markFootprint(x, y, footprint, type, this.variant(x, y, 31, 16));
+          stats.trees += placed;
+          stats.total += placed;
+        }
+      }
+    }
+  },
+
+  placeGroundForTile: function (tx, ty, tile, stats) {
+    var rules = this.getRulesForTile(tile);
+    var roll = this.roll(tx, ty, 1);
+
+    if (roll < rules.tree || this.getType(tx, ty) !== this.TYPES.NONE) {
+      return;
+    }
+
+    var threshold = rules.tree + rules.bush;
+    if (roll < threshold) {
+      this.set(tx, ty, this.TYPES.BUSH, this.variant(tx, ty, 32, 16));
+      stats.bushes++;
+      stats.total++;
+      return;
+    }
+
+    threshold += rules.flower;
+    if (roll < threshold) {
+      this.set(tx, ty, this.TYPES.FLOWER, this.variant(tx, ty, 33, 16));
+      stats.flowers++;
+      stats.total++;
+      return;
+    }
+
+    threshold += rules.mushroom;
+    if (roll < threshold) {
+      this.set(tx, ty, this.TYPES.MUSHROOM, this.variant(tx, ty, 34, 16));
+      stats.mushrooms++;
+      stats.total++;
+      return;
+    }
+
+    threshold += rules.rock;
+    if (roll < threshold) {
+      this.set(tx, ty, this.TYPES.ROCK, this.variant(tx, ty, 35, 16));
+      stats.rocks++;
+      stats.total++;
+      return;
+    }
+
+    threshold += rules.tuft;
+    if (roll < threshold) {
+      this.set(tx, ty, this.TYPES.GRASS_TUFT, this.variant(tx, ty, 36, 16));
+      stats.tufts++;
+      stats.total++;
+    }
+  },
+
+  populateFromTerrain: function (tiles, width, height) {
+    var sourceTiles = Array.isArray(tiles) ? tiles : [];
+    this.init(width, height);
+
+    var stats = {
+      total: 0,
+      trees: 0,
+      bushes: 0,
+      flowers: 0,
+      mushrooms: 0,
+      rocks: 0,
+      tufts: 0
+    };
+
+    this.placeTreePass(sourceTiles, 3, this.TYPES.TREE_BIG, stats);
+    this.placeTreePass(sourceTiles, 2, this.TYPES.TREE_MEDIUM, stats);
+    this.placeTreePass(sourceTiles, 1, this.TYPES.TREE_SMALL, stats);
+
+    for (var y = 0; y < this.height; y++) {
+      for (var x = 0; x < this.width; x++) {
+        var tile = sourceTiles[y * this.width + x];
+        this.placeGroundForTile(x, y, tile, stats);
+      }
+    }
+
+    stats.width = this.width;
+    stats.height = this.height;
+    return stats;
   }
 };

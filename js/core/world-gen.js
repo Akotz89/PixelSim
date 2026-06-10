@@ -116,14 +116,25 @@ PS.core.worldGen.generateHydrology = function() {
 
 PS.core.worldGen.placeVegetation = function(context) {
   var count = Math.max(0, Math.round(Number(context.config.STARTING_FOOD) || 0));
+  var vegetation = null;
 
   for (var i = 0; i < count; i++) {
     var position = randomFoodPosition();
     addFoodAt(position.x, position.y);
   }
 
+  if (PS.vegetation && typeof PS.vegetation.populateFromTerrain === "function") {
+    if (PS.ranmap && typeof PS.ranmap.init === "function") {
+      PS.ranmap.init(WORLD_WIDTH, WORLD_HEIGHT, world.rngState || 0x9E3779B9);
+    }
+
+    vegetation = PS.vegetation.populateFromTerrain(world.planetTiles, WORLD_WIDTH, WORLD_HEIGHT);
+    world.vegetation = PS.vegetation.data;
+  }
+
   return {
-    food: Array.isArray(world.food) ? world.food.length : 0
+    food: Array.isArray(world.food) ? world.food.length : 0,
+    vegetation: vegetation
   };
 };
 
