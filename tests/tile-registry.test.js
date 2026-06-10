@@ -50,17 +50,25 @@ const waterShallow = registry.get("water_shallow");
 const rock = registry.get("rock");
 const lichen = registry.get("lichen_tundra");
 const wetland = registry.get("wetland");
+const grassType = registry.getTerrainType("grass_lush");
+const forestType = registry.getTerrainType("forest_floor");
+const cliffType = registry.getTerrainType("rock_cliff");
+const shallowWaterType = registry.getTerrainType("water_shallow");
 
 assert.ok(registry, "TileRegistry should be exposed under PS.core");
+assert.strictEqual(typeof context.PS.core.TerrainType, "function", "TerrainType base constructor should be exposed");
 assert.strictEqual(
   JSON.stringify(sidecarContext.PS.assets.captured["data/tiles.json"]),
   JSON.stringify(tilesData),
   "tiles sidecar should match tiles JSON"
 );
 assert.ok(registry.types instanceof Map, "TileRegistry should keep a Map of tile definitions");
+assert.ok(registry.terrainTypes instanceof Map, "TileRegistry should keep a Map of terrain type behaviors");
 assert.ok(loaded.length >= 15, "loadFromJSON should register at least 15 tile types");
+assert.ok(registry.listTerrainTypes().length >= 15, "loadFromJSON should register at least 15 terrain subtypes");
 assert.strictEqual(loaded.length, tilesData.tiles.length, "loadFromJSON should register every JSON tile");
 assert.strictEqual(lush.name, "Lush Grass", "get should return full tile definition");
+assert.strictEqual(lush.terrainType, grassType, "tile definitions should link to their TerrainType behavior");
 assert.strictEqual(lush.baseFertility, 0.85, "get should preserve numeric fields");
 assert.strictEqual(lush.elevation.min, 0.1, "get should preserve elevation min");
 assert.strictEqual(lush.elevation.max, 0.8, "get should preserve elevation max");
@@ -82,6 +90,66 @@ assert.strictEqual(registry.getSpriteId("lichen_tundra", 3), "terrain.tundra.3",
 assert.strictEqual(registry.getSpriteId("wetland", 3), "terrain.wetland.3", "wetland should map to wetland atlas sprite IDs");
 assert.strictEqual(registry.get("missing"), null, "get should return null for unknown tile");
 assert.strictEqual(registry.getByBiome("missing").length, 0, "getByBiome should return empty array for unknown biome");
+assert.strictEqual(registry.getTerrainType("missing"), null, "getTerrainType should return null for unknown tile");
+
+registry.listTerrainTypes().forEach((terrainType) => {
+  assert.strictEqual(typeof terrainType.renderBelow, "function", terrainType.id + " should define renderBelow");
+  assert.strictEqual(typeof terrainType.renderMid, "function", terrainType.id + " should define renderMid");
+  assert.strictEqual(typeof terrainType.renderAbove, "function", terrainType.id + " should define renderAbove");
+  assert.strictEqual(typeof terrainType.computeAutotileMask, "function", terrainType.id + " should define computeAutotileMask");
+  assert.strictEqual(typeof terrainType.getMinimapColor, "function", terrainType.id + " should define getMinimapColor");
+  assert.strictEqual(typeof terrainType.isPathable, "function", terrainType.id + " should define isPathable");
+});
+
+assert.strictEqual(registry.getMinimapColor("grass_lush"), "#3a7a1a", "TerrainType should expose per-type minimap colors");
+assert.strictEqual(grassType.getMinimapColor(), lush.minimapColor, "minimap color should come from the tile definition");
+assert.strictEqual(registry.isPathable("grass_lush"), true, "walkable ground should be pathable");
+assert.strictEqual(registry.isPathable("rock_cliff"), false, "cliffs should not be pathable");
+assert.strictEqual(registry.isPathable("water_shallow"), false, "water should not be pathable by default");
+assert.strictEqual(registry.isPathable("water_shallow", { canTraverseWater: true }), false, "non-walkable water data remains blocked even for water-capable actors");
+assert.strictEqual(registry.canPlace("grass_lush"), true, "buildable terrain should accept default placement");
+assert.strictEqual(registry.canPlace("forest_floor", { requiresGrowable: true }), true, "growable terrain should accept growable placement");
+assert.strictEqual(registry.canPlace("rock", { requiresGrowable: true }), false, "non-growable terrain should reject growable placement");
+assert.ok(registry.getClearingCost("forest_floor") > registry.getClearingCost("grass_lush"), "growable terrain should cost more to clear than grass");
+assert.strictEqual(registry.getClearingCost("rock_cliff"), Infinity, "impassable non-buildable terrain should have infinite clearing cost");
+
+const grassMidRender = grassType.renderMid({ tile: lush });
+assert.strictEqual(grassMidRender.terrainType, "grass_lush", "ground terrain should render by terrain type id");
+assert.strictEqual(grassMidRender.kind, "ground", "ground terrain should preserve inferred kind");
+assert.strictEqual(grassMidRender.layer, "mid", "ground terrain should render in the mid layer");
+assert.strictEqual(grassMidRender.spriteSheet, "terrain/grass", "ground terrain should preserve sprite sheet");
+assert.strictEqual(grassMidRender.variantCount, 4, "ground terrain should preserve variant count");
+assert.strictEqual(grassMidRender.color, lush.baseColor, "ground terrain should preserve base color");
+assert.strictEqual(grassType.renderBelow({ tile: lush }), null, "dry ground should not render below");
+assert.strictEqual(cliffType.renderMid({ tile: registry.get("rock_cliff") }), null, "cliffs should reserve the mid layer for base rock underlay");
+assert.strictEqual(cliffType.renderAbove({ tile: registry.get("rock_cliff") }).layer, "above", "cliffs should render above");
+assert.strictEqual(shallowWaterType.renderBelow({ tile: waterShallow }).layer, "below", "water should render below ground");
+assert.strictEqual(forestType.renderAbove({ tile: forestFloor }).layer, "above", "forest terrain should render above");
+
+const terrainGrid = {
+  getTileId(x, y) {
+    const cells = {
+      "0,0": "grass_lush",
+      "1,0": "grass_dry",
+      "0,1": "forest_floor",
+      "1,1": "water_shallow",
+      "-1,0": "grass_lush",
+      "0,-1": "grass_lush",
+      "-1,-1": "grass_lush"
+    };
+    return cells[x + "," + y] || null;
+  }
+};
+assert.strictEqual(
+  registry.getAutotileMask("grass_lush", 0, 0, terrainGrid),
+  context.PS.core.TerrainType.BITS.NW | context.PS.core.TerrainType.BITS.N | context.PS.core.TerrainType.BITS.W,
+  "autotile mask should connect only compatible neighbors"
+);
+assert.strictEqual(
+  registry.getAutotileMask("water_shallow", 1, 1, terrainGrid),
+  0,
+  "water autotile mask should not connect to dry terrain"
+);
 
 assert.throws(
   () => registry.validate({ id: "broken" }),
@@ -117,5 +185,7 @@ const custom = registry.register("test_tile", Object.assign({}, lush, {
 assert.strictEqual(custom.id, "test_tile", "register should trust the explicit id argument");
 assert.strictEqual(registry.getByBiome("test_biome").length, 1, "register should update biome index");
 assert.strictEqual(registry.getSpriteId("test_tile", 0), "terrain.test.0", "getSpriteId should support manually registered tiles");
+assert.ok(registry.getTerrainType("test_tile"), "register should create a TerrainType for manual tiles");
+assert.strictEqual(registry.getTerrainType("test_tile").renderMid({ tile: custom }).terrainType, "test_tile", "manual TerrainType should render by id");
 
 console.log("tile registry checks passed");
