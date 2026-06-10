@@ -220,6 +220,20 @@ assert.strictEqual(
 assert.strictEqual(
   context.PS.render.surfaceTileBatcher.appendSamplePointLights(
     batches,
+    { biome: "mountain", detail: { surface: "volcano vent", feature: "active vent", materialSignals: { heat: 0.9 } } },
+    "mountain",
+    14,
+    24,
+    16,
+    4,
+    5
+  ),
+  true,
+  "volcano vent samples should emit point lights"
+);
+assert.strictEqual(
+  context.PS.render.surfaceTileBatcher.appendSamplePointLights(
+    batches,
     { biome: "ocean", detail: { surface: "deep water", materialSignals: { waterDepth: 0.9 } } },
     "ocean",
     30,
@@ -233,8 +247,14 @@ assert.strictEqual(
 );
 assert.strictEqual(
   JSON.stringify(Array.from(batches.pointLights).map(function (light) { return light.kind; })),
-  JSON.stringify(["lava", "bioluminescence"]),
+  JSON.stringify(["lava", "volcano", "bioluminescence"]),
   "terrain batches should tag emitted point light kinds"
+);
+assert.strictEqual(batches.pointLights[1].radius, 16 * 8, "volcano lights should use the configured eight-tile radius");
+assert.strictEqual(
+  JSON.stringify(Array.from(batches.pointLights[1].color)),
+  JSON.stringify([1, 0.2, 0]),
+  "volcano lights should use the configured hot orange color"
 );
 
 pointLights.queueLight(12, 14, 20, [1, 0.75, 0.2], 0.7, "settlementTorch");
@@ -268,14 +288,14 @@ assert.strictEqual(pipelineDescriptor.fragment.targets[0].blend.color.dstFactor,
 assert.strictEqual(fakePasses[0].descriptor.label, "point-light.render-pass", "point lights should use a labeled WebGPU render pass");
 assert.strictEqual(
   JSON.stringify(Array.from(fakePasses[0].draws[0])),
-  JSON.stringify([4, 2, 0, 0]),
+  JSON.stringify([4, 3, 0, 0]),
   "point lights should draw one quad per visible light"
 );
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "point-light.uniforms"; }), "point-light uniforms should upload to WebGPU");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "point-light.instances.storage"; }), "point-light storage buffer should upload light data");
 assert.strictEqual(submissions.length, 1, "standalone point-light draw should submit a command buffer");
 assert.strictEqual(pointLights.getStats().drawCount, 1, "point-light stats should count draws");
-assert.strictEqual(pointLights.getStats().submittedLights, 2, "point-light stats should count submitted lights");
+assert.strictEqual(pointLights.getStats().submittedLights, 3, "point-light stats should count submitted lights");
 assert.strictEqual(pointLights.getStats().lastError, "", "successful point-light draw should clear lastError");
 
 console.log("webgpu point light checks passed");
