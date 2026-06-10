@@ -101,11 +101,14 @@ const tileCount = 40 * 30;
 
 const forestStats = vegetation.populateFromTerrain(makeTiles(40, 30, "forest", { moisture: 1.8 }), 40, 30);
 const forestBytes = Array.from(vegetation.data);
+const forestGrass = Array.from(vegetation.grassDensityData);
 const forestCounts = countTypes(vegetation);
 const forestStatsAgain = vegetation.populateFromTerrain(makeTiles(40, 30, "forest", { moisture: 1.8 }), 40, 30);
 
 assert.deepStrictEqual(Array.from(vegetation.data), forestBytes, "forest placement should be deterministic for the same terrain and seed map");
+assert.deepStrictEqual(Array.from(vegetation.grassDensityData), forestGrass, "grass density should be deterministic for the same terrain and seed map");
 assert.strictEqual(forestStatsAgain.total, forestStats.total, "deterministic rerun should preserve placement counts");
+assert.ok(forestStats.grassDensityTiles > 0, "forest placement should also populate the 4-bit grass density map");
 assert.ok(forestStats.trees > forestStats.bushes, "forest placement should be dominated by trees");
 assert.ok(ratio(forestStats.trees, tileCount) >= 0.70 && ratio(forestStats.trees, tileCount) <= 0.90, "forest should keep tree coverage in the requested 70-90 percent range");
 assert.ok((forestCounts[types.TREE_BIG] || 0) > 0, "forest should try the SoS-style big tree pass before smaller trees");
@@ -114,13 +117,21 @@ assert.ok((forestCounts[types.TREE_SMALL] || 0) > 0, "forest should fall back to
 
 const grassStats = vegetation.populateFromTerrain(makeTiles(40, 30, "grassland", { moisture: 1.1 }), 40, 30);
 const grassCounts = countTypes(vegetation);
+const moistGrassDensity = vegetation.getGrassDensity(10, 10);
+const normalizedSignalDensity = vegetation.computeGrassDensityForTile(10, 10, {
+  biome: "grassland",
+  detail: { surface: "grass", materialSignals: { moisture: 0.8, vegetation: 0.9 } }
+});
 assert.ok(placedCount(grassStats) < placedCount(forestStats), "grassland should be sparser than forest");
+assert.ok(grassStats.grassDensityTiles > grassStats.tufts, "grass density overlay should cover more tiles than discrete tufts");
+assert.ok(normalizedSignalDensity >= 6, "normalized material moisture signals should not be divided as legacy 0-2.2 moisture");
 assert.ok(ratio(grassStats.trees, tileCount) >= 0.05 && ratio(grassStats.trees, tileCount) <= 0.15, "grassland should keep tree coverage in the requested 5-15 percent range");
 assert.ok((grassCounts[types.BUSH] || 0) > (grassCounts[types.TREE_BIG] || 0), "grassland should favor brush and ground features over large trees");
 assert.ok((grassCounts[types.FLOWER] || 0) + (grassCounts[types.GRASS_TUFT] || 0) > 50, "grassland should place flowers and tufts");
 
 const desertStats = vegetation.populateFromTerrain(makeTiles(40, 30, "desert", { moisture: 0.1, elevation: 0.35 }), 40, 30);
 const desertCounts = countTypes(vegetation);
+assert.ok(vegetation.getGrassDensity(10, 10) < moistGrassDensity, "dry desert tiles should have lower grass density than moist grassland");
 assert.ok(placedCount(desertStats) < placedCount(grassStats), "desert should be sparse");
 assert.ok(ratio(desertStats.trees, tileCount) >= 0.01 && ratio(desertStats.trees, tileCount) <= 0.03, "desert should keep dead-tree coverage near the requested 2 percent range");
 assert.ok((desertCounts[types.ROCK] || 0) > 25, "desert should place rocks");
@@ -137,11 +148,25 @@ const mountainCounts = countTypes(vegetation);
 assert.ok(ratio(mountainStats.rocks, tileCount) >= 0.18 && ratio(mountainStats.rocks, tileCount) <= 0.22, "mountain should place rocks near the requested 20 percent range");
 assert.ok(mountainStats.trees < mountainStats.rocks, "mountain trees should only appear at low altitude");
 
+vegetation.init(5, 5);
+vegetation.set(2, 3, types.TREE_BIG, 0);
+const densityNorthOfTree = vegetation.computeGrassDensityForTile(2, 2, {
+  biome: "grassland",
+  detail: { surface: "grass", materialSignals: { moisture: 1, vegetation: 1 } }
+});
+vegetation.clear(2, 3);
+const densityWithoutTree = vegetation.computeGrassDensityForTile(2, 2, {
+  biome: "grassland",
+  detail: { surface: "grass", materialSignals: { moisture: 1, vegetation: 1 } }
+});
+assert.ok(densityNorthOfTree < densityWithoutTree, "grass density should be penalized north of tree anchors under rendered canopy");
+
 const stageContext = createContext(12, 8);
 stageContext.world.planetTiles = makeTiles(12, 8, "forest", { moisture: 1.7 });
 const metrics = stageContext.PS.core.worldGen.placeVegetation({ config: stageContext.CONFIG });
 assert.strictEqual(metrics.food, 3, "world-gen vegetation stage should preserve existing food placement behavior");
 assert.ok(metrics.vegetation.total > 0, "world-gen vegetation stage should populate the vegetation grid");
 assert.strictEqual(stageContext.world.vegetation, stageContext.PS.vegetation.data, "world-gen should expose the generated vegetation grid on world");
+assert.strictEqual(stageContext.world.vegetationGrass, stageContext.PS.vegetation.grassDensityData, "world-gen should expose the generated grass density grid on world");
 
 console.log("vegetation placement checks passed");

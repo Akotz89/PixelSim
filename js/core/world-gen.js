@@ -130,6 +130,7 @@ PS.core.worldGen.placeVegetation = function(context) {
 
     vegetation = PS.vegetation.populateFromTerrain(world.planetTiles, WORLD_WIDTH, WORLD_HEIGHT);
     world.vegetation = PS.vegetation.data;
+    world.vegetationGrass = PS.vegetation.grassDensityData;
   }
 
   return {

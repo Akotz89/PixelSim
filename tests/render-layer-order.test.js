@@ -99,6 +99,9 @@ const context = {
         }
       },
       vegetation: {
+        drawGrassOverlay() {
+          events.push("grass");
+        },
         draw() {
           events.push("vegetation");
         }
@@ -226,6 +229,8 @@ function layer(id) {
 }
 
 assert.strictEqual(layer("terrain.base").drawLayer, context.PS.render.DrawLayer.TERRAIN_BASE, "terrain should map to base layer");
+assert.strictEqual(layer("vegetation.grass").order, 34, "grass density should register immediately before world vegetation");
+assert.strictEqual(layer("vegetation.grass").drawLayer, context.PS.render.DrawLayer.TERRAIN_DECORATION, "grass density should submit as terrain decoration");
 assert.strictEqual(layer("vegetation.world").order, 35, "world vegetation should register between terrain and entity layers");
 assert.strictEqual(layer("vegetation.world").drawLayer, context.PS.render.DrawLayer.VEGETATION_TRUNK, "world vegetation should submit trunk layer commands");
 assert.strictEqual(layer("resources.food").drawLayer, context.PS.render.DrawLayer.ENTITY_GROUND, "food should draw on ground entity layer");
@@ -249,6 +254,7 @@ assert.deepStrictEqual(
   [
     "begin:7",
     "terrain",
+    "grass",
     "food",
     "intents",
     "readiness",

@@ -371,6 +371,20 @@ PS.render.pipeline.registerLayer("vegetation.world", {
   draw: function () { PS.render.vegetation.draw(); }
 });
 
+PS.render.pipeline.registerLayer("vegetation.grass", {
+  order: 34,
+  drawLayer: PS.render.DrawLayer.TERRAIN_DECORATION,
+  family: "vegetation",
+  semantic: "4-bit grass density overlay tinted over terrain below world vegetation",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.vegetation && typeof PS.render.vegetation.drawGrassOverlay === "function") {
+      PS.render.vegetation.drawGrassOverlay();
+    }
+  }
+});
+
 PS.render.pipeline.registerLayer("settlement.shadows", {
   order: 48,
   drawLayer: PS.render.DrawLayer.SHADOW,

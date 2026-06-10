@@ -19,6 +19,8 @@ const atlasSource = read("js/render/entity-atlas.js");
 assert.ok(namespaceSource.indexOf("js/render/vegetation-render.js") > namespaceSource.indexOf("js/render/entities.js"), "vegetation render should load after entity facade");
 assert.ok(namespaceSource.indexOf("js/render/vegetation-render.js") < namespaceSource.indexOf("js/render/pipeline.js"), "vegetation render should load before pipeline registration");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("vegetation.world"') >= 0, "pipeline should register world vegetation layer");
+assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("vegetation.grass"') >= 0, "pipeline should register grass density overlay layer");
+assert.ok(pipelineSource.indexOf("order: 34") >= 0, "grass density overlay should render below world vegetation");
 assert.ok(pipelineSource.indexOf("order: 35") >= 0, "world vegetation layer should use pipeline order 35");
 assert.strictEqual(vegetationRenderSource.indexOf("webgl"), -1, "vegetation renderer should not add legacy WebGL hooks");
 assert.ok(atlasSource.indexOf("PS.atlas.getVegetationCell") >= 0, "atlas should expose vegetation sprite cells");
@@ -65,6 +67,14 @@ const context = {
       webgpuEntity: {
         beginBatches() {
           return {};
+        },
+        drawParticleRects(values) {
+          drawCalls.push({
+            drawn: Math.floor(values.length / 8),
+            cells: ["grass-overlay"],
+            values: Array.from(values)
+          });
+          return values.length > 0;
         }
       }
     },
@@ -108,6 +118,8 @@ vegetation.init(4, 4);
 vegetation.set(2, 3, vegetation.TYPES.TREE_BIG, 5);
 vegetation.set(0, 1, vegetation.TYPES.BUSH, 2);
 vegetation.set(1, 2, vegetation.TYPES.ROCK, 1);
+vegetation.setGrassDensity(0, 0, 5);
+vegetation.setGrassDensity(1, 0, 15);
 
 const list = context.PS.render.vegetation.buildDrawList();
 assert.deepStrictEqual(JSON.parse(JSON.stringify(list.map((item) => item.tileY))), [1, 2, 3], "vegetation draw list should be Y-sorted north to south");
@@ -122,5 +134,8 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(drawCalls[0].yValues)), [15, 25
 assert.deepStrictEqual(JSON.parse(JSON.stringify(drawCalls[1].cells)), ["veg.3.5.canopy"], "canopy batch should include only tree canopies");
 assert.ok(drawCalls[0].drawn > drawCalls[1].drawn, "below batch should include trunks and ground vegetation");
 assert.ok(drawCalls[1].offsets[0] < 0, "canopy batch should render above the trunk anchor");
+assert.strictEqual(context.PS.render.vegetation.drawGrassOverlay(), true, "grass density overlay should submit WebGPU rects");
+assert.strictEqual(drawCalls[2].drawn, 2, "grass density overlay should draw one rect per non-zero density tile");
+assert.ok(drawCalls[2].values[7] < 0.5 && drawCalls[2].values[15] > drawCalls[2].values[7], "grass overlay alpha should scale by density");
 
 console.log("vegetation render checks passed");

@@ -14,17 +14,21 @@ PS.vegetation = PS.vegetation || {
   width: 0,
   height: 0,
   data: null,
+  grassDensityData: null,
 
   init: function (width, height) {
     this.width = Math.max(1, Math.round(Number(width) || (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1)));
     this.height = Math.max(1, Math.round(Number(height) || (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1)));
     this.data = new Uint8Array(this.width * this.height);
+    this.grassDensityData = new Uint8Array(Math.ceil(this.width * this.height / 2));
     return this;
   },
 
   ensure: function () {
     if (!this.data) {
       this.init();
+    } else if (!this.grassDensityData) {
+      this.grassDensityData = new Uint8Array(Math.ceil(this.data.length / 2));
     }
 
     return this;
@@ -83,6 +87,33 @@ PS.vegetation = PS.vegetation || {
     return this.get(tx, ty);
   },
 
+  getGrassDensity: function (tx, ty) {
+    var index;
+    var packed;
+
+    this.ensure();
+    index = this.tileIndex(tx, ty);
+    packed = this.grassDensityData[index >> 1] || 0;
+    return index & 1 ? (packed >> 4) & 15 : packed & 15;
+  },
+
+  setGrassDensity: function (tx, ty, density) {
+    var index;
+    var byteIndex;
+    var value;
+    var current;
+
+    this.ensure();
+    index = this.tileIndex(tx, ty);
+    byteIndex = index >> 1;
+    value = Math.max(0, Math.min(15, Math.round(Number(density) || 0)));
+    current = this.grassDensityData[byteIndex] || 0;
+    this.grassDensityData[byteIndex] = index & 1
+      ? (current & 15) | (value << 4)
+      : (current & 240) | value;
+    return value;
+  },
+
   hash: function (x, y, salt) {
     var hash = 2166136261;
     hash ^= this.wrapX(x) & 65535;
@@ -110,6 +141,72 @@ PS.vegetation = PS.vegetation || {
     }
 
     return this.hash(x, y, salt) % max;
+  },
+
+  getTileMoistureFactor: function (tile) {
+    var detail = tile && tile.detail ? tile.detail : {};
+    var signals = detail.materialSignals || tile && tile.materialSignals || {};
+    var hasSignalMoisture = signals.moisture !== undefined;
+    var raw = hasSignalMoisture ? signals.moisture : tile && tile.moisture;
+    var value = Number(raw);
+
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+
+    return Math.max(0, Math.min(1, hasSignalMoisture || value <= 1 ? value : value / 2.2));
+  },
+
+  getTileVegetationFactor: function (tile, rules) {
+    var detail = tile && tile.detail ? tile.detail : {};
+    var signals = detail.materialSignals || tile && tile.materialSignals || {};
+    var raw = signals.vegetation !== undefined ? signals.vegetation : (
+      tile && tile.vegetation !== undefined ? tile.vegetation : tile && tile.vegetationDensity
+    );
+
+    if (Number.isFinite(Number(raw))) {
+      return Math.max(0, Math.min(1, Number(raw)));
+    }
+
+    return Math.max(0, Math.min(1, (rules.tree || 0) + (rules.bush || 0) + (rules.flower || 0) + (rules.tuft || 0) + 0.2));
+  },
+
+  getGrassGroundModifier: function (tile, rules) {
+    var biome = rules && rules.biome ? String(rules.biome) : this.normalizeBiome(tile);
+
+    if (biome === "ocean" || biome === "ice") { return 0; }
+    if (biome === "desert") { return 0.2; }
+    if (biome === "mountain") { return 0.28; }
+    if (biome === "tundra") { return 0.32; }
+    if (biome === "wetland") { return 0.72; }
+    if (biome === "forest") { return 0.55; }
+    return 1;
+  },
+
+  getTreeProximityPenalty: function (tx, ty) {
+    var penalties = [0.1, 0.2, 0.2, 0.1];
+    var penalty = 0;
+
+    for (var offset = 0; offset < penalties.length; offset += 1) {
+      var type = this.getType(tx, ty + offset);
+      if (type === this.TYPES.TREE_SMALL || type === this.TYPES.TREE_MEDIUM || type === this.TYPES.TREE_BIG) {
+        penalty += penalties[offset];
+      }
+    }
+
+    return Math.min(0.6, penalty);
+  },
+
+  computeGrassDensityForTile: function (tx, ty, tile) {
+    var rules = this.getRulesForTile(tile);
+    var moisture = this.getTileMoistureFactor(tile);
+    var vegetation = this.getTileVegetationFactor(tile, rules);
+    var modifier = this.getGrassGroundModifier(tile, rules);
+    var penalty = this.getTreeProximityPenalty(tx, ty);
+    var jitter = (this.roll(tx, ty, 57) - 0.5) * 0.18;
+    var growth = moisture * vegetation * modifier - penalty + jitter;
+
+    return Math.max(0, Math.min(15, Math.round(growth * 15)));
   },
 
   normalizeBiome: function (tile) {
@@ -361,6 +458,19 @@ PS.vegetation = PS.vegetation || {
       for (var x = 0; x < this.width; x++) {
         var tile = sourceTiles[y * this.width + x];
         this.placeGroundForTile(x, y, tile, stats);
+      }
+    }
+
+    stats.grassDensityTotal = 0;
+    stats.grassDensityTiles = 0;
+    for (var gy = 0; gy < this.height; gy++) {
+      for (var gx = 0; gx < this.width; gx++) {
+        var density = this.computeGrassDensityForTile(gx, gy, sourceTiles[gy * this.width + gx]);
+        this.setGrassDensity(gx, gy, density);
+        stats.grassDensityTotal += density;
+        if (density > 0) {
+          stats.grassDensityTiles++;
+        }
       }
     }
 
