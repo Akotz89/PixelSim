@@ -16,12 +16,15 @@ const atlasSource = read("js/render/entity-atlas.js");
 const atlasDetailSource = read("js/render/terrain-atlas-detail.js");
 const groundGradientsSidecarSource = read("data/ground-gradients.json.js");
 const groundGradientsData = JSON.parse(read("data/ground-gradients.json"));
+const eraPalettesSidecarSource = read("data/era-palettes.json.js");
+const eraPalettesData = JSON.parse(read("data/era-palettes.json"));
 const mainLoopSource = read("js/main-loop.js");
 
 assert.ok(terrainSource.indexOf("PS.assets.getPaletteColor") >= 0, "terrain renderer should consume asset palette colors");
 assert.ok(atlasSource.indexOf("getPaletteRgb") >= 0, "entity atlas should consume registry palette colors for terrain cells");
 assert.ok(surfaceColorSource.indexOf("getBaseBiomeColor(\"forest\")") >= 0, "surface color renderer should consume terrain palette colors");
 assert.ok(mainLoopSource.indexOf("data/ground-gradients.json") >= 0, "startup data should load ground moisture gradients JSON");
+assert.ok(mainLoopSource.indexOf("data/era-palettes.json") >= 0, "startup data should load era palettes JSON");
 assert.ok(terrainSource.indexOf("switch (biome)") === -1, "terrain renderer should not use the old hardcoded biome color switch");
 
 const context = {
@@ -62,6 +65,7 @@ context.PS.assets.registerJSON = function(url, data) {
   return data;
 };
 vm.runInContext(groundGradientsSidecarSource, context, { filename: "data/ground-gradients.json.js" });
+vm.runInContext(eraPalettesSidecarSource, context, { filename: "data/era-palettes.json.js" });
 vm.runInContext(terrainSource, context, { filename: "js/render/terrain.js" });
 vm.runInContext(surfaceColorSource, context, { filename: "js/render/surface-color.js" });
 vm.runInContext(atlasSource, context, { filename: "js/render/entity-atlas.js" });
@@ -71,6 +75,11 @@ assert.strictEqual(
   JSON.stringify(context.PS.assets.jsonData["data/ground-gradients.json"]),
   JSON.stringify(groundGradientsData),
   "ground gradients sidecar should match JSON data"
+);
+assert.strictEqual(
+  JSON.stringify(context.PS.assets.jsonData["data/era-palettes.json"]),
+  JSON.stringify(eraPalettesData),
+  "era palettes sidecar should match JSON data"
 );
 context.PS.render.surfaceColor.loadGroundGradientConfig(context.PS.assets.jsonData["data/ground-gradients.json"]);
 assert.strictEqual(
@@ -158,6 +167,76 @@ assert.strictEqual(
   "packed surface path should use the same moisture gradient color before shading"
 );
 
+context.PS.render.surfaceColor.loadEraPaletteConfig(context.PS.assets.jsonData["data/era-palettes.json"]);
+assert.deepStrictEqual(
+  Object.keys(context.PS.render.surfaceColor.groundMoistureGradients).filter(key => !context.PS.render.surfaceColor.eraPalettes[key]),
+  [],
+  "every configured ground gradient should have a matching era palette"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.eraPalettes.grass.spring.length,
+  16,
+  "era palettes should load four 16-stop palettes per ground type"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getEraPaletteColor("grass", 8, 0),
+  context.PS.render.surfaceColor.eraPalettes.grass.winter[8],
+  "era interpolation should start at the winter palette"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getEraPaletteColor("grass", 8, 1),
+  context.PS.render.surfaceColor.eraPalettes.grass.autumn[8],
+  "era interpolation should end at the autumn palette"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getEraPaletteColor("grass", 8, 0.25),
+  context.PS.render.terrain.blendHexColors(
+    context.PS.render.surfaceColor.eraPalettes.grass.winter[8],
+    context.PS.render.surfaceColor.eraPalettes.grass.spring[8],
+    0.75
+  ),
+  "era interpolation should blend continuously between adjacent palettes"
+);
+const eraGrassSample = Object.assign({}, moistGrassSample, {
+  detail: Object.assign({}, moistGrassSample.detail, {
+    materialSignals: Object.assign({}, moistGrassSample.detail.materialSignals, { growth: 0.25 })
+  })
+});
+const eraGrassHex = context.PS.render.surfaceColor.getGroundMoistureColor(eraGrassSample);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getSurfaceColorPacked(eraGrassSample),
+  context.PS.render.terrain.shadePacked(context.PS.render.terrain.hexToPacked(eraGrassHex), 0.41),
+  "packed surface path should match interpolated era palette color"
+);
+context.PS.deepTime = {
+  getTerrainTint() {
+    return { color: "#ffffff", amount: 0.25 };
+  }
+};
+assert.strictEqual(
+  context.PS.render.surfaceColor.getSurfaceColorPacked(eraGrassSample),
+  context.PS.render.terrain.shadePacked(
+    context.PS.render.terrain.blendPacked(
+      context.PS.render.terrain.hexToPacked(eraGrassHex),
+      context.PS.render.terrain.hexToPacked("#ffffff"),
+      0.25
+    ),
+    0.41
+  ),
+  "packed era palette path should preserve deep-time terrain tint"
+);
+context.PS.deepTime = null;
+assert.strictEqual(
+  context.PS.render.surfaceColor.getEraWaterColor(0),
+  context.PS.render.surfaceColor.eraWaterPalette.winter,
+  "water era color should expose the winter variant"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getEraWaterColor(1),
+  context.PS.render.surfaceColor.eraWaterPalette.normal,
+  "water era color should expose the normal variant"
+);
+
 context.PS.atlas.ensurePage();
 const forestCell = context.PS.atlas.getTerrainCell("forest", 4, 8, {
   detail: {
@@ -204,6 +283,13 @@ assert.notStrictEqual(
   "gmoist.v" + previousGradientVersion + ".grass.8",
   "ground moisture key should change when gradient config reloads"
 );
+const previousEraVersion = context.PS.render.surfaceColor.eraPaletteVersion;
+context.PS.render.surfaceColor.loadEraPaletteConfig(eraPalettesData);
+assert.notStrictEqual(
+  context.PS.render.surfaceColor.getEraPaletteKey(eraGrassSample),
+  "era.v" + previousEraVersion + ".grass.16",
+  "era palette key should change when era config reloads"
+);
 
 const neighborTransition = {
   neighborBiome: "desert",
@@ -230,8 +316,8 @@ const neighborTransitionSample = {
 };
 assert.deepStrictEqual(
   context.PS.atlas.getTerrainTransitionGradientColor(neighborTransitionSample, neighborTransition),
-  context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.groundMoistureGradients.sand[0]).concat([255]),
-  "terrain transition edges should sample the neighboring ground gradient"
+  context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.getGroundMoistureColor(neighborTransitionSample.tileBlend.tiles[0])).concat([255]),
+  "terrain transition edges should sample the neighboring active ground color"
 );
 
 console.log("render palette registry checks passed");

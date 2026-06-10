@@ -543,6 +543,14 @@ PS.render.terrain.buildCache = function () {
 };
 
 PS.render.terrain.invalidateCache = function () {
+  if (PS.render.surfaceRender && typeof PS.render.surfaceRender.invalidateTerrainCache === "function") {
+    PS.render.surfaceRender.invalidateTerrainCache();
+  } else if (typeof invalidateTerrainCache === "function") {
+    invalidateTerrainCache();
+  }
+  if (typeof world !== "undefined" && world) {
+    world.needsRender = true;
+  }
   return true;
 };
 

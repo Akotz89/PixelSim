@@ -1658,6 +1658,9 @@ PS.atlas.getTerrainCell = function (biome, tileX, tileY, sample) {
   var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
     ? PS.render.surfaceColor.getGroundMoistureKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
     : "gmoist.none";
+  var eraKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getEraPaletteKey === "function"
+    ? PS.render.surfaceColor.getEraPaletteKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
+    : "era.none";
   var transitionKey = typeof PS.atlas.getTerrainTransitionKey === "function"
     ? PS.atlas.getTerrainTransitionKey(sample, biome)
     : "plain";
@@ -1668,7 +1671,7 @@ PS.atlas.getTerrainCell = function (biome, tileX, tileY, sample) {
     x: tileX,
     y: tileY
   });
-  var name = "terrain." + materialId + "." + variant + "." + transitionKey + "." + featureKey + "." + moistureKey + "." + biologyKey + resourceKey + "." + civilizationKey + ecologyMicroKey;
+  var name = "terrain." + materialId + "." + variant + "." + transitionKey + "." + featureKey + "." + moistureKey + "." + eraKey + "." + biologyKey + resourceKey + "." + civilizationKey + ecologyMicroKey;
   var cell = PS.atlas.cells[name];
 
   if (!cell) {

@@ -82,6 +82,10 @@ PS.render.surfaceColor.groundGradientBiomeKeys = {
 };
 PS.render.surfaceColor.groundMoistureGradients = PS.render.surfaceColor.groundMoistureGradients || {};
 PS.render.surfaceColor.groundMoistureGradientVersion = PS.render.surfaceColor.groundMoistureGradientVersion || 0;
+PS.render.surfaceColor.eraPalettes = PS.render.surfaceColor.eraPalettes || {};
+PS.render.surfaceColor.eraWaterPalette = PS.render.surfaceColor.eraWaterPalette || null;
+PS.render.surfaceColor.eraPaletteVersion = PS.render.surfaceColor.eraPaletteVersion || 0;
+PS.render.surfaceColor.eraPaletteOrder = ["winter", "spring", "summer", "autumn"];
 
 PS.render.surfaceColor.loadGroundGradientConfig = function (data) {
   var source = data && data.gradients ? data.gradients : data;
@@ -114,8 +118,122 @@ PS.render.surfaceColor.loadGroundGradientConfig = function (data) {
   return normalized;
 };
 
+PS.render.surfaceColor.loadEraPaletteConfig = function (data) {
+  var source = data && data.palettes ? data.palettes : data;
+  var water = data && data.water ? data.water : null;
+  var normalized = {};
+  var order = PS.render.surfaceColor.eraPaletteOrder;
+  var key;
+  var seasonIndex;
+  var i;
+  var season;
+
+  if (!source || typeof source !== "object") {
+    throw new Error("Era palettes config must be an object or { palettes: {} }");
+  }
+
+  for (key in source) {
+    if (!Object.prototype.hasOwnProperty.call(source, key)) {
+      continue;
+    }
+    normalized[key] = {};
+    for (seasonIndex = 0; seasonIndex < order.length; seasonIndex += 1) {
+      season = order[seasonIndex];
+      if (!Array.isArray(source[key][season]) || source[key][season].length !== 16) {
+        throw new Error("Era palette " + key + "." + season + " must define exactly 16 colors");
+      }
+      normalized[key][season] = [];
+      for (i = 0; i < 16; i += 1) {
+        if (!/^#[0-9a-fA-F]{6}$/.test(source[key][season][i])) {
+          throw new Error("Era palette " + key + "." + season + " color " + i + " must be #rrggbb");
+        }
+        normalized[key][season][i] = source[key][season][i];
+      }
+    }
+  }
+
+  if (water) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(water.normal) || !/^#[0-9a-fA-F]{6}$/.test(water.winter)) {
+      throw new Error("Era water palette must define normal and winter #rrggbb colors");
+    }
+    PS.render.surfaceColor.eraWaterPalette = {
+      normal: water.normal,
+      winter: water.winter
+    };
+  }
+
+  PS.render.surfaceColor.eraPalettes = normalized;
+  PS.render.surfaceColor.eraPaletteVersion += 1;
+  return normalized;
+};
+
 PS.render.surfaceColor.getGroundMoisturePalette = function () {
   return PS.render.surfaceColor.groundMoistureGradients || null;
+};
+
+PS.render.surfaceColor.getEraSeasonPosition = function (sample) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var signals = detail.materialSignals || {};
+  var raw = signals.eraPalettePosition !== undefined ? signals.eraPalettePosition : (
+    signals.growth !== undefined ? signals.growth : (
+      detail.eraPalettePosition !== undefined ? detail.eraPalettePosition : (
+        sample && sample.eraPalettePosition !== undefined ? sample.eraPalettePosition : (
+          sample && sample.growth !== undefined ? sample.growth : null
+        )
+      )
+    )
+  );
+
+  if (raw === null && typeof world !== "undefined" && world) {
+    raw = world.seasonGrowth !== undefined ? world.seasonGrowth : world.growth;
+  }
+
+  return clamp(Number(raw === null ? 1 : raw), 0, 1);
+};
+
+PS.render.surfaceColor.getEraPaletteColor = function (key, index, seasonPosition) {
+  var palette = PS.render.surfaceColor.eraPalettes && PS.render.surfaceColor.eraPalettes[key];
+  var order = PS.render.surfaceColor.eraPaletteOrder;
+  var safeIndex = clamp(Math.round(Number(index) || 0), 0, 15);
+  var position = clamp(Number(seasonPosition) || 0, 0, 1) * (order.length - 1);
+  var fromIndex = Math.min(order.length - 1, Math.floor(position));
+  var toIndex = Math.min(order.length - 1, fromIndex + 1);
+  var amount = position - fromIndex;
+  var fromColor;
+  var toColor;
+
+  if (!palette) {
+    return null;
+  }
+
+  fromColor = palette[order[fromIndex]][safeIndex];
+  toColor = palette[order[toIndex]][safeIndex];
+
+  return blendHexColors(fromColor, toColor, amount);
+};
+
+PS.render.surfaceColor.getEraPaletteKey = function (sample) {
+  var key = PS.render.surfaceColor.getGroundGradientKey(sample);
+  var position = PS.render.surfaceColor.getEraSeasonPosition(sample);
+  var version = Math.max(0, Math.round(Number(PS.render.surfaceColor.eraPaletteVersion) || 0));
+  var bucket = clamp(Math.round(position * 63), 0, 63);
+
+  if (!key || !PS.render.surfaceColor.eraPalettes || !PS.render.surfaceColor.eraPalettes[key]) {
+    return "era.v" + version + ".none";
+  }
+
+  return "era.v" + version + "." + key + "." + bucket;
+};
+
+PS.render.surfaceColor.getEraWaterColor = function (growth) {
+  var water = PS.render.surfaceColor.eraWaterPalette;
+  var amount = clamp(Number(growth) || 0, 0, 1);
+
+  if (!water) {
+    return null;
+  }
+
+  return blendHexColors(water.winter, water.normal, amount);
 };
 
 PS.render.surfaceColor.getGroundGradientKey = function (sample) {
@@ -235,7 +353,11 @@ PS.render.surfaceColor.getGroundMoistureColor = function (sample) {
     moisture,
     PS.render.surfaceColor.getGroundGradientRandomOffset(sample)
   );
-  return gradient[index] || null;
+  return PS.render.surfaceColor.getEraPaletteColor(
+    key,
+    index,
+    PS.render.surfaceColor.getEraSeasonPosition(sample)
+  ) || gradient[index] || null;
 };
 
 PS.render.surfaceColor.getBiomeTransitionStrength = function (sample) {
@@ -619,10 +741,15 @@ PS.render.surfaceColor.refreshGroundMoistureGradientPackedCache = function () {
 };
 
 PS.render.surfaceColor.getGroundMoisturePackedColor = function (sample) {
+  var eraColor = PS.render.surfaceColor.getGroundMoistureColor(sample);
   var key = PS.render.surfaceColor.getGroundGradientKey(sample);
   var moisture = PS.render.surfaceColor.getSampleMoisture(sample);
   var gradient;
   var index;
+
+  if (eraColor) {
+    return PS.render.terrain.applyDeepTimePackedTint(PS.render.terrain.hexToPacked(eraColor));
+  }
 
   if (!key || moisture === null || !PS.render.surfaceColor.hasGroundMoistureSignal(sample)) {
     return null;
