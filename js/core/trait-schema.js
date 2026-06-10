@@ -10,6 +10,7 @@ PS.core.traitSchema = (function() {
     { key: "terrainAffinity", configPrefix: "TRAIT_TERRAIN_AFFINITY" },
     { key: "intelligence", configPrefix: "TRAIT_INTELLIGENCE" },
     { key: "sociality", configPrefix: "TRAIT_SOCIALITY" },
+    { key: "carnivory", configPrefix: "TRAIT_CARNIVORY" },
     { key: "bodySize", configPrefix: "TRAIT_BODY_SIZE" },
     { key: "limbCount", configPrefix: "TRAIT_LIMB_COUNT", integer: true },
     { key: "bodyShape", configPrefix: "TRAIT_BODY_SHAPE", integer: true },

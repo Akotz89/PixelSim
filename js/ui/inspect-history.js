@@ -30,7 +30,8 @@ function makeTraitHistorySample(summary) {
     movementTendency: summary.movementTendency,
     terrainAffinity: summary.terrainAffinity,
     intelligence: summary.intelligence,
-    sociality: summary.sociality
+    sociality: summary.sociality,
+    carnivory: summary.carnivory
   };
 }
 
@@ -92,7 +93,8 @@ function drawTraitHistory() {
       " metabolism " + Number(latest.metabolism || 0).toFixed(1) +
       " reproduce " + Number(latest.reproductionEnergy || 0).toFixed(0) +
       " intelligence " + Number(latest.intelligence || 0).toFixed(2) +
-      " sociality " + Number(latest.sociality || 0).toFixed(2)
+      " sociality " + Number(latest.sociality || 0).toFixed(2) +
+      " carnivory " + Number(latest.carnivory || 0).toFixed(2)
     : "TRAIT HISTORY: Waiting for samples";
 }
 

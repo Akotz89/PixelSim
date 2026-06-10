@@ -72,6 +72,113 @@ function eatFoodOnCurrentTile(organism) {
   return true;
 }
 
+function isCarnivoreTraitSet(traits) {
+  return Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
+}
+
+function getPredationSearchRadius(traits) {
+  return Math.max(
+    1,
+    Math.min(
+      Math.round(Number(CONFIG.PREDATION_SEARCH_RADIUS) || 3),
+      Math.round(Number(traits && traits.vision) || CONFIG.PREDATION_SEARCH_RADIUS)
+    )
+  );
+}
+
+function isPredationPrey(candidate, attacker) {
+  if (!candidate || candidate === attacker || candidate.energy <= 0) {
+    return false;
+  }
+
+  return !isCarnivoreTraitSet(ensureOrganismTraits(candidate));
+}
+
+function findNearestPrey(organism, traits) {
+  var radius = getPredationSearchRadius(traits);
+  var nearestPrey = null;
+  var nearestDistance = Infinity;
+
+  for (var i = 0; i < world.organisms.length; i++) {
+    var candidate = world.organisms[i];
+
+    if (!isPredationPrey(candidate, organism)) {
+      continue;
+    }
+
+    var distance = getTileManhattanDistance(organism.x, organism.y, candidate.x, candidate.y);
+
+    if (distance <= radius && distance < nearestDistance) {
+      nearestPrey = candidate;
+      nearestDistance = distance;
+    }
+  }
+
+  return nearestPrey;
+}
+
+function moveTowardPrey(organism, prey) {
+  organism.directionX = getDirectionXToTile(organism.x, prey.x);
+  organism.directionY = getDirectionYToTile(organism.y, prey.y);
+}
+
+function getPredationAttackAdvantage(attackerTraits, victimTraits) {
+  var attackerSize = Number(attackerTraits.bodySize) || CONFIG.TRAIT_BODY_SIZE_DEFAULT;
+  var victimSize = Number(victimTraits.bodySize) || CONFIG.TRAIT_BODY_SIZE_DEFAULT;
+  var attackerLimbs = Number(attackerTraits.limbCount) || CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
+  var victimLimbs = Number(victimTraits.limbCount) || CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
+
+  return (
+    attackerSize - victimSize +
+    (attackerLimbs - victimLimbs) * 0.05 +
+    (Number(attackerTraits.carnivory) - Number(victimTraits.carnivory)) * 0.25
+  );
+}
+
+function canAttemptPredationThisTick() {
+  var interval = Math.max(1, Math.round(Number(CONFIG.PREDATION_ATTACK_INTERVAL) || 1));
+  return world.tick % interval === 0;
+}
+
+function tryAttackPrey(attacker, prey, attackerTraits) {
+  if (!prey || getTileManhattanDistance(attacker.x, attacker.y, prey.x, prey.y) > 1) {
+    return false;
+  }
+
+  var victimTraits = ensureOrganismTraits(prey);
+  var attackAdvantage = getPredationAttackAdvantage(attackerTraits, victimTraits);
+
+  if (attackAdvantage < CONFIG.PREDATION_MIN_ATTACK_ADVANTAGE) {
+    return false;
+  }
+
+  var transferredEnergy = Math.max(0, Number(prey.energy) || 0) * CONFIG.PREDATION_ENERGY_TRANSFER_RATIO;
+  prey.energy = 0;
+  attacker.energy += transferredEnergy;
+  attacker.lastPredationTick = world.tick;
+  return true;
+}
+
+function updatePredationForOrganism(organism, traits) {
+  if (!isCarnivoreTraitSet(traits)) {
+    return false;
+  }
+
+  var prey = findNearestPrey(organism, traits);
+
+  if (!prey) {
+    return false;
+  }
+
+  moveTowardPrey(organism, prey);
+
+  if (!canAttemptPredationThisTick()) {
+    return false;
+  }
+
+  return tryAttackPrey(organism, prey, traits);
+}
+
 function getReproductionScarcityPressure() {
   var population = Array.isArray(world.organisms) ? world.organisms.length : 0;
 
@@ -156,6 +263,10 @@ function reproduceIfReady(organism) {
 function updateOrganism(organism) {
   var traits = ensureOrganismTraits(organism);
 
+  if (organism.energy <= 0) {
+    return;
+  }
+
   organism.prevX = organism.x;
   organism.prevY = organism.y;
   organism.prevLatitude = Number.isFinite(Number(organism.latitude))
@@ -172,9 +283,12 @@ function updateOrganism(organism) {
     applyTerrainEnergyCost(organism, traits);
   }
 
-  var nearestFood = findNearestFood(organism, traits.vision);
+  var isCarnivore = isCarnivoreTraitSet(traits);
+  var nearestFood = isCarnivore ? null : findNearestFood(organism, traits.vision);
 
-  if (nearestFood) {
+  if (isCarnivore) {
+    updatePredationForOrganism(organism, traits);
+  } else if (nearestFood) {
     moveTowardFood(organism, nearestFood);
   } else if (chance(traits.movementTendency)) {
     chooseRoamingDirection(organism, traits);
@@ -182,7 +296,12 @@ function updateOrganism(organism) {
 
   moveOrganismByTravelBudget(organism);
 
-  eatFoodOnCurrentTile(organism);
+  if (isCarnivore) {
+    updatePredationForOrganism(organism, traits);
+  } else {
+    eatFoodOnCurrentTile(organism);
+  }
+
   reproduceIfReady(organism);
 }
 
@@ -213,6 +332,11 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
     var y = getClampedWorldY(arrays.y[pooledIndex]);
     var energy = arrays.energy[pooledIndex];
     var travelKm = Math.max(0, Number(arrays.travelKm[pooledIndex]) || 0) + travelKmPerTick;
+    var carnivory = arrays.carnivory[pooledIndex];
+
+    if (energy <= 0) {
+      continue;
+    }
 
     arrays.prevX[pooledIndex] = x;
     arrays.prevY[pooledIndex] = y;
@@ -232,10 +356,20 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
 
     var vision = arrays.vision[pooledIndex];
     var movementTendency = arrays.movementTendency[pooledIndex];
-    var shouldForageOrganism = world.food.length > 0 && vision > 0 && (world.tick + pooledIndex) % foragingInterval === 0;
+    var isPooledCarnivore = carnivory > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
+    var shouldForageOrganism = !isPooledCarnivore &&
+      world.food.length > 0 &&
+      vision > 0 &&
+      (world.tick + pooledIndex) % foragingInterval === 0;
     var nearestFood = shouldForageOrganism ? findNearestFoodInBuckets(x, y, vision) : null;
 
-    if (nearestFood) {
+    if (isPooledCarnivore) {
+      pooledOrganism.x = x;
+      pooledOrganism.y = y;
+      pooledOrganism.energy = energy;
+      updatePredationForOrganism(pooledOrganism, pooledOrganism.traits);
+      energy = arrays.energy[pooledIndex];
+    } else if (nearestFood) {
       arrays.directionX[pooledIndex] = getDirectionXToTile(x, nearestFood.x);
       arrays.directionY[pooledIndex] = getDirectionYToTile(y, nearestFood.y);
     } else if (movementTendency > 0 && chance(movementTendency)) {
@@ -275,12 +409,20 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
 
     var foodKey = x + ":" + y;
 
-    if (foodPositions[foodKey] && removeFoodAtPosition(x, y)) {
+    if (!isPooledCarnivore && foodPositions[foodKey] && removeFoodAtPosition(x, y)) {
       energy += CONFIG.FOOD_ENERGY_VALUE;
 
       if (typeof recordFoodConsumed === "function") {
         recordFoodConsumed(1);
       }
+    }
+
+    if (isPooledCarnivore) {
+      pooledOrganism.x = x;
+      pooledOrganism.y = y;
+      pooledOrganism.energy = energy;
+      updatePredationForOrganism(pooledOrganism, pooledOrganism.traits);
+      energy = arrays.energy[pooledIndex];
     }
 
     arrays.energy[pooledIndex] = energy;

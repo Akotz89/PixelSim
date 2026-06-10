@@ -167,6 +167,7 @@ const root = path.resolve(__dirname, "..");
         world.organisms[0].traits.bodySize = 1.5;
         world.organisms[0].traits.limbCount = 6;
         world.organisms[0].traits.camouflage = 0.75;
+        world.organisms[0].traits.carnivory = 0.6;
       }
       world.settlements = [{
         id: 21,
@@ -265,7 +266,8 @@ const root = path.resolve(__dirname, "..");
         metabolism: CONFIG.TRAIT_METABOLISM_DEFAULT,
         reproductionEnergy: CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT,
         movementTendency: CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT,
-        terrainAffinity: CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT
+        terrainAffinity: CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT,
+        carnivory: CONFIG.TRAIT_CARNIVORY_DEFAULT
       }];
       world.ecosystemHistory = [{
         tick: 4200,
@@ -433,7 +435,8 @@ const root = path.resolve(__dirname, "..");
         representativeId: world.organisms[0].representativeId,
         bodySize: world.organisms[0].traits.bodySize,
         limbCount: world.organisms[0].traits.limbCount,
-        camouflage: world.organisms[0].traits.camouflage
+        camouflage: world.organisms[0].traits.camouflage,
+        carnivory: world.organisms[0].traits.carnivory
       } : null,
       geology: Object.assign({}, world.geology),
       atmosphere: Object.assign({}, world.atmosphere)
@@ -520,6 +523,10 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.organismIdentity.bodySize, 1.5, "organism body size should restore");
   assert.strictEqual(evidence.importedEvidence.organismIdentity.limbCount, 6, "organism limb count should restore");
   assert.strictEqual(evidence.importedEvidence.organismIdentity.camouflage, 0.75, "organism camouflage should restore");
+  assert.ok(
+    Math.abs(evidence.importedEvidence.organismIdentity.carnivory - 0.6) < 0.0001,
+    "organism carnivory should restore"
+  );
   assert.ok(Number.isFinite(evidence.saveData.colonyNetworkScore), "colony score should serialize");
   assert.ok(evidence.importedEvidence.progression.colonyNetworkScore > 0, "colony score should restore to an active progression state");
   [

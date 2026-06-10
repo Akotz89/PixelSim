@@ -300,7 +300,8 @@ function refreshLineageRegistry() {
     movementTendency: 0,
     terrainAffinity: 0,
     intelligence: 0,
-    sociality: 0
+    sociality: 0,
+    carnivory: 0
   };
 
   world.organismBuckets = {};
@@ -339,6 +340,7 @@ function refreshLineageRegistry() {
     var terrainAffinity = poolIndex >= 0 ? pooledArrays.terrainAffinity[poolIndex] : traits.terrainAffinity;
     var intelligence = poolIndex >= 0 ? pooledArrays.intelligence[poolIndex] : traits.intelligence;
     var sociality = poolIndex >= 0 ? pooledArrays.sociality[poolIndex] : traits.sociality;
+    var carnivory = poolIndex >= 0 ? pooledArrays.carnivory[poolIndex] : traits.carnivory;
 
     traitTotals.vision += vision;
     traitTotals.metabolism += metabolism;
@@ -347,6 +349,7 @@ function refreshLineageRegistry() {
     traitTotals.terrainAffinity += terrainAffinity;
     traitTotals.intelligence += intelligence;
     traitTotals.sociality += sociality;
+    traitTotals.carnivory += carnivory;
 
     record.activeCount++;
     record.lastSeenTick = world.tick;
@@ -385,7 +388,8 @@ function refreshLineageRegistry() {
       movementTendency: traitTotals.movementTendency / world.organisms.length,
       terrainAffinity: traitTotals.terrainAffinity / world.organisms.length,
       intelligence: traitTotals.intelligence / world.organisms.length,
-      sociality: traitTotals.sociality / world.organisms.length
+      sociality: traitTotals.sociality / world.organisms.length,
+      carnivory: traitTotals.carnivory / world.organisms.length
     };
   }
 

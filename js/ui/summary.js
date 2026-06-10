@@ -94,7 +94,8 @@ function updateTraitSummary() {
     makeSummaryChip("Metabolism", summary.metabolism.toFixed(2)),
     makeSummaryChip("Reproduce", summary.reproductionEnergy.toFixed(1)),
     makeSummaryChip("Roam", summary.movementTendency.toFixed(2)),
-    makeSummaryChip("Habitat", summary.terrainAffinity.toFixed(2))
+    makeSummaryChip("Habitat", summary.terrainAffinity.toFixed(2)),
+    makeSummaryChip("Carnivory", summary.carnivory.toFixed(2))
   ];
 
   setElementClass(traitSummaryText, "summary-grid trait-summary-grid");

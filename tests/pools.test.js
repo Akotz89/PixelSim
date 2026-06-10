@@ -122,7 +122,7 @@ assert.strictEqual(PS.pools.food.capacity, 3, "food capacity should be configura
 assert.ok(PS.poolManager.pools.organisms, "organism pool should register with pool manager");
 assert.ok(PS.poolManager.pools.food, "food pool should register with pool manager");
 assert.ok(PS.pools.organism.arrays.x instanceof Float32Array, "organism x should be typed-array backed");
-assert.strictEqual(Object.keys(PS.pools.organism.arrays).length, 38, "organism pool should expose biology identity, trait, and tile-link arrays");
+assert.strictEqual(Object.keys(PS.pools.organism.arrays).length, 39, "organism pool should expose biology identity, trait, and tile-link arrays");
 assert.strictEqual(PS.pools.organism.arrays.nextInTile[0], -1, "organism tile-grid next pointer should default to no link");
 assert.strictEqual(PS.pools.organism.arrays.prevInTile[0], -1, "organism tile-grid previous pointer should default to no link");
 
@@ -135,6 +135,7 @@ organism.energy = 42;
 organism.traits.vision = 27;
 organism.traits.intelligence = 0.5;
 organism.traits.sociality = 0.25;
+organism.traits.carnivory = 0.75;
 organism.speciesId = 3;
 organism.populationId = 5;
 organism.representativeId = 7;
@@ -144,6 +145,7 @@ assert.strictEqual(PS.pools.organism.arrays.energy[organism.poolIndex], 42, "org
 assert.strictEqual(PS.pools.organism.arrays.vision[organism.poolIndex], 27, "trait writes should update typed array");
 assert.strictEqual(PS.pools.organism.arrays.intelligence[organism.poolIndex], 0.5, "intelligence should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.sociality[organism.poolIndex], 0.25, "sociality should write through to typed array");
+assert.strictEqual(PS.pools.organism.arrays.carnivory[organism.poolIndex], 0.75, "carnivory should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.speciesId[organism.poolIndex], 3, "species id should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.populationId[organism.poolIndex], 5, "population id should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.representativeId[organism.poolIndex], 7, "representative id should write through to typed array");

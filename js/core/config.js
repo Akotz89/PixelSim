@@ -129,7 +129,9 @@ PS.config.refreshFromConstants = function () {
     intelligenceMin: CONFIG.TRAIT_INTELLIGENCE_MIN,
     intelligenceMax: CONFIG.TRAIT_INTELLIGENCE_MAX,
     socialityMin: CONFIG.TRAIT_SOCIALITY_MIN,
-    socialityMax: CONFIG.TRAIT_SOCIALITY_MAX
+    socialityMax: CONFIG.TRAIT_SOCIALITY_MAX,
+    carnivoryMin: CONFIG.TRAIT_CARNIVORY_MIN,
+    carnivoryMax: CONFIG.TRAIT_CARNIVORY_MAX
   };
 
   PS.config.settlements = {

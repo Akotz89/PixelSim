@@ -82,7 +82,8 @@ function copyTraitHistorySampleForSave(sample) {
     movementTendency: sample.movementTendency,
     terrainAffinity: sample.terrainAffinity,
     intelligence: sample.intelligence,
-    sociality: sample.sociality
+    sociality: sample.sociality,
+    carnivory: sample.carnivory
   };
 }
 

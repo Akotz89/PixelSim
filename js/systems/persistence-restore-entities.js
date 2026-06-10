@@ -257,6 +257,12 @@ function restoreTraitHistorySample(sample) {
       CONFIG.TRAIT_SOCIALITY_DEFAULT,
       CONFIG.TRAIT_SOCIALITY_MIN,
       CONFIG.TRAIT_SOCIALITY_MAX
+    ),
+    carnivory: restoreClampedNumber(
+      sample.carnivory,
+      CONFIG.TRAIT_CARNIVORY_DEFAULT,
+      CONFIG.TRAIT_CARNIVORY_MIN,
+      CONFIG.TRAIT_CARNIVORY_MAX
     )
   };
 }

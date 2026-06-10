@@ -10,7 +10,8 @@
         "metabolism": 1,
         "bodySize": 0.5,
         "movementTendency": 0.08,
-        "terrainAffinity": 0.8
+        "terrainAffinity": 0.8,
+        "carnivory": 0
       },
       "traitRanges": { "vision": [4, 24], "metabolism": [0.1, 1.0], "bodySize": [0.3, 1.2] },
       "diet": "herbivore",
@@ -27,7 +28,8 @@
         "metabolism": 2,
         "bodySize": 0.7,
         "movementTendency": 0.12,
-        "terrainAffinity": 0.6
+        "terrainAffinity": 0.6,
+        "carnivory": 0.9
       },
       "traitRanges": { "vision": [8, 30], "metabolism": [0.3, 1.4], "bodySize": [0.5, 1.5] },
       "diet": "carnivore",
@@ -45,7 +47,8 @@
         "bodySize": 0.35,
         "movementTendency": 0.14,
         "terrainAffinity": 0.1,
-        "waterDependency": 1
+        "waterDependency": 1,
+        "carnivory": 0.3
       },
       "traitRanges": { "vision": [3, 18], "metabolism": [0.1, 0.8], "bodySize": [0.2, 0.8] },
       "diet": "omnivore",

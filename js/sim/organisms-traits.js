@@ -69,6 +69,12 @@ function makeInitialOrganismTraits(typeId) {
       CONFIG.TRAIT_SOCIALITY_MAX,
       CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
     ),
+    carnivory: varyTraitValue(
+      CONFIG.TRAIT_CARNIVORY_DEFAULT,
+      CONFIG.TRAIT_CARNIVORY_MIN,
+      CONFIG.TRAIT_CARNIVORY_MAX,
+      CONFIG.TRAIT_CARNIVORY_MUTATION_STEP
+    ),
     bodySize: CONFIG.TRAIT_BODY_SIZE_DEFAULT,
     limbCount: CONFIG.TRAIT_LIMB_COUNT_DEFAULT,
     bodyShape: CONFIG.TRAIT_BODY_SHAPE_DEFAULT,
@@ -132,6 +138,12 @@ function inheritOrganismTraits(parentTraits) {
       CONFIG.TRAIT_SOCIALITY_MIN,
       CONFIG.TRAIT_SOCIALITY_MAX,
       CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
+    ),
+    carnivory: inheritTraitValue(
+      parentTraits.carnivory,
+      CONFIG.TRAIT_CARNIVORY_MIN,
+      CONFIG.TRAIT_CARNIVORY_MAX,
+      CONFIG.TRAIT_CARNIVORY_MUTATION_STEP
     ),
     bodySize: parentTraits.bodySize,
     limbCount: parentTraits.limbCount,
@@ -302,7 +314,8 @@ function getTraitDivergenceScore(parentTraits, childTraits) {
     Math.abs(childTraits.movementTendency - parentTraits.movementTendency) / CONFIG.TRAIT_MOVEMENT_TENDENCY_MUTATION_STEP +
     Math.abs(childTraits.terrainAffinity - parentTraits.terrainAffinity) / CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP +
     Math.abs(childTraits.intelligence - parentTraits.intelligence) / CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP +
-    Math.abs(childTraits.sociality - parentTraits.sociality) / CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
+    Math.abs(childTraits.sociality - parentTraits.sociality) / CONFIG.TRAIT_SOCIALITY_MUTATION_STEP +
+    Math.abs(childTraits.carnivory - parentTraits.carnivory) / CONFIG.TRAIT_CARNIVORY_MUTATION_STEP
   );
 }
 

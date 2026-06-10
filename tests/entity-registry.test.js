@@ -158,6 +158,7 @@ assert.strictEqual(predator.energy, 220, "predator should use registry base ener
 assert.strictEqual(predator.traits.vision, 18, "predator should use registry vision default");
 assert.strictEqual(predator.traits.metabolism, 2, "predator should use registry metabolism default");
 assert.ok(Math.abs(predator.traits.bodySize - 0.7) < 0.0001, "predator should use registry body size default");
+assert.ok(predator.traits.carnivory > CONFIG.PREDATION_CARNIVORY_THRESHOLD, "predator should use registry carnivory default");
 
 var fish = PS.sim.organisms.make(2, 3, null, "fish_basic");
 assert.strictEqual(fish.typeId, "fish_basic", "make should accept optional entity type id");

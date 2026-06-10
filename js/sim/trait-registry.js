@@ -87,6 +87,17 @@ var TRAIT_DEFINITIONS = [
     evolvable: true,
     integer: false
   },
+  {
+    id: "carnivory",
+    label: "Carnivory",
+    category: "diet",
+    min: CONFIG.TRAIT_CARNIVORY_MIN,
+    max: CONFIG.TRAIT_CARNIVORY_MAX,
+    defaultValue: CONFIG.TRAIT_CARNIVORY_DEFAULT,
+    mutationStep: CONFIG.TRAIT_CARNIVORY_MUTATION_STEP,
+    evolvable: true,
+    integer: false
+  },
 
   // ── Morphology traits (not evolvable yet, set at creation) ──
   {
