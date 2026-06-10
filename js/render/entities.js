@@ -2,6 +2,14 @@
 PS.render = PS.render || {};
 PS.render.entities = PS.render.entities || {};
 
+PS.render.entities.organismRenderPerf = PS.render.entities.organismRenderPerf || {
+  lastOrganismRenderCount: 0,
+  lastSpriteCacheHits: 0,
+  lastSpriteCacheMisses: 0,
+  lastAnimationSeedComputes: 0,
+  lastEstimatedRenderObjectsPerSecond: 0
+};
+
 PS.render.entities.getTileRenderPosition = function (tileX, tileY) {
   if (isGlobeRenderMode()) {
     return getPlanetInterpolatedProjection(tileX, tileY);
@@ -116,6 +124,41 @@ PS.render.entities.getRenderPosition = function (entity, interpolation) {
   }
 
   return PS.render.entities.getTileRenderPosition(entity.x, entity.y);
+};
+
+PS.render.entities.writeRenderPosition = function (entity, interpolation, output) {
+  var out = output || {};
+  var amount;
+  var x;
+  var y;
+  var projected;
+
+  if (!entity) {
+    return null;
+  }
+
+  if (isGlobeRenderMode()) {
+    projected = PS.render.entities.getRenderPosition(entity, interpolation);
+    if (!projected) {
+      return null;
+    }
+    out.x = projected.x;
+    out.y = projected.y;
+    out.scale = projected.scale;
+    out.visibility = projected.visibility;
+    out.visible = projected.visible;
+    return out;
+  }
+
+  amount = PS.render.entities.getInterpolationAmount(interpolation);
+  x = PS.render.entities.getInterpolatedTileCoordinate(entity.prevX, entity.x, amount, WORLD_WIDTH, true);
+  y = PS.render.entities.getInterpolatedTileCoordinate(entity.prevY, entity.y, amount, WORLD_HEIGHT, false);
+  out.x = x * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+  out.y = y * CONFIG.TILE_SIZE + CONFIG.TILE_SIZE / 2;
+  out.scale = 1;
+  out.visibility = 1;
+  out.visible = true;
+  return out;
 };
 
 PS.render.entities.drawSurfaceEntity = function (entity, interpolation, size, color, spriteId, state) {
@@ -615,6 +658,134 @@ PS.render.entities.drawSettlementEffects = function () {
   return PS.render.entities.drawEntityBatches(batches, drawn);
 };
 
+PS.render.entities.getOrganismEnergyBucket = function (organism) {
+  var energy = Number(organism && organism.energy);
+
+  if (energy > 200) {
+    return 2;
+  }
+
+  if (energy < 60) {
+    return 0;
+  }
+
+  return 1;
+};
+
+PS.render.entities.getOrganismHeadingBucket = function (organism) {
+  var direction = organism ? organism.direction : null;
+  var dx;
+  var dy;
+
+  if (Number.isFinite(Number(direction))) {
+    return Math.max(0, Math.min(7, Math.round(Number(direction))));
+  }
+
+  if (typeof direction === "string" && direction.length > 0) {
+    return direction.charCodeAt(0) & 7;
+  }
+
+  dx = Math.round(Number(organism && organism.x) || 0) - Math.round(Number(organism && organism.prevX) || 0);
+  dy = Math.round(Number(organism && organism.y) || 0) - Math.round(Number(organism && organism.prevY) || 0);
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx >= 0 ? 2 : 6;
+  }
+
+  if (dy !== 0) {
+    return dy >= 0 ? 4 : 0;
+  }
+
+  return 0;
+};
+
+PS.render.entities.getOrganismAnimationSeed = function (organism, index) {
+  var existing = Number(organism && organism.renderAnimationSeed);
+  var stableId;
+  var seed;
+
+  if (Number.isFinite(existing) && existing > 0) {
+    return existing >>> 0;
+  }
+
+  stableId = Math.round(Number(organism && (organism.representativeId || organism.id || organism.poolIndex)) || 0);
+  if (!stableId) {
+    stableId = Math.round((Number(organism && organism.x) || 0) * 73856093) ^
+      Math.round((Number(organism && organism.y) || 0) * 19349663) ^
+      Math.round(Number(index) || 0);
+  }
+
+  seed = Math.imul(stableId ^ 0x9e3779b9, 0x85ebca6b) >>> 0;
+  if (organism) {
+    organism.renderAnimationSeed = seed || 1;
+  }
+  PS.render.entities.organismRenderPerf.lastAnimationSeedComputes += 1;
+  return seed || 1;
+};
+
+PS.render.entities.getOrganismSpriteCache = function (organism, index) {
+  var perf = PS.render.entities.organismRenderPerf;
+  var traits = organism && organism.traits ? organism.traits : {};
+  var seed = PS.render.entities.getOrganismAnimationSeed(organism, index);
+  var variant = seed & 3;
+  var lineage = Math.max(1, Math.round(Number(organism && organism.lineageId) || 1)) % 16;
+  var bodySize = Math.max(1, Math.min(6, Math.round((Number(traits.bodySize) || 1) * 2)));
+  var bodyShape = Math.max(0, Math.min(7, Math.round(Number(traits.bodyShape) || 0)));
+  var limbCount = Math.max(0, Math.min(12, Math.round(Number(traits.limbCount) || 0)));
+  var appendageType = Math.max(0, Math.min(7, Math.round(Number(traits.appendageType) || 0)));
+  var camouflage = Math.max(0, Math.min(4, Math.round((Number(traits.camouflage) || 0) * 4)));
+  var thermal = Math.max(0, Math.min(4, Math.round((Number(traits.thermalTolerance) || 0) * 4)));
+  var water = Math.max(0, Math.min(4, Math.round((Number(traits.waterDependency) || 0) * 4)));
+  var energyBucket = PS.render.entities.getOrganismEnergyBucket(organism);
+  var headingBucket = PS.render.entities.getOrganismHeadingBucket(organism);
+  var cache = organism ? organism._renderSpriteCache : null;
+  var changed;
+
+  if (!cache) {
+    cache = {};
+    if (organism) {
+      organism._renderSpriteCache = cache;
+    }
+  }
+
+  changed = cache.variant !== variant ||
+    cache.lineage !== lineage ||
+    cache.bodySize !== bodySize ||
+    cache.bodyShape !== bodyShape ||
+    cache.limbCount !== limbCount ||
+    cache.appendageType !== appendageType ||
+    cache.camouflage !== camouflage ||
+    cache.thermal !== thermal ||
+    cache.water !== water ||
+    cache.energyBucket !== energyBucket ||
+    cache.headingBucket !== headingBucket ||
+    !cache.cell;
+
+  if (changed) {
+    cache.variant = variant;
+    cache.lineage = lineage;
+    cache.bodySize = bodySize;
+    cache.bodyShape = bodyShape;
+    cache.limbCount = limbCount;
+    cache.appendageType = appendageType;
+    cache.camouflage = camouflage;
+    cache.thermal = thermal;
+    cache.water = water;
+    cache.energyBucket = energyBucket;
+    cache.headingBucket = headingBucket;
+    cache.cell = PS.atlas.getTraitOrganismCell(organism, variant);
+    perf.lastSpriteCacheMisses += 1;
+  } else {
+    perf.lastSpriteCacheHits += 1;
+  }
+
+  return cache;
+};
+
+PS.render.entities.getOrganismRenderPerfStats = function () {
+  return Object.assign({}, PS.render.entities.organismRenderPerf);
+};
+
 PS.render.entities.drawOrganisms = function () {
   if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
     return false;
@@ -626,17 +797,25 @@ PS.render.entities.drawOrganisms = function () {
     : null;
   var drawSize = Math.max(3, Number(CONFIG.ORGANISM_DRAW_SIZE) || 4);
   var interpolation = typeof getFrameInterpolation === "function" ? getFrameInterpolation() : 1;
+  var pointScratch = {};
+  var perf = PS.render.entities.organismRenderPerf;
   var drawn = 0;
 
   if (!batches || !PS.atlas || typeof PS.atlas.getTraitOrganismCell !== "function") {
     return false;
   }
 
+  perf.lastOrganismRenderCount = organisms.length;
+  perf.lastSpriteCacheHits = 0;
+  perf.lastSpriteCacheMisses = 0;
+  perf.lastAnimationSeedComputes = 0;
+  perf.lastEstimatedRenderObjectsPerSecond = 0;
+
   for (var i = 0; i < organisms.length; i += 1) {
     var organism = organisms[i];
-    var point = PS.render.entities.getRenderPosition(organism, interpolation);
-    var variant = Math.abs(Math.round(Number(organism && organism.id) || i)) % 4;
-    var cell = PS.atlas.getTraitOrganismCell(organism, variant);
+    var point = PS.render.entities.writeRenderPosition(organism, interpolation, pointScratch);
+    var spriteCache = PS.render.entities.getOrganismSpriteCache(organism, i);
+    var cell = spriteCache && spriteCache.cell;
     var visibility = point && Number.isFinite(Number(point.visibility)) ? Number(point.visibility) : 1;
 
     if (!point || point.visible === false || !cell) {
@@ -657,6 +836,7 @@ PS.render.entities.drawOrganisms = function () {
     drawn += 1;
   }
 
+  perf.lastEstimatedRenderObjectsPerSecond = perf.lastSpriteCacheMisses * 30;
   return drawn > 0 && PS.render.webgpuEntity.drawBatches(batches);
 };
 

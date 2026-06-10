@@ -50,6 +50,9 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     effectDrawCount: 0,
     vegetationDrawCount: 0,
     citizenDrawCount: 0,
+    pageBuffers: {},
+    pageBufferToken: 0,
+    lastBatchBufferReallocations: 0,
     lastFrameMs: 0,
     lastError: ""
   },
@@ -106,6 +109,7 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     this.state.effectDrawCount = 0;
     this.state.vegetationDrawCount = 0;
     this.state.citizenDrawCount = 0;
+    this.state.lastBatchBufferReallocations = 0;
   },
 
   ensureAtlas: function () {
@@ -480,8 +484,47 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
   beginBatches: function () {
     return {
       count: 0,
-      pages: {}
+      pages: {},
+      pageBufferToken: ++this.state.pageBufferToken
     };
+  },
+
+  getPageBuffer: function (batches, pageIndex) {
+    var stride = this.strideFloats;
+    var key = String(pageIndex);
+    var page = this.state.pageBuffers[key];
+
+    if (!page) {
+      page = {
+        data: new Float32Array(Math.max(stride * 64, stride)),
+        length: 0,
+        token: 0
+      };
+      this.state.pageBuffers[key] = page;
+      this.state.lastBatchBufferReallocations += 1;
+    }
+
+    if (page.token !== batches.pageBufferToken) {
+      page.length = 0;
+      page.token = batches.pageBufferToken;
+    }
+
+    if (page.length + stride > page.data.length) {
+      var nextLength = page.data.length;
+      var nextData;
+
+      while (page.length + stride > nextLength) {
+        nextLength *= 2;
+      }
+
+      nextData = new Float32Array(nextLength);
+      nextData.set(page.data.subarray(0, page.length), 0);
+      page.data = nextData;
+      this.state.lastBatchBufferReallocations += 1;
+    }
+
+    batches.pages[key] = page;
+    return page;
   },
 
   getKindCounterName: function (kind) {
@@ -523,27 +566,28 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     var pageIndex = safeCell ? Number(safeCell.pageIndex) || 0 : 0;
     var page = PS.atlas && PS.atlas.pages ? PS.atlas.pages[pageIndex] : null;
     var list;
+    var offset;
     var color = tint || [1, 1, 1, 1];
 
     if (!safeCell || !page || !page.data) {
       return target;
     }
 
-    list = target.pages[String(pageIndex)] = target.pages[String(pageIndex)] || [];
-    list.push(
-      Number(x) || 0,
-      Number(y) || 0,
-      Math.max(1, Number(width) || safeCell.w || 1),
-      Math.max(1, Number(height) || safeCell.h || 1),
-      safeCell.u0,
-      safeCell.v0,
-      safeCell.u1,
-      safeCell.v1,
-      Number(color[0]) || 1,
-      Number(color[1]) || 1,
-      Number(color[2]) || 1,
-      Math.max(0, Math.min(1, Number(alpha === undefined ? color[3] : alpha) || 1))
-    );
+    list = this.getPageBuffer(target, pageIndex);
+    offset = list.length;
+    list.data[offset] = Number(x) || 0;
+    list.data[offset + 1] = Number(y) || 0;
+    list.data[offset + 2] = Math.max(1, Number(width) || safeCell.w || 1);
+    list.data[offset + 3] = Math.max(1, Number(height) || safeCell.h || 1);
+    list.data[offset + 4] = safeCell.u0;
+    list.data[offset + 5] = safeCell.v0;
+    list.data[offset + 6] = safeCell.u1;
+    list.data[offset + 7] = safeCell.v1;
+    list.data[offset + 8] = Number(color[0]) || 1;
+    list.data[offset + 9] = Number(color[1]) || 1;
+    list.data[offset + 10] = Number(color[2]) || 1;
+    list.data[offset + 11] = Math.max(0, Math.min(1, Number(alpha === undefined ? color[3] : alpha) || 1));
+    list.length += this.strideFloats;
     target.count += 1;
 
     this.incrementBatchKind(target, kind, 1);
@@ -605,8 +649,11 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     for (var i = 0; i < pageKeys.length; i += 1) {
       var pageIndex = pageKeys[i];
       var values = batches.pages[pageIndex];
-      var pageData = values instanceof Float32Array ? values : new Float32Array(values || []);
-      var instanceCount = Math.floor(pageData.length / this.strideFloats);
+      var pageData = values && values.data instanceof Float32Array
+        ? values.data
+        : (values instanceof Float32Array ? values : new Float32Array(values || []));
+      var pageLength = values && values.data instanceof Float32Array ? values.length : pageData.length;
+      var instanceCount = Math.floor(pageLength / this.strideFloats);
       var texture = this.getTexture(pageIndex, device);
       var instanceBuffer;
       var pass;
@@ -718,6 +765,7 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
       instanceCapacity: this.state.instanceCapacity,
       particleInstanceCapacity: this.state.particleInstanceCapacity,
       shadowInstanceCapacity: this.state.shadowInstanceCapacity,
+      lastBatchBufferReallocations: this.state.lastBatchBufferReallocations,
       lastFrameMs: this.state.lastFrameMs,
       lastError: this.state.lastError
     };

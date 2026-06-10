@@ -163,6 +163,7 @@ const vegetationCell = { name: "equivalence.vegetation.test", pageIndex: 0, x: 3
 const citizenCell = { name: "equivalence.citizen.test", pageIndex: 0, x: 48, y: 32, w: 16, h: 16, u0: 0.75, v0: 0.5, u1: 1, v1: 0.75 };
 const workStatusCell = { name: "equivalence.work-status.test", pageIndex: 0, x: 0, y: 48, w: 16, h: 16, u0: 0, v0: 0.75, u1: 0.25, v1: 1 };
 const effectCell = { name: "equivalence.effect.test", pageIndex: 0, x: 16, y: 48, w: 16, h: 16, u0: 0.25, v0: 0.75, u1: 0.5, v1: 1 };
+let traitOrganismCellCalls = 0;
 
 const context = {
   PS: {
@@ -243,7 +244,22 @@ const context = {
         return foodCell;
       },
       getTraitOrganismCell() {
+        traitOrganismCellCalls += 1;
         return organismCell;
+      },
+      getOrganismTraitBuckets(organism, frameVariant) {
+        const traits = organism && organism.traits ? organism.traits : {};
+        return {
+          lineage: Math.max(1, Math.round(Number(organism && organism.lineageId) || 1)) % 16,
+          bodySize: Math.max(1, Math.min(6, Math.round((Number(traits.bodySize) || 1) * 2))),
+          bodyShape: Math.max(0, Math.min(7, Math.round(Number(traits.bodyShape) || 0))),
+          limbCount: Math.max(0, Math.min(12, Math.round(Number(traits.limbCount) || 0))),
+          appendageType: Math.max(0, Math.min(7, Math.round(Number(traits.appendageType) || 0))),
+          camouflage: Math.max(0, Math.min(4, Math.round((Number(traits.camouflage) || 0) * 4))),
+          thermal: Math.max(0, Math.min(4, Math.round((Number(traits.thermalTolerance) || 0) * 4))),
+          water: Math.max(0, Math.min(4, Math.round((Number(traits.waterDependency) || 0) * 4))),
+          variant: Math.max(0, Math.min(3, Math.round(Number(frameVariant) || 0)))
+        };
       },
       getSettlementCell() {
         return settlementCell;
@@ -401,6 +417,79 @@ assert.strictEqual(context.PS.render.entities.drawFood(), true, "food facade sho
 assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "organism facade should render through WebGPU entity batches");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().foodDrawCount, 1, "food facade should update entity stats");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().organismDrawCount, 1, "organism facade should update entity stats");
+let organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastOrganismRenderCount, 1, "organism render perf should count rendered candidates");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 1, "first organism render should populate the sprite cache");
+assert.strictEqual(organismPerfStats.lastAnimationSeedComputes, 1, "first organism render should precompute a stable animation seed");
+assert.strictEqual(traitOrganismCellCalls, 1, "first organism render should resolve one atlas cell");
+
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "cached organism facade should still render through WebGPU entity batches");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1, "unchanged organism render should reuse cached sprite variant");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "unchanged organism render should not recompute sprite variant");
+assert.strictEqual(organismPerfStats.lastAnimationSeedComputes, 0, "unchanged organism render should reuse precomputed animation seed");
+assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "steady-state organism render GC pressure should stay below 10,000 objects/sec");
+assert.strictEqual(traitOrganismCellCalls, 1, "unchanged organism render should not call atlas variant resolution again");
+
+context.world.organisms[0].energy = 250;
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "state-changed organism facade should still render through WebGPU entity batches");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 1, "organism energy bucket change should invalidate cached sprite variant");
+assert.strictEqual(traitOrganismCellCalls, 2, "state-changed organism render should refresh atlas variant resolution once");
+assert.ok(organismPerfStats.lastEstimatedRenderObjectsPerSecond < 10000, "state-change organism render GC pressure should stay below 10,000 objects/sec for bounded changes");
+
+const singleOrganismFixture = context.world.organisms;
+const perfOrganisms = [];
+for (let i = 0; i < 1400; i += 1) {
+  perfOrganisms.push({
+    id: i + 100,
+    x: i % 100,
+    y: Math.floor(i / 100),
+    prevX: i % 100,
+    prevY: Math.floor(i / 100),
+    lineageId: 1 + (i % 3),
+    energy: 100,
+    traits: {
+      bodySize: 0.7 + (i % 5) * 0.2,
+      bodyShape: i % 4,
+      limbCount: 2 + (i % 6),
+      appendageType: i % 3,
+      camouflage: (i % 10) / 10,
+      thermalTolerance: (i % 5) / 4,
+      waterDependency: ((i + 2) % 5) / 4
+    }
+  });
+}
+context.world.organisms = perfOrganisms;
+traitOrganismCellCalls = 0;
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "large organism fixture should render through WebGPU entity batches");
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "large cached organism fixture should render through WebGPU entity batches");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastOrganismRenderCount, 1400, "large fixture should exercise the AZR-462 organism count");
+assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1400, "large steady-state render should reuse every cached sprite variant");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "large steady-state render should not allocate variant cache objects");
+assert.strictEqual(organismPerfStats.lastAnimationSeedComputes, 0, "large steady-state render should not compute animation seeds");
+assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "large steady-state render GC pressure should stay below 10,000 objects/sec");
+assert.strictEqual(traitOrganismCellCalls, 1400, "large steady-state render should not repeat atlas variant resolution");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().lastBatchBufferReallocations, 0, "large steady-state render should reuse entity batch page buffers");
+context.world.organisms.reverse();
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "reordered organism fixture should render through WebGPU entity batches");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1400, "reordered organism render should keep per-entity cached sprite variants stable");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "reordered organism render should not invalidate by array index");
+perfOrganisms[0].traits.thermalTolerance = 1;
+perfOrganisms[1].traits.waterDependency = 1;
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "thermal/water trait mutation should render through WebGPU entity batches");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.ok(organismPerfStats.lastSpriteCacheMisses >= 1 && organismPerfStats.lastSpriteCacheMisses <= 2, "thermal and water trait bucket changes should invalidate only changed organism sprites");
+assert.ok(organismPerfStats.lastEstimatedRenderObjectsPerSecond < 10000, "bounded thermal/water changes should stay below 10,000 estimated objects/sec");
+context.world.organisms = singleOrganismFixture;
 
 context.PS.render.webgpuEntity.resetFrameStats();
 assert.strictEqual(context.PS.render.entities.drawSettlements(), true, "settlement facade should render through WebGPU entity batches");
