@@ -205,6 +205,59 @@ PS.core.TerrainType.prototype.getClearingCost = function () {
   return 1;
 };
 
+PS.core.TerrainType.subtypeConstructors = PS.core.TerrainType.subtypeConstructors || new Map();
+
+PS.core.TerrainType.createSubtypeConstructor = function (definition) {
+  var subtypeId = String(definition.id || "");
+  var existing = PS.core.TerrainType.subtypeConstructors.get(subtypeId);
+  var Subtype;
+
+  if (existing) {
+    return existing;
+  }
+
+  Subtype = function (tileDefinition) {
+    PS.core.TerrainType.call(this, tileDefinition);
+    this.subtypeId = subtypeId;
+  };
+
+  Subtype.prototype = Object.create(PS.core.TerrainType.prototype);
+  Subtype.prototype.constructor = Subtype;
+  Subtype.prototype.subtypeId = subtypeId;
+  Subtype.prototype.renderBelow = function (context) {
+    return PS.core.TerrainType.prototype.renderBelow.call(this, context);
+  };
+  Subtype.prototype.renderMid = function (context) {
+    return PS.core.TerrainType.prototype.renderMid.call(this, context);
+  };
+  Subtype.prototype.renderAbove = function (context) {
+    return PS.core.TerrainType.prototype.renderAbove.call(this, context);
+  };
+  Subtype.prototype.computeAutotileMask = function (tileX, tileY, grid, registry) {
+    return PS.core.TerrainType.prototype.computeAutotileMask.call(this, tileX, tileY, grid, registry);
+  };
+  Subtype.prototype.getMinimapColor = function (context) {
+    return PS.core.TerrainType.prototype.getMinimapColor.call(this, context);
+  };
+  Subtype.prototype.isPathable = function (actor, context) {
+    return PS.core.TerrainType.prototype.isPathable.call(this, actor, context);
+  };
+  Subtype.prototype.canPlace = function (placement, context) {
+    return PS.core.TerrainType.prototype.canPlace.call(this, placement, context);
+  };
+  Subtype.prototype.getClearingCost = function (context) {
+    return PS.core.TerrainType.prototype.getClearingCost.call(this, context);
+  };
+
+  PS.core.TerrainType.subtypeConstructors.set(subtypeId, Subtype);
+  return Subtype;
+};
+
+PS.core.TerrainType.create = function (definition) {
+  var Subtype = PS.core.TerrainType.createSubtypeConstructor(definition);
+  return new Subtype(definition);
+};
+
 PS.core.TileRegistry = PS.core.TileRegistry || {
   types: new Map(),
   biomeIndex: new Map(),
@@ -264,7 +317,7 @@ PS.core.TileRegistry = PS.core.TileRegistry || {
     normalized = this.validate(Object.assign({}, definition, { id: tileId }));
 
     this.types.set(tileId, normalized);
-    terrainType = new PS.core.TerrainType(normalized);
+    terrainType = PS.core.TerrainType.create(normalized);
     this.terrainTypes.set(tileId, terrainType);
     normalized.terrainType = terrainType;
 

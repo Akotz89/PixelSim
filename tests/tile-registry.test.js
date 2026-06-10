@@ -66,6 +66,8 @@ assert.ok(registry.types instanceof Map, "TileRegistry should keep a Map of tile
 assert.ok(registry.terrainTypes instanceof Map, "TileRegistry should keep a Map of terrain type behaviors");
 assert.ok(loaded.length >= 15, "loadFromJSON should register at least 15 tile types");
 assert.ok(registry.listTerrainTypes().length >= 15, "loadFromJSON should register at least 15 terrain subtypes");
+assert.ok(context.PS.core.TerrainType.subtypeConstructors instanceof Map, "TerrainType should keep subtype constructors");
+assert.ok(context.PS.core.TerrainType.subtypeConstructors.size >= 15, "TerrainType should define at least 15 subtype constructors");
 assert.strictEqual(loaded.length, tilesData.tiles.length, "loadFromJSON should register every JSON tile");
 assert.strictEqual(lush.name, "Lush Grass", "get should return full tile definition");
 assert.strictEqual(lush.terrainType, grassType, "tile definitions should link to their TerrainType behavior");
@@ -92,7 +94,18 @@ assert.strictEqual(registry.get("missing"), null, "get should return null for un
 assert.strictEqual(registry.getByBiome("missing").length, 0, "getByBiome should return empty array for unknown biome");
 assert.strictEqual(registry.getTerrainType("missing"), null, "getTerrainType should return null for unknown tile");
 
+const subtypeConstructors = new Set();
 registry.listTerrainTypes().forEach((terrainType) => {
+  subtypeConstructors.add(terrainType.constructor);
+  assert.ok(terrainType instanceof context.PS.core.TerrainType, terrainType.id + " should inherit from TerrainType");
+  assert.notStrictEqual(terrainType.constructor, context.PS.core.TerrainType, terrainType.id + " should be a concrete TerrainType subtype");
+  assert.strictEqual(terrainType.subtypeId, terrainType.id, terrainType.id + " subtype id should match tile id");
+  assert.ok(Object.prototype.hasOwnProperty.call(terrainType.constructor.prototype, "renderBelow"), terrainType.id + " subtype should implement renderBelow");
+  assert.ok(Object.prototype.hasOwnProperty.call(terrainType.constructor.prototype, "renderMid"), terrainType.id + " subtype should implement renderMid");
+  assert.ok(Object.prototype.hasOwnProperty.call(terrainType.constructor.prototype, "renderAbove"), terrainType.id + " subtype should implement renderAbove");
+  assert.ok(Object.prototype.hasOwnProperty.call(terrainType.constructor.prototype, "computeAutotileMask"), terrainType.id + " subtype should implement computeAutotileMask");
+  assert.ok(Object.prototype.hasOwnProperty.call(terrainType.constructor.prototype, "getMinimapColor"), terrainType.id + " subtype should implement getMinimapColor");
+  assert.ok(Object.prototype.hasOwnProperty.call(terrainType.constructor.prototype, "isPathable"), terrainType.id + " subtype should implement isPathable");
   assert.strictEqual(typeof terrainType.renderBelow, "function", terrainType.id + " should define renderBelow");
   assert.strictEqual(typeof terrainType.renderMid, "function", terrainType.id + " should define renderMid");
   assert.strictEqual(typeof terrainType.renderAbove, "function", terrainType.id + " should define renderAbove");
@@ -100,6 +113,7 @@ registry.listTerrainTypes().forEach((terrainType) => {
   assert.strictEqual(typeof terrainType.getMinimapColor, "function", terrainType.id + " should define getMinimapColor");
   assert.strictEqual(typeof terrainType.isPathable, "function", terrainType.id + " should define isPathable");
 });
+assert.ok(subtypeConstructors.size >= 15, "registered TerrainTypes should use at least 15 distinct subtype constructors");
 
 assert.strictEqual(registry.getMinimapColor("grass_lush"), "#3a7a1a", "TerrainType should expose per-type minimap colors");
 assert.strictEqual(grassType.getMinimapColor(), lush.minimapColor, "minimap color should come from the tile definition");
