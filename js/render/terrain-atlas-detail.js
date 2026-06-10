@@ -127,6 +127,10 @@ PS.atlas.getTerrainTransitionKey = function (sample, biome) {
 };
 
 PS.atlas.getTerrainTransitionColor = function (palette, transition) {
+  if (transition && transition.gradientColor) {
+    return transition.gradientColor;
+  }
+
   if (transition.type === "coast") {
     return PS.atlas.getTerrainDetailColor(palette, "light");
   }
@@ -145,6 +149,50 @@ PS.atlas.getTerrainTransitionColor = function (palette, transition) {
   }
 
   return PS.atlas.getTerrainDetailColor(palette, transition.type === "canopy" ? "shadow" : "warm");
+};
+
+PS.atlas.getTerrainTransitionGradientColor = function (sample, transition) {
+  var tileBlend = sample && sample.tileBlend ? sample.tileBlend : null;
+  var tiles = tileBlend && Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var best = null;
+  var bestWeight = 0;
+  var i;
+  var item;
+  var color;
+
+  if (!transition || !transition.neighborBiome || !PS.render || !PS.render.surfaceColor ||
+      typeof PS.render.surfaceColor.getGroundMoistureColor !== "function") {
+    return null;
+  }
+
+  for (i = 0; i < tiles.length; i += 1) {
+    item = tiles[i];
+    if ((item.biome || item.tile && item.tile.biome) !== transition.neighborBiome) {
+      continue;
+    }
+    if ((Number(item.weight) || 0) > bestWeight) {
+      bestWeight = Number(item.weight) || 0;
+      best = item;
+    }
+  }
+
+  if (!best || bestWeight <= 0) {
+    return null;
+  }
+
+  color = PS.render.surfaceColor.getGroundMoistureColor({
+    biome: best.biome || best.tile && best.tile.biome || transition.neighborBiome,
+    detail: best.detail || {
+      surface: best.surface || "",
+      materialSignals: best.materialSignals || {}
+    },
+    tile: best.tile || null,
+    x: best.x,
+    y: best.y,
+    ran: best.ran
+  });
+
+  return color ? PS.atlas.hexToRgb(color).concat([255]) : null;
 };
 
 PS.atlas.drawTerrainTransitionEdge = function (cell, palette, variant, transition) {
@@ -383,6 +431,10 @@ PS.atlas.drawTerrainDetailOverlay = function (cell, palette, variant, tileDefini
   var shadow = PS.atlas.getTerrainDetailColor(palette, "shadow");
   var offset = clamp(Math.round(Number(variant) || 0), 0, 15);
   var transition = PS.atlas.getTerrainTransitionInfo(sample, biome);
+
+  if (transition) {
+    transition.gradientColor = PS.atlas.getTerrainTransitionGradientColor(sample, transition);
+  }
 
   function finish() {
     PS.atlas.drawTerrainFeatureMarks(cell, palette, variant, sample, biome, tileDefinition);

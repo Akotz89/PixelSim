@@ -202,16 +202,17 @@ PS.render.surfaceColor.getGroundMoistureKey = function (sample) {
   var key = PS.render.surfaceColor.getGroundGradientKey(sample);
   var moisture = PS.render.surfaceColor.getSampleMoisture(sample);
   var index;
+  var version = Math.max(0, Math.round(Number(PS.render.surfaceColor.groundMoistureGradientVersion) || 0));
 
   if (!key || moisture === null || !PS.render.surfaceColor.hasGroundMoistureSignal(sample)) {
-    return "gmoist.none";
+    return "gmoist.v" + version + ".none";
   }
 
   index = PS.render.surfaceColor.getMoistureGradientIndex(
     moisture,
     PS.render.surfaceColor.getGroundGradientRandomOffset(sample)
   );
-  return "gmoist." + key + "." + index;
+  return "gmoist.v" + version + "." + key + "." + index;
 };
 
 PS.render.surfaceColor.getGroundMoistureColor = function (sample) {

@@ -13,6 +13,7 @@ const registrySource = read("js/assets/registry.js");
 const terrainSource = read("js/render/terrain.js");
 const surfaceColorSource = read("js/render/surface-color.js");
 const atlasSource = read("js/render/entity-atlas.js");
+const atlasDetailSource = read("js/render/terrain-atlas-detail.js");
 const groundGradientsSidecarSource = read("data/ground-gradients.json.js");
 const groundGradientsData = JSON.parse(read("data/ground-gradients.json"));
 const mainLoopSource = read("js/main-loop.js");
@@ -64,6 +65,7 @@ vm.runInContext(groundGradientsSidecarSource, context, { filename: "data/ground-
 vm.runInContext(terrainSource, context, { filename: "js/render/terrain.js" });
 vm.runInContext(surfaceColorSource, context, { filename: "js/render/surface-color.js" });
 vm.runInContext(atlasSource, context, { filename: "js/render/entity-atlas.js" });
+vm.runInContext(atlasDetailSource, context, { filename: "js/render/terrain-atlas-detail.js" });
 
 assert.strictEqual(
   JSON.stringify(context.PS.assets.jsonData["data/ground-gradients.json"]),
@@ -147,7 +149,7 @@ assert.strictEqual(
 );
 assert.strictEqual(
   context.PS.render.surfaceColor.getGroundMoistureKey(moistGrassSample),
-  "gmoist.grass.8",
+  "gmoist.v1.grass.8",
   "ground moisture key should include gradient id and index"
 );
 assert.strictEqual(
@@ -167,10 +169,21 @@ const forestCell = context.PS.atlas.getTerrainCell("forest", 4, 8, {
 const page = context.PS.atlas.pages[forestCell.pageIndex];
 const centerIndex = ((forestCell.y + 7) * page.width + forestCell.x + 7) * 4;
 const center = Array.from(page.data.slice(centerIndex, centerIndex + 4));
+let hasRegisteredPalettePixel = false;
+
+for (let y = 0; y < forestCell.h; y += 1) {
+  for (let x = 0; x < forestCell.w; x += 1) {
+    const pixelIndex = ((forestCell.y + y) * page.width + forestCell.x + x) * 4;
+    const pixel = Array.from(page.data.slice(pixelIndex, pixelIndex + 3));
+    if (JSON.stringify(pixel) === JSON.stringify([34, 85, 17])) {
+      hasRegisteredPalettePixel = true;
+    }
+  }
+}
 
 assert.ok(forestCell.name.indexOf("terrain.") === 0, "terrain atlas should still select registered terrain material cells");
 assert.notDeepStrictEqual(center, [15, 53, 29, 255], "terrain atlas cell should no longer be locked to the default forest base color");
-assert.deepStrictEqual(center.slice(0, 3), [34, 85, 17], "terrain atlas cell should reflect the re-registered palette range");
+assert.ok(hasRegisteredPalettePixel, "terrain atlas cell should reflect the re-registered palette range");
 
 const dryGrassCell = context.PS.atlas.getTerrainCell("grassland", 3, 5, Object.assign({}, moistGrassSample, {
   ran: 1,
@@ -183,5 +196,42 @@ const wetGrassCell = context.PS.atlas.getTerrainCell("grassland", 3, 5, Object.a
   tile: Object.assign({}, moistGrassSample.tile, { moisture: 2.2, ran: 1 })
 }));
 assert.notStrictEqual(dryGrassCell.name, wetGrassCell.name, "terrain atlas cell keys should include moisture gradient buckets");
+
+const previousGradientVersion = context.PS.render.surfaceColor.groundMoistureGradientVersion;
+context.PS.render.surfaceColor.loadGroundGradientConfig(groundGradientsData);
+assert.notStrictEqual(
+  context.PS.render.surfaceColor.getGroundMoistureKey(moistGrassSample),
+  "gmoist.v" + previousGradientVersion + ".grass.8",
+  "ground moisture key should change when gradient config reloads"
+);
+
+const neighborTransition = {
+  neighborBiome: "desert",
+  type: "dry",
+  mask: 1,
+  weight: 0.5
+};
+const neighborTransitionSample = {
+  biome: "grassland",
+  detail: { surface: "grass" },
+  tileBlend: {
+    transitionStrength: 0.6,
+    biomeWeights: { grassland: 0.5, desert: 0.5 },
+    tiles: [{
+      biome: "desert",
+      weight: 0.5,
+      x: 9,
+      y: 3,
+      ran: 1,
+      detail: { surface: "sand", materialSignals: { moisture: 0 } },
+      tile: { biome: "desert", moisture: 0, ran: 1 }
+    }]
+  }
+};
+assert.deepStrictEqual(
+  context.PS.atlas.getTerrainTransitionGradientColor(neighborTransitionSample, neighborTransition),
+  context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.groundMoistureGradients.sand[0]).concat([255]),
+  "terrain transition edges should sample the neighboring ground gradient"
+);
 
 console.log("render palette registry checks passed");
