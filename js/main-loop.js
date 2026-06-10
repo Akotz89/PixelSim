@@ -254,6 +254,7 @@ function loadStartupShaders() {
       PS.render.webgpuSurfaceTile,
       PS.render.webgpuCompositor,
       PS.render.webgpuPointLights,
+      PS.render.webgpuWaterDisplacement,
       PS.render.webgpuEntity,
       PS.sim && PS.sim.heatDiffusion
     ];

@@ -331,6 +331,7 @@ PS.render.getSubsystems = function () {
     PS.render.webgpuSurfaceUnderlay,
     PS.render.webgpuSurfaceTile,
     PS.render.webgpuPointLights,
+    PS.render.webgpuWaterDisplacement,
     PS.render.webgpuEntity,
     PS.render.webgpuRenderer,
     PS.render.renderer,
@@ -395,6 +396,20 @@ PS.render.pipeline.registerLayer("environment.snow", {
   draw: function () {
     if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawSnowOverlay === "function") {
       PS.render.environmentOverlays.drawSnowOverlay();
+    }
+  }
+});
+
+PS.render.pipeline.registerLayer("water.displacement", {
+  order: 32,
+  drawLayer: PS.render.DrawLayer.WATER_SURFACE,
+  family: "water",
+  semantic: "shader-driven wind-scrolled water displacement passes",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.webgpuWaterDisplacement && typeof PS.render.webgpuWaterDisplacement.draw === "function") {
+      PS.render.webgpuWaterDisplacement.draw({ loadOp: "load" });
     }
   }
 });

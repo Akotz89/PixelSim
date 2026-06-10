@@ -76,6 +76,7 @@ PS.core.manifest = [
   "js/render/webgpu-gbuffer.js",
   "js/render/webgpu-compositor.js",
   "js/render/webgpu-point-lights.js",
+  "js/render/webgpu-water-displacement.js",
   "js/render/webgpu-entity.js",
   "js/render/webgpu-globe.js",
   "js/render/webgpu-surface-underlay.js",
