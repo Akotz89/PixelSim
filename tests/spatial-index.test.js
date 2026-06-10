@@ -19,6 +19,11 @@ const spatialSource = fs.readFileSync(path.join(root, "js/systems/spatial.js"), 
     "PS.spatial should route world-grid math through PS.worldGrid instead of legacy helper call " + legacyHelperCall
   );
 });
+assert.strictEqual(
+  spatialSource.indexOf(".splice("),
+  -1,
+  "PS.spatial chunk removal should use swap-and-pop instead of O(n) splice removal"
+);
 
 const context = {
   assert,

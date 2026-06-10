@@ -62,7 +62,9 @@ function removeSpatialChunkId(chunk, entityId) {
 
   for (var i = 0; i < chunk.order.length; i++) {
     if (chunk.order[i] === entityId) {
-      chunk.order.splice(i, 1);
+      var lastIndex = chunk.order.length - 1;
+      chunk.order[i] = chunk.order[lastIndex];
+      chunk.order.pop();
       return;
     }
   }
