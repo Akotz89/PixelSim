@@ -9,6 +9,10 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
+function nearly(actual, expected) {
+  return Math.abs(Number(actual) - Number(expected)) < 0.00001;
+}
+
 const namespaceSource = read("js/core/namespace.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
@@ -330,6 +334,12 @@ const drew = surfaceTile.drawBatches({
   materialCounts: { "grass-lush.0": 1 },
   equivalenceTerrain: 1,
   equivalenceTransitions: 1
+}, {
+  sunDirection: [0, 3, 4],
+  ambient: 0.41,
+  directionalStrength: 0.62,
+  wrapStrength: 0.18,
+  heightTintStrength: 0.07
 });
 
 assert.strictEqual(drew, true, "WebGPU surface tile draw should submit a page draw");
@@ -344,6 +354,15 @@ assert.deepStrictEqual(fakeDevice.passes[1].drawArgs, [4, 1, 0, 0], "surface til
 assert.strictEqual(textureWrites.length, 1, "atlas page should upload through GPUQueue.writeTexture");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.instances"; }), "instance data should upload to the WebGPU instance buffer");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.uniforms"; }), "canvas uniforms should upload to WebGPU");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "gbuffer-compose.uniforms" &&
+    nearly(write.data[1], 0.6) &&
+    nearly(write.data[2], 0.8) &&
+    nearly(write.data[4], 0.41) &&
+    nearly(write.data[5], 0.62) &&
+    nearly(write.data[6], 0.18) &&
+    nearly(write.data[7], 0.07);
+}), "surface tile G-buffer compositor should forward lighting uniforms");
 assert.strictEqual(submissions.length, 1, "surface tile draw should submit a command buffer");
 
 const stats = surfaceTile.getStats();

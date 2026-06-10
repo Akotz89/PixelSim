@@ -7,6 +7,7 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
   state: {
     pipeline: null,
     sampler: null,
+    uniformBuffer: null,
     drawCount: 0,
     lastFrameMs: 0,
     lastError: ""
@@ -50,6 +51,67 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     }
 
     return this.state.sampler;
+  },
+
+  ensureUniformBuffer: function (device) {
+    if (!this.state.uniformBuffer) {
+      this.state.uniformBuffer = device.createBuffer({
+        label: "gbuffer-compose.uniforms",
+        size: 32,
+        usage: 64 | 8
+      });
+    }
+
+    return this.state.uniformBuffer;
+  },
+
+  getSunDirection: function (options) {
+    var spec = options || {};
+    var currentWorld = typeof world !== "undefined" ? world : null;
+    var value = spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null);
+    var x;
+    var y;
+    var z;
+    var length;
+    var tick = currentWorld && Number.isFinite(Number(currentWorld.tick)) ? Number(currentWorld.tick) : 0;
+    var angle = tick * 0.00024;
+
+    if (value && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.y)) && Number.isFinite(Number(value.z))) {
+      x = Number(value.x);
+      y = Number(value.y);
+      z = Number(value.z);
+    } else if (Array.isArray(value) && value.length >= 3) {
+      x = Number(value[0]);
+      y = Number(value[1]);
+      z = Number(value[2]);
+    } else {
+      x = Math.cos(angle) * -0.58;
+      y = 0.42;
+      z = Math.sin(angle) * 0.36 + 0.66;
+    }
+
+    length = Math.sqrt(x * x + y * y + z * z) || 1;
+    return {
+      x: x / length,
+      y: y / length,
+      z: z / length
+    };
+  },
+
+  makeUniformData: function (options) {
+    var spec = options || {};
+    var sun = this.getSunDirection(spec);
+    var data = new Float32Array(8);
+
+    data[0] = sun.x;
+    data[1] = sun.y;
+    data[2] = sun.z;
+    data[3] = 0;
+    data[4] = spec.ambient !== undefined ? Math.max(0, Math.min(1, Number(spec.ambient) || 0)) : 0.32;
+    data[5] = spec.directionalStrength !== undefined ? Math.max(0, Number(spec.directionalStrength) || 0) : 0.52;
+    data[6] = spec.wrapStrength !== undefined ? Math.max(0, Number(spec.wrapStrength) || 0) : 0.16;
+    data[7] = spec.heightTintStrength !== undefined ? Math.max(0, Number(spec.heightTintStrength) || 0) : 0.08;
+    return data;
   },
 
   ensurePipeline: function (device) {
@@ -99,7 +161,8 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
       entries: [
         { binding: 0, resource: albedoTexture.createView() },
         { binding: 1, resource: normalHeightTexture.createView() },
-        { binding: 2, resource: this.ensureSampler(device) }
+        { binding: 2, resource: this.ensureSampler(device) },
+        { binding: 3, resource: { buffer: this.ensureUniformBuffer(device) } }
       ]
     });
   },
@@ -127,6 +190,7 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     }
 
     pipeline = this.ensurePipeline(device);
+    device.queue.writeBuffer(this.ensureUniformBuffer(device), 0, this.makeUniformData(spec));
     encoder = spec.commandEncoder || device.createCommandEncoder({ label: "gbuffer-compose.encoder" });
     outputView = spec.textureView || context.getCurrentTexture().createView();
     pass = encoder.beginRenderPass({

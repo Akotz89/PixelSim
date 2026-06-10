@@ -9,6 +9,10 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
+function nearly(actual, expected) {
+  return Math.abs(Number(actual) - Number(expected)) < 0.00001;
+}
+
 const namespaceSource = read("js/core/namespace.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
@@ -36,17 +40,33 @@ assert.ok(sidecarSource.indexOf(JSON.stringify(shaderSource)) >= 0, "G-buffer co
 assert.ok(sidecarSource.indexOf('PS.assets.registerText("shaders/gbuffer-compose.wgsl"') >= 0, "G-buffer compositor sidecar should register shader text");
 assert.strictEqual(gbufferSource.toLowerCase().indexOf("webgl"), -1, "WebGPU G-buffer source must not reference WebGL");
 assert.strictEqual(compositorSource.toLowerCase().indexOf("webgl"), -1, "WebGPU compositor source must not reference WebGL");
+assert.ok(shaderSource.indexOf("var<uniform> compose: ComposeUniforms") >= 0, "G-buffer compose shader should bind lighting uniforms");
+assert.ok(shaderSource.indexOf("textureSample(albedo_texture") >= 0, "G-buffer compose shader should sample albedo");
+assert.ok(shaderSource.indexOf("textureSample(normal_height_texture") >= 0, "G-buffer compose shader should sample normal/height");
+assert.ok(shaderSource.indexOf("let light_dir = normalize(compose.sun_direction.xyz)") >= 0, "G-buffer compose shader should use uniform sun direction");
+assert.ok(shaderSource.indexOf("compose.lighting.x") >= 0, "G-buffer compose shader should use uniform ambient");
+assert.strictEqual(shaderSource.indexOf("let ambient = 0.32"), -1, "G-buffer compose shader must not hardcode ambient lighting");
 
 const fakePasses = [];
 const fakeDevice = {
+  buffers: [],
   textures: [],
   pipelines: [],
   bindGroups: [],
+  writes: [],
   submits: [],
   queue: {
+    writeBuffer(buffer, offset, data, dataOffset, size) {
+      fakeDevice.writes.push({ buffer, offset, data, dataOffset, size });
+    },
     submit(commands) {
       fakeDevice.submits.push(commands);
     }
+  },
+  createBuffer(descriptor) {
+    const buffer = { descriptor };
+    this.buffers.push(buffer);
+    return buffer;
   },
   createTexture(descriptor) {
     const texture = {
@@ -148,6 +168,9 @@ const context = {
   Math,
   Date,
   Error,
+  world: {
+    tick: 1000
+  },
   performance: {
     now() {
       return Date.now();
@@ -198,8 +221,28 @@ assert.ok(
 );
 assert.strictEqual(fakeDevice.pipelines.length, 1, "WebGPU compositor should create one render pipeline");
 assert.strictEqual(fakeDevice.bindGroups.length, 1, "WebGPU compositor should create one bind group");
+assert.strictEqual(fakeDevice.bindGroups[0].descriptor.entries.length, 4, "WebGPU compositor bind group should include albedo, normal/height, sampler, and uniforms");
+assert.ok(fakeDevice.writes.some(function (write) { return write.buffer.descriptor.label === "gbuffer-compose.uniforms"; }), "WebGPU compositor should upload lighting uniforms");
+assert.ok(fakeDevice.writes[0].data[0] !== 0, "WebGPU compositor sun direction x should be non-zero");
+assert.ok(fakeDevice.writes[0].data[4] > 0, "WebGPU compositor ambient should be non-zero");
+assert.ok(nearly(fakeDevice.writes[0].data[4], 0.32), "WebGPU compositor default ambient should be uploaded");
 assert.strictEqual(fakeDevice.submits.length, 1, "WebGPU compositor should submit standalone command buffers");
 assert.strictEqual(context.PS.render.webgpuCompositor.getStats().drawCount, 1, "WebGPU compositor stats should count draws");
 assert.strictEqual(context.PS.render.webgpuCompositor.getStats().lastError, "", "WebGPU compositor draw should clear last error");
+
+const customUniforms = context.PS.render.webgpuCompositor.makeUniformData({
+  sunDirection: { x: 0, y: 3, z: 4 },
+  ambient: 0.44,
+  directionalStrength: 0.61,
+  wrapStrength: 0.17,
+  heightTintStrength: 0.09
+});
+assert.strictEqual(customUniforms[0], 0, "explicit sun direction x should propagate");
+assert.ok(nearly(customUniforms[1], 0.6), "explicit sun direction y should normalize");
+assert.ok(nearly(customUniforms[2], 0.8), "explicit sun direction z should normalize");
+assert.ok(nearly(customUniforms[4], 0.44), "explicit ambient should propagate");
+assert.ok(nearly(customUniforms[5], 0.61), "explicit directional strength should propagate");
+assert.ok(nearly(customUniforms[6], 0.17), "explicit wrap strength should propagate");
+assert.ok(nearly(customUniforms[7], 0.09), "explicit height tint strength should propagate");
 
 console.log("webgpu gbuffer compositor checks passed");

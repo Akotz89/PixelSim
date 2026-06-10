@@ -453,7 +453,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         albedoTexture: gbufferTargets.albedo.texture,
         normalHeightTexture: gbufferTargets.normalHeight.texture,
         textureView: spec.textureView || null,
-        loadOp: spec.loadOp || "clear"
+        loadOp: spec.loadOp || "clear",
+        sunDirection: spec.sunDirection,
+        ambient: spec.ambient,
+        directionalStrength: spec.directionalStrength,
+        wrapStrength: spec.wrapStrength,
+        heightTintStrength: spec.heightTintStrength
       });
 
       if (PS.render.webgpuPointLights && typeof PS.render.webgpuPointLights.draw === "function") {

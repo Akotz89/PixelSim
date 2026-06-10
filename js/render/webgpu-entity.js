@@ -653,7 +653,12 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
         textureView: spec.textureView,
         loadOp: spec.compositeLoadOp || "load",
         albedoTexture: gbuffer.albedo.texture,
-        normalHeightTexture: gbuffer.normalHeight.texture
+        normalHeightTexture: gbuffer.normalHeight.texture,
+        sunDirection: spec.sunDirection,
+        ambient: spec.ambient,
+        directionalStrength: spec.directionalStrength,
+        wrapStrength: spec.wrapStrength,
+        heightTintStrength: spec.heightTintStrength
       });
     }
 

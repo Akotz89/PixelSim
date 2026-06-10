@@ -9,6 +9,10 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
+function nearly(actual, expected) {
+  return Math.abs(Number(actual) - Number(expected)) < 0.00001;
+}
+
 const namespaceSource = read("js/core/namespace.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
@@ -364,7 +368,14 @@ assert.strictEqual(context.PS.render.webgpuEntity.getStats().organismDrawCount, 
 context.PS.render.webgpuEntity.resetFrameStats();
 fakePasses.length = 0;
 assert.strictEqual(
-  context.PS.render.webgpuEntity.drawBatches(batches, { useGbuffer: true }),
+  context.PS.render.webgpuEntity.drawBatches(batches, {
+    useGbuffer: true,
+    sunDirection: [0, 3, 4],
+    ambient: 0.43,
+    directionalStrength: 0.63,
+    wrapStrength: 0.19,
+    heightTintStrength: 0.08
+  }),
   true,
   "WebGPU entity renderer should draw atlas batches through the G-buffer"
 );
@@ -374,6 +385,15 @@ assert.strictEqual(fakeDevice.pipelines.some(function (pipeline) {
 assert.strictEqual(fakePasses[0].descriptor.label, "gbuffer.entity-pass", "entity G-buffer draw should write through a labeled MRT pass");
 assert.strictEqual(fakePasses[0].descriptor.colorAttachments.length, 2, "entity G-buffer pass should bind albedo and normal attachments");
 assert.strictEqual(fakePasses[fakePasses.length - 1].descriptor.label, "gbuffer-compose.render-pass", "entity G-buffer draw should composite after MRT fill");
+assert.ok(fakeDevice.writes.some(function (write) {
+  return write.buffer.descriptor.label === "gbuffer-compose.uniforms" &&
+    nearly(write.data[1], 0.6) &&
+    nearly(write.data[2], 0.8) &&
+    nearly(write.data[4], 0.43) &&
+    nearly(write.data[5], 0.63) &&
+    nearly(write.data[6], 0.19) &&
+    nearly(write.data[7], 0.08);
+}), "entity G-buffer compositor should forward lighting uniforms");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().gbufferDrawCount, 2, "entity G-buffer stats should count MRT instances");
 
 context.PS.render.webgpuEntity.resetFrameStats();
