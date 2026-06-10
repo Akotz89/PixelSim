@@ -11,11 +11,64 @@ PS.camera.stats = PS.camera.stats || {
 };
 PS.camera.inertia = PS.camera.inertia || {
   zoomVelocity: 0,
+  zoomAccumulator: 0,
   panVelocityX: 0,
   panVelocityY: 0,
   anchorCanvasX: 0,
   anchorCanvasY: 0,
   hasZoomAnchor: false
+};
+
+PS.camera.getIntegerZoomLevel = function (zoomLevel) {
+  return clamp(
+    Math.round(Number(zoomLevel) || 0),
+    0,
+    PS.camera.getZoomLevels().length - 1
+  );
+};
+
+PS.camera.getZoomOutShift = function (zoomLevel) {
+  return clamp(
+    PS.camera.getZoomLevels().length - 1 - PS.camera.getIntegerZoomLevel(zoomLevel),
+    0,
+    30
+  );
+};
+
+PS.camera.getPowerOfTwoZoomScale = function (zoomLevel) {
+  return 1 << PS.camera.getIntegerZoomLevel(zoomLevel);
+};
+
+PS.camera.tileToScreenBitShift = function (tileX, tileY, originTileX, originTileY, zoomLevel) {
+  var shift = PS.camera.getZoomOutShift(zoomLevel);
+  var deltaX = Math.round(Number(tileX) || 0) - Math.round(Number(originTileX) || 0);
+  var deltaY = Math.round(Number(tileY) || 0) - Math.round(Number(originTileY) || 0);
+  var screenTileX = deltaX >> shift;
+  var screenTileY = deltaY >> shift;
+
+  return {
+    screenTileX: screenTileX,
+    screenTileY: screenTileY,
+    snappedTileX: Math.round(Number(originTileX) || 0) + (screenTileX << shift),
+    snappedTileY: Math.round(Number(originTileY) || 0) + (screenTileY << shift),
+    coveredTileMinX: Math.round(Number(originTileX) || 0) + (screenTileX << shift),
+    coveredTileMinY: Math.round(Number(originTileY) || 0) + (screenTileY << shift),
+    coveredTileMaxX: Math.round(Number(originTileX) || 0) + (screenTileX << shift) + ((1 << shift) - 1),
+    coveredTileMaxY: Math.round(Number(originTileY) || 0) + (screenTileY << shift) + ((1 << shift) - 1),
+    zoomOutShift: shift
+  };
+};
+
+PS.camera.screenToTileBitShift = function (screenTileX, screenTileY, originTileX, originTileY, zoomLevel) {
+  var shift = PS.camera.getZoomOutShift(zoomLevel);
+
+  return {
+    tileX: Math.round(Number(originTileX) || 0) + (Math.round(Number(screenTileX) || 0) << shift),
+    tileY: Math.round(Number(originTileY) || 0) + (Math.round(Number(screenTileY) || 0) << shift),
+    tileMaxX: Math.round(Number(originTileX) || 0) + (Math.round(Number(screenTileX) || 0) << shift) + ((1 << shift) - 1),
+    tileMaxY: Math.round(Number(originTileY) || 0) + (Math.round(Number(screenTileY) || 0) << shift) + ((1 << shift) - 1),
+    zoomOutShift: shift
+  };
 };
 
 PS.camera.getZoomLevels = function () {
@@ -85,7 +138,9 @@ PS.camera.getInterpolatedZoomLevel = function (zoomLevel) {
       name: lower.name,
       anchorName: lower.name,
       metersPerSample: lower.metersPerSample,
-      chunkKm: lower.chunkKm
+      chunkKm: lower.chunkKm,
+      zoomOutShift: PS.camera.getZoomOutShift(lower.index),
+      powerOfTwoScale: PS.camera.getPowerOfTwoZoomScale(lower.index)
     };
   }
 
@@ -99,7 +154,9 @@ PS.camera.getInterpolatedZoomLevel = function (zoomLevel) {
     name: lower.name + "-" + upper.name,
     anchorName: PS.camera.getZoomLevel(anchorIndex).name,
     metersPerSample: PS.camera.interpolateScaleValue(lower.metersPerSample, upper.metersPerSample, amount),
-    chunkKm: PS.camera.interpolateScaleValue(lower.chunkKm, upper.chunkKm, amount)
+    chunkKm: PS.camera.interpolateScaleValue(lower.chunkKm, upper.chunkKm, amount),
+    zoomOutShift: PS.camera.getZoomOutShift(anchorIndex),
+    powerOfTwoScale: PS.camera.getPowerOfTwoZoomScale(anchorIndex)
   };
 };
 
@@ -188,6 +245,8 @@ PS.camera.getInfo = function () {
     surfaceLodName: surfaceLod.name,
     surfaceSampleMeters: surfaceLod.metersPerSample,
     scaleName: scale.name,
+    zoomOutShift: scale.zoomOutShift,
+    powerOfTwoScale: scale.powerOfTwoScale,
     latitude: view.latitude,
     longitude: view.longitude,
     metersPerSample: scale.metersPerSample,
@@ -323,7 +382,7 @@ PS.camera.panKm = function (eastKm, northKm) {
   return PS.camera.getView();
 };
 
-PS.camera.setZoom = function (zoomLevel) {
+PS.camera.setRenderZoom = function (zoomLevel) {
   var view = PS.camera.getView();
   var previousZoom = Number(view.zoomLevel) || 0;
   var nextZoom = clamp(
@@ -353,6 +412,10 @@ PS.camera.setZoom = function (zoomLevel) {
   return true;
 };
 
+PS.camera.setZoom = function (zoomLevel) {
+  return PS.camera.setRenderZoom(PS.camera.getIntegerZoomLevel(zoomLevel));
+};
+
 PS.camera.focusLatLonAtCanvasPoint = function (latitude, longitude, canvasX, canvasY) {
   var scale = PS.camera.getScale();
   var targetCanvas = typeof canvas !== "undefined" && canvas ? canvas : null;
@@ -378,7 +441,7 @@ PS.camera.setZoomAtCanvasPoint = function (zoomLevel, canvasX, canvasY) {
   var afterLatLon;
   var longitudeDelta;
 
-  if (!PS.camera.setZoom(zoomLevel)) {
+  if (!PS.camera.setRenderZoom(zoomLevel)) {
     return false;
   }
 
@@ -409,6 +472,10 @@ PS.camera.setZoomAtCanvasPoint = function (zoomLevel, canvasX, canvasY) {
   return true;
 };
 
+PS.camera.setIntegerZoomAtCanvasPoint = function (zoomLevel, canvasX, canvasY) {
+  return PS.camera.setZoomAtCanvasPoint(PS.camera.getIntegerZoomLevel(zoomLevel), canvasX, canvasY);
+};
+
 PS.camera.getZoomTransitionStats = function () {
   return Object.assign({}, PS.camera.stats);
 };
@@ -420,7 +487,7 @@ PS.camera.adjustZoom = function (delta) {
     return false;
   }
 
-  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.04;
+  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.6;
   PS.camera.inertia.hasZoomAnchor = false;
   if (typeof markCameraInteracting === "function") {
     markCameraInteracting();
@@ -436,7 +503,7 @@ PS.camera.adjustZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
     return false;
   }
 
-  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.04;
+  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.6;
   PS.camera.inertia.anchorCanvasX = Number(canvasX) || 0;
   PS.camera.inertia.anchorCanvasY = Number(canvasY) || 0;
   PS.camera.inertia.hasZoomAnchor = true;
@@ -449,6 +516,7 @@ PS.camera.adjustZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
 
 PS.camera.stopInertia = function () {
   PS.camera.inertia.zoomVelocity = 0;
+  PS.camera.inertia.zoomAccumulator = 0;
   PS.camera.inertia.panVelocityX = 0;
   PS.camera.inertia.panVelocityY = 0;
   PS.camera.inertia.hasZoomAnchor = false;
@@ -469,16 +537,18 @@ PS.camera.updateInertia = function () {
     var nextZoom = clamp(view.zoomLevel + zoomVelocity, 0, maxZoom);
     var changed = inertia.hasZoomAnchor
       ? PS.camera.setZoomAtCanvasPoint(nextZoom, inertia.anchorCanvasX, inertia.anchorCanvasY)
-      : PS.camera.setZoom(nextZoom);
+      : PS.camera.setRenderZoom(nextZoom);
 
     didMove = changed || didMove;
     if (nextZoom <= 0 || nextZoom >= maxZoom) {
       inertia.zoomVelocity = 0;
+      inertia.zoomAccumulator = 0;
     } else {
-      inertia.zoomVelocity = zoomVelocity * 0.88;
+      inertia.zoomVelocity = zoomVelocity * 0.72;
     }
   } else {
     inertia.zoomVelocity = 0;
+    inertia.zoomAccumulator = 0;
   }
 
   if (panActive) {

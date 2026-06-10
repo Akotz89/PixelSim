@@ -120,6 +120,20 @@ assert.strictEqual(clickedTile.tileX, 120, "screenToTile should identify tile x 
 assert.strictEqual(clickedTile.tileY, 84, "screenToTile should identify tile y through unified camera");
 assert.deepStrictEqual(getPlanetTileFromCanvasPoint(tileScreen.screenX, tileScreen.screenY), clickedTile, "legacy tile click wrapper should delegate to unified camera");
 
+var shifted = camera.tileToScreenBitShift(137, 97, 120, 80, 5);
+assert.strictEqual(shifted.zoomOutShift, 2, "integer zoom 5 should map to a power-of-two zoom-out shift");
+assert.strictEqual(shifted.screenTileX, 4, "tile x transform should use right-shifted sample coordinates");
+assert.strictEqual(shifted.screenTileY, 4, "tile y transform should use right-shifted sample coordinates");
+assert.strictEqual(shifted.snappedTileX, 136, "non-aligned tile x should expose snapped bit-shift tile origin");
+assert.strictEqual(shifted.snappedTileY, 96, "non-aligned tile y should expose snapped bit-shift tile origin");
+assert.ok(shifted.coveredTileMinX <= 137 && shifted.coveredTileMaxX >= 137, "bit-shift tile x transform should expose the covered tile range");
+assert.ok(shifted.coveredTileMinY <= 97 && shifted.coveredTileMaxY >= 97, "bit-shift tile y transform should expose the covered tile range");
+var unshifted = camera.screenToTileBitShift(shifted.screenTileX, shifted.screenTileY, 120, 80, 5);
+assert.strictEqual(unshifted.tileX, 136, "screen-to-tile x should invert to the left-shifted tile origin");
+assert.strictEqual(unshifted.tileY, 96, "screen-to-tile y should invert to the left-shifted tile origin");
+assert.strictEqual(unshifted.tileMaxX, 139, "screen-to-tile x should expose the covered power-of-two block");
+assert.strictEqual(unshifted.tileMaxY, 99, "screen-to-tile y should expose the covered power-of-two block");
+
 var visibleRect = camera.getVisibleTileRect();
 var centerTile = camera.screenToTile(canvas.width / 2, canvas.height / 2);
 assert.ok(visibleRect.minX <= centerTile.tileX && visibleRect.maxX >= centerTile.tileX, "visible rect should include center tile x");

@@ -131,7 +131,7 @@ function focusPlanetViewOnLatLonAtCanvasPoint(latitude, longitude, canvasX, canv
 }
 
 function setPlanetZoomLevelAtCanvasPoint(zoomLevel, canvasX, canvasY) {
-  return PS.camera.setZoomAtCanvasPoint(zoomLevel, canvasX, canvasY);
+  return PS.camera.setIntegerZoomAtCanvasPoint(zoomLevel, canvasX, canvasY);
 }
 
 function adjustPlanetZoom(delta) {

@@ -219,26 +219,23 @@ world.planetView = {
 
 var localBefore = getPlanetLatLonFromCanvasPoint(cursorX, cursorY);
 
-assert.ok(setPlanetZoomLevelAtCanvasPoint(initialZoom + 0.25, cursorX, cursorY), "planet zoom should accept fractional direct zoom");
-assertNear(getPlanetView().zoomLevel, initialZoom + 0.25, 1e-12, "fractional zoom should be retained");
+assert.ok(setPlanetZoomLevelAtCanvasPoint(initialZoom + 1, cursorX, cursorY), "planet zoom should accept the next integer direct zoom");
+assert.strictEqual(getPlanetView().zoomLevel, initialZoom + 1, "direct zoom should land on an integer power-of-two stop");
 
 var localAfter = getPlanetLatLonFromCanvasPoint(cursorX, cursorY);
 assertNear(localAfter.latitude, localBefore.latitude, 1e-9, "anchored local latitude");
 assertNear(localAfter.longitude, localBefore.longitude, 1e-9, "anchored local longitude");
-var fractionalScaleInfo = getPlanetCameraScaleInfo();
-assert.strictEqual(fractionalScaleInfo.anchorLevel, initialZoom, "fractional zoom should retain a stable cache anchor level");
-assert.ok(
-  fractionalScaleInfo.metersPerSample < CONFIG.PLANET_ZOOM_LEVELS[initialZoom].metersPerSample &&
-  fractionalScaleInfo.metersPerSample > CONFIG.PLANET_ZOOM_LEVELS[initialZoom + 1].metersPerSample,
-  "fractional zoom should interpolate meters per sample between configured levels"
-);
+var integerScaleInfo = getPlanetCameraScaleInfo();
+assert.strictEqual(integerScaleInfo.anchorLevel, initialZoom + 1, "integer zoom should retain a stable cache anchor level");
+assert.strictEqual(integerScaleInfo.zoomOutShift, CONFIG.PLANET_ZOOM_LEVELS.length - 1 - (initialZoom + 1), "integer zoom should expose its bit-shift zoom-out level");
+assert.strictEqual(integerScaleInfo.powerOfTwoScale, 1 << (initialZoom + 1), "integer zoom should expose a power-of-two scale");
 PS.camera.setZoom(initialZoom);
 assert.strictEqual(getPlanetCameraScaleInfo().metersPerSample, CONFIG.PLANET_ZOOM_LEVELS[initialZoom].metersPerSample, "integer zoom should preserve exact configured scale");
-PS.camera.setZoom(initialZoom + 0.25);
+PS.camera.setZoom(initialZoom + 1);
 var zoomTransitionStats = PS.camera.getZoomTransitionStats();
 assert.strictEqual(zoomTransitionStats.lastZoomDirection, 1, "anchored zoom should record forward zoom direction");
 assertNear(zoomTransitionStats.lastZoomFrom, initialZoom, 1e-12, "anchored zoom should record source zoom");
-assertNear(zoomTransitionStats.lastZoomTo, initialZoom + 0.25, 1e-12, "anchored zoom should record target zoom");
+assert.strictEqual(zoomTransitionStats.lastZoomTo, initialZoom + 1, "anchored zoom should record integer target zoom");
 assert.ok(zoomTransitionStats.lastZoomAnchorErrorDeg <= 1e-8, "anchored zoom should record negligible cursor drift");
 assert.ok(zoomTransitionStats.lastZoomPreloadSurfaceLodIndex >= getPlanetSurfaceLodZoomIndex(initialZoom), "anchored zoom should record a forward preload LOD target");
 
@@ -255,10 +252,12 @@ assert.ok(adjustPlanetZoomAtCanvasPoint(0.25, cursorX, cursorY), "second anchore
 assert.ok(adjustPlanetZoomAtCanvasPoint(0.25, cursorX, cursorY), "third anchored zoom input should add to camera inertia");
 assertNear(getPlanetView().zoomLevel, initialZoom, 1e-12, "queued zoom should not snap before inertia update");
 var queuedZoomVelocity = PS.camera.inertia.zoomVelocity;
+assert.ok(queuedZoomVelocity > 0, "queued integer zoom should accelerate before the first step");
 for (var inertiaZoomFrame = 0; inertiaZoomFrame < 10; inertiaZoomFrame++) {
   PS.camera.updateInertia();
 }
-assert.ok(getPlanetView().zoomLevel > initialZoom, "queued zoom inertia should advance over multiple frames");
+assert.ok(getPlanetView().zoomLevel > initialZoom, "queued zoom inertia should advance smoothly over multiple frames");
+assert.ok(getPlanetCameraScaleInfo().zoomFraction > 0, "queued zoom inertia should preserve fractional render interpolation between integer stops");
 assert.ok(getPlanetView().zoomLevel <= CONFIG.PLANET_ZOOM_LEVELS.length - 1, "zoom inertia should stay inside the maximum zoom");
 assert.ok(Math.abs(PS.camera.inertia.zoomVelocity) < Math.abs(queuedZoomVelocity), "zoom inertia should decelerate");
 

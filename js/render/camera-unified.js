@@ -214,6 +214,26 @@ PS.camera.unified = PS.camera.unified || {
     };
   },
 
+  tileToScreenBitShift: function (tileX, tileY, originTileX, originTileY, zoomLevel) {
+    return PS.camera && typeof PS.camera.tileToScreenBitShift === "function"
+      ? PS.camera.tileToScreenBitShift(tileX, tileY, originTileX, originTileY, zoomLevel)
+      : {
+        screenTileX: Math.round(Number(tileX) || 0) - Math.round(Number(originTileX) || 0),
+        screenTileY: Math.round(Number(tileY) || 0) - Math.round(Number(originTileY) || 0),
+        zoomOutShift: 0
+      };
+  },
+
+  screenToTileBitShift: function (screenTileX, screenTileY, originTileX, originTileY, zoomLevel) {
+    return PS.camera && typeof PS.camera.screenToTileBitShift === "function"
+      ? PS.camera.screenToTileBitShift(screenTileX, screenTileY, originTileX, originTileY, zoomLevel)
+      : {
+        tileX: Math.round(Number(originTileX) || 0) + Math.round(Number(screenTileX) || 0),
+        tileY: Math.round(Number(originTileY) || 0) + Math.round(Number(screenTileY) || 0),
+        zoomOutShift: 0
+      };
+  },
+
   worldToTile: function (worldX, worldY) {
     return {
       tileX: getWrappedWorldX(Math.floor(Number(worldX) || 0)),
