@@ -49,6 +49,70 @@ PS.render.surfaceColor.getBiomeTransitionStrength = function (sample) {
   return clamp(1 - (Number(biomeWeights[sampleBiome]) || 0), 0, 1);
 };
 
+PS.render.surfaceColor.getMaterialIdentity = function (sample) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var surface = String(detail.surface || "").toLowerCase();
+  var biome = String(sample && sample.biome || "").toLowerCase();
+  var signals = detail.materialSignals || {};
+
+  if (surface.indexOf("lava") >= 0 || surface.indexOf("magma") >= 0 ||
+      surface.indexOf("volcano") >= 0 || Number(signals.lava) > 0.35 ||
+      Number(signals.heat) > 0.75) {
+    return "lava";
+  }
+
+  if (surface.indexOf("ice") >= 0 || surface.indexOf("snow") >= 0 || biome === "ice") {
+    return "ice";
+  }
+
+  if (surface === "whitecap") {
+    return "";
+  }
+
+  if (surface.indexOf("water") >= 0 ||
+      biome === "ocean" || biome === "lake" || Number(signals.waterDepth) > 0.35) {
+    return "water";
+  }
+
+  return "";
+};
+
+PS.render.surfaceColor.protectMaterialIdentityRgb = function (sample, rgb) {
+  var identity = PS.render.surfaceColor.getMaterialIdentity(sample);
+  var color = clampRgb(rgb || {});
+  var total;
+  var scale;
+
+  if (identity === "water") {
+    color.blue = Math.max(color.blue, 92);
+    color.red = Math.min(color.red, Math.floor(color.blue * 0.48));
+    color.green = Math.min(color.green, Math.floor(color.blue * 0.78));
+    total = color.red + color.green;
+
+    if (total >= color.blue - 8 && total > 0) {
+      scale = (color.blue - 10) / total;
+      color.red = Math.floor(color.red * scale);
+      color.green = Math.floor(color.green * scale);
+    }
+  } else if (identity === "lava") {
+    color.red = Math.max(color.red, 154);
+    color.green = Math.min(color.green, Math.floor(color.red * 0.42));
+    color.blue = Math.min(color.blue, Math.floor(color.red * 0.22));
+  } else if (identity === "ice") {
+    color.red = Math.max(color.red, 145);
+    color.green = Math.max(color.green, 175);
+    color.blue = Math.max(color.blue, 185);
+  }
+
+  return clampRgb(color);
+};
+
+PS.render.surfaceColor.protectMaterialIdentityHex = function (sample, hexColor) {
+  var protectedRgb = PS.render.surfaceColor.protectMaterialIdentityRgb(sample, getRgbFromHex(hexColor));
+
+  return PS.render.terrain.getHexFromRgb(protectedRgb.red, protectedRgb.green, protectedRgb.blue);
+};
+
 PS.render.surfaceColor.blendWithTileBlend = function (sample, localColor) {
   var detail = sample && sample.detail ? sample.detail : {};
   var surface = detail.surface || "";
@@ -72,7 +136,10 @@ PS.render.surfaceColor.blendWithTileBlend = function (sample, localColor) {
     strongSurfaceScale = 0.62;
   }
 
-  return blendHexColorWithRgb(localColor, targetRgb, clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.34));
+  return PS.render.surfaceColor.protectMaterialIdentityHex(
+    sample,
+    blendHexColorWithRgb(localColor, targetRgb, clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.25))
+  );
 };
 
 PS.render.surfaceColor.getLocalTerrainBandTint = function (sample) {
@@ -214,11 +281,11 @@ PS.render.surfaceColor.getSurfaceColor = function (sample) {
   var color;
 
   if (detail.surface === "whitecap") {
-    color = "#b7e9f4";
+    color = "#b9e3ef";
   } else if (detail.surface === "open water") {
-    color = blendHexColors("#08365f", "#16658a", clamp((heightMeters + 4200) / 4200, 0, 1));
+    color = blendHexColors("#071a34", "#1a3a6a", clamp((heightMeters + 4200) / 4200, 0, 1));
   } else if (detail.surface === "deep water") {
-    color = "#020b1f";
+    color = "#061225";
   } else if (detail.surface === "clearing" || detail.surface === "meadow") {
     color = blendHexColors(PS.render.terrain.getBaseBiomeColor("forest"), "#7c8f3e", clamp(Number(detail.roughness) || 0, 0, 1) * 0.22);
   } else if (detail.surface === "dense canopy") {
@@ -230,9 +297,9 @@ PS.render.surfaceColor.getSurfaceColor = function (sample) {
   } else if (detail.surface === "grass") {
     color = PS.render.terrain.getBaseBiomeColor("grassland");
   } else if (detail.surface === "rock" || detail.surface === "stone") {
-    color = blendHexColors("#454640", "#7c7b6f", slope * 0.55);
+    color = blendHexColors("#3a3a3a", "#5a564b", slope * 0.55);
   } else if (detail.surface === "dune" || detail.surface === "sand") {
-    color = blendHexColors("#755f2d", "#b9964e", clamp(1 - slope, 0, 1) * 0.35);
+    color = blendHexColors("#8a6a30", "#a17d3c", clamp(1 - slope, 0, 1) * 0.35);
   } else if (detail.surface === "scrub" || detail.surface === "moss") {
     color = "#334739";
   } else if (detail.surface === "ridge ice" || detail.surface === "ice") {
@@ -257,45 +324,44 @@ PS.render.surfaceColor.getSurfaceColor = function (sample) {
   var strataTint = PS.render.surfaceColor.getMaterialStrataTint(sample);
   color = blendHexColors(color, strataTint.color, strataTint.amount);
   color = PS.render.surfaceColor.blendWithTileBlend(sample, color);
-  return shadeHexColor(color, reliefShade);
+  return PS.render.surfaceColor.protectMaterialIdentityHex(sample, shadeHexColor(color, reliefShade));
 };
 
 // ── Packed-color fast path ─────────────────────────────────────────
 // All hex constants pre-parsed to uint32. Zero string allocation in the
 // entire getSurfaceColorPacked() call chain.
 
-// Pre-parsed surface color constants — MUST match terrain.js defaultBiomeColors.
-// Pixeldarium-original terrain palette for runtime rendering.
+// Pre-parsed surface color constants for the grounded terrain palette.
 PS.render.surfaceColor._pc = {
   // Water surfaces
-  whitecap:      0xd0e8f0,   // bright sea foam
-  deepOcean:     0x263d61,   // deep blue water
-  shallowOcean:  0x4a7f91,   // shallow blue-green water
-  deepWater:     0x2a3855,   // very deep ocean shadow
+  whitecap:      0xb9e3ef,   // bright sea foam
+  deepOcean:     0x1a3a6a,   // deep blue water
+  shallowOcean:  0x244f7a,   // shallow blue water
+  deepWater:     0x061225,   // very deep ocean shadow
   // Vegetation surfaces
   clearingDark:  0x3f7138,   // cool forest clearing
-  clearingLight: 0x5a8830,   // lighter forest clearing
+  clearingLight: 0x3f4f31,   // lighter forest clearing
   denseCanopy:   0x1e3a0a,   // very dark forest interior
   woodland:      0x3f7138,   // woodland canopy
-  brush:         0x557820,   // mid scrub
-  grass:         0x5f8a45,   // open grassland
+  brush:         0x3b5d1c,   // mid scrub
+  grass:         0x2e6010,   // open grassland
   // Rock surfaces
-  rockDark:      0x4e545b,   // cool basalt shadow
-  rockLight:     0x706a5a,   // lighter rock face
+  rockDark:      0x3a3a3a,   // cool basalt shadow
+  rockLight:     0x5a564b,   // lighter rock face
   // Sand surfaces
-  sandDark:      0x7b6038,   // dry soil shadow
-  sandLight:     0xc6aa68,   // sunlit dry soil
+  sandDark:      0x8a6a30,   // dry soil shadow
+  sandLight:     0xa17d3c,   // sunlit dry soil
   // Cold surfaces
   scrub:         0x4a5545,   // cold scrub tundra
-  iceDark:       0x8eb5c8,   // ice shadow
-  iceLight:      0xd6edf3,   // snow peak
+  iceDark:       0xb8ddea,   // ice shadow
+  iceLight:      0xe4f4f7,   // snow peak
   snow:          0xe8edf5,   // bright snow
   // Overlay tints
   slopeGray:     0x505762,   // steep slope gray
   snowWhite:     0xf2f5f8,   // snow blend white
-  riverBlue:     0x347b88,   // river blue-green
-  coastYellow:   0xb7ad6e,   // shoreline reed tint
-  shallowTeal:   0x648c8c    // lake teal
+  riverBlue:     0x1d5265,   // river blue-green
+  coastYellow:   0x8a6a30,   // shoreline reed tint
+  shallowTeal:   0x245f78    // lake blue
 };
 PS.render.surfaceColor._surfacePaletteVersion = -1;
 
@@ -410,7 +476,7 @@ PS.render.surfaceColor.getSurfaceColorPacked = function (sample) {
   // Tile blend transition (packed path)
   color = PS.render.surfaceColor.blendWithTileBlendPacked(sample, color);
 
-  return shade(color, finalShade);
+  return PS.render.surfaceColor.protectMaterialIdentityPacked(sample, shade(color, finalShade));
 };
 
 PS.render.surfaceColor._defaultStrataPacked = { color: 0x6c6552, amount: 0 };
@@ -551,8 +617,23 @@ PS.render.surfaceColor.blendWithTileBlendPacked = function (sample, packedColor)
     clamp(Math.round(targetRgb.blue), 0, 255)
   );
 
-  return PS.render.terrain.blendPacked(
+  return PS.render.surfaceColor.protectMaterialIdentityPacked(sample, PS.render.terrain.blendPacked(
     packedColor, targetPacked,
-    clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.34)
+    clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.25)
+  ));
+};
+
+PS.render.surfaceColor.protectMaterialIdentityPacked = function (sample, packedColor) {
+  var terrain = PS.render.terrain;
+  var protectedRgb = PS.render.surfaceColor.protectMaterialIdentityRgb(sample, {
+    red: terrain.unpackR(packedColor),
+    green: terrain.unpackG(packedColor),
+    blue: terrain.unpackB(packedColor)
+  });
+
+  return terrain.packRgb(
+    clamp(Math.round(protectedRgb.red), 0, 255),
+    clamp(Math.round(protectedRgb.green), 0, 255),
+    clamp(Math.round(protectedRgb.blue), 0, 255)
   );
 };

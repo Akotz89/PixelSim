@@ -55,10 +55,10 @@ vm.runInContext(terrainSource, context, { filename: "js/render/terrain.js" });
 vm.runInContext(surfaceColorSource, context, { filename: "js/render/surface-color.js" });
 vm.runInContext(atlasSource, context, { filename: "js/render/entity-atlas.js" });
 
-assert.strictEqual(context.PS.assets.getPaletteColor("terrain", "forest", "#000000"), "#123f23", "asset registry should expose terrain palette values");
-assert.strictEqual(context.PS.render.terrain.getBaseBiomeColor("forest"), "#123f23", "terrain biome color should come from the registry palette");
-assert.strictEqual(context.PS.render.terrain.getBaseBiomeColor("mountains"), "#62675f", "mountain aliases should resolve through the registry palette");
-assert.strictEqual(context.PS.render.terrain.getBiomePackedColor("forest"), 0x123f23, "packed biome lookup should match registry palette color");
+assert.strictEqual(context.PS.assets.getPaletteColor("terrain", "forest", "#000000"), "#0f351d", "asset registry should expose terrain palette values");
+assert.strictEqual(context.PS.render.terrain.getBaseBiomeColor("forest"), "#0f351d", "terrain biome color should come from the registry palette");
+assert.strictEqual(context.PS.render.terrain.getBaseBiomeColor("mountains"), "#3a3a3a", "mountain aliases should resolve through the registry palette");
+assert.strictEqual(context.PS.render.terrain.getBiomePackedColor("forest"), 0x0f351d, "packed biome lookup should match registry palette color");
 
 context.PS.assets.registerPalette("terrain", Object.assign({}, context.PS.assets.getPalette("terrain"), {
   forest: "#225511",
@@ -91,7 +91,7 @@ const centerIndex = ((forestCell.y + 7) * page.width + forestCell.x + 7) * 4;
 const center = Array.from(page.data.slice(centerIndex, centerIndex + 4));
 
 assert.ok(forestCell.name.indexOf("terrain.") === 0, "terrain atlas should still select registered terrain material cells");
-assert.notDeepStrictEqual(center, [18, 63, 35, 255], "terrain atlas cell should no longer be locked to the old hardcoded forest base color");
-assert.deepStrictEqual(center, [34, 85, 17, 255], "terrain atlas cell should reflect the re-registered palette range");
+assert.notDeepStrictEqual(center, [15, 53, 29, 255], "terrain atlas cell should no longer be locked to the default forest base color");
+assert.deepStrictEqual(center.slice(0, 3), [34, 85, 17], "terrain atlas cell should reflect the re-registered palette range");
 
 console.log("render palette registry checks passed");

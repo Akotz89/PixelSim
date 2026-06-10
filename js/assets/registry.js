@@ -79,23 +79,23 @@ PS.assets.getManifest = function () {
 };
 
 PS.assets.registerPalette("pixeldarium-base", {
-  terrainMuted: "#4f6040",
-  waterMuted: "#0d4f76",
+  terrainMuted: "#3f4f31",
+  waterMuted: "#1a3a6a",
   entityContrast: "#fff26b",
   statusWarning: "#ff9c69",
   overlayInfo: "#70f0d0"
 });
 
 PS.assets.registerPalette("terrain", {
-  forest: "#123f23",
-  grassland: "#23552d",
-  wetland: "#1d4f43",
-  mountain: "#62675f",
-  barren: "#3f3d32",
-  desert: "#56451f",
-  tundra: "#29383a",
-  ice: "#a8d4e8",
-  ocean: "#06172b"
+  forest: "#0f351d",
+  grassland: "#2e6010",
+  wetland: "#173f34",
+  mountain: "#3a3a3a",
+  barren: "#323126",
+  desert: "#8a6a30",
+  tundra: "#243133",
+  ice: "#b8ddea",
+  ocean: "#1a3a6a"
 });
 
 PS.assets.registerPalette("status", {

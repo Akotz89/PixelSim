@@ -2,24 +2,24 @@
 PS.render = PS.render || {};
 PS.render.terrain = PS.render.terrain || {};
 
-// Original Pixeldarium fallback biome colors. Runtime palette registrations in
+// Grounded Pixeldarium fallback biome colors. Runtime palette registrations in
 // js/assets/registry.js override these when the asset registry is loaded.
 PS.render.terrain.defaultBiomeColors = {
-  grassland:  "#23552d",
-  forest:     "#123f23",
-  desert:     "#56451f",
-  wetland:    "#1d4f43",
-  mountain:   "#62675f",
-  mountains:  "#62675f",
-  barren:     "#3f3d32",
-  tundra:     "#29383a",
-  ice:        "#a8d4e8",
-  ocean:      "#06172b",
-  lake:       "#0d4f76",
-  woodland:   "#2f5f2f",
-  pasture:    "#4f6040",
+  grassland:  "#2e6010",
+  forest:     "#0f351d",
+  desert:     "#8a6a30",
+  wetland:    "#173f34",
+  mountain:   "#3a3a3a",
+  mountains:  "#3a3a3a",
+  barren:     "#323126",
+  tundra:     "#243133",
+  ice:        "#b8ddea",
+  ocean:      "#1a3a6a",
+  lake:       "#1a3a6a",
+  woodland:   "#254d24",
+  pasture:    "#3f4f31",
   volcanic:   "#241817",
-  jungle:     "#0f4d25"
+  jungle:     "#0b3f1e"
 };
 PS.render.terrain.defaultBiomeColor = "#07080f";
 PS.render.terrain._biomePaletteVersion = -1;
