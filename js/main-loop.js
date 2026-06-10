@@ -345,6 +345,10 @@ function gameLoop() {
       world.interpolation = 0;
     }
 
+    if (PS.camera && typeof PS.camera.updateInertia === "function") {
+      PS.camera.updateInertia();
+    }
+
     if (!world.isPaused || world.needsRender) {
       var drawStart = performance.now();
       drawWorld();

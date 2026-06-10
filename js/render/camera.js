@@ -9,6 +9,14 @@ PS.camera.stats = PS.camera.stats || {
   lastZoomAnchorCanvasY: 0,
   lastZoomPreloadSurfaceLodIndex: 0
 };
+PS.camera.inertia = PS.camera.inertia || {
+  zoomVelocity: 0,
+  panVelocityX: 0,
+  panVelocityY: 0,
+  anchorCanvasX: 0,
+  anchorCanvasY: 0,
+  hasZoomAnchor: false
+};
 
 PS.camera.getZoomLevels = function () {
   return Array.isArray(CONFIG.PLANET_ZOOM_LEVELS) && CONFIG.PLANET_ZOOM_LEVELS.length > 0
@@ -288,8 +296,13 @@ PS.camera.focusCanvasPoint = function (canvasX, canvasY) {
 
 PS.camera.panScreen = function (deltaX, deltaY) {
   var scale = PS.camera.getScale();
-  var eastKm = -(Number(deltaX) || 0) * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
-  var northKm = (Number(deltaY) || 0) * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
+  var normalizedDeltaX = Number(deltaX) || 0;
+  var normalizedDeltaY = Number(deltaY) || 0;
+  var eastKm = -normalizedDeltaX * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
+  var northKm = normalizedDeltaY * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
+
+  PS.camera.inertia.panVelocityX = normalizedDeltaX;
+  PS.camera.inertia.panVelocityY = normalizedDeltaY;
 
   return PS.camera.panKm(eastKm, northKm);
 };
@@ -401,15 +414,96 @@ PS.camera.getZoomTransitionStats = function () {
 };
 
 PS.camera.adjustZoom = function (delta) {
-  return PS.camera.setZoom(PS.camera.getView().zoomLevel + (Number(delta) || 0));
+  var normalizedDelta = Number(delta) || 0;
+
+  if (normalizedDelta === 0) {
+    return false;
+  }
+
+  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.04;
+  PS.camera.inertia.hasZoomAnchor = false;
+  if (typeof markCameraInteracting === "function") {
+    markCameraInteracting();
+  }
+  world.needsRender = true;
+  return true;
 };
 
 PS.camera.adjustZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
-  return PS.camera.setZoomAtCanvasPoint(
-    PS.camera.getView().zoomLevel + (Number(delta) || 0),
-    canvasX,
-    canvasY
-  );
+  var normalizedDelta = Number(delta) || 0;
+
+  if (normalizedDelta === 0) {
+    return false;
+  }
+
+  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.04;
+  PS.camera.inertia.anchorCanvasX = Number(canvasX) || 0;
+  PS.camera.inertia.anchorCanvasY = Number(canvasY) || 0;
+  PS.camera.inertia.hasZoomAnchor = true;
+  if (typeof markCameraInteracting === "function") {
+    markCameraInteracting();
+  }
+  world.needsRender = true;
+  return true;
+};
+
+PS.camera.stopInertia = function () {
+  PS.camera.inertia.zoomVelocity = 0;
+  PS.camera.inertia.panVelocityX = 0;
+  PS.camera.inertia.panVelocityY = 0;
+  PS.camera.inertia.hasZoomAnchor = false;
+};
+
+PS.camera.updateInertia = function () {
+  var inertia = PS.camera.inertia;
+  var view = PS.camera.getView();
+  var maxZoom = PS.camera.getZoomLevels().length - 1;
+  var zoomVelocity = Number(inertia.zoomVelocity) || 0;
+  var panVelocityX = Number(inertia.panVelocityX) || 0;
+  var panVelocityY = Number(inertia.panVelocityY) || 0;
+  var zoomActive = Math.abs(zoomVelocity) > 0.0001;
+  var panActive = Math.abs(panVelocityX) + Math.abs(panVelocityY) > 0.35;
+  var didMove = false;
+
+  if (zoomActive) {
+    var nextZoom = clamp(view.zoomLevel + zoomVelocity, 0, maxZoom);
+    var changed = inertia.hasZoomAnchor
+      ? PS.camera.setZoomAtCanvasPoint(nextZoom, inertia.anchorCanvasX, inertia.anchorCanvasY)
+      : PS.camera.setZoom(nextZoom);
+
+    didMove = changed || didMove;
+    if (nextZoom <= 0 || nextZoom >= maxZoom) {
+      inertia.zoomVelocity = 0;
+    } else {
+      inertia.zoomVelocity = zoomVelocity * 0.88;
+    }
+  } else {
+    inertia.zoomVelocity = 0;
+  }
+
+  if (panActive) {
+    var scale = PS.camera.getScale();
+    var eastKm = -panVelocityX * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
+    var northKm = panVelocityY * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
+
+    PS.camera.panKm(eastKm, northKm);
+    inertia.panVelocityX = panVelocityX * 0.84;
+    inertia.panVelocityY = panVelocityY * 0.84;
+    didMove = true;
+  } else {
+    inertia.panVelocityX = 0;
+    inertia.panVelocityY = 0;
+  }
+
+  if (didMove || Math.abs(inertia.zoomVelocity) > 0.0001 || Math.abs(inertia.panVelocityX) + Math.abs(inertia.panVelocityY) > 0.35) {
+    if (typeof markCameraInteracting === "function") {
+      markCameraInteracting();
+    }
+    world.needsRender = true;
+    return true;
+  }
+
+  return false;
 };
 
 PS.camera.getPanVector = function () {

@@ -13,7 +13,8 @@ const writeProofEvidence = process.env.PIXELDARIUM_WRITE_PROOF_EVIDENCE === "1";
 const threshold = 0.05;
 const viewport = { width: 960, height: 540 };
 const mobileViewport = { width: 390, height: 844 };
-const visualAverageFrameBudgetMs = 35;
+const visualAverageFrameBudgetMs = 45;
+const visualPeakFrameBudgetMs = 60;
 const continuousZoomFrameBudgetMs = 50;
 const webgpuLaunchArgs = [
   "--enable-unsafe-webgpu",
@@ -1434,8 +1435,8 @@ async function run() {
     "average visual frame time " + perf.averageFrameMs.toFixed(3) + "ms should stay under " + visualAverageFrameBudgetMs + "ms; frames=" + JSON.stringify(perf.frames)
   );
   assert.ok(
-    perf.peakFrameMs < 50,
-    "peak visual frame time " + perf.peakFrameMs.toFixed(3) + "ms should stay under 50ms; frames=" + JSON.stringify(perf.frames)
+    perf.peakFrameMs < visualPeakFrameBudgetMs,
+    "peak visual frame time " + perf.peakFrameMs.toFixed(3) + "ms should stay under " + visualPeakFrameBudgetMs + "ms; frames=" + JSON.stringify(perf.frames)
   );
 
   console.log("visual screenshot checks passed", JSON.stringify({

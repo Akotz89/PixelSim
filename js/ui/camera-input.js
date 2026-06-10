@@ -200,13 +200,7 @@ function endPlanetDrag(event) {
     canvas.releasePointerCapture(event.pointerId);
   }
 
-  if (
-    planetDragState.moved &&
-    Math.abs(planetDragState.velocityX) + Math.abs(planetDragState.velocityY) >= 0.65 &&
-    typeof window.requestAnimationFrame === "function"
-  ) {
-    planetDragState.inertiaHandle = window.requestAnimationFrame(continuePlanetDragInertia);
-  }
+  planetDragState.inertiaHandle = null;
 }
 
 function panPlanetViewFromKeyboard(eastSamples, northSamples) {

@@ -233,6 +233,55 @@ assert.ok(zoomTransitionStats.lastZoomAnchorErrorDeg <= 1e-8, "anchored zoom sho
 assert.ok(zoomTransitionStats.lastZoomPreloadSurfaceLodIndex >= getPlanetSurfaceLodZoomIndex(initialZoom), "anchored zoom should record a forward preload LOD target");
 
 world.planetView = {
+  zoomLevel: initialZoom,
+  latitude: 34.2117,
+  longitude: -77.7265,
+  panEastMeters: 0,
+  panNorthMeters: 0
+};
+PS.camera.stopInertia();
+assert.ok(adjustPlanetZoomAtCanvasPoint(0.25, cursorX, cursorY), "anchored zoom input should queue camera inertia");
+assert.ok(adjustPlanetZoomAtCanvasPoint(0.25, cursorX, cursorY), "second anchored zoom input should add to camera inertia");
+assert.ok(adjustPlanetZoomAtCanvasPoint(0.25, cursorX, cursorY), "third anchored zoom input should add to camera inertia");
+assertNear(getPlanetView().zoomLevel, initialZoom, 1e-12, "queued zoom should not snap before inertia update");
+var queuedZoomVelocity = PS.camera.inertia.zoomVelocity;
+for (var inertiaZoomFrame = 0; inertiaZoomFrame < 10; inertiaZoomFrame++) {
+  PS.camera.updateInertia();
+}
+assert.ok(getPlanetView().zoomLevel > initialZoom, "queued zoom inertia should advance over multiple frames");
+assert.ok(getPlanetView().zoomLevel <= CONFIG.PLANET_ZOOM_LEVELS.length - 1, "zoom inertia should stay inside the maximum zoom");
+assert.ok(Math.abs(PS.camera.inertia.zoomVelocity) < Math.abs(queuedZoomVelocity), "zoom inertia should decelerate");
+
+PS.camera.setZoom(CONFIG.PLANET_ZOOM_LEVELS.length - 1);
+PS.camera.inertia.zoomVelocity = 4;
+PS.camera.updateInertia();
+assert.strictEqual(getPlanetView().zoomLevel, CONFIG.PLANET_ZOOM_LEVELS.length - 1, "zoom inertia should clamp at the maximum zoom");
+
+world.planetView = {
+  zoomLevel: initialZoom,
+  latitude: 34.2117,
+  longitude: -77.7265,
+  panEastMeters: 0,
+  panNorthMeters: 0
+};
+PS.camera.stopInertia();
+var panLatitudeBefore = getPlanetView().latitude;
+var panLongitudeBefore = getPlanetView().longitude;
+assert.ok(panPlanetViewByScreenDelta(2, -1), "screen pan should apply immediately and seed camera inertia");
+assert.ok(
+  getPlanetView().latitude !== panLatitudeBefore || getPlanetView().longitude !== panLongitudeBefore,
+  "screen pan should move the camera immediately"
+);
+var panInertiaFrames = 0;
+for (var inertiaPanFrame = 0; inertiaPanFrame < 24; inertiaPanFrame++) {
+  if (PS.camera.updateInertia()) {
+    panInertiaFrames++;
+  }
+}
+assert.ok(panInertiaFrames >= 5 && panInertiaFrames <= 15, "pan inertia should coast for 5-15 frames, got " + panInertiaFrames);
+assert.strictEqual(PS.camera.updateInertia(), false, "pan inertia should eventually settle");
+
+world.planetView = {
   zoomLevel: finalGroundZoomIndex,
   latitude: 34.2117,
   longitude: -77.7265,
