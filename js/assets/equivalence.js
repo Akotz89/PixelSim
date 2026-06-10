@@ -280,3 +280,93 @@ PS.assets.equivalence.selectCell = function (family, cellName, use, fallbackCell
     fallbackCellId: fallbackCellId || ""
   };
 };
+
+PS.assets.terrainMaterials = PS.assets.terrainMaterials || {};
+
+PS.assets.terrainMaterials.sheetByMaterial = {
+  grass: "terrain_grass",
+  stone: "terrain_stone",
+  dirt: "terrain_dirt",
+  sand: "terrain_sand",
+  water: "terrain_water",
+  ice: "terrain_ice",
+  rock: "terrain_rock",
+  snow: "terrain_snow",
+  forest: "terrain_forest",
+  desert: "terrain_desert",
+  ocean: "terrain_ocean",
+  mountain: "terrain_mountain",
+  tundra: "terrain_tundra",
+  wetland: "terrain_wetland"
+};
+
+PS.assets.terrainMaterials.getLoadedSheet = function (material) {
+  var sheetId = PS.assets.terrainMaterials.sheetByMaterial[String(material || "")];
+  var loaded = PS.assets.loadedSheets || {};
+
+  return sheetId && loaded[sheetId] ? {
+    id: sheetId,
+    entry: loaded[sheetId],
+    sheet: loaded[sheetId].sheet || null
+  } : null;
+};
+
+PS.assets.terrainMaterials.makeRenderableCell = function (loadedSheet, cell) {
+  var page = PS.assets.equivalence.ensureAtlasPage(loadedSheet);
+  var width;
+  var height;
+
+  if (!page || !cell) {
+    return null;
+  }
+
+  width = Math.max(1, Number(page.width) || 1);
+  height = Math.max(1, Number(page.height) || 1);
+
+  return {
+    name: cell.name,
+    sourceCellName: cell.name,
+    pageIndex: page.pageIndex,
+    x: cell.x,
+    y: cell.y,
+    w: cell.w,
+    h: cell.h,
+    u0: cell.x / width,
+    v0: cell.y / height,
+    u1: (cell.x + cell.w) / width,
+    v1: (cell.y + cell.h) / height,
+    splitAtlas: Boolean(cell.splitAtlas || loadedSheet.entry && loadedSheet.entry.splitAtlas),
+    normalOffsetX: Number(cell.normalOffsetX) || 0,
+    terrainMaterialSheetId: loadedSheet.id
+  };
+};
+
+PS.assets.terrainMaterials.selectCell = function (material, variant, use, fallbackCellId) {
+  var materialKey = String(material || "");
+  var loadedSheet = PS.assets.terrainMaterials.getLoadedSheet(materialKey);
+  var variantIndex = Math.max(0, Math.round(Number(variant) || 0)) % 8;
+  var cellName = "terrain." + materialKey + "." + variantIndex;
+  var cell;
+  var renderableCell;
+
+  if (!loadedSheet || !loadedSheet.sheet || typeof loadedSheet.sheet.getCell !== "function") {
+    PS.assets.equivalence.recordMissing("terrain-material-sheet:" + materialKey);
+    return null;
+  }
+
+  cell = loadedSheet.sheet.getCell(cellName);
+  if (!cell) {
+    PS.assets.equivalence.recordMissing("terrain-material-cell:" + cellName);
+    return null;
+  }
+
+  renderableCell = PS.assets.terrainMaterials.makeRenderableCell(loadedSheet, cell);
+  PS.assets.equivalence.recordSelection(use || "terrainMaterial", loadedSheet, cell, renderableCell);
+
+  return {
+    family: "terrainMaterial",
+    cell: cell,
+    renderCell: renderableCell,
+    fallbackCellId: fallbackCellId || ""
+  };
+};

@@ -2,7 +2,7 @@
 PS.render = PS.render || {};
 PS.render.surfaceTileBatcher = PS.render.surfaceTileBatcher || {};
 
-PS.render.surfaceTileBatcher.strideFloats = 10;
+PS.render.surfaceTileBatcher.strideFloats = 11;
 
 PS.render.surfaceTileBatcher.state = PS.render.surfaceTileBatcher.state || {
   pageBuffers: {},
@@ -110,6 +110,53 @@ PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biom
   }
 
   return "grass-lush." + variant;
+};
+
+PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId = function (biome, sample) {
+  var surface = String(sample && sample.detail && sample.detail.surface || "").toLowerCase();
+  var biomeKey = String(biome || "").toLowerCase();
+
+  if (surface.indexOf("snow") >= 0) {
+    return "snow";
+  }
+
+  if (surface.indexOf("ice") >= 0 || biomeKey === "ice") {
+    return "ice";
+  }
+
+  if (surface.indexOf("water") >= 0 || surface.indexOf("whitecap") >= 0 || biomeKey === "ocean" || biomeKey === "lake") {
+    return "water";
+  }
+
+  if (surface.indexOf("rock") >= 0 || surface.indexOf("stone") >= 0 || surface.indexOf("ridge") >= 0 || biomeKey === "mountain") {
+    return "stone";
+  }
+
+  if (surface.indexOf("sand") >= 0 || surface.indexOf("dune") >= 0 || biomeKey === "desert") {
+    return "sand";
+  }
+
+  if (surface.indexOf("scrub") >= 0 || surface.indexOf("moss") >= 0 || biomeKey === "barren") {
+    return "dirt";
+  }
+
+  return "grass";
+};
+
+PS.render.surfaceTileBatcher.selectTerrainMaterialCell = function (biome, sample, tileX, tileY, fallbackCell) {
+  var material = PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId(biome, sample);
+  var variant = PS.ranmap && PS.ranmap.variant
+    ? PS.ranmap.variant(tileX, tileY, 8)
+    : Math.abs(Math.round(Number(tileX) || 0) * 3 + Math.round(Number(tileY) || 0) * 5) % 8;
+  var selected;
+
+  if (!PS.assets || !PS.assets.terrainMaterials || typeof PS.assets.terrainMaterials.selectCell !== "function") {
+    return null;
+  }
+
+  selected = PS.assets.terrainMaterials.selectCell(material, variant, "terrainMaterial", fallbackCell && fallbackCell.name ? fallbackCell.name : "");
+
+  return selected && selected.renderCell ? selected.renderCell : null;
 };
 
 PS.render.surfaceTileBatcher.getAcceptedTransitionPair = function (transition) {
@@ -308,7 +355,8 @@ PS.render.surfaceTileBatcher.appendInstance = function (
   u1,
   v1,
   alpha,
-  flipH
+  flipH,
+  splitNormal
 ) {
   var offset = page.length;
 
@@ -322,6 +370,7 @@ PS.render.surfaceTileBatcher.appendInstance = function (
   page.data[offset + 7] = v1;
   page.data[offset + 8] = alpha;
   page.data[offset + 9] = flipH;
+  page.data[offset + 10] = splitNormal ? 1 : 0;
   page.length += PS.render.surfaceTileBatcher.strideFloats;
 };
 
@@ -404,6 +453,14 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       }
     }
 
+    if (!(cell && cell.splitAtlas) && !(sample && sample.acceptedTransitionCellName)) {
+      var materialCell = PS.render.surfaceTileBatcher.selectTerrainMaterialCell(biome, sample, tileX, tileY, cell);
+      if (materialCell) {
+        cell = materialCell;
+        target.equivalenceTerrain++;
+      }
+    }
+
     if (target.materialCounts) {
       target.materialCounts[cell.name] = (target.materialCounts[cell.name] || 0) + 1;
     }
@@ -427,7 +484,8 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       cell.u1,
       cell.v1,
       tileAlpha * featherAlpha,
-      flipH
+      flipH,
+      cell.splitAtlas
     );
     target.count++;
   }

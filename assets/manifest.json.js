@@ -4,7 +4,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_grass": {
       "path": "assets/terrain/grass.png",
       "meta": "assets/terrain/grass.json",
+      "pixelData": "assets/terrain/grass.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.grass.0",
@@ -4013,7 +4032,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_forest": {
       "path": "assets/terrain/forest.png",
       "meta": "assets/terrain/forest.json",
+      "pixelData": "assets/terrain/forest.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.forest.0",
@@ -4092,7 +4130,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_desert": {
       "path": "assets/terrain/desert.png",
       "meta": "assets/terrain/desert.json",
+      "pixelData": "assets/terrain/desert.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.desert.0",
@@ -4171,7 +4228,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_water": {
       "path": "assets/terrain/water.png",
       "meta": "assets/terrain/water.json",
+      "pixelData": "assets/terrain/water.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.water.0",
@@ -4250,7 +4326,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_ocean": {
       "path": "assets/terrain/ocean.png",
       "meta": "assets/terrain/ocean.json",
+      "pixelData": "assets/terrain/ocean.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.ocean.0",
@@ -4329,7 +4424,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_mountain": {
       "path": "assets/terrain/mountain.png",
       "meta": "assets/terrain/mountain.json",
+      "pixelData": "assets/terrain/mountain.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.mountain.0",
@@ -4408,7 +4522,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_tundra": {
       "path": "assets/terrain/tundra.png",
       "meta": "assets/terrain/tundra.json",
+      "pixelData": "assets/terrain/tundra.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.tundra.0",
@@ -4487,7 +4620,26 @@ PS.assets.registerJSON("assets/manifest.json", {
     "terrain_wetland": {
       "path": "assets/terrain/wetland.png",
       "meta": "assets/terrain/wetland.json",
+      "pixelData": "assets/terrain/wetland.rgba.json",
       "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
       "sprites": [
         {
           "id": "terrain.wetland.0",
@@ -4554,6 +4706,594 @@ PS.assets.registerJSON("assets/manifest.json", {
         },
         {
           "id": "terrain.wetland.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_stone": {
+      "path": "assets/terrain/stone.png",
+      "meta": "assets/terrain/stone.json",
+      "pixelData": "assets/terrain/stone.rgba.json",
+      "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
+      "sprites": [
+        {
+          "id": "terrain.stone.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.stone.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_dirt": {
+      "path": "assets/terrain/dirt.png",
+      "meta": "assets/terrain/dirt.json",
+      "pixelData": "assets/terrain/dirt.rgba.json",
+      "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
+      "sprites": [
+        {
+          "id": "terrain.dirt.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.dirt.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_sand": {
+      "path": "assets/terrain/sand.png",
+      "meta": "assets/terrain/sand.json",
+      "pixelData": "assets/terrain/sand.rgba.json",
+      "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
+      "sprites": [
+        {
+          "id": "terrain.sand.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.sand.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_ice": {
+      "path": "assets/terrain/ice.png",
+      "meta": "assets/terrain/ice.json",
+      "pixelData": "assets/terrain/ice.rgba.json",
+      "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
+      "sprites": [
+        {
+          "id": "terrain.ice.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.ice.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_rock": {
+      "path": "assets/terrain/rock.png",
+      "meta": "assets/terrain/rock.json",
+      "pixelData": "assets/terrain/rock.rgba.json",
+      "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
+      "sprites": [
+        {
+          "id": "terrain.rock.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.rock.7",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "terrain_snow": {
+      "path": "assets/terrain/snow.png",
+      "meta": "assets/terrain/snow.json",
+      "pixelData": "assets/terrain/snow.rgba.json",
+      "tileSize": 32,
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          32
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          32
+        ],
+        "normalOffset": [
+          256,
+          0
+        ]
+      },
+      "sprites": [
+        {
+          "id": "terrain.snow.0",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.1",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.2",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.3",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.4",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.5",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.6",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "terrain.snow.7",
           "rect": [
             224,
             0,

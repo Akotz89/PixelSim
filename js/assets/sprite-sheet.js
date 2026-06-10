@@ -74,7 +74,9 @@ PS.assets.SpriteSheet.fromGrid = function (image, meta) {
       y: row * tileHeight,
       w: tileWidth,
       h: tileHeight,
-      image: image
+      image: image,
+      splitAtlas: Boolean(meta && meta.splitAtlas),
+      normalOffsetX: Number(meta && meta.normalOffsetX) || 0
     };
     order.push(name);
   }

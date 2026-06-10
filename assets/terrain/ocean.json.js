@@ -3,6 +3,10 @@ PS.assets.registerJSON("assets/terrain/ocean.json", {
   "tileWidth": 32,
   "tileHeight": 32,
   "columns": 8,
+  "splitAtlas": true,
+  "albedoColumns": 8,
+  "normalColumns": 8,
+  "normalOffsetX": 256,
   "rows": 1,
   "names": [
     "terrain.ocean.0",

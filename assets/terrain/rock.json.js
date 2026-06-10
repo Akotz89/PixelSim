@@ -1,0 +1,21 @@
+PS.assets.registerJSON("assets/terrain/rock.json", {
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 8,
+  "splitAtlas": true,
+  "albedoColumns": 8,
+  "normalColumns": 8,
+  "normalOffsetX": 256,
+  "rows": 1,
+  "names": [
+    "terrain.rock.0",
+    "terrain.rock.1",
+    "terrain.rock.2",
+    "terrain.rock.3",
+    "terrain.rock.4",
+    "terrain.rock.5",
+    "terrain.rock.6",
+    "terrain.rock.7"
+  ]
+});

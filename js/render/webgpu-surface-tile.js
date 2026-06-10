@@ -12,7 +12,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   terrainShaderPath: "shaders/terrain.wgsl",
   gbufferShaderName: "gbuffer-terrain",
   gbufferShaderPath: "shaders/gbuffer-terrain.wgsl",
-  strideFloats: 10,
+  strideFloats: 11,
   maxInstances: 8192,
   state: Object.assign({
     pipeline: null,
@@ -183,7 +183,8 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
                 { shaderLocation: 1, offset: 0, format: "float32x4" },
                 { shaderLocation: 2, offset: 16, format: "float32x4" },
                 { shaderLocation: 3, offset: 32, format: "float32" },
-                { shaderLocation: 4, offset: 36, format: "float32" }
+                { shaderLocation: 4, offset: 36, format: "float32" },
+                { shaderLocation: 5, offset: 40, format: "float32" }
               ]
             }
           ]
@@ -242,7 +243,8 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
                 { shaderLocation: 1, offset: 0, format: "float32x4" },
                 { shaderLocation: 2, offset: 16, format: "float32x4" },
                 { shaderLocation: 3, offset: 32, format: "float32" },
-                { shaderLocation: 4, offset: 36, format: "float32" }
+                { shaderLocation: 4, offset: 36, format: "float32" },
+                { shaderLocation: 5, offset: 40, format: "float32" }
               ]
             }
           ]

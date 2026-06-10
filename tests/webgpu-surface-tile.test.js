@@ -18,6 +18,7 @@ const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
 const compositorSource = read("js/render/webgpu-compositor.js");
+const equivalenceSource = read("js/assets/equivalence.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
 const terrainWgsl = read("shaders/terrain.wgsl");
@@ -82,14 +83,16 @@ assert.strictEqual(terrainTileWgsl.indexOf("color.a * input.alpha"), -1, "terrai
   "@location(1) rect: vec4<f32>",
   "@location(2) uv_rect: vec4<f32>",
   "textureSample(atlas_texture",
+  "textureSampleLevel(atlas_texture",
   "texel_size: vec2<f32>",
   "@location(3) uv_rect: vec4<f32>",
-  "fn sample_height",
-  "clamp(input.uv + offset",
-  "max_uv - tile.texel_size * 0.5",
-  "sample_height(input, vec2<f32>(-tile.texel_size.x, 0.0))",
-  "sample_height(input, vec2<f32>(0.0, tile.texel_size.y))",
-  "slope_x",
+  "@location(4) normal_mode: f32",
+  "fn sample_split_normal",
+  "fn sample_procedural_normal",
+  "fract(input.uv.x + 0.5)",
+  "let normal_sample = textureSampleLevel(atlas_texture, atlas_sampler, normal_uv, 0.0).rgb",
+  "normal_sample * 2.0 - vec3<f32>(1.0, 1.0, 1.0)",
+  "if (input.normal_mode >= 0.5)",
   "let alpha = input.alpha",
   "color.a",
   "normal.xy * 0.5"
@@ -223,6 +226,7 @@ const context = {
         }
       }
     },
+    assets: {},
     atlas: {
       initialized: true,
       pages: [{
@@ -261,6 +265,7 @@ vm.runInContext(managerSource, context, { filename: "js/render/wgsl-shader-manag
 vm.runInContext(targetsSource, context, { filename: "js/render/webgpu-targets.js" });
 vm.runInContext(gbufferSource, context, { filename: "js/render/webgpu-gbuffer.js" });
 vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-compositor.js" });
+vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 vm.runInContext(surfaceTileSource, context, { filename: "js/render/webgpu-surface-tile.js" });
 
@@ -296,15 +301,11 @@ let acceptedTerrainSelection = null;
 context.PS.atlas.getTerrainCell = function () {
   return fallbackTerrainCell;
 };
-context.PS.assets = {
-  equivalence: {
-    selectCell(family, cellName, use, fallbackCellId) {
-      acceptedTerrainSelection = { family, cellName, use, fallbackCellId };
-      return {
-        renderCell: acceptedTerrainCell
-      };
-    }
-  }
+context.PS.assets.equivalence.selectCell = function (family, cellName, use, fallbackCellId) {
+  acceptedTerrainSelection = { family, cellName, use, fallbackCellId };
+  return {
+    renderCell: acceptedTerrainCell
+  };
 };
 
 const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
@@ -332,12 +333,85 @@ assert.strictEqual(acceptedTerrainSelection.cellName, "rock-mountain.0", "explic
 assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit accepted non-water terrain should use terrainGround stats");
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
 
+const splitPageData = new Uint8Array(512 * 32 * 4);
+for (let i = 0; i < splitPageData.length; i += 4) {
+  splitPageData[i] = 96;
+  splitPageData[i + 1] = 132;
+  splitPageData[i + 2] = 64;
+  splitPageData[i + 3] = 180;
+}
+const sheetCells = {};
+["grass", "stone", "sand"].forEach(function (material) {
+  for (let index = 0; index < 8; index += 1) {
+    sheetCells["terrain." + material + "." + index] = {
+      name: "terrain." + material + "." + index,
+      x: index * 32,
+      y: 0,
+      w: 32,
+      h: 32,
+      splitAtlas: true,
+      normalOffsetX: 256
+    };
+  }
+});
+context.PS.assets.loadedSheets = {
+  terrain_grass: {
+    id: "terrain_grass",
+    splitAtlas: { normalOffset: [256, 0] },
+    pixelData: { type: "rgba-base64", width: 512, height: 32, byteLength: splitPageData.length, buffer: splitPageData },
+    sheet: { getCell(name) { return sheetCells[name] || null; } }
+  },
+  terrain_stone: {
+    id: "terrain_stone",
+    splitAtlas: { normalOffset: [256, 0] },
+    pixelData: { type: "rgba-base64", width: 512, height: 32, byteLength: splitPageData.length, buffer: splitPageData },
+    sheet: { getCell(name) { return sheetCells[name] || null; } }
+  },
+  terrain_sand: {
+    id: "terrain_sand",
+    splitAtlas: { normalOffset: [256, 0] },
+    pixelData: { type: "rgba-base64", width: 512, height: 32, byteLength: splitPageData.length, buffer: splitPageData },
+    sheet: { getCell(name) { return sheetCells[name] || null; } }
+  }
+};
+
+const automaticTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 1,
+  sampleNorth: 1,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 3
+}, [{
+  sample: { biome: "grassland", detail: { surface: "grass" } },
+  screenX: 0,
+  screenY: 0
+}, {
+  sample: { biome: "mountain", detail: { surface: "stone" } },
+  screenX: 16,
+  screenY: 0
+}, {
+  sample: { biome: "desert", detail: { surface: "sand" } },
+  screenX: 32,
+  screenY: 0
+}], 1);
+
+assert.ok(automaticTerrainBatches.materialCounts["terrain.grass.0"] || automaticTerrainBatches.materialCounts["terrain.grass.1"] || automaticTerrainBatches.materialCounts["terrain.grass.2"] || automaticTerrainBatches.materialCounts["terrain.grass.3"] || automaticTerrainBatches.materialCounts["terrain.grass.4"] || automaticTerrainBatches.materialCounts["terrain.grass.5"] || automaticTerrainBatches.materialCounts["terrain.grass.6"] || automaticTerrainBatches.materialCounts["terrain.grass.7"], "automatic surface batching should select split-atlas grass material");
+assert.ok(Object.keys(automaticTerrainBatches.materialCounts).some(function (name) { return name.indexOf("terrain.stone.") === 0; }), "automatic surface batching should select split-atlas stone material");
+assert.ok(Object.keys(automaticTerrainBatches.materialCounts).some(function (name) { return name.indexOf("terrain.sand.") === 0; }), "automatic surface batching should select split-atlas sand material");
+Object.keys(automaticTerrainBatches.pages).forEach(function (pageIndex) {
+  var page = automaticTerrainBatches.pages[pageIndex];
+  for (let offset = 10; offset < page.length; offset += 11) {
+    assert.strictEqual(page.data[offset], 1, "split-atlas material instances should set the normal sampling flag");
+  }
+});
+
 const drew = surfaceTile.drawBatches({
   pages: {
     0: new Float32Array([
       8, 12, 16, 16,
       0, 0, 0.5, 0.5,
-      1, 0.25
+      1, 0.25, 1
     ])
   },
   count: 1,

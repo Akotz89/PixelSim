@@ -4,6 +4,7 @@ struct VertexIn {
   @location(2) uv_rect: vec4<f32>,
   @location(3) alpha: f32,
   @location(4) flip_h: f32,
+  @location(5) normal_mode: f32,
 };
 
 struct VertexOut {
@@ -12,6 +13,7 @@ struct VertexOut {
   @location(1) alpha: f32,
   @location(2) shade: f32,
   @location(3) uv_rect: vec4<f32>,
+  @location(4) normal_mode: f32,
 };
 
 struct GBufferTerrainOut {
@@ -47,6 +49,7 @@ fn vs_main(input: VertexIn) -> VertexOut {
   out.alpha = input.alpha;
   out.shade = 0.94 + fract(input.flip_h) * 0.5;
   out.uv_rect = input.uv_rect;
+  out.normal_mode = input.normal_mode;
   return out;
 }
 
@@ -54,7 +57,23 @@ fn sample_height(input: VertexOut, offset: vec2<f32>) -> f32 {
   let min_uv = min(input.uv_rect.xy, input.uv_rect.zw);
   let max_uv = max(input.uv_rect.xy, input.uv_rect.zw);
   let uv = clamp(input.uv + offset, min_uv + tile.texel_size * 0.5, max_uv - tile.texel_size * 0.5);
-  return textureSample(atlas_texture, atlas_sampler, uv).a;
+  return textureSampleLevel(atlas_texture, atlas_sampler, uv, 0.0).a;
+}
+
+fn sample_split_normal(input: VertexOut) -> vec3<f32> {
+  let normal_uv = vec2<f32>(fract(input.uv.x + 0.5), input.uv.y);
+  let normal_sample = textureSampleLevel(atlas_texture, atlas_sampler, normal_uv, 0.0).rgb;
+  return normalize(normal_sample * 2.0 - vec3<f32>(1.0, 1.0, 1.0));
+}
+
+fn sample_procedural_normal(input: VertexOut) -> vec3<f32> {
+  let h_l = sample_height(input, vec2<f32>(-tile.texel_size.x, 0.0));
+  let h_r = sample_height(input, vec2<f32>(tile.texel_size.x, 0.0));
+  let h_d = sample_height(input, vec2<f32>(0.0, -tile.texel_size.y));
+  let h_u = sample_height(input, vec2<f32>(0.0, tile.texel_size.y));
+  let slope_x = clamp((h_l - h_r) * 4.0, -0.5, 0.5);
+  let slope_y = clamp((h_d - h_u) * 4.0, -0.5, 0.5);
+  return normalize(vec3<f32>(slope_x, slope_y, 1.0));
 }
 
 @fragment
@@ -62,13 +81,10 @@ fn fs_main(input: VertexOut) -> GBufferTerrainOut {
   let color = textureSample(atlas_texture, atlas_sampler, input.uv);
   let shaded = color.rgb * input.shade;
   let alpha = input.alpha;
-  let h_l = sample_height(input, vec2<f32>(-tile.texel_size.x, 0.0));
-  let h_r = sample_height(input, vec2<f32>(tile.texel_size.x, 0.0));
-  let h_d = sample_height(input, vec2<f32>(0.0, -tile.texel_size.y));
-  let h_u = sample_height(input, vec2<f32>(0.0, tile.texel_size.y));
-  let slope_x = clamp((h_l - h_r) * 4.0, -0.5, 0.5);
-  let slope_y = clamp((h_d - h_u) * 4.0, -0.5, 0.5);
-  let normal = normalize(vec3<f32>(slope_x, slope_y, 1.0));
+  var normal = sample_procedural_normal(input);
+  if (input.normal_mode >= 0.5) {
+    normal = sample_split_normal(input);
+  }
   var out: GBufferTerrainOut;
   out.albedo = vec4<f32>(shaded, alpha);
   out.normal_height = vec4<f32>(normal.xy * 0.5 + vec2<f32>(0.5, 0.5), normal.z * 0.5 + 0.5, color.a);

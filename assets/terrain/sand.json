@@ -1,0 +1,21 @@
+{
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 8,
+  "splitAtlas": true,
+  "albedoColumns": 8,
+  "normalColumns": 8,
+  "normalOffsetX": 256,
+  "rows": 1,
+  "names": [
+    "terrain.sand.0",
+    "terrain.sand.1",
+    "terrain.sand.2",
+    "terrain.sand.3",
+    "terrain.sand.4",
+    "terrain.sand.5",
+    "terrain.sand.6",
+    "terrain.sand.7"
+  ]
+}

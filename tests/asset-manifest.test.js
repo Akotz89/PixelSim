@@ -16,9 +16,15 @@ const handoffManifest = JSON.parse(fs.readFileSync(handoffManifestPath, "utf8"))
 const png = fs.readFileSync(grassPngPath);
 const terrainAtlasExpectations = {
   grass: [88, 138, 66],
+  stone: [72, 72, 72],
+  dirt: [82, 58, 36],
+  sand: [138, 106, 48],
   forest: [49, 96, 43],
   desert: [188, 151, 82],
   water: [69, 127, 148],
+  ice: [184, 221, 234],
+  rock: [55, 55, 58],
+  snow: [224, 232, 236],
   ocean: [35, 61, 103],
   mountain: [93, 96, 101],
   tundra: [143, 153, 134],
@@ -57,8 +63,13 @@ function centerRgb(buffer) {
   const bytesPerPixel = 4;
   const rowLength = size.width * bytesPerPixel + 1;
   const raw = inflatePng(buffer);
-  const x = 16;
-  const y = 16;
+
+  return pixelRgb(raw, size, 16, 16);
+}
+
+function pixelRgb(raw, size, x, y) {
+  const bytesPerPixel = 4;
+  const rowLength = size.width * bytesPerPixel + 1;
   const offset = y * rowLength + 1 + x * bytesPerPixel;
 
   assert.strictEqual(raw[y * rowLength], 0, "terrain atlas PNG should use unfiltered rows");
@@ -84,12 +95,13 @@ function assertNearRgb(actual, expected, label) {
 
 assert.strictEqual(manifest.version, 1, "manifest should declare schema version");
 assert.ok(manifest.sheets.terrain_grass, "manifest should include terrain_grass sheet");
-assert.strictEqual(manifest.sheets.terrain_grass.path, "assets/terrain/grass.png", "terrain grass path should match placeholder PNG");
+assert.strictEqual(manifest.sheets.terrain_grass.path, "assets/terrain/grass.png", "terrain grass path should match split-atlas PNG");
 assert.strictEqual(manifest.sheets.terrain_grass.tileSize, 32, "terrain grass tile size should be 32");
 assert.strictEqual(manifest.sheets.terrain_grass.sprites.length, 8, "terrain grass should declare 8 sprite rects");
 assert.deepStrictEqual(manifest.sheets.terrain_grass.sprites[7], { id: "terrain.grass.7", rect: [224, 0, 32, 32] }, "last grass sprite rect should match 8th tile");
 assert.deepStrictEqual(grassMeta.names, manifest.sheets.terrain_grass.sprites.map((sprite) => sprite.id), "grass grid metadata should match manifest sprite IDs");
-assert.deepStrictEqual(pngSize(png), { width: 256, height: 32 }, "grass PNG should be 256x32");
+assert.deepStrictEqual(pngSize(png), { width: 512, height: 32 }, "grass PNG should be 512x32 split atlas");
+assert.deepStrictEqual(manifest.sheets.terrain_grass.splitAtlas.normalOffset, [256, 0], "terrain grass should declare right-half normal offset");
 
 Object.keys(terrainAtlasExpectations).forEach((atlasId) => {
   const sheetId = "terrain_" + atlasId;
@@ -98,16 +110,27 @@ Object.keys(terrainAtlasExpectations).forEach((atlasId) => {
   const pngPath = path.join(root, "assets", "terrain", atlasId + ".png");
   const meta = JSON.parse(fs.readFileSync(metaPath, "utf8"));
   const atlasPng = fs.readFileSync(pngPath);
+  const atlasSize = pngSize(atlasPng);
+  const raw = inflatePng(atlasPng);
+  const normalRgb = pixelRgb(raw, atlasSize, 256 + 16, 16);
 
   assert.ok(sheet, "manifest should include " + sheetId + " sheet");
   assert.strictEqual(sheet.path, "assets/terrain/" + atlasId + ".png", sheetId + " path should match terrain atlas PNG");
   assert.strictEqual(sheet.meta, "assets/terrain/" + atlasId + ".json", sheetId + " metadata path should match terrain atlas JSON");
+  assert.strictEqual(sheet.pixelData, "assets/terrain/" + atlasId + ".rgba.json", sheetId + " should expose file-safe RGBA pixel sidecar");
   assert.strictEqual(sheet.tileSize, 32, sheetId + " tile size should be 32");
+  assert.deepStrictEqual(sheet.splitAtlas.normalRect, [256, 0, 256, 32], sheetId + " should declare right-half normals");
   assert.strictEqual(sheet.sprites.length, 8, sheetId + " should declare 8 sprite rects");
   assert.deepStrictEqual(sheet.sprites[7], { id: "terrain." + atlasId + ".7", rect: [224, 0, 32, 32] }, sheetId + " last sprite rect should match 8th tile");
   assert.deepStrictEqual(meta.names, sheet.sprites.map((sprite) => sprite.id), sheetId + " metadata should match manifest sprite IDs");
-  assert.deepStrictEqual(pngSize(atlasPng), { width: 256, height: 32 }, sheetId + " PNG should be 256x32");
+  assert.strictEqual(meta.splitAtlas, true, sheetId + " metadata should mark split atlas format");
+  assert.strictEqual(meta.normalOffsetX, 256, sheetId + " metadata should locate the normal half");
+  assert.deepStrictEqual(atlasSize, { width: 512, height: 32 }, sheetId + " PNG should be 512x32 split atlas");
   assertNearRgb(centerRgb(atlasPng), terrainAtlasExpectations[atlasId], sheetId);
+  assert.ok(normalRgb[2] >= 190, sheetId + " normal sample should face predominantly upward");
+  assert.notDeepStrictEqual(normalRgb, terrainAtlasExpectations[atlasId], sheetId + " normal half should not duplicate albedo colors");
+  assert.ok(fs.existsSync(path.join(root, sheet.pixelData)), sheetId + " RGBA sidecar should exist");
+  assert.ok(fs.existsSync(path.join(root, sheet.pixelData + ".js")), sheetId + " RGBA sidecar should support file:// loading");
 });
 
 assert.strictEqual(handoffManifest.runtimeUse, true, "accepted visual handoff should be runtime-owned");
@@ -136,7 +159,7 @@ function createContext() {
     set(url) {
       this._src = url;
       imageLoads.push(url);
-      this.width = String(url).startsWith("assets/terrain/") ? 256 : 1;
+      this.width = String(url).startsWith("assets/terrain/") ? 512 : 1;
       this.height = String(url).startsWith("assets/terrain/") ? 32 : 1;
       this.onload();
     },

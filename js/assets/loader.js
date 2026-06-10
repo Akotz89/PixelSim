@@ -452,6 +452,7 @@ PS.assets.AssetLoader.prototype.loadSpriteSheetManifest = function (manifest) {
         meta: meta,
         sheet: spriteSheet,
         path: sheet.path,
+        splitAtlas: sheet.splitAtlas || null,
         pixelData: pixelData,
         pixelDataPath: pixelData ? pixelDataUrl : "",
         animations: sheet.animations || {},
