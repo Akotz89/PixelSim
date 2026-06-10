@@ -55,6 +55,7 @@ assert.strictEqual(
 );
 assert.strictEqual(saveDataSource.indexOf("legacy" + "ConfigSchema"), -1, "new saves should not carry the old full config blob");
 assert.ok(saveDataSource.indexOf("config: createSaveConfigDelta()") >= 0, "new saves should store delta config");
+assert.ok(saveDataSource.indexOf("subsystems: createWorldSubsystemSaveData()") >= 0, "new saves should include grouped subsystem data");
 assert.strictEqual(stateSource.indexOf("document.getElementById"), -1, "state.js should not query DOM elements directly");
 assert.strictEqual(stateSource.indexOf("document.querySelectorAll"), -1, "state.js should not query DOM collections directly");
 assert.ok(domRefsSource.indexOf("document.getElementById") >= 0, "DOM references should live in dom-refs.js");
@@ -100,7 +101,11 @@ runFile(stateContext, "js/ui/dom-refs.js");
 runFile(stateContext, "js/systems/state.js");
 
 const worldKeys = vm.runInContext("Object.keys(world)", stateContext);
+const canonicalWorldSubsystems = ["meta", "bio", "civ", "render", "ui", "history"];
 const worldGroupNames = [
+  "meta",
+  "bio",
+  "civ",
   "simulation",
   "spatial",
   "flow",
@@ -119,8 +124,20 @@ assert.deepStrictEqual(
   [],
   "world should expose grouped state buckets"
 );
+assert.deepStrictEqual(
+  canonicalWorldSubsystems.filter(function(groupName) {
+    return worldKeys.indexOf(groupName) < 0;
+  }),
+  [],
+  "world should expose the six canonical subsystem views"
+);
 assert.strictEqual(vm.runInContext("world.simulation.tick = 12; world.tick", stateContext), 12, "flat world aliases should read grouped state");
 assert.strictEqual(vm.runInContext("world.tick = 34; world.simulation.tick", stateContext), 34, "flat world aliases should write grouped state");
+assert.strictEqual(vm.runInContext("world.meta.tick = 56; world.tick", stateContext), 56, "canonical meta aliases should write legacy tick state");
+assert.strictEqual(vm.runInContext("world.bio.organisms = [{ id: 1 }]; world.organisms.length", stateContext), 1, "canonical bio aliases should write legacy organism state");
+assert.strictEqual(vm.runInContext("world.civ.settlements = [{ id: 2 }]; world.settlements[0].id", stateContext), 2, "canonical civ aliases should write settlement state");
+assert.strictEqual(vm.runInContext("world.render.planetView = { zoomLevel: 2 }; world.planetView.zoomLevel", stateContext), 2, "canonical render aliases should expose camera state");
+assert.strictEqual(vm.runInContext("world.history.eventLog = [{ type: 'test' }]; world.eventLog[0].type", stateContext), "test", "canonical history aliases should expose event log state");
 assert.strictEqual(
   vm.runInContext("world.ui.isPaused = true; world.isPaused", stateContext),
   true,
@@ -133,6 +150,9 @@ const runtimeOnlyWorldKeys = new Set([
   "simulation",
   "spatial",
   "flow",
+  "meta",
+  "bio",
+  "civ",
   "ui",
   "camera",
   "render",

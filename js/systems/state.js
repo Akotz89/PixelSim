@@ -7,6 +7,10 @@ const WORLD_WIDTH = Math.floor(canvas.width / CONFIG.TILE_SIZE);
 const WORLD_HEIGHT = Math.floor(canvas.height / CONFIG.TILE_SIZE);
 
 function defineWorldAlias(target, groupName, key) {
+  if (Object.prototype.hasOwnProperty.call(target, key)) {
+    return;
+  }
+
   Object.defineProperty(target, key, {
     enumerable: true,
     configurable: false,
@@ -22,6 +26,26 @@ function defineWorldAlias(target, groupName, key) {
 function defineWorldAliases(target, groupName) {
   Object.keys(target[groupName]).forEach(function(key) {
     defineWorldAlias(target, groupName, key);
+  });
+}
+
+function defineWorldSubsystemAlias(target, subsystemName, groupName, key, aliasKey) {
+  Object.defineProperty(target[subsystemName], aliasKey || key, {
+    enumerable: true,
+    configurable: false,
+    get: function() {
+      return target[groupName][key];
+    },
+    set: function(value) {
+      target[groupName][key] = value;
+    }
+  });
+}
+
+function defineWorldSubsystemAliases(target, subsystemName, mappings) {
+  target[subsystemName] = target[subsystemName] || {};
+  mappings.forEach(function(mapping) {
+    defineWorldSubsystemAlias(target, subsystemName, mapping.group, mapping.key, mapping.alias);
   });
 }
 
@@ -200,6 +224,55 @@ const world = {
     lastEmpireLegacyTick: 0
   }
 };
+
+defineWorldSubsystemAliases(world, "meta", [
+  { group: "simulation", key: "tick" },
+  { group: "simulation", key: "era" },
+  { group: "simulation", key: "speed" },
+  { group: "ui", key: "isPaused" },
+  { group: "simulation", key: "isExtinct" },
+  { group: "simulation", key: "extinctionTick" },
+  { group: "simulation", key: "seedText" },
+  { group: "simulation", key: "rngState" },
+  { group: "simulation", key: "deepTimeYears" }
+]);
+
+defineWorldSubsystemAliases(world, "bio", [
+  { group: "simulation", key: "organisms" },
+  { group: "simulation", key: "food" },
+  { group: "spatial", key: "foodBuckets" },
+  { group: "biology", key: "lineages" },
+  { group: "biology", key: "nextLineageId" },
+  { group: "biology", key: "nextSpeciesId" },
+  { group: "biology", key: "biologyPopulations" },
+  { group: "biology", key: "biologyRepresentatives" },
+  { group: "biology", key: "abiogenesis" },
+  { group: "biology", key: "microbial" },
+  { group: "biology", key: "microbialReady" }
+]);
+
+defineWorldSubsystemAliases(world, "civ", [
+  { group: "settlementState", key: "settlements" },
+  { group: "settlementState", key: "settlementRoutes" },
+  { group: "settlementState", key: "colonyNetworkScore" },
+  { group: "space", key: "spaceProgramProgress" },
+  { group: "space", key: "orbitalAssets" },
+  { group: "space", key: "probeMissions" },
+  { group: "space", key: "starSystems" },
+  { group: "space", key: "interstellarFleets" },
+  { group: "space", key: "empireSectors" }
+]);
+
+defineWorldSubsystemAliases(world, "render", [
+  { group: "camera", key: "planetView" },
+  { group: "camera", key: "isCameraInteracting" }
+]);
+
+defineWorldSubsystemAliases(world, "history", [
+  { group: "ui", key: "eventLog" },
+  { group: "ui", key: "timelineEvents" },
+  { group: "simulation", key: "milestonesReached" }
+]);
 
 [
   "simulation",

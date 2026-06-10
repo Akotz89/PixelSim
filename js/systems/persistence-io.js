@@ -1,6 +1,73 @@
 "use strict";
+function applySubsystemSaveFallbacks(saveData) {
+  var source = saveData || {};
+  var subsystems = source.subsystems || {};
+  var meta = subsystems.meta || {};
+  var bio = subsystems.bio || {};
+  var civ = subsystems.civ || {};
+  var render = subsystems.render || {};
+  var ui = subsystems.ui || {};
+  var history = subsystems.history || {};
+
+  function fallback(key, value) {
+    if (source[key] === undefined && value !== undefined) {
+      source[key] = value;
+    }
+  }
+
+  fallback("tick", meta.tick);
+  fallback("deepTimeYears", meta.deepTimeYears);
+  fallback("timeScale", meta.timeScale);
+  fallback("speed", meta.speed);
+  fallback("era", meta.era);
+  fallback("isExtinct", meta.isExtinct);
+  fallback("extinctionTick", meta.extinctionTick);
+  fallback("seedText", meta.seedText);
+  fallback("rngState", meta.rngState);
+  fallback("nextLineageId", bio.nextLineageId);
+  fallback("nextSpeciesId", bio.nextSpeciesId);
+  fallback("nextBiologyPopulationId", bio.nextBiologyPopulationId);
+  fallback("nextBiologyRepresentativeId", bio.nextBiologyRepresentativeId);
+  fallback("organisms", bio.organisms);
+  fallback("food", bio.food);
+  fallback("lineages", bio.lineages);
+  fallback("biologyPopulations", bio.biologyPopulations);
+  fallback("biologyRepresentatives", bio.biologyRepresentatives);
+  fallback("abiogenesis", bio.abiogenesis);
+  fallback("microbial", bio.microbial);
+  fallback("microbialReady", bio.microbialReady);
+  fallback("nextSettlementId", civ.nextSettlementId);
+  fallback("nextSettlementRouteId", civ.nextSettlementRouteId);
+  fallback("nextOrbitalAssetId", civ.nextOrbitalAssetId);
+  fallback("nextPlanetaryBodyId", civ.nextPlanetaryBodyId);
+  fallback("nextProbeMissionId", civ.nextProbeMissionId);
+  fallback("nextStarSystemId", civ.nextStarSystemId);
+  fallback("nextInterstellarFleetId", civ.nextInterstellarFleetId);
+  fallback("nextEmpireSectorId", civ.nextEmpireSectorId);
+  fallback("colonyNetworkScore", civ.colonyNetworkScore);
+  fallback("colonyNetworkColonies", civ.colonyNetworkColonies);
+  fallback("colonyNetworkActiveRoutes", civ.colonyNetworkActiveRoutes);
+  fallback("colonyNetworkClaimedTiles", civ.colonyNetworkClaimedTiles);
+  fallback("settlements", civ.settlements);
+  fallback("settlementRoutes", civ.settlementRoutes);
+  fallback("orbitalAssets", civ.orbitalAssets);
+  fallback("planetaryBodies", civ.planetaryBodies);
+  fallback("probeMissions", civ.probeMissions);
+  fallback("starSystems", civ.starSystems);
+  fallback("interstellarFleets", civ.interstellarFleets);
+  fallback("empireSectors", civ.empireSectors);
+  fallback("camera", render.camera);
+  fallback("eventLog", ui.eventLog);
+  fallback("timelineEvents", ui.timelineEvents);
+  fallback("traitHistory", history.traitHistory);
+  fallback("ecosystemHistory", history.ecosystemHistory);
+  fallback("milestonesReached", history.milestonesReached);
+
+  return source;
+}
+
 function applyWorldSaveData(saveData) {
-  var readySaveData = PS.systems.saveMigration.migrate(saveData);
+  var readySaveData = applySubsystemSaveFallbacks(PS.systems.saveMigration.migrate(saveData));
 
   validateWorldSaveData(readySaveData);
   saveData = readySaveData;

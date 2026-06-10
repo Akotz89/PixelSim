@@ -77,6 +77,71 @@ function createSaveConfigDelta() {
   return PS.systems.persistenceConfig.createDelta();
 }
 
+function createWorldSubsystemSaveData() {
+  return {
+    meta: {
+      tick: world.tick,
+      deepTimeYears: Math.max(0, Number(world.deepTimeYears) || 0),
+      timeScale: PS.time && PS.time.timeScale ? copyLayerStateForSave(PS.time.timeScale) : null,
+      speed: world.speed,
+      era: world.era,
+      isExtinct: Boolean(world.isExtinct),
+      extinctionTick: Math.max(0, Math.round(Number(world.extinctionTick) || 0)),
+      seedText: normalizeSeedText(world.seedText),
+      rngState: Math.max(1, Math.round(Number(world.rngState) || 1)) >>> 0
+    },
+    bio: {
+      nextLineageId: world.nextLineageId,
+      nextSpeciesId: Math.max(1, Math.round(Number(world.nextSpeciesId) || 1)),
+      nextBiologyPopulationId: Math.max(1, Math.round(Number(world.nextBiologyPopulationId) || 1)),
+      nextBiologyRepresentativeId: Math.max(1, Math.round(Number(world.nextBiologyRepresentativeId) || 1)),
+      organisms: world.organisms.map(copyOrganismForSave),
+      food: world.food.map(copyFoodForSave),
+      lineages: getLineagesForSave(),
+      biologyPopulations: copyLayerStateForSave(Array.isArray(world.biologyPopulations) ? world.biologyPopulations : []),
+      biologyRepresentatives: copyLayerStateForSave(Array.isArray(world.biologyRepresentatives) ? world.biologyRepresentatives : []),
+      abiogenesis: copyLayerStateForSave(world.abiogenesis),
+      microbial: copyLayerStateForSave(world.microbial),
+      microbialReady: Boolean(world.microbialReady)
+    },
+    civ: {
+      nextSettlementId: world.nextSettlementId,
+      nextSettlementRouteId: world.nextSettlementRouteId,
+      nextOrbitalAssetId: Math.max(1, Math.round(Number(world.nextOrbitalAssetId) || 1)),
+      nextPlanetaryBodyId: Math.max(1, Math.round(Number(world.nextPlanetaryBodyId) || 1)),
+      nextProbeMissionId: Math.max(1, Math.round(Number(world.nextProbeMissionId) || 1)),
+      nextStarSystemId: Math.max(1, Math.round(Number(world.nextStarSystemId) || 1)),
+      nextInterstellarFleetId: Math.max(1, Math.round(Number(world.nextInterstellarFleetId) || 1)),
+      nextEmpireSectorId: Math.max(1, Math.round(Number(world.nextEmpireSectorId) || 1)),
+      colonyNetworkScore: Math.max(0, Math.round(Number(world.colonyNetworkScore) || 0)),
+      colonyNetworkColonies: Math.max(0, Math.round(Number(world.colonyNetworkColonies) || 0)),
+      colonyNetworkActiveRoutes: Math.max(0, Math.round(Number(world.colonyNetworkActiveRoutes) || 0)),
+      colonyNetworkClaimedTiles: Math.max(0, Math.round(Number(world.colonyNetworkClaimedTiles) || 0)),
+      settlements: getSettlementsForSave(),
+      settlementRoutes: getSettlementRoutesForSave(),
+      orbitalAssets: getOrbitalAssetsForSave(),
+      planetaryBodies: getPlanetaryBodiesForSave(),
+      probeMissions: getProbeMissionsForSave(),
+      starSystems: getStarSystemsForSave(),
+      interstellarFleets: getInterstellarFleetsForSave(),
+      empireSectors: getEmpireSectorsForSave()
+    },
+    render: {
+      camera: copyCameraForSave()
+    },
+    ui: {
+      eventLog: (Array.isArray(world.eventLog) ? world.eventLog : []).map(copySimulationEventForSave),
+      timelineEvents: (Array.isArray(world.timelineEvents) ? world.timelineEvents : []).map(copySimulationEventForSave),
+      activeObservationOverlay: world.activeObservationOverlay || "none"
+    },
+    history: {
+      traitHistory: world.traitHistory.map(copyTraitHistorySampleForSave),
+      ecosystemHistory: (Array.isArray(world.ecosystemHistory) ? world.ecosystemHistory : []).map(copyEcosystemHistorySampleForSave),
+      milestonesReached: copyLayerStateForSave(world.milestonesReached || {})
+    }
+  };
+}
+
 function createWorldSaveData() {
   var networkSummary = null;
 
@@ -111,6 +176,7 @@ function createWorldSaveData() {
     worldWidth: WORLD_WIDTH,
     worldHeight: WORLD_HEIGHT,
     tileSize: CONFIG.TILE_SIZE,
+    subsystems: createWorldSubsystemSaveData(),
     tick: world.tick,
     deepTimeYears: Math.max(0, Number(world.deepTimeYears) || 0),
     timeScale: PS.time && PS.time.timeScale ? copyLayerStateForSave(PS.time.timeScale) : null,
