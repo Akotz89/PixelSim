@@ -112,6 +112,7 @@ PS.core.manifest = [
   "js/render/surface-material.js",
   "js/render/surface-relief.js",
   "js/render/entities.js",
+  "js/render/vegetation-render.js",
   "js/render/pipeline.js",
   "js/sim/food-runtime.js",
   "js/sim/vegetation.js",

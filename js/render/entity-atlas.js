@@ -20,6 +20,7 @@ PS.atlas = PS.atlas || {
     routeCells: 0,
     influenceCells: 0,
     worldUiCells: 0,
+    vegetationCells: 0,
     eventMarkerCells: 0,
     intentCells: 0,
     pageBytes: 0,
@@ -42,6 +43,7 @@ PS.atlas.reset = function () {
   PS.atlas.stats.routeCells = 0;
   PS.atlas.stats.influenceCells = 0;
   PS.atlas.stats.worldUiCells = 0;
+  PS.atlas.stats.vegetationCells = 0;
   PS.atlas.stats.eventMarkerCells = 0;
   PS.atlas.stats.intentCells = 0;
   PS.atlas.stats.pageBytes = 0;
@@ -434,6 +436,122 @@ PS.atlas.drawFoodCell = function (cell, variant, richness, familyBucket) {
     PS.atlas.writePixel(cell, 8, 10, light);
     PS.atlas.writePixel(cell, 9, 11, base);
   }
+};
+
+PS.atlas.getVegetationPalette = function (type) {
+  var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
+
+  if (type === types.ROCK) {
+    return {
+      base: [100, 106, 96, 255],
+      dark: [54, 58, 56, 255],
+      light: [156, 158, 142, 255]
+    };
+  }
+
+  if (type === types.FLOWER) {
+    return {
+      base: [102, 176, 80, 255],
+      dark: [40, 96, 46, 255],
+      light: [234, 194, 92, 255]
+    };
+  }
+
+  if (type === types.MUSHROOM) {
+    return {
+      base: [154, 94, 128, 255],
+      dark: [82, 48, 72, 255],
+      light: [222, 174, 164, 255]
+    };
+  }
+
+  if (type === types.GRASS_TUFT) {
+    return {
+      base: [78, 138, 72, 255],
+      dark: [34, 82, 42, 255],
+      light: [134, 178, 82, 255]
+    };
+  }
+
+  if (type === types.BUSH) {
+    return {
+      base: [54, 126, 58, 255],
+      dark: [24, 74, 34, 255],
+      light: [108, 174, 82, 255]
+    };
+  }
+
+  return {
+    base: [38, 116, 54, 255],
+    dark: [20, 64, 32, 255],
+    light: [96, 168, 76, 255],
+    trunk: [94, 70, 44, 255]
+  };
+};
+
+PS.atlas.drawVegetationCell = function (cell, type, variant, part) {
+  var palette = PS.atlas.getVegetationPalette(type);
+  var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
+  var safeVariant = clamp(Math.round(Number(variant) || 0), 0, 15);
+  var isTree = type === types.TREE_SMALL || type === types.TREE_MEDIUM || type === types.TREE_BIG;
+  var isCanopy = part === "canopy";
+  var centerX = 8 + (safeVariant % 3) - 1;
+  var centerY = isCanopy ? 6 : 9;
+  var radius = type === types.TREE_BIG ? 5 : (type === types.TREE_MEDIUM ? 4 : 3);
+  var i;
+
+  PS.atlas.fillNormalHalf(cell);
+
+  if (isTree && !isCanopy) {
+    PS.atlas.writePixel(cell, centerX, 7, palette.trunk);
+    PS.atlas.writePixel(cell, centerX, 8, palette.trunk);
+    PS.atlas.writePixel(cell, centerX - 1, 9, palette.dark);
+    PS.atlas.writePixel(cell, centerX, 9, palette.trunk);
+    PS.atlas.writePixel(cell, centerX + 1, 9, palette.dark);
+    PS.atlas.writePixel(cell, centerX - 1, 10, palette.dark);
+    PS.atlas.writePixel(cell, centerX, 10, palette.trunk);
+    PS.atlas.writePixel(cell, centerX + 1, 10, palette.dark);
+    return;
+  }
+
+  if (isTree) {
+    PS.atlas.writeDot(cell, centerX, centerY, radius, palette.base);
+    PS.atlas.writeDot(cell, centerX - 3, centerY + 2, Math.max(2, radius - 2), palette.dark);
+    PS.atlas.writeDot(cell, centerX + 3, centerY + 1, Math.max(2, radius - 2), palette.base);
+    PS.atlas.writeDot(cell, centerX - 1, centerY - 2, Math.max(1, radius - 3), palette.light);
+    return;
+  }
+
+  if (type === types.ROCK) {
+    PS.atlas.writeDot(cell, 8, 10, 4, palette.base);
+    PS.atlas.writePixel(cell, 5, 9, palette.light);
+    PS.atlas.writePixel(cell, 9, 8, palette.light);
+    PS.atlas.writePixel(cell, 11, 11, palette.dark);
+    PS.atlas.writePixel(cell, 7, 12, palette.dark);
+    return;
+  }
+
+  if (type === types.GRASS_TUFT) {
+    for (i = 0; i < 7; i += 1) {
+      PS.atlas.writePixel(cell, 5 + i, 12 - (i % 3), i % 2 === 0 ? palette.light : palette.base);
+      PS.atlas.writePixel(cell, 5 + i, 13, palette.dark);
+    }
+    return;
+  }
+
+  if (type === types.FLOWER || type === types.MUSHROOM) {
+    for (i = 0; i < 4; i += 1) {
+      var x = 5 + ((safeVariant + i * 3) % 7);
+      var y = 7 + ((safeVariant * 2 + i * 2) % 5);
+      PS.atlas.writePixel(cell, x, y + 3, palette.dark);
+      PS.atlas.writeDot(cell, x, y, 1, i % 2 ? palette.light : palette.base);
+    }
+    return;
+  }
+
+  PS.atlas.writeDot(cell, 7, 9, 3, palette.base);
+  PS.atlas.writeDot(cell, 10, 10, 3, palette.dark);
+  PS.atlas.writeDot(cell, 8, 7, 2, palette.light);
 };
 
 PS.atlas.getSettlementArchetype = function (settlement) {
@@ -1355,6 +1473,23 @@ PS.atlas.getFoodCell = function (variant, food) {
     cell = PS.atlas.allocateCell(name, 32, 16);
     PS.atlas.drawFoodCell(cell, safeVariant, richness, familyBucket);
     PS.atlas.stats.foodCells++;
+    PS.atlas.pages[cell.pageIndex].version++;
+  }
+
+  return cell;
+};
+
+PS.atlas.getVegetationCell = function (type, variant, part) {
+  var safeType = clamp(Math.round(Number(type) || 0), 0, 15);
+  var safeVariant = clamp(Math.round(Number(variant) || 0), 0, 15);
+  var safePart = part === "canopy" ? "canopy" : "below";
+  var name = "entity.vegetation." + safeType + "." + safeVariant + "." + safePart;
+  var cell = PS.atlas.cells[name];
+
+  if (!cell) {
+    cell = PS.atlas.allocateCell(name, 32, 16);
+    PS.atlas.drawVegetationCell(cell, safeType, safeVariant, safePart);
+    PS.atlas.stats.vegetationCells++;
     PS.atlas.pages[cell.pageIndex].version++;
   }
 

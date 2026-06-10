@@ -361,6 +361,16 @@ PS.render.pipeline.registerLayer("overlays.reference", {
   draw: function () {}
 });
 
+PS.render.pipeline.registerLayer("vegetation.world", {
+  order: 35,
+  drawLayer: PS.render.DrawLayer.VEGETATION_TRUNK,
+  family: "vegetation",
+  semantic: "Y-sorted world vegetation trunks, bushes, rocks, and tree canopy split passes",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () { PS.render.vegetation.draw(); }
+});
+
 PS.render.pipeline.registerLayer("settlement.shadows", {
   order: 48,
   drawLayer: PS.render.DrawLayer.SHADOW,

@@ -98,6 +98,11 @@ const context = {
           events.push("organisms");
         }
       },
+      vegetation: {
+        draw() {
+          events.push("vegetation");
+        }
+      },
       lod: {
         getArchitectureZoom(zoomLevel) {
           return 1 + (Number(zoomLevel) || 0) / 7 * 19;
@@ -221,6 +226,8 @@ function layer(id) {
 }
 
 assert.strictEqual(layer("terrain.base").drawLayer, context.PS.render.DrawLayer.TERRAIN_BASE, "terrain should map to base layer");
+assert.strictEqual(layer("vegetation.world").order, 35, "world vegetation should register between terrain and entity layers");
+assert.strictEqual(layer("vegetation.world").drawLayer, context.PS.render.DrawLayer.VEGETATION_TRUNK, "world vegetation should submit trunk layer commands");
 assert.strictEqual(layer("resources.food").drawLayer, context.PS.render.DrawLayer.ENTITY_GROUND, "food should draw on ground entity layer");
 assert.strictEqual(layer("settlement.readiness").drawLayer, context.PS.render.DrawLayer.ENTITY_GROUND, "settlement readiness should draw as a ground facade before structures");
 assert.strictEqual(layer("entities.organisms").drawLayer, context.PS.render.DrawLayer.ENTITY_SORTED, "organisms should draw in Y-sorted entity layer");
@@ -245,13 +252,14 @@ assert.deepStrictEqual(
     "food",
     "intents",
     "readiness",
+    "vegetation",
     "organisms",
     "structures",
     "influence",
     "routes",
     "end"
   ],
-  "pipeline should execute active WebGL runtime layers through formal draw order"
+  "pipeline should execute active WebGPU runtime layers through formal draw order"
 );
 
 const stats = context.PS.render.pipeline.getStats();
