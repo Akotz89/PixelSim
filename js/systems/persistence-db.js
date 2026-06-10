@@ -102,18 +102,10 @@ function copyFoodForSave(food) {
 }
 
 function copyTraitHistorySampleForSave(sample) {
-  return {
-    tick: sample.tick,
-    population: sample.population,
-    vision: sample.vision,
-    metabolism: sample.metabolism,
-    reproductionEnergy: sample.reproductionEnergy,
-    movementTendency: sample.movementTendency,
-    terrainAffinity: sample.terrainAffinity,
-    intelligence: sample.intelligence,
-    sociality: sample.sociality,
-    carnivory: sample.carnivory
-  };
+  var traits = PS.core.traitSchema.copy(sample || {});
+  traits.tick = sample.tick;
+  traits.population = sample.population;
+  return traits;
 }
 
 function copySimulationEventForSave(event) {

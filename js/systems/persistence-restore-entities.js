@@ -213,58 +213,11 @@ function restoreOrganism(organism) {
 }
 
 function restoreTraitHistorySample(sample) {
-  return {
-    tick: Math.max(0, Math.round(restoreNumber(sample.tick, 0))),
-    population: Math.max(0, Math.round(restoreNumber(sample.population, 0))),
-    vision: restoreClampedNumber(
-      sample.vision,
-      CONFIG.TRAIT_VISION_DEFAULT,
-      CONFIG.TRAIT_VISION_MIN,
-      CONFIG.TRAIT_VISION_MAX
-    ),
-    metabolism: restoreClampedNumber(
-      sample.metabolism,
-      CONFIG.TRAIT_METABOLISM_DEFAULT,
-      CONFIG.TRAIT_METABOLISM_MIN,
-      CONFIG.TRAIT_METABOLISM_MAX
-    ),
-    reproductionEnergy: restoreClampedNumber(
-      sample.reproductionEnergy,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX
-    ),
-    movementTendency: restoreClampedNumber(
-      sample.movementTendency,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX
-    ),
-    terrainAffinity: restoreClampedNumber(
-      sample.terrainAffinity,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
-    ),
-    intelligence: restoreClampedNumber(
-      sample.intelligence,
-      CONFIG.TRAIT_INTELLIGENCE_DEFAULT,
-      CONFIG.TRAIT_INTELLIGENCE_MIN,
-      CONFIG.TRAIT_INTELLIGENCE_MAX
-    ),
-    sociality: restoreClampedNumber(
-      sample.sociality,
-      CONFIG.TRAIT_SOCIALITY_DEFAULT,
-      CONFIG.TRAIT_SOCIALITY_MIN,
-      CONFIG.TRAIT_SOCIALITY_MAX
-    ),
-    carnivory: restoreClampedNumber(
-      sample.carnivory,
-      CONFIG.TRAIT_CARNIVORY_DEFAULT,
-      CONFIG.TRAIT_CARNIVORY_MIN,
-      CONFIG.TRAIT_CARNIVORY_MAX
-    )
-  };
+  sample = sample || {};
+  var traits = restoreOrganismTraits(sample);
+  traits.tick = Math.max(0, Math.round(restoreNumber(sample.tick, 0)));
+  traits.population = Math.max(0, Math.round(restoreNumber(sample.population, 0)));
+  return traits;
 }
 
 function restoreTraitHistory(traitHistory) {

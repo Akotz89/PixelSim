@@ -365,5 +365,20 @@ assert.strictEqual(
   0,
   "trait schema should drive restore and clamp new traits"
 );
+assert.strictEqual(
+  vm.runInContext("copyTraitHistorySampleForSave({ tick: 7, population: 3, synthetic: 9 }).synthetic", context),
+  9,
+  "trait schema should drive trait history save copy for newly registered traits"
+);
+assert.strictEqual(
+  vm.runInContext("restoreTraitHistorySample({ tick: 7, population: 3, synthetic: -5 }).synthetic", context),
+  0,
+  "trait schema should drive trait history restore and clamp new traits"
+);
+assert.strictEqual(
+  vm.runInContext("restoreTraitHistorySample({ tick: 7, population: 3 }).bodySize", context),
+  vm.runInContext("CONFIG.TRAIT_BODY_SIZE_DEFAULT", context),
+  "trait history restore should default missing body traits for old saves"
+);
 
 console.log("persistence schema checks passed");
