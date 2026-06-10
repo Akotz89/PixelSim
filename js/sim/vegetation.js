@@ -14,21 +14,24 @@ PS.vegetation = PS.vegetation || {
   width: 0,
   height: 0,
   data: null,
+  grassDensityMap: null,
   grassDensityData: null,
 
   init: function (width, height) {
     this.width = Math.max(1, Math.round(Number(width) || (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1)));
     this.height = Math.max(1, Math.round(Number(height) || (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1)));
     this.data = new Uint8Array(this.width * this.height);
-    this.grassDensityData = new Uint8Array(Math.ceil(this.width * this.height / 2));
+    this.grassDensityMap = new PS.core.Bitsmap(4, this.width * this.height);
+    this.grassDensityData = this.grassDensityMap.data;
     return this;
   },
 
   ensure: function () {
     if (!this.data) {
       this.init();
-    } else if (!this.grassDensityData) {
-      this.grassDensityData = new Uint8Array(Math.ceil(this.data.length / 2));
+    } else if (!this.grassDensityMap || this.grassDensityMap.length !== this.data.length || this.grassDensityMap.data !== this.grassDensityData) {
+      this.grassDensityMap = new PS.core.Bitsmap(4, this.data.length, this.grassDensityData instanceof Uint32Array ? this.grassDensityData : null);
+      this.grassDensityData = this.grassDensityMap.data;
     }
 
     return this;
@@ -88,30 +91,13 @@ PS.vegetation = PS.vegetation || {
   },
 
   getGrassDensity: function (tx, ty) {
-    var index;
-    var packed;
-
     this.ensure();
-    index = this.tileIndex(tx, ty);
-    packed = this.grassDensityData[index >> 1] || 0;
-    return index & 1 ? (packed >> 4) & 15 : packed & 15;
+    return this.grassDensityMap.get(this.tileIndex(tx, ty));
   },
 
   setGrassDensity: function (tx, ty, density) {
-    var index;
-    var byteIndex;
-    var value;
-    var current;
-
     this.ensure();
-    index = this.tileIndex(tx, ty);
-    byteIndex = index >> 1;
-    value = Math.max(0, Math.min(15, Math.round(Number(density) || 0)));
-    current = this.grassDensityData[byteIndex] || 0;
-    this.grassDensityData[byteIndex] = index & 1
-      ? (current & 15) | (value << 4)
-      : (current & 240) | value;
-    return value;
+    return this.grassDensityMap.set(this.tileIndex(tx, ty), density);
   },
 
   hash: function (x, y, salt) {

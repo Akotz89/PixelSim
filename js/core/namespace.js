@@ -36,6 +36,7 @@ PS.core.manifest = [
   "js/core/utils.js",
   "js/core/trait-schema.js",
   "js/core/world-grid.js",
+  "js/core/bitsmap.js",
   "js/core/planet-metrics.js",
   "js/systems/spatial.js",
   "js/systems/pool-manager.js",

@@ -10,6 +10,7 @@ function read(file) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const bitsmapSource = read("js/core/bitsmap.js");
 const drawOrderSource = read("js/render/draw-order.js");
 const vegetationGridSource = read("js/sim/vegetation.js");
 const vegetationRenderSource = read("js/render/vegetation-render.js");
@@ -28,6 +29,7 @@ assert.ok(atlasSource.indexOf("PS.atlas.getVegetationCell") >= 0, "atlas should 
 const drawCalls = [];
 const context = {
   PS: {
+    core: {},
     render: {
       entities: {
         getTileRenderPosition(tileX, tileY) {
@@ -100,6 +102,7 @@ const context = {
   Object,
   Array,
   Uint8Array,
+  Uint32Array,
   Error,
   performance: {
     now() {
@@ -109,6 +112,7 @@ const context = {
 };
 
 vm.createContext(context);
+vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
 vm.runInContext(drawOrderSource, context, { filename: "js/render/draw-order.js" });
 vm.runInContext(vegetationGridSource, context, { filename: "js/sim/vegetation.js" });
 vm.runInContext(vegetationRenderSource, context, { filename: "js/render/vegetation-render.js" });

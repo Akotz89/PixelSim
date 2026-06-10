@@ -10,6 +10,7 @@ function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
+const bitsmapSource = read("js/core/bitsmap.js");
 const vegetationSource = read("js/sim/vegetation.js");
 const worldGenSource = read("js/core/world-gen.js");
 
@@ -38,7 +39,8 @@ function createContext(width, height) {
     String,
     Object,
     Array,
-    Uint8Array
+    Uint8Array,
+    Uint32Array
   };
 
   context.randomFoodPosition = function () {
@@ -49,6 +51,7 @@ function createContext(width, height) {
   };
 
   vm.createContext(context);
+  vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
   vm.runInContext(vegetationSource, context, { filename: "js/sim/vegetation.js" });
   vm.runInContext(worldGenSource, context, { filename: "js/core/world-gen.js" });
   return context;

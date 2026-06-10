@@ -3,6 +3,7 @@ PS.render = PS.render || {};
 PS.render.environmentOverlays = PS.render.environmentOverlays || {
   width: 0,
   height: 0,
+  snowBaseMap: null,
   snowBaseData: null,
   stats: {
     snowOverlayCount: 0,
@@ -12,7 +13,8 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
   initSnowBase: function (width, height) {
     this.width = Math.max(1, Math.round(Number(width) || (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1)));
     this.height = Math.max(1, Math.round(Number(height) || (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1)));
-    this.snowBaseData = new Uint8Array(Math.ceil(this.width * this.height / 4));
+    this.snowBaseMap = new PS.core.Bitsmap(2, this.width * this.height);
+    this.snowBaseData = this.snowBaseMap.data;
     return this;
   },
 
@@ -20,7 +22,7 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
     var expectedWidth = Math.max(1, Number(typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : this.width) || this.width || 1);
     var expectedHeight = Math.max(1, Number(typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : this.height) || this.height || 1);
 
-    if (!this.snowBaseData || this.width !== expectedWidth || this.height !== expectedHeight) {
+    if (!this.snowBaseData || !this.snowBaseMap || this.width !== expectedWidth || this.height !== expectedHeight || this.snowBaseMap.data !== this.snowBaseData) {
       this.initSnowBase(expectedWidth, expectedHeight);
     }
 
@@ -45,21 +47,11 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
   },
 
   getSnowBase: function (x, y) {
-    var index = this.tileIndex(x, y);
-    var packed = this.snowBaseData[index >> 2] || 0;
-    return (packed >> ((index & 3) * 2)) & 3;
+    return this.snowBaseMap.get(this.tileIndex(x, y));
   },
 
   setSnowBase: function (x, y, value) {
-    var index = this.tileIndex(x, y);
-    var byteIndex = index >> 2;
-    var shift = (index & 3) * 2;
-    var level = Math.max(0, Math.min(3, Math.round(Number(value) || 0)));
-    var mask = 3 << shift;
-    var current = this.snowBaseData[byteIndex] || 0;
-
-    this.snowBaseData[byteIndex] = (current & ~mask) | (level << shift);
-    return level;
+    return this.snowBaseMap.set(this.tileIndex(x, y), value);
   },
 
   hash: function (x, y, salt) {

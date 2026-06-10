@@ -10,6 +10,7 @@ function read(file) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const bitsmapSource = read("js/core/bitsmap.js");
 const overlaySource = read("js/render/environment-overlays.js");
 const pipelineSource = read("js/render/pipeline.js");
 
@@ -62,6 +63,7 @@ const context = {
     globalSnow: 0.92,
     planetTiles: []
   },
+  Uint32Array,
   Uint8Array,
   Float32Array,
   Math,
@@ -80,16 +82,18 @@ for (let i = 0; i < 12; i += 1) {
 }
 
 vm.createContext(context);
+vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
 vm.runInContext(overlaySource, context, { filename: "js/render/environment-overlays.js" });
 
 const overlays = context.PS.render.environmentOverlays;
 overlays.initSnowBase(4, 3);
-assert.strictEqual(overlays.snowBaseData.length, 3, "2-bit snow base should pack four tiles per byte");
+assert.ok(overlays.snowBaseMap instanceof context.PS.core.Bitsmap, "snow base should use the shared Bitsmap primitive");
+assert.strictEqual(overlays.snowBaseData.byteLength, 4, "2-bit snow base should pack into one 32-bit word for this test grid");
 assert.strictEqual(overlays.setSnowBase(0, 0, 1), 1, "snow base setter should store low two bits");
 assert.strictEqual(overlays.setSnowBase(1, 0, 2), 2, "snow base setter should store second packed pair");
 assert.strictEqual(overlays.setSnowBase(2, 0, 3), 3, "snow base setter should store third packed pair");
 assert.strictEqual(overlays.setSnowBase(3, 0, 9), 3, "snow base setter should clamp to 2-bit max");
-assert.strictEqual(overlays.snowBaseData[0], 249, "four snow base values should pack into one byte");
+assert.strictEqual(overlays.snowBaseData[0] & 255, 249, "four snow base values should pack into the first byte");
 assert.strictEqual(overlays.getSnowBase(0, 0), 1, "snow base first two-bit field should round-trip");
 assert.strictEqual(overlays.getSnowBase(1, 0), 2, "snow base second two-bit field should round-trip");
 assert.strictEqual(overlays.getSnowBase(2, 0), 3, "snow base third two-bit field should round-trip");

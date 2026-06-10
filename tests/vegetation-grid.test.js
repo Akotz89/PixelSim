@@ -5,6 +5,7 @@ const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
 const namespaceSource = fs.readFileSync(path.join(root, "js/core/namespace.js"), "utf8");
+const bitsmapSource = fs.readFileSync(path.join(root, "js/core/bitsmap.js"), "utf8");
 const vegetationSource = fs.readFileSync(path.join(root, "js/sim/vegetation.js"), "utf8");
 
 assert.ok(
@@ -18,8 +19,9 @@ assert.ok(
 
 const context = {
   window: {},
-  PS: {},
+  PS: { core: {} },
   Uint8Array,
+  Uint32Array,
   Math,
   Number,
   Object,
@@ -29,6 +31,7 @@ const context = {
 
 context.window.window = context.window;
 vm.createContext(context);
+vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
 vm.runInContext(vegetationSource, context, { filename: "js/sim/vegetation.js" });
 
 const vegetation = context.PS.vegetation;
@@ -46,7 +49,8 @@ assert.strictEqual(vegetation.width, 5, "init should store width");
 assert.strictEqual(vegetation.height, 3, "init should store height");
 assert.strictEqual(vegetation.data.length, 15, "grid should allocate one byte per tile");
 assert.ok(vegetation.data instanceof Uint8Array, "grid should use a Uint8Array backing store");
-assert.strictEqual(vegetation.grassDensityData.length, 8, "grass density should allocate a packed 4-bit map");
+assert.ok(vegetation.grassDensityMap instanceof context.PS.core.Bitsmap, "grass density should use the shared Bitsmap primitive");
+assert.strictEqual(vegetation.grassDensityData.byteLength, 8, "grass density should allocate a packed 4-bit map");
 
 assert.deepStrictEqual(plain(vegetation.get(1, 1)), { type: 0, variant: 0 }, "empty cells should read as NONE variant 0");
 assert.deepStrictEqual(plain(vegetation.set(1, 1, vegetation.TYPES.TREE_MEDIUM, 12)), { type: 2, variant: 12 }, "set should round-trip type and variant");
@@ -63,14 +67,14 @@ assert.deepStrictEqual(plain(vegetation.clear(1, 1)), { type: 0, variant: 0 }, "
 assert.strictEqual(vegetation.data[6], 0, "clear should write zero into the backing store");
 assert.strictEqual(vegetation.setGrassDensity(0, 0, 7), 7, "grass density setter should clamp and return the packed value");
 assert.strictEqual(vegetation.setGrassDensity(1, 0, 15), 15, "grass density should support the high nibble");
-assert.strictEqual(vegetation.grassDensityData[0], 247, "two grass density values should pack into one byte");
+assert.strictEqual(vegetation.grassDensityData[0] & 255, 247, "two grass density values should pack into the first byte");
 assert.strictEqual(vegetation.getGrassDensity(0, 0), 7, "grass density low nibble should round-trip");
 assert.strictEqual(vegetation.getGrassDensity(1, 0), 15, "grass density high nibble should round-trip");
 assert.strictEqual(vegetation.setGrassDensity(1, 0, 99), 15, "grass density should clamp to 4-bit max");
 
 vegetation.init(2, 2);
 assert.strictEqual(vegetation.data.length, 4, "reinit should replace the backing store");
-assert.strictEqual(vegetation.grassDensityData.length, 2, "reinit should replace the packed grass density map");
+assert.strictEqual(vegetation.grassDensityData.byteLength, 4, "reinit should replace the packed grass density map");
 assert.deepStrictEqual(plain(vegetation.get(1, 1)), { type: 0, variant: 0 }, "reinit should clear old vegetation data");
 
 vegetation.grassDensityData = null;
