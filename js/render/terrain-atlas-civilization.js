@@ -138,11 +138,34 @@ PS.atlas.writeTerrainRect = function (cell, x, y, width, height, fill, edge) {
   }
 };
 
+PS.atlas.writeTerrainFoundationRect = function (cell, x, y, width, height, fill, edge, ground, variant) {
+  var right = x + Math.max(1, Math.round(Number(width) || 1)) - 1;
+  var bottom = y + Math.max(1, Math.round(Number(height) || 1)) - 1;
+  var phase = clamp(Math.round(Number(variant) || 0), 0, 15);
+  var px;
+  var py;
+  var isEdge;
+
+  for (py = y; py <= bottom; py++) {
+    for (px = x; px <= right; px++) {
+      isEdge = px === x || py === y || px === right || py === bottom;
+      if (isEdge && ground && (px * 3 + py * 5 + phase) % 4 !== 0) {
+        PS.atlas.writePixel(cell, px, py, ground);
+      } else {
+        PS.atlas.writePixel(cell, px, py, isEdge && edge ? edge : fill);
+      }
+    }
+  }
+};
+
 PS.atlas.drawTerrainCivilizationMarks = function (cell, palette, variant, sample) {
   var civilization = PS.atlas.getTerrainCivilizationInfo(sample);
   var light = civilization ? PS.atlas.getTerrainDetailColor(palette, "light") : null;
   var warm = civilization ? PS.atlas.getTerrainDetailColor(palette, "warm") : null;
   var shadow = civilization ? PS.atlas.getTerrainDetailColor(palette, "shadow") : null;
+  var ground = civilization && typeof PS.atlas.getTerrainOverlayGroundColor === "function"
+    ? PS.atlas.getTerrainOverlayGroundColor(sample, palette)
+    : null;
   var phase = clamp(Math.round(Number(variant) || 0), 0, 15);
   var i;
   var x;
@@ -157,10 +180,10 @@ PS.atlas.drawTerrainCivilizationMarks = function (cell, palette, variant, sample
       for (i = 0; i < 4; i++) {
         PS.atlas.writeTerrainDash(cell, 2, 3 + i * 2, 11, true, i % 2 ? warm : shadow);
       }
-      PS.atlas.writeTerrainRect(cell, 10, 9, 3, 3, warm, shadow);
+      PS.atlas.writeTerrainFoundationRect(cell, 10, 9, 3, 3, warm, shadow, ground, phase);
     } else if (civilization.family === "production") {
-      PS.atlas.writeTerrainRect(cell, 3, 4, 5, 4, warm, shadow);
-      PS.atlas.writeTerrainRect(cell, 9, 7, 4, 3, warm, shadow);
+      PS.atlas.writeTerrainFoundationRect(cell, 3, 4, 5, 4, warm, shadow, ground, phase);
+      PS.atlas.writeTerrainFoundationRect(cell, 9, 7, 4, 3, warm, shadow, ground, phase + 2);
       PS.atlas.writeTerrainDash(cell, 4, 11, 8, true, shadow);
       PS.atlas.writePixel(cell, 11, 4, light);
       PS.atlas.writePixel(cell, 11, 5, light);
@@ -168,12 +191,12 @@ PS.atlas.drawTerrainCivilizationMarks = function (cell, palette, variant, sample
     } else if (civilization.family === "dock") {
       PS.atlas.writeTerrainDash(cell, 2, 10, 12, true, shadow);
       PS.atlas.writeTerrainDash(cell, 5, 6, 7, false, warm);
-      PS.atlas.writeTerrainRect(cell, 9, 4, 4, 3, warm, shadow);
+      PS.atlas.writeTerrainFoundationRect(cell, 9, 4, 4, 3, warm, shadow, ground, phase);
     } else {
-      PS.atlas.writeTerrainRect(cell, 3, 4, 4, 4, warm, shadow);
-      PS.atlas.writeTerrainRect(cell, 9, 5, 3, 3, warm, shadow);
+      PS.atlas.writeTerrainFoundationRect(cell, 3, 4, 4, 4, warm, shadow, ground, phase);
+      PS.atlas.writeTerrainFoundationRect(cell, 9, 5, 3, 3, warm, shadow, ground, phase + 1);
       if (civilization.family === "block" || civilization.bucket >= 3) {
-        PS.atlas.writeTerrainRect(cell, 5, 10, 6, 3, warm, shadow);
+        PS.atlas.writeTerrainFoundationRect(cell, 5, 10, 6, 3, warm, shadow, ground, phase + 2);
         PS.atlas.writeTerrainDash(cell, 8, 2, 12, false, shadow);
       }
       PS.atlas.writeTerrainDash(cell, 2, 9, 12, true, shadow);

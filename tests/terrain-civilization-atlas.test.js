@@ -11,6 +11,7 @@ function read(file) {
 
 const context = {
   PS: {
+    assets: {},
     core: {},
     render: {},
     atlas: null
@@ -39,7 +40,17 @@ const context = {
 };
 
 vm.createContext(context);
+vm.runInContext(read("js/assets/registry.js"), context, { filename: "js/assets/registry.js" });
+context.PS.assets.jsonData = {};
+context.PS.assets.registerJSON = function(url, data) {
+  this.jsonData[url] = data;
+  return data;
+};
+vm.runInContext(read("data/ground-gradients.json.js"), context, { filename: "data/ground-gradients.json.js" });
+vm.runInContext(read("data/era-palettes.json.js"), context, { filename: "data/era-palettes.json.js" });
 vm.runInContext(read("js/core/tile-registry.js"), context, { filename: "js/core/tile-registry.js" });
+vm.runInContext(read("js/render/terrain.js"), context, { filename: "js/render/terrain.js" });
+vm.runInContext(read("js/render/surface-color.js"), context, { filename: "js/render/surface-color.js" });
 vm.runInContext(read("js/render/entity-atlas.js"), context, { filename: "js/render/entity-atlas.js" });
 vm.runInContext(read("js/render/entity-atlas-intents.js"), context, { filename: "js/render/entity-atlas-intents.js" });
 vm.runInContext(read("js/render/entity-atlas-civilization.js"), context, { filename: "js/render/entity-atlas-civilization.js" });
@@ -47,6 +58,8 @@ vm.runInContext(read("js/render/terrain-atlas-civilization.js"), context, { file
 vm.runInContext(read("js/render/terrain-atlas-detail.js"), context, { filename: "js/render/terrain-atlas-detail.js" });
 
 context.PS.core.TileRegistry.loadFromJSON(JSON.parse(read("data/tiles.json")));
+context.PS.render.surfaceColor.loadGroundGradientConfig(context.PS.assets.jsonData["data/ground-gradients.json"]);
+context.PS.render.surfaceColor.loadEraPaletteConfig(context.PS.assets.jsonData["data/era-palettes.json"]);
 context.PS.atlas.init();
 
 function terrainCell(civilization, tileX) {
@@ -55,8 +68,9 @@ function terrainCell(civilization, tileX) {
       surface: "grass",
       elevation: 0.42,
       roughness: 0.2,
-      materialSignals: {}
+      materialSignals: { moisture: 0.5 }
     },
+    tile: { biome: "grassland", moisture: 1.1 },
     civilization
   });
 }
@@ -81,6 +95,17 @@ function changedPixels(from, to) {
   return changed;
 }
 
+function hasPixel(cell, color) {
+  for (let y = 0; y < cell.h; y++) {
+    for (let x = 0; x < cell.w; x++) {
+      if (pixelAt(cell, x, y).join(",") === color.join(",")) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 const plain = terrainCell(null, 20);
 const farm = terrainCell({ type: "settlement", family: "farm", pressure: 0.9, settlementPressure: 0.9 }, 21);
 const yard = terrainCell({ type: "settlement", family: "yard", pressure: 0.55, settlementPressure: 0.55 }, 22);
@@ -103,5 +128,16 @@ assert.ok(changedPixels(road, plain) >= 12, "road terrain cell should add route 
 assert.notStrictEqual(farm.name, block.name, "settlement families should not overwrite each other in the atlas cache");
 assert.notDeepStrictEqual(pixelAt(road, 7, 7), pixelAt(canal, 7, 7), "road and canal route families should render distinct pixels");
 assert.ok(changedPixels(dock, road) >= 6, "dock and road route families should render distinct cells");
+assert.ok(farm.name.indexOf(".stencil.building.3.farm.") > 0, "building terrain cells should encode foundation stencil and ground color bucket");
+assert.ok(
+  hasPixel(block, context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.getGroundMoistureColor({
+    biome: "grassland",
+    x: 23,
+    y: 18,
+    detail: { surface: "grass", materialSignals: { moisture: 0.5 } },
+    tile: { biome: "grassland", moisture: 1.1 }
+  })).concat([255])),
+  "building edge mask should render active per-tile ground texture through the foundation edge"
+);
 
 console.log("terrain civilization atlas checks passed");

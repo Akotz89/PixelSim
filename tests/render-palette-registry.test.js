@@ -314,10 +314,65 @@ const neighborTransitionSample = {
     }]
   }
 };
+const waterOverlayCell = context.PS.atlas.getTerrainCell("ocean", 10, 3, {
+  detail: {
+    surface: "tidal shore",
+    feature: "foam",
+    materialSignals: { waterDepth: 0.22, shallowWater: 0.8, shoreMask: 1 }
+  },
+  tileBlend: {
+    transitionStrength: 0.7,
+    biomeWeights: { ocean: 0.5, desert: 0.5 },
+    tiles: [{
+      biome: "desert",
+      weight: 0.5,
+      x: 10,
+      y: 3,
+      ran: 1,
+      detail: { surface: "sand", materialSignals: { moisture: 0 } },
+      tile: { biome: "desert", moisture: 0, ran: 1 }
+    }]
+  }
+});
+const waterOverlayPage = context.PS.atlas.pages[waterOverlayCell.pageIndex];
+const waterOverlayPixel = Array.from(waterOverlayPage.data.slice(((waterOverlayCell.y + 0) * waterOverlayPage.width + waterOverlayCell.x + 15) * 4, ((waterOverlayCell.y + 0) * waterOverlayPage.width + waterOverlayCell.x + 15) * 4 + 4));
+assert.ok(
+  waterOverlayCell.name.indexOf(".stencil.water.1.") > 0,
+  "water terrain cells should encode the stencil mask and ground color bucket"
+);
+assert.deepStrictEqual(
+  waterOverlayPixel,
+  Array.from(context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.getGroundMoistureColor(waterOverlayCell && {
+    biome: "desert",
+    x: 10,
+    y: 3,
+    ran: 1,
+    detail: { surface: "sand", materialSignals: { moisture: 0 } },
+    tile: { biome: "desert", moisture: 0, ran: 1 }
+  })).concat([255])),
+  "water edge stencil should render neighboring ground texture through the mask"
+);
 assert.deepStrictEqual(
   context.PS.atlas.getTerrainTransitionGradientColor(neighborTransitionSample, neighborTransition),
   context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.getGroundMoistureColor(neighborTransitionSample.tileBlend.tiles[0])).concat([255]),
   "terrain transition edges should sample the neighboring active ground color"
+);
+const transitionOverlayCell = context.PS.atlas.getTerrainCell("grassland", 11, 3, neighborTransitionSample);
+const transitionOverlayPage = context.PS.atlas.pages[transitionOverlayCell.pageIndex];
+const transitionOverlayPixel = Array.from(transitionOverlayPage.data.slice(((transitionOverlayCell.y + 0) * transitionOverlayPage.width + transitionOverlayCell.x + 15) * 4, ((transitionOverlayCell.y + 0) * transitionOverlayPage.width + transitionOverlayCell.x + 15) * 4 + 4));
+assert.deepStrictEqual(
+  transitionOverlayPixel,
+  Array.from(context.PS.atlas.hexToRgb(context.PS.render.surfaceColor.getGroundMoistureColor(neighborTransitionSample.tileBlend.tiles[0])).concat([255])),
+  "terrain transition mask should render neighboring ground texture at the boundary"
+);
+const wetNeighborTransitionSample = JSON.parse(JSON.stringify(neighborTransitionSample));
+wetNeighborTransitionSample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
+wetNeighborTransitionSample.tileBlend.tiles[0].tile.moisture = 2.2;
+const wetTransitionOverlayCell = context.PS.atlas.getTerrainCell("grassland", 11, 3, wetNeighborTransitionSample);
+assert.notStrictEqual(
+  transitionOverlayCell.name,
+  wetTransitionOverlayCell.name,
+  "transition atlas keys should include neighboring ground color identity"
 );
 
 console.log("render palette registry checks passed");

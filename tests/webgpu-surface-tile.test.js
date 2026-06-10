@@ -493,6 +493,65 @@ assert.strictEqual(waterPage.data[14], 0.25, "water instances should encode seas
 assert.strictEqual(context.PS.render.waterRendering.getDepthCode({ biome: "lake", detail: { surface: "open water", materialSignals: { waterDepth: 0.5 } } }, "lake"), 2, "open water should encode normal depth");
 assert.strictEqual(context.PS.render.waterRendering.getDepthCode({ biome: "ocean", detail: { surface: "deep water", materialSignals: { waterDepth: 0.9 } } }, "ocean"), 3, "deep water should encode deep depth");
 
+context.PS.atlas.getTerrainTransitionKey = function (sample) {
+  const neighbor = sample && sample.tileBlend && sample.tileBlend.tiles && sample.tileBlend.tiles[0];
+  return neighbor ? "dry.1." + neighbor.tile.moisture : "plain";
+};
+context.PS.atlas.getTerrainTextureOverlayKey = function (sample) {
+  const signals = sample && sample.detail && sample.detail.materialSignals || {};
+  return signals.shoreMask ? "stencil.water." + signals.shoreMask : "stencil.none";
+};
+context.PS.atlas.getTerrainCell = function (biome, tileX, tileY, sample) {
+  return {
+    name: "generated." + context.PS.atlas.getTerrainTransitionKey(sample) + "." + context.PS.atlas.getTerrainTextureOverlayKey(sample),
+    pageIndex: 0,
+    u0: 0,
+    v0: 0,
+    u1: 0.5,
+    v1: 0.5
+  };
+};
+const reusableTransitionCellData = {
+  sample: {
+    biome: "grassland",
+    detail: { surface: "grass" },
+    tileBlend: {
+      transitionStrength: 0.6,
+      biomeWeights: { grassland: 0.5, desert: 0.5 },
+      tiles: [{
+        biome: "desert",
+        weight: 0.5,
+        detail: { surface: "sand", materialSignals: { moisture: 0 } },
+        tile: { biome: "desert", moisture: 0 }
+      }]
+    }
+  },
+  screenX: 0,
+  screenY: 0
+};
+context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 9,
+  sampleNorth: 9,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [reusableTransitionCellData], 1);
+const firstReuseKey = reusableTransitionCellData.terrainAtlasEcologyKey;
+const firstReuseCellName = reusableTransitionCellData.terrainAtlasCell.name;
+reusableTransitionCellData.sample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
+reusableTransitionCellData.sample.tileBlend.tiles[0].tile.moisture = 2.2;
+context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 9,
+  sampleNorth: 9,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [reusableTransitionCellData], 1);
+assert.notStrictEqual(reusableTransitionCellData.terrainAtlasEcologyKey, firstReuseKey, "batcher terrain cache key should include transition neighbor ground identity");
+assert.notStrictEqual(reusableTransitionCellData.terrainAtlasCell.name, firstReuseCellName, "batcher should regenerate terrain cells when transition neighbor ground identity changes");
+
 const drew = surfaceTile.drawBatches({
   pages: {
     0: new Float32Array([

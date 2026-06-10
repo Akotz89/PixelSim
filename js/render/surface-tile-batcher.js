@@ -423,7 +423,29 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     var eraKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getEraPaletteKey === "function"
       ? PS.render.surfaceColor.getEraPaletteKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
       : "era.none";
-    var atlasKey = ecologyKey + "|" + moistureKey + "|" + eraKey + "|" + (sample && sample.civilization ? sample.civilization.key : "civ0");
+    var drawSample = Object.assign({ x: tileX, y: tileY }, sample || {});
+    var tileDefinitionForKey = PS.atlas && typeof PS.atlas.getTerrainMaterialTile === "function"
+      ? PS.atlas.getTerrainMaterialTile(biome, tileX, tileY, drawSample)
+      : null;
+    var transitionKey = PS.atlas && typeof PS.atlas.getTerrainTransitionKey === "function"
+      ? PS.atlas.getTerrainTransitionKey(drawSample, biome)
+      : "plain";
+    var stencilKey = PS.atlas && typeof PS.atlas.getTerrainTextureOverlayKey === "function"
+      ? PS.atlas.getTerrainTextureOverlayKey(drawSample, biome)
+      : "stencil.none";
+    var featureKey = PS.atlas && typeof PS.atlas.getTerrainFeatureKey === "function"
+      ? PS.atlas.getTerrainFeatureKey(drawSample, biome, tileDefinitionForKey)
+      : "feature0";
+    var biologyKey = PS.atlas && typeof PS.atlas.getTerrainBiologyKey === "function"
+      ? PS.atlas.getTerrainBiologyKey(drawSample)
+      : "bio0";
+    var resourceKey = PS.atlas && typeof PS.atlas.getTerrainResourceKey === "function"
+      ? PS.atlas.getTerrainResourceKey(drawSample)
+      : "";
+    var civilizationKey = PS.atlas && typeof PS.atlas.getTerrainCivilizationKey === "function"
+      ? PS.atlas.getTerrainCivilizationKey(drawSample)
+      : (sample && sample.civilization ? sample.civilization.key : "civ0");
+    var atlasKey = ecologyKey + "|" + transitionKey + "|" + stencilKey + "|" + featureKey + "|" + moistureKey + "|" + eraKey + "|" + biologyKey + resourceKey + "|" + civilizationKey;
     var cell = cellData.terrainAtlasEcologyKey === atlasKey ? cellData.terrainAtlasCell || null : null;
     if (!cell) {
       cell = PS.atlas.getTerrainCell(biome, tileX, tileY, sample);
