@@ -417,7 +417,10 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     if (sample && PS.atlas && typeof PS.atlas.getTerrainEcologyMicroKey === "function") {
       ecologyKey += PS.atlas.getTerrainEcologyMicroKey(sample, tileX, tileY);
     }
-    var atlasKey = ecologyKey + "|" + (sample && sample.civilization ? sample.civilization.key : "civ0");
+    var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
+      ? PS.render.surfaceColor.getGroundMoistureKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
+      : "gmoist.none";
+    var atlasKey = ecologyKey + "|" + moistureKey + "|" + (sample && sample.civilization ? sample.civilization.key : "civ0");
     var cell = cellData.terrainAtlasEcologyKey === atlasKey ? cellData.terrainAtlasCell || null : null;
     if (!cell) {
       cell = PS.atlas.getTerrainCell(biome, tileX, tileY, sample);

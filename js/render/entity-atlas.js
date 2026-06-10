@@ -809,6 +809,37 @@ PS.atlas.getTerrainTilePalette = function (biome, tileDefinition) {
   };
 };
 
+PS.atlas.applyTerrainMoisturePalette = function (palette, sample) {
+  var moistureColor = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureColor === "function"
+    ? PS.render.surfaceColor.getGroundMoistureColor(sample)
+    : null;
+  var base;
+  var lift;
+  var drop;
+
+  if (!moistureColor) {
+    return palette;
+  }
+
+  base = PS.atlas.hexToRgb(moistureColor);
+  lift = 34;
+  drop = 26;
+  return {
+    base: base,
+    accent: [
+      clamp(Math.round(base[0] + lift), 0, 255),
+      clamp(Math.round(base[1] + lift), 0, 255),
+      clamp(Math.round(base[2] + lift), 0, 255)
+    ],
+    dark: [
+      clamp(Math.round(base[0] - drop), 0, 255),
+      clamp(Math.round(base[1] - drop), 0, 255),
+      clamp(Math.round(base[2] - drop), 0, 255)
+    ],
+    pattern: palette.pattern
+  };
+};
+
 PS.atlas.getTerrainPatternForTile = function (tileDefinition, fallbackPattern) {
   var id = String(tileDefinition && tileDefinition.id || "");
   var sheet = String(tileDefinition && tileDefinition.spriteSheet || "");
@@ -1202,6 +1233,7 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
   var x;
   var y;
 
+  palette = PS.atlas.applyTerrainMoisturePalette(palette, sample);
   palette = PS.atlas.applyTerrainBiologyPalette(palette, biology);
   palette = PS.atlas.applyTerrainResourcePalette(palette, resource, biology);
   if (typeof PS.atlas.applyTerrainCivilizationPalette === "function") {
@@ -1623,20 +1655,27 @@ PS.atlas.getTerrainCell = function (biome, tileX, tileY, sample) {
     : "civ0";
   var ecologyMicroPhase = PS.atlas.getTerrainEcologyMicroPhase(sample, tileX, tileY);
   var ecologyMicroKey = ecologyMicroPhase >= 0 ? ".ecoform." + ecologyMicroPhase : "";
+  var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
+    ? PS.render.surfaceColor.getGroundMoistureKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
+    : "gmoist.none";
   var transitionKey = typeof PS.atlas.getTerrainTransitionKey === "function"
     ? PS.atlas.getTerrainTransitionKey(sample, biome)
     : "plain";
   var featureKey = typeof PS.atlas.getTerrainFeatureKey === "function"
     ? PS.atlas.getTerrainFeatureKey(sample, biome, tileDefinition)
     : "feature0";
-  var drawSample = ecologyMicroPhase >= 0
-    ? Object.assign({}, sample, { terrainEcologyMicroPhase: ecologyMicroPhase })
-    : sample;
-  var name = "terrain." + materialId + "." + variant + "." + transitionKey + "." + featureKey + "." + biologyKey + resourceKey + "." + civilizationKey + ecologyMicroKey;
+  var drawSample = Object.assign({}, sample || {}, {
+    x: tileX,
+    y: tileY
+  });
+  var name = "terrain." + materialId + "." + variant + "." + transitionKey + "." + featureKey + "." + moistureKey + "." + biologyKey + resourceKey + "." + civilizationKey + ecologyMicroKey;
   var cell = PS.atlas.cells[name];
 
   if (!cell) {
     cell = PS.atlas.allocateCell(name, 16, 16);
+    if (ecologyMicroPhase >= 0) {
+      drawSample.terrainEcologyMicroPhase = ecologyMicroPhase;
+    }
     PS.atlas.drawTerrainCell(cell, biome, variant, tileDefinition, drawSample);
     PS.atlas.stats.terrainCells++;
     PS.atlas.pages[cell.pageIndex].version++;

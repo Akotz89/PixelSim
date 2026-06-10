@@ -13,10 +13,14 @@ const registrySource = read("js/assets/registry.js");
 const terrainSource = read("js/render/terrain.js");
 const surfaceColorSource = read("js/render/surface-color.js");
 const atlasSource = read("js/render/entity-atlas.js");
+const groundGradientsSidecarSource = read("data/ground-gradients.json.js");
+const groundGradientsData = JSON.parse(read("data/ground-gradients.json"));
+const mainLoopSource = read("js/main-loop.js");
 
 assert.ok(terrainSource.indexOf("PS.assets.getPaletteColor") >= 0, "terrain renderer should consume asset palette colors");
 assert.ok(atlasSource.indexOf("getPaletteRgb") >= 0, "entity atlas should consume registry palette colors for terrain cells");
 assert.ok(surfaceColorSource.indexOf("getBaseBiomeColor(\"forest\")") >= 0, "surface color renderer should consume terrain palette colors");
+assert.ok(mainLoopSource.indexOf("data/ground-gradients.json") >= 0, "startup data should load ground moisture gradients JSON");
 assert.ok(terrainSource.indexOf("switch (biome)") === -1, "terrain renderer should not use the old hardcoded biome color switch");
 
 const context = {
@@ -51,9 +55,42 @@ const context = {
 
 vm.createContext(context);
 vm.runInContext(registrySource, context, { filename: "js/assets/registry.js" });
+context.PS.assets.jsonData = {};
+context.PS.assets.registerJSON = function(url, data) {
+  this.jsonData[url] = data;
+  return data;
+};
+vm.runInContext(groundGradientsSidecarSource, context, { filename: "data/ground-gradients.json.js" });
 vm.runInContext(terrainSource, context, { filename: "js/render/terrain.js" });
 vm.runInContext(surfaceColorSource, context, { filename: "js/render/surface-color.js" });
 vm.runInContext(atlasSource, context, { filename: "js/render/entity-atlas.js" });
+
+assert.strictEqual(
+  JSON.stringify(context.PS.assets.jsonData["data/ground-gradients.json"]),
+  JSON.stringify(groundGradientsData),
+  "ground gradients sidecar should match JSON data"
+);
+context.PS.render.surfaceColor.loadGroundGradientConfig(context.PS.assets.jsonData["data/ground-gradients.json"]);
+assert.strictEqual(
+  context.PS.render.surfaceColor.groundMoistureGradients.grass.length,
+  16,
+  "ground moisture gradients should load 16 stops per ground type"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getMoistureGradientIndex(0.5, 0),
+  8,
+  "moisture should map to gradient index 0-15"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getMoistureGradientIndex(0.5, -1),
+  7,
+  "random offset should move the moisture index down by one"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getMoistureGradientIndex(0.5, 1),
+  9,
+  "random offset should move the moisture index up by one"
+);
 
 assert.strictEqual(context.PS.assets.getPaletteColor("terrain", "forest", "#000000"), "#0f351d", "asset registry should expose terrain palette values");
 assert.strictEqual(context.PS.render.terrain.getBaseBiomeColor("forest"), "#0f351d", "terrain biome color should come from the registry palette");
@@ -78,6 +115,47 @@ assert.strictEqual(
   "packed surface color path should use the re-registered terrain palette"
 );
 
+const moistGrassSample = {
+  biome: "grassland",
+  x: 7,
+  y: 11,
+  ran: 1,
+  detail: {
+    surface: "grass",
+    shade: 0.5,
+    elevation: 0.5,
+    roughness: 0,
+    hillshade: 0.5,
+    materialSignals: {
+      moisture: 0.5
+    }
+  },
+  tile: {
+    biome: "grassland",
+    moisture: 1.1,
+    ran: 1,
+    riverStrength: 0,
+    coastFactor: 0,
+    shallowWater: 0
+  }
+};
+const expectedMoistGrass = context.PS.render.surfaceColor.groundMoistureGradients.grass[8];
+assert.strictEqual(
+  context.PS.render.surfaceColor.getGroundMoistureColor(moistGrassSample),
+  expectedMoistGrass,
+  "ground moisture gradient should sample the configured 16-stop gradient"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getGroundMoistureKey(moistGrassSample),
+  "gmoist.grass.8",
+  "ground moisture key should include gradient id and index"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.getSurfaceColorPacked(moistGrassSample),
+  context.PS.render.terrain.shadePacked(context.PS.render.terrain.hexToPacked(expectedMoistGrass), 0.41),
+  "packed surface path should use the same moisture gradient color before shading"
+);
+
 context.PS.atlas.ensurePage();
 const forestCell = context.PS.atlas.getTerrainCell("forest", 4, 8, {
   detail: {
@@ -93,5 +171,17 @@ const center = Array.from(page.data.slice(centerIndex, centerIndex + 4));
 assert.ok(forestCell.name.indexOf("terrain.") === 0, "terrain atlas should still select registered terrain material cells");
 assert.notDeepStrictEqual(center, [15, 53, 29, 255], "terrain atlas cell should no longer be locked to the default forest base color");
 assert.deepStrictEqual(center.slice(0, 3), [34, 85, 17], "terrain atlas cell should reflect the re-registered palette range");
+
+const dryGrassCell = context.PS.atlas.getTerrainCell("grassland", 3, 5, Object.assign({}, moistGrassSample, {
+  ran: 1,
+  detail: Object.assign({}, moistGrassSample.detail, { materialSignals: { moisture: 0 } }),
+  tile: Object.assign({}, moistGrassSample.tile, { moisture: 0, ran: 1 })
+}));
+const wetGrassCell = context.PS.atlas.getTerrainCell("grassland", 3, 5, Object.assign({}, moistGrassSample, {
+  ran: 1,
+  detail: Object.assign({}, moistGrassSample.detail, { materialSignals: { moisture: 1 } }),
+  tile: Object.assign({}, moistGrassSample.tile, { moisture: 2.2, ran: 1 })
+}));
+assert.notStrictEqual(dryGrassCell.name, wetGrassCell.name, "terrain atlas cell keys should include moisture gradient buckets");
 
 console.log("render palette registry checks passed");

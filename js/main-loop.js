@@ -157,6 +157,7 @@ function loadStartupData() {
     loader.loadJSON("data/tiles.json"),
     loader.loadJSON("data/biomes.json"),
     loader.loadJSON("data/transitions.json"),
+    loader.loadJSON("data/ground-gradients.json"),
     loader.loadJSON("data/particles.json"),
     loader.loadJSON("data/animations.json"),
     loader.loadJSON("data/keybindings.json"),
@@ -167,10 +168,11 @@ function loadStartupData() {
     var tilesData = results[2];
     var biomesData = results[3];
     var transitionsData = results[4];
-    var particlesData = results[5];
-    var animationsData = results[6];
-    var keybindingsData = results[7];
-    var audioData = results[8];
+    var groundGradientsData = results[5];
+    var particlesData = results[6];
+    var animationsData = results[7];
+    var keybindingsData = results[8];
+    var audioData = results[9];
     var tileCount = 0;
     var biomeCount = Array.isArray(biomesData && biomesData.biomes) ? biomesData.biomes.length : 0;
     var transitionPairs = Array.isArray(transitionsData && transitionsData.pairs) ? transitionsData.pairs.length : 0;
@@ -187,8 +189,13 @@ function loadStartupData() {
     if (PS.assets) {
       PS.assets.biomesData = biomesData;
       PS.assets.transitionsData = transitionsData;
+      PS.assets.groundGradientsData = groundGradientsData;
       PS.assets.particlesData = particlesData;
       PS.assets.animationsData = animationsData;
+    }
+
+    if (PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.loadGroundGradientConfig === "function") {
+      PS.render.surfaceColor.loadGroundGradientConfig(groundGradientsData);
     }
 
     if (PS.animation && typeof PS.animation.loadDefinitions === "function") {
