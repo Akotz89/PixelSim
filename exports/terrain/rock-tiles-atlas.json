@@ -1,0 +1,79 @@
+{
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 6,
+  "rows": 1,
+  "names": [
+    "terrain.rock_mountain.bare-ledge",
+    "terrain.rock_mountain.bare-cracked",
+    "terrain.rock_mountain.bare-scree",
+    "terrain.rock_mountain.snow-ledge",
+    "terrain.rock_mountain.snow-cracked",
+    "terrain.rock_mountain.mossy-lichen"
+  ],
+  "variants": [
+    {
+      "id": "terrain.rock_mountain.bare-ledge",
+      "label": "Bare ledge",
+      "rect": [
+        0,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.rock_mountain.bare-cracked",
+      "label": "Bare cracked",
+      "rect": [
+        32,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.rock_mountain.bare-scree",
+      "label": "Bare scree",
+      "rect": [
+        64,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.rock_mountain.snow-ledge",
+      "label": "Snow-capped ledge",
+      "rect": [
+        96,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.rock_mountain.snow-cracked",
+      "label": "Snow-capped cracked",
+      "rect": [
+        128,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.rock_mountain.mossy-lichen",
+      "label": "Mossy lichen",
+      "rect": [
+        160,
+        0,
+        32,
+        32
+      ]
+    }
+  ],
+  "sourceIssue": "AZR-522",
+  "notes": "Standalone candidate export for rock/mountain terrain tiles. Runtime split-atlas terrain sheets remain under assets/terrain/."
+}

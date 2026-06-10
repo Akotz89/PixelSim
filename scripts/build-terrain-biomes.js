@@ -4,6 +4,7 @@ const zlib = require("zlib");
 
 const root = path.resolve(__dirname, "..");
 const terrainDir = path.join(root, "assets", "terrain");
+const terrainExportDir = path.join(root, "exports", "terrain");
 const manifestPath = path.join(root, "assets", "manifest.json");
 const manifestSidecarPath = path.join(root, "assets", "manifest.json.js");
 const tileSize = 32;
@@ -204,6 +205,91 @@ function renderAtlas(definition) {
   return pixels;
 }
 
+const rockMountainVariants = [
+  { id: "bare-ledge", label: "Bare ledge", snow: 0, moss: 0, crackBias: 0.12, ledges: true, base: [82, 84, 86], high: [132, 132, 126], low: [43, 45, 49] },
+  { id: "bare-cracked", label: "Bare cracked", snow: 0, moss: 0, crackBias: 0.38, ledges: false, base: [74, 75, 78], high: [121, 122, 119], low: [35, 37, 42] },
+  { id: "bare-scree", label: "Bare scree", snow: 0, moss: 0, crackBias: 0.22, ledges: true, base: [91, 90, 86], high: [147, 144, 134], low: [50, 51, 54] },
+  { id: "snow-ledge", label: "Snow-capped ledge", snow: 0.78, moss: 0, crackBias: 0.18, ledges: true, base: [82, 86, 91], high: [135, 138, 135], low: [45, 49, 56] },
+  { id: "snow-cracked", label: "Snow-capped cracked", snow: 0.68, moss: 0, crackBias: 0.42, ledges: false, base: [70, 74, 82], high: [122, 126, 128], low: [35, 39, 48] },
+  { id: "mossy-lichen", label: "Mossy lichen", snow: 0, moss: 0.52, crackBias: 0.26, ledges: true, base: [76, 78, 73], high: [126, 126, 116], low: [39, 43, 40] }
+];
+
+function renderRockMountainExport() {
+  const exportColumns = rockMountainVariants.length;
+  const exportWidth = tileSize * exportColumns;
+  const exportHeight = tileSize;
+  const pixels = Buffer.alloc(exportWidth * exportHeight * 4);
+
+  rockMountainVariants.forEach((variant, variantIndex) => {
+    for (let y = 0; y < tileSize; y++) {
+      for (let x = 0; x < tileSize; x++) {
+        const noise = hash(x, y, 700 + variantIndex * 97);
+        const grain = (noise & 255) / 255;
+        const chip = ((noise >>> 8) & 255) / 255;
+        const px = variantIndex * tileSize + x;
+        const offset = (y * exportWidth + px) * 4;
+        let target = grain > 0.52 ? variant.high : variant.low;
+        let amount = 0.18 + chip * 0.24;
+        let r = mix(variant.base[0], target[0], amount);
+        let g = mix(variant.base[1], target[1], amount);
+        let b = mix(variant.base[2], target[2], amount);
+        const ledge = variant.ledges && (y === 8 || y === 15 || y === 23 || (y + variantIndex) % 11 === 0);
+        const verticalCrack = ((x + variantIndex * 3) % 13 === 0 && y > 5) || ((x * 3 + y + variantIndex) % 29 === 0);
+        const diagonalCrack = Math.abs((x + variantIndex * 4) - (y + 5)) % 17 === 0;
+        const scree = chip > 0.78 && y > 14;
+
+        if (ledge) {
+          r = mix(r, variant.low[0], 0.52);
+          g = mix(g, variant.low[1], 0.52);
+          b = mix(b, variant.low[2], 0.52);
+        }
+
+        if (verticalCrack || (diagonalCrack && grain < variant.crackBias)) {
+          r = mix(r, variant.low[0], 0.72);
+          g = mix(g, variant.low[1], 0.72);
+          b = mix(b, variant.low[2], 0.72);
+        }
+
+        if (scree) {
+          r = mix(r, variant.high[0], 0.28);
+          g = mix(g, variant.high[1], 0.28);
+          b = mix(b, variant.high[2], 0.28);
+        }
+
+        if (variant.snow && y < 11 + Math.floor(((noise >>> 18) & 7) * variant.snow)) {
+          const snowAccent = chip > 0.48 ? [242, 247, 248] : [183, 205, 214];
+          r = mix(r, snowAccent[0], variant.snow);
+          g = mix(g, snowAccent[1], variant.snow);
+          b = mix(b, snowAccent[2], variant.snow);
+        }
+
+        if (variant.moss && (grain > 0.66 || ((x + y * 2) % 19 < 3 && y > 7))) {
+          r = mix(r, 72, variant.moss);
+          g = mix(g, 104, variant.moss);
+          b = mix(b, 61, variant.moss);
+        }
+
+        if (x === 0 || y === 0 || x === tileSize - 1 || y === tileSize - 1) {
+          r = mix(r, variant.low[0], 0.18);
+          g = mix(g, variant.low[1], 0.18);
+          b = mix(b, variant.low[2], 0.18);
+        }
+
+        pixels[offset] = clampByte(r);
+        pixels[offset + 1] = clampByte(g);
+        pixels[offset + 2] = clampByte(b);
+        pixels[offset + 3] = 255;
+      }
+    }
+  });
+
+  return {
+    width: exportWidth,
+    height: exportHeight,
+    pixels
+  };
+}
+
 const crcTable = (() => {
   const table = new Uint32Array(256);
   for (let i = 0; i < table.length; i++) {
@@ -234,16 +320,16 @@ function pngChunk(type, data) {
   return chunk;
 }
 
-function encodePng(rgba) {
+function encodePng(rgba, imageWidth = width, imageHeight = height) {
   const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
+  ihdr.writeUInt32BE(imageWidth, 0);
+  ihdr.writeUInt32BE(imageHeight, 4);
   ihdr[8] = 8;
   ihdr[9] = 6;
 
-  const stride = width * 4;
-  const raw = Buffer.alloc((stride + 1) * height);
-  for (let y = 0; y < height; y++) {
+  const stride = imageWidth * 4;
+  const raw = Buffer.alloc((stride + 1) * imageHeight);
+  for (let y = 0; y < imageHeight; y++) {
     raw[y * (stride + 1)] = 0;
     rgba.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride);
   }
@@ -301,6 +387,7 @@ function manifestSheetFor(id, file) {
 }
 
 fs.mkdirSync(terrainDir, { recursive: true });
+fs.mkdirSync(terrainExportDir, { recursive: true });
 
 atlases.forEach((definition) => {
   const rgba = renderAtlas(definition);
@@ -334,7 +421,34 @@ fs.writeFileSync(
   "PS.assets.registerJSON(\"assets/manifest.json\", " + JSON.stringify(manifest, null, 2) + ");\n"
 );
 
+const rockMountainExport = renderRockMountainExport();
+const rockMountainMeta = {
+  type: "grid",
+  tileWidth: tileSize,
+  tileHeight: tileSize,
+  columns: rockMountainVariants.length,
+  rows: 1,
+  names: rockMountainVariants.map((variant) => "terrain.rock_mountain." + variant.id),
+  variants: rockMountainVariants.map((variant, index) => ({
+    id: "terrain.rock_mountain." + variant.id,
+    label: variant.label,
+    rect: [index * tileSize, 0, tileSize, tileSize]
+  })),
+  sourceIssue: "AZR-522",
+  notes: "Standalone candidate export for rock/mountain terrain tiles. Runtime split-atlas terrain sheets remain under assets/terrain/."
+};
+
+fs.writeFileSync(
+  path.join(terrainExportDir, "rock-tiles.png"),
+  encodePng(rockMountainExport.pixels, rockMountainExport.width, rockMountainExport.height)
+);
+fs.writeFileSync(
+  path.join(terrainExportDir, "rock-tiles-atlas.json"),
+  JSON.stringify(rockMountainMeta, null, 2) + "\n"
+);
+
 console.log("terrain biome atlases built", JSON.stringify({
   atlases: atlases.map((entry) => entry.file),
-  manifestSheets: Object.keys(sheetAliases)
+  manifestSheets: Object.keys(sheetAliases),
+  exports: ["exports/terrain/rock-tiles.png", "exports/terrain/rock-tiles-atlas.json"]
 }));

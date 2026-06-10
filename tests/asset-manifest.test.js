@@ -7,13 +7,17 @@ const root = path.resolve(__dirname, "..");
 const manifestPath = path.join(root, "assets/manifest.json");
 const grassMetaPath = path.join(root, "assets/terrain/grass.json");
 const grassPngPath = path.join(root, "assets/terrain/grass.png");
+const rockExportMetaPath = path.join(root, "exports/terrain/rock-tiles-atlas.json");
+const rockExportPngPath = path.join(root, "exports/terrain/rock-tiles.png");
 const handoffManifestPath = path.join(root, "assets/pixeldarium-equivalence/handoff-manifest.json");
 const loaderSource = fs.readFileSync(path.join(root, "js/assets/loader.js"), "utf8");
 const spriteSheetSource = fs.readFileSync(path.join(root, "js/assets/sprite-sheet.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const grassMeta = JSON.parse(fs.readFileSync(grassMetaPath, "utf8"));
+const rockExportMeta = JSON.parse(fs.readFileSync(rockExportMetaPath, "utf8"));
 const handoffManifest = JSON.parse(fs.readFileSync(handoffManifestPath, "utf8"));
 const png = fs.readFileSync(grassPngPath);
+const rockExportPng = fs.readFileSync(rockExportPngPath);
 const terrainAtlasExpectations = {
   grass: [88, 138, 66],
   stone: [72, 72, 72],
@@ -76,6 +80,23 @@ function pixelRgb(raw, size, x, y) {
   return [raw[offset], raw[offset + 1], raw[offset + 2]];
 }
 
+function averageRgb(raw, size, x0, y0, w, h) {
+  const total = [0, 0, 0];
+  let count = 0;
+
+  for (let y = y0; y < y0 + h; y += 1) {
+    for (let x = x0; x < x0 + w; x += 1) {
+      const rgb = pixelRgb(raw, size, x, y);
+      total[0] += rgb[0];
+      total[1] += rgb[1];
+      total[2] += rgb[2];
+      count += 1;
+    }
+  }
+
+  return total.map((channel) => channel / Math.max(1, count));
+}
+
 function assertNearRgb(actual, expected, label) {
   actual.forEach((channel, index) => {
     assert.ok(
@@ -132,6 +153,32 @@ Object.keys(terrainAtlasExpectations).forEach((atlasId) => {
   assert.ok(fs.existsSync(path.join(root, sheet.pixelData)), sheetId + " RGBA sidecar should exist");
   assert.ok(fs.existsSync(path.join(root, sheet.pixelData + ".js")), sheetId + " RGBA sidecar should support file:// loading");
 });
+
+const rockExportSize = pngSize(rockExportPng);
+const rockExportRaw = inflatePng(rockExportPng);
+assert.deepStrictEqual(rockExportSize, { width: 192, height: 32 }, "AZR-522 rock export should contain six 32x32 terrain tiles");
+assert.strictEqual(rockExportMeta.type, "grid", "AZR-522 rock export atlas should use grid metadata");
+assert.strictEqual(rockExportMeta.tileWidth, 32, "AZR-522 rock export tile width should be 32");
+assert.strictEqual(rockExportMeta.tileHeight, 32, "AZR-522 rock export tile height should be 32");
+assert.strictEqual(rockExportMeta.columns, 6, "AZR-522 rock export should include 6 variants");
+assert.strictEqual(rockExportMeta.rows, 1, "AZR-522 rock export should use one terrain row");
+assert.deepStrictEqual(rockExportMeta.names, rockExportMeta.variants.map((variant) => variant.id), "AZR-522 rock export names should match variant IDs");
+assert.deepStrictEqual(rockExportMeta.variants.map((variant) => variant.rect), [
+  [0, 0, 32, 32],
+  [32, 0, 32, 32],
+  [64, 0, 32, 32],
+  [96, 0, 32, 32],
+  [128, 0, 32, 32],
+  [160, 0, 32, 32]
+], "AZR-522 rock export rects should cover the six source tiles");
+assert.strictEqual(rockExportMeta.sourceIssue, "AZR-522", "AZR-522 rock export should identify its Linear source");
+assert.ok(pixelRgb(rockExportRaw, rockExportSize, 16, 8)[0] < 95, "bare ledge tile should include dark horizontal erosion lines");
+assert.ok(pixelRgb(rockExportRaw, rockExportSize, 32 + 13, 20)[0] < 75, "bare cracked tile should include dark vertical cracks");
+const snowTop = averageRgb(rockExportRaw, rockExportSize, 96, 2, 32, 8);
+const snowBase = averageRgb(rockExportRaw, rockExportSize, 96, 23, 32, 6);
+assert.ok(snowTop[0] > snowBase[0] + 55 && snowTop[2] > snowBase[2] + 45, "snow-capped variant should have a bright cool snow top over rock base");
+const mossTile = averageRgb(rockExportRaw, rockExportSize, 160, 8, 32, 18);
+assert.ok(mossTile[1] > mossTile[0] + 6 && mossTile[1] > mossTile[2] + 12, "mossy variant should have readable green lichen patches");
 
 assert.strictEqual(handoffManifest.runtimeUse, true, "accepted visual handoff should be runtime-owned");
 assert.strictEqual(handoffManifest.acceptedSheetCount, 15, "visual handoff should include accepted sheets only");
