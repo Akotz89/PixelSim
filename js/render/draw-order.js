@@ -22,16 +22,57 @@ PS.render.DrawLayer = {
   UI_SCREEN: 17
 };
 
+PS.render.RenderLayer = {
+  GROUND_COLOR: 0,
+  WATER_BELOW: 1,
+  GRASS_SNOW_OVERLAYS: 2,
+  FLOORS: 3,
+  TERRAIN_BELOW: 4,
+  SHADOWS: 5,
+  ENTITIES: 6,
+  TERRAIN_MID: 7,
+  TERRAIN_ABOVE: 8,
+  WEATHER_EFFECTS: 9,
+  OVERLAY_UI: 10
+};
+
 PS.render.DrawLayerNames = {};
+PS.render.RenderLayerNames = {};
 
 Object.keys(PS.render.DrawLayer).forEach(function (name) {
   PS.render.DrawLayerNames[PS.render.DrawLayer[name]] = name;
 });
 
+Object.keys(PS.render.RenderLayer).forEach(function (name) {
+  PS.render.RenderLayerNames[PS.render.RenderLayer[name]] = name;
+});
+
+PS.render.DrawLayerToRenderLayer = {};
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.TERRAIN_BASE] = PS.render.RenderLayer.GROUND_COLOR;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.TERRAIN_TRANSITION] = PS.render.RenderLayer.TERRAIN_BELOW;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.TERRAIN_DECORATION] = PS.render.RenderLayer.GRASS_SNOW_OVERLAYS;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.WATER_SURFACE] = PS.render.RenderLayer.WATER_BELOW;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.SHADOW] = PS.render.RenderLayer.SHADOWS;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.ENTITY_GROUND] = PS.render.RenderLayer.ENTITIES;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.VEGETATION_TRUNK] = PS.render.RenderLayer.TERRAIN_MID;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.ENTITY_SORTED] = PS.render.RenderLayer.ENTITIES;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.VEGETATION_CANOPY] = PS.render.RenderLayer.TERRAIN_MID;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.BUILDING_WALL] = PS.render.RenderLayer.TERRAIN_BELOW;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.BUILDING_ROOF] = PS.render.RenderLayer.TERRAIN_ABOVE;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.PARTICLE_BELOW] = PS.render.RenderLayer.ENTITIES;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.WEATHER] = PS.render.RenderLayer.WEATHER_EFFECTS;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.ROUTE_OVERLAY] = PS.render.RenderLayer.OVERLAY_UI;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.SELECTION_OVERLAY] = PS.render.RenderLayer.OVERLAY_UI;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.DEBUG_OVERLAY] = PS.render.RenderLayer.OVERLAY_UI;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.UI_WORLD] = PS.render.RenderLayer.OVERLAY_UI;
+PS.render.DrawLayerToRenderLayer[PS.render.DrawLayer.UI_SCREEN] = PS.render.RenderLayer.OVERLAY_UI;
+
 PS.render.DrawOrderManager = function () {
   this.layers = {};
   this.stats = {};
+  this.renderLayerStats = {};
   this.lastFlushStats = {};
+  this.lastRenderLayerStats = {};
   this.lastFlushSequence = [];
 };
 
@@ -49,6 +90,13 @@ PS.render.DrawOrderManager.prototype.normalizeLayer = function (layer) {
   }
 
   return numericLayer;
+};
+
+PS.render.DrawOrderManager.prototype.getRenderLayerForDrawLayer = function (layer) {
+  var numericLayer = this.normalizeLayer(layer);
+  var mapped = PS.render.DrawLayerToRenderLayer[numericLayer];
+
+  return Number.isFinite(Number(mapped)) ? Number(mapped) : PS.render.RenderLayer.OVERLAY_UI;
 };
 
 PS.render.DrawOrderManager.prototype.submit = function (layer, drawCommand) {
@@ -94,18 +142,52 @@ PS.render.DrawOrderManager.prototype.getOrderedLayerIds = function () {
   return Object.keys(this.layers).map(function (layer) {
     return Number(layer);
   }).sort(function (a, b) {
-    return a - b;
+    var renderA = PS.render.drawOrder.getRenderLayerForDrawLayer(a);
+    var renderB = PS.render.drawOrder.getRenderLayerForDrawLayer(b);
+
+    return renderA === renderB ? a - b : renderA - renderB;
   });
+};
+
+PS.render.DrawOrderManager.prototype.beginRenderLayer = function (renderer, renderLayer) {
+  var stencilRef = renderLayer + 1;
+
+  if (renderer && typeof renderer.beginRenderLayer === "function") {
+    renderer.beginRenderLayer(renderLayer, stencilRef);
+  } else if (renderer && typeof renderer.setStencilLayer === "function") {
+    renderer.setStencilLayer(stencilRef, renderLayer);
+  }
+
+  return stencilRef;
+};
+
+PS.render.DrawOrderManager.prototype.endRenderLayer = function (renderer, renderLayer) {
+  if (renderer && typeof renderer.endRenderLayer === "function") {
+    renderer.endRenderLayer(renderLayer);
+  }
 };
 
 PS.render.DrawOrderManager.prototype.flush = function (renderer) {
   var orderedLayers = this.getOrderedLayerIds();
   var flushStats = {};
+  var renderLayerStats = {};
   var flushSequence = [];
+  var currentRenderLayer = null;
+  var currentStencilRef = 0;
 
   for (var i = 0; i < orderedLayers.length; i++) {
     var layer = orderedLayers[i];
     var commands = this.layers[layer] || [];
+    var renderLayer = this.getRenderLayerForDrawLayer(layer);
+    var renderLayerName = PS.render.RenderLayerNames[renderLayer] || String(renderLayer);
+
+    if (renderLayer !== currentRenderLayer) {
+      if (currentRenderLayer !== null) {
+        this.endRenderLayer(renderer, currentRenderLayer);
+      }
+      currentRenderLayer = renderLayer;
+      currentStencilRef = this.beginRenderLayer(renderer, renderLayer);
+    }
 
     if (layer === PS.render.DrawLayer.ENTITY_SORTED) {
       commands.sort(function (a, b) {
@@ -118,6 +200,9 @@ PS.render.DrawOrderManager.prototype.flush = function (renderer) {
       flushSequence.push({
         layer: layer,
         layerName: PS.render.DrawLayerNames[layer] || String(layer),
+        renderLayer: renderLayer,
+        renderLayerName: renderLayerName,
+        stencilRef: currentStencilRef,
         id: commands[j].id || null,
         sortY: PS.render.drawOrder.getCommandSortY(commands[j])
       });
@@ -126,12 +211,32 @@ PS.render.DrawOrderManager.prototype.flush = function (renderer) {
     flushStats[layer] = {
       layer: layer,
       layerName: PS.render.DrawLayerNames[layer] || String(layer),
+      renderLayer: renderLayer,
+      renderLayerName: renderLayerName,
+      stencilRef: currentStencilRef,
       drawCalls: commands.length
     };
+    if (!renderLayerStats[renderLayer]) {
+      renderLayerStats[renderLayer] = {
+        renderLayer: renderLayer,
+        renderLayerName: renderLayerName,
+        stencilRef: currentStencilRef,
+        drawLayers: 0,
+        drawCalls: 0
+      };
+    }
+    renderLayerStats[renderLayer].drawLayers += 1;
+    renderLayerStats[renderLayer].drawCalls += commands.length;
+  }
+
+  if (currentRenderLayer !== null) {
+    this.endRenderLayer(renderer, currentRenderLayer);
   }
 
   this.stats = flushStats;
+  this.renderLayerStats = renderLayerStats;
   this.lastFlushStats = flushStats;
+  this.lastRenderLayerStats = renderLayerStats;
   this.lastFlushSequence = flushSequence;
   this.clear();
   return flushStats;
@@ -143,6 +248,27 @@ PS.render.DrawOrderManager.prototype.clear = function () {
 
 PS.render.DrawOrderManager.prototype.getLayerStats = function () {
   return this.lastFlushStats;
+};
+
+PS.render.DrawOrderManager.prototype.getRenderLayerStats = function () {
+  return this.lastRenderLayerStats;
+};
+
+PS.render.DrawOrderManager.prototype.getRenderLayerSnapshot = function () {
+  var stats = this.getRenderLayerStats();
+  var snapshot = [];
+
+  for (var layer = PS.render.RenderLayer.GROUND_COLOR; layer <= PS.render.RenderLayer.OVERLAY_UI; layer++) {
+    snapshot.push({
+      renderLayer: layer,
+      renderLayerName: PS.render.RenderLayerNames[layer] || String(layer),
+      stencilRef: layer + 1,
+      drawCalls: stats[layer] ? stats[layer].drawCalls : 0,
+      drawLayers: stats[layer] ? stats[layer].drawLayers : 0
+    });
+  }
+
+  return snapshot;
 };
 
 PS.render.DrawOrderManager.prototype.getDebugSnapshot = function () {

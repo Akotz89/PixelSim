@@ -189,9 +189,34 @@ assert.deepStrictEqual(
   Array.from({ length: 18 }, (_, index) => index),
   "draw layer constants should cover 0 through 17 without gaps"
 );
+assert.deepStrictEqual(
+  Object.keys(context.PS.render.RenderLayer).map((key) => context.PS.render.RenderLayer[key]),
+  Array.from({ length: 11 }, (_, index) => index),
+  "SoS render layer constants should cover the 11 formal back-to-front layers"
+);
+assert.strictEqual(context.PS.render.drawOrder.getRenderLayerForDrawLayer(context.PS.render.DrawLayer.TERRAIN_BASE), context.PS.render.RenderLayer.GROUND_COLOR, "terrain base should map to ground color layer");
+assert.strictEqual(context.PS.render.drawOrder.getRenderLayerForDrawLayer(context.PS.render.DrawLayer.WATER_SURFACE), context.PS.render.RenderLayer.WATER_BELOW, "water should map to water layer");
+assert.strictEqual(context.PS.render.drawOrder.getRenderLayerForDrawLayer(context.PS.render.DrawLayer.TERRAIN_DECORATION), context.PS.render.RenderLayer.GRASS_SNOW_OVERLAYS, "grass and snow should map to overlay layer");
+assert.strictEqual(context.PS.render.drawOrder.getRenderLayerForDrawLayer(context.PS.render.DrawLayer.ENTITY_SORTED), context.PS.render.RenderLayer.ENTITIES, "sorted entities should map to entity layer");
+assert.strictEqual(context.PS.render.drawOrder.getRenderLayerForDrawLayer(context.PS.render.DrawLayer.BUILDING_ROOF), context.PS.render.RenderLayer.TERRAIN_ABOVE, "roofs should map to terrain above layer");
 
 const manager = new context.PS.render.DrawOrderManager();
 const sorted = [];
+const stencilEvents = [];
+const stencilRenderer = {
+  beginRenderLayer(renderLayer, stencilRef) {
+    stencilEvents.push("begin:" + renderLayer + ":" + stencilRef);
+  },
+  endRenderLayer(renderLayer) {
+    stencilEvents.push("end:" + renderLayer);
+  }
+};
+manager.submit(context.PS.render.DrawLayer.WATER_SURFACE, {
+  id: "water",
+  draw() {
+    sorted.push("water");
+  }
+});
 manager.submit(context.PS.render.DrawLayer.ENTITY_SORTED, {
   id: "south",
   sortY: 200,
@@ -218,10 +243,25 @@ manager.submit(context.PS.render.DrawLayer.BUILDING_ROOF, {
     sorted.push("roof");
   }
 });
-manager.flush({});
+manager.flush(stencilRenderer);
 
-assert.deepStrictEqual(sorted, ["shadow", "north", "south", "roof"], "manager should flush layers in numeric order and Y-sort entity layer south on top");
+assert.deepStrictEqual(sorted, ["water", "shadow", "north", "south", "roof"], "manager should flush 11 formal render layers in SoS order and Y-sort entity layer south on top");
 assert.strictEqual(manager.getLayerStats()[context.PS.render.DrawLayer.ENTITY_SORTED].drawCalls, 2, "stats should retain entity-sorted draw calls after flush");
+assert.deepStrictEqual(
+  stencilEvents,
+  [
+    "begin:1:2",
+    "end:1",
+    "begin:5:6",
+    "end:5",
+    "begin:6:7",
+    "end:6",
+    "begin:8:9",
+    "end:8"
+  ],
+  "manager should bracket each active formal layer with a stable stencil reference"
+);
+assert.strictEqual(manager.getRenderLayerStats()[context.PS.render.RenderLayer.ENTITIES].drawCalls, 2, "render layer stats should aggregate draw calls across draw layers");
 
 const manifest = context.PS.render.pipeline.getLayerManifest();
 function layer(id) {
@@ -257,12 +297,12 @@ assert.deepStrictEqual(
     "begin:7",
     "terrain",
     "grass",
+    "structures",
     "food",
     "intents",
     "readiness",
-    "vegetation",
     "organisms",
-    "structures",
+    "vegetation",
     "influence",
     "routes",
     "end"
@@ -291,5 +331,8 @@ assert.strictEqual(transitionAlpha, 0.25, "pipeline should keep previous-tier la
 const debugSnapshot = context.PS.render.drawOrder.getDebugSnapshot();
 assert.strictEqual(debugSnapshot.length, 18, "debug snapshot should expose all formal layer boundaries for F4 overlay");
 assert.ok(debugSnapshot.some((entry) => entry.layerName === "ENTITY_SORTED" && entry.drawCalls === 1), "debug snapshot should include sorted entity layer stats");
+const renderLayerSnapshot = context.PS.render.drawOrder.getRenderLayerSnapshot();
+assert.strictEqual(renderLayerSnapshot.length, 11, "render layer snapshot should expose the 11 SoS layer boundaries");
+assert.ok(renderLayerSnapshot.some((entry) => entry.renderLayerName === "ENTITIES" && entry.drawCalls >= 1), "render layer snapshot should include aggregated entity layer stats");
 
 console.log("render layer order checks passed");
