@@ -385,6 +385,20 @@ PS.render.pipeline.registerLayer("vegetation.grass", {
   }
 });
 
+PS.render.pipeline.registerLayer("environment.snow", {
+  order: 33,
+  drawLayer: PS.render.DrawLayer.TERRAIN_DECORATION,
+  family: "environment",
+  semantic: "threshold-based snow overlay with 2-bit base noise and context suppression",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawSnowOverlay === "function") {
+      PS.render.environmentOverlays.drawSnowOverlay();
+    }
+  }
+});
+
 PS.render.pipeline.registerLayer("settlement.shadows", {
   order: 48,
   drawLayer: PS.render.DrawLayer.SHADOW,
