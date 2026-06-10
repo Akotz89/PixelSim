@@ -71,7 +71,11 @@ PS.config.refreshFromConstants = function () {
     hudUpdateIntervalMs: CONFIG.HUD_UPDATE_INTERVAL_MS,
     daysPerTick: CONFIG.SIM_DAYS_PER_TICK,
     ticksPerUpdate: CONFIG.TICKS_PER_SIM_UPDATE,
-    speedMultiplier: CONFIG.SIM_SPEED_MULTIPLIER
+    speedMultiplier: CONFIG.SIM_SPEED_MULTIPLIER,
+    speedGovernorMinSpeed: CONFIG.SIM_SPEED_GOVERNOR_MIN_SPEED,
+    speedGovernorThrottleRate: CONFIG.SIM_SPEED_GOVERNOR_THROTTLE_RATE,
+    speedGovernorRecoveryRate: CONFIG.SIM_SPEED_GOVERNOR_RECOVERY_RATE,
+    speedGovernorRecoveryPressure: CONFIG.SIM_SPEED_GOVERNOR_RECOVERY_PRESSURE
   };
 
   PS.config.render = {

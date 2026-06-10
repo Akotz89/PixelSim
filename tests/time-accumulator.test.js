@@ -79,6 +79,9 @@ world.speed = 2;
 PS.time.reset();
 var scaled = PS.time.runFrame(20, simulateTick);
 assert.strictEqual(scaled.ticks, 1, "speed scale should advance accumulator faster");
+assert.strictEqual(scaled.targetSpeed, 2, "PS.time should track target speed separately from world.speed");
+assert.strictEqual(scaled.effectiveSpeed, 2, "low-load frames should keep effective speed at the target");
+assert.strictEqual(scaled.governorActive, false, "governor should stay idle when update work is within budget");
 
 world.speed = 1;
 PS.time.reset();
@@ -95,6 +98,39 @@ PS.time.reset();
 var configured = PS.time.runFrame(100, simulateTick);
 assert.strictEqual(PS.time.dt, 25, "dt should be configurable through PS.config.sim");
 assert.strictEqual(configured.ticks, 2, "configured max ticks should be honored");
+
+PS.config.sim.fixedDeltaMs = 10;
+PS.config.sim.maxUpdatesPerFrame = 3;
+PS.config.sim.frameBudgetMs = 16;
+world.speed = 10;
+PS.time.reset();
+function slowTick(dt) {
+  receivedDt.push(dt);
+  world.tick++;
+  now += 12;
+}
+var throttled = PS.time.runFrame(100, slowTick);
+assert.strictEqual(throttled.targetSpeed, 10, "governor target speed should preserve the user-selected speed");
+assert.ok(throttled.updateMs > PS.time.speedGovernor.frameBudgetMs, "slow ticks should exceed the configured frame budget");
+assert.ok(throttled.effectiveSpeed < throttled.targetSpeed, "governor should reduce effective speed under frame pressure");
+assert.strictEqual(throttled.governorActive, true, "governor should report active after throttling");
+assert.ok(throttled.governorPressureMs > 0, "governor should report measured budget pressure");
+assert.ok(PS.time.accumulator <= PS.time.dt, "governor should preserve accumulator backlog clamping");
+
+function fastTick(dt) {
+  receivedDt.push(dt);
+  world.tick++;
+  now += 1;
+}
+var reducedSpeed = PS.time.effectiveSpeed;
+var recovered = PS.time.runFrame(1, fastTick);
+assert.ok(recovered.effectiveSpeed > reducedSpeed, "governor should gradually recover toward target under low pressure");
+assert.ok(recovered.effectiveSpeed <= recovered.targetSpeed, "governor recovery should not exceed the target speed");
+
+PS.config.sim.frameBudgetMs = CONFIG.FRAME_BUDGET_MS;
+PS.config.sim.fixedDeltaMs = CONFIG.SIM_UPDATE_INTERVAL_MS;
+PS.config.sim.maxUpdatesPerFrame = CONFIG.MAX_SIM_UPDATES_PER_FRAME;
+world.speed = 1;
 
 var currentCalls = 0;
 PS.epochs.current = function() {
