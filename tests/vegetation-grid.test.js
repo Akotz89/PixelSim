@@ -1,0 +1,68 @@
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+const root = path.resolve(__dirname, "..");
+const namespaceSource = fs.readFileSync(path.join(root, "js/core/namespace.js"), "utf8");
+const vegetationSource = fs.readFileSync(path.join(root, "js/sim/vegetation.js"), "utf8");
+
+assert.ok(
+  namespaceSource.indexOf("js/sim/vegetation.js") > namespaceSource.indexOf("js/sim/food-runtime.js"),
+  "vegetation grid should load with sim runtime modules"
+);
+assert.ok(
+  namespaceSource.indexOf("js/sim/vegetation.js") < namespaceSource.indexOf("js/sim/tile-worker.js"),
+  "vegetation grid should load before worker and growth systems can consume it"
+);
+
+const context = {
+  window: {},
+  PS: {},
+  Uint8Array,
+  Math,
+  Number,
+  Object,
+  WORLD_WIDTH: 5,
+  WORLD_HEIGHT: 3
+};
+
+context.window.window = context.window;
+vm.createContext(context);
+vm.runInContext(vegetationSource, context, { filename: "js/sim/vegetation.js" });
+
+const vegetation = context.PS.vegetation;
+
+function plain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+assert.strictEqual(vegetation.TYPES.NONE, 0, "NONE should be zero for cleared cells");
+assert.strictEqual(vegetation.TYPES.TREE_BIG, 3, "TREE_BIG enum should match the low-nibble layout");
+assert.strictEqual(vegetation.TYPES.GRASS_TUFT, 8, "GRASS_TUFT enum should match the issue contract");
+
+vegetation.init(5, 3);
+assert.strictEqual(vegetation.width, 5, "init should store width");
+assert.strictEqual(vegetation.height, 3, "init should store height");
+assert.strictEqual(vegetation.data.length, 15, "grid should allocate one byte per tile");
+assert.ok(vegetation.data instanceof Uint8Array, "grid should use a Uint8Array backing store");
+
+assert.deepStrictEqual(plain(vegetation.get(1, 1)), { type: 0, variant: 0 }, "empty cells should read as NONE variant 0");
+assert.deepStrictEqual(plain(vegetation.set(1, 1, vegetation.TYPES.TREE_MEDIUM, 12)), { type: 2, variant: 12 }, "set should round-trip type and variant");
+assert.strictEqual(vegetation.data[6], (12 << 4) | 2, "packed byte should use high nibble variant and low nibble type");
+assert.strictEqual(vegetation.getType(1, 1), vegetation.TYPES.TREE_MEDIUM, "getType should read only the low nibble");
+
+vegetation.set(-1, 99, vegetation.TYPES.ROCK, 3);
+assert.deepStrictEqual(plain(vegetation.get(4, 2)), { type: 7, variant: 3 }, "x should wrap and y should clamp");
+
+vegetation.set(3, 0, 99, 99);
+assert.deepStrictEqual(plain(vegetation.get(3, 0)), { type: 15, variant: 15 }, "set should clamp packed nibbles to 0-15");
+
+assert.deepStrictEqual(plain(vegetation.clear(1, 1)), { type: 0, variant: 0 }, "clear should reset a cell to NONE");
+assert.strictEqual(vegetation.data[6], 0, "clear should write zero into the backing store");
+
+vegetation.init(2, 2);
+assert.strictEqual(vegetation.data.length, 4, "reinit should replace the backing store");
+assert.deepStrictEqual(plain(vegetation.get(1, 1)), { type: 0, variant: 0 }, "reinit should clear old vegetation data");
+
+console.log("vegetation grid checks passed");
