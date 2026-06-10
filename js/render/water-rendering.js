@@ -126,6 +126,98 @@ PS.render.waterRendering.getNowMs = function () {
   return Date.now ? Date.now() : 0;
 };
 
+PS.render.waterRendering.getDecorationSeed = function (tileX, tileY, salt) {
+  var x = Math.round(Number(tileX) || 0);
+  var y = Math.round(Number(tileY) || 0);
+  var s = Math.round(Number(salt) || 0);
+  var mixed;
+
+  if (PS.ranmap && typeof PS.ranmap.variant === "function") {
+    mixed = PS.ranmap.variant(x + s * 17, y - s * 31, 65536);
+    return Math.max(0, Math.round(Number(mixed) || 0)) >>> 0;
+  }
+
+  mixed = (x * 374761393 + y * 668265263 + s * 2246822519) >>> 0;
+  mixed = (mixed ^ (mixed >>> 13)) >>> 0;
+  mixed = Math.imul(mixed, 1274126177) >>> 0;
+  return (mixed ^ (mixed >>> 16)) >>> 0;
+};
+
+PS.render.waterRendering.isOpenWaterDecorationSample = function (sample, biome, tileX, tileY) {
+  if (!PS.render.waterRendering.isWaterSample(sample, biome)) {
+    return false;
+  }
+
+  return PS.render.waterRendering.getDepthCode(sample, biome) > 1 &&
+    (PS.render.waterRendering.computeShoreMask(sample, tileX, tileY) & 15) === 0;
+};
+
+PS.render.waterRendering.shouldPlaceDecoration = function (sample, biome, tileX, tileY) {
+  if (!PS.render.waterRendering.isOpenWaterDecorationSample(sample, biome, tileX, tileY)) {
+    return false;
+  }
+
+  return (PS.render.waterRendering.getDecorationSeed(tileX, tileY, 0) & 7) === 0;
+};
+
+PS.render.waterRendering.getDecorationWaveOffset = function (tileX, tileY, nowMs, axis) {
+  var seed = PS.render.waterRendering.getDecorationSeed(tileX, tileY, axis === "y" ? 1 : 0);
+  var phase = seed & 15;
+  var speed = 10 / (1 + ((seed >>> 4) & 15));
+  var seconds = Math.max(0, Number(nowMs) || 0) / 1000;
+  var frame = (phase + Math.floor(speed * seconds)) & 15;
+  var distance = Math.abs(8 - frame);
+  var triangle = Math.min(distance, 16 - distance);
+
+  return {
+    seed: seed,
+    phase: phase,
+    speed: speed,
+    frame: frame,
+    distance: triangle
+  };
+};
+
+PS.render.waterRendering.getDecorationRenderInfo = function (sample, biome, tileX, tileY, samplePixelSize, nowMs) {
+  var size = Math.max(1, Number(samplePixelSize) || 1);
+  var timeMs = nowMs === undefined ? PS.render.waterRendering.getNowMs() : nowMs;
+  var xWave;
+  var yWave;
+  var seed;
+  var kind;
+  var width;
+  var height;
+  var offsetX;
+  var offsetY;
+
+  if (!PS.render.waterRendering.shouldPlaceDecoration(sample, biome, tileX, tileY)) {
+    return null;
+  }
+
+  seed = PS.render.waterRendering.getDecorationSeed(tileX, tileY, 2);
+  xWave = PS.render.waterRendering.getDecorationWaveOffset(tileX, tileY, timeMs, "x");
+  yWave = PS.render.waterRendering.getDecorationWaveOffset(tileX, tileY, timeMs, "y");
+  kind = seed % 3;
+  width = size * (kind === 0 ? 0.34 : 0.26);
+  height = size * (kind === 2 ? 0.18 : 0.22);
+  offsetX = (xWave.distance - 4) * size * 0.035;
+  offsetY = (yWave.distance - 4) * size * 0.026;
+
+  return {
+    kind: kind,
+    seed: seed,
+    phaseX: xWave.phase,
+    phaseY: yWave.phase,
+    speedX: xWave.speed,
+    speedY: yWave.speed,
+    offsetX: offsetX,
+    offsetY: offsetY,
+    width: width,
+    height: height,
+    color: kind === 0 ? [0.36, 0.58, 0.32, 0.88] : (kind === 1 ? [0.63, 0.72, 0.56, 0.78] : [0.84, 0.9, 0.78, 0.62])
+  };
+};
+
 PS.render.waterRendering.getRenderInfo = function (sample, biome, tileX, tileY) {
   if (!PS.render.waterRendering.isWaterSample(sample, biome)) {
     return null;

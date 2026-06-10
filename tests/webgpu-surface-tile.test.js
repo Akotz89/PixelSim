@@ -18,6 +18,7 @@ const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
 const compositorSource = read("js/render/webgpu-compositor.js");
+const entitySource = read("js/render/webgpu-entity.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const waterRenderingSource = read("js/render/water-rendering.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
@@ -26,6 +27,8 @@ const terrainWgsl = read("shaders/terrain.wgsl");
 const terrainTileWgsl = read("shaders/terrain-tile.wgsl");
 const gbufferTerrainWgsl = read("shaders/gbuffer-terrain.wgsl");
 const gbufferComposeWgsl = read("shaders/gbuffer-compose.wgsl");
+const particleWgsl = read("shaders/particle.wgsl");
+const shadowWgsl = read("shaders/shadow.wgsl");
 
 assert.ok(
   namespaceSource.indexOf("js/render/webgpu-surface-tile.js") > namespaceSource.indexOf("js/render/webgpu-surface-underlay.js"),
@@ -150,6 +153,12 @@ assert.ok(
     surfaceTileSource.indexOf("PS.render.webgpuCompositor.draw") >= 0,
   "surface tile renderer should route active tile draws through G-buffer and compositor"
 );
+assert.ok(
+  batcherSource.indexOf("appendWaterDecoration") >= 0 &&
+    surfaceTileSource.indexOf("drawShadowRects") >= 0 &&
+    surfaceTileSource.indexOf("drawParticleRects") >= 0,
+  "surface tile renderer should batch floating water decorations and their shadows through rect renderers"
+);
 
 const queueWrites = [];
 const textureWrites = [];
@@ -234,11 +243,17 @@ const fakeDevice = {
             this.bindGroupIndex = index;
             this.bindGroup = bindGroup;
           },
+          setIndexBuffer(buffer, format) {
+            this.indexBuffer = { buffer, format };
+          },
           setVertexBuffer(index, buffer) {
             this.vertexBuffers[index] = buffer;
           },
           draw(vertexCount, instanceCount, firstVertex, firstInstance) {
             this.drawArgs = [vertexCount, instanceCount, firstVertex, firstInstance];
+          },
+          drawIndexed(indexCount, instanceCount, firstIndex, baseVertex, firstInstance) {
+            this.drawIndexedArgs = [indexCount, instanceCount, firstIndex, baseVertex, firstInstance];
           },
           end() {
             this.ended = true;
@@ -308,6 +323,7 @@ vm.runInContext(managerSource, context, { filename: "js/render/wgsl-shader-manag
 vm.runInContext(targetsSource, context, { filename: "js/render/webgpu-targets.js" });
 vm.runInContext(gbufferSource, context, { filename: "js/render/webgpu-gbuffer.js" });
 vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-compositor.js" });
+vm.runInContext(entitySource, context, { filename: "js/render/webgpu-entity.js" });
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
 vm.runInContext(waterRenderingSource, context, { filename: "js/render/water-rendering.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
@@ -318,6 +334,8 @@ context.PS.render.wgslShaders.register("terrain", terrainWgsl, { path: "shaders/
 context.PS.render.wgslShaders.register("terrain-tile", terrainTileWgsl, { path: "shaders/terrain-tile.wgsl" });
 context.PS.render.wgslShaders.register("gbuffer-terrain", gbufferTerrainWgsl, { path: "shaders/gbuffer-terrain.wgsl" });
 context.PS.render.wgslShaders.register("gbuffer-compose", gbufferComposeWgsl, { path: "shaders/gbuffer-compose.wgsl" });
+context.PS.render.wgslShaders.register("particle", particleWgsl, { path: "shaders/particle.wgsl" });
+context.PS.render.wgslShaders.register("shadow", shadowWgsl, { path: "shaders/shadow.wgsl" });
 
 surfaceTile.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "terrain"; }), "terrain shader should be in WGSL manifest");
@@ -492,6 +510,52 @@ assert.strictEqual(waterPage.data[13], 6, "water instances should encode triangl
 assert.strictEqual(waterPage.data[14], 0.25, "water instances should encode seasonal growth for water color interpolation");
 assert.strictEqual(context.PS.render.waterRendering.getDepthCode({ biome: "lake", detail: { surface: "open water", materialSignals: { waterDepth: 0.5 } } }, "lake"), 2, "open water should encode normal depth");
 assert.strictEqual(context.PS.render.waterRendering.getDepthCode({ biome: "ocean", detail: { surface: "deep water", materialSignals: { waterDepth: 0.9 } } }, "ocean"), 3, "deep water should encode deep depth");
+assert.strictEqual(context.PS.render.waterRendering.shouldPlaceDecoration({
+  biome: "ocean",
+  detail: { surface: "tidal shore", materialSignals: { waterDepth: 0.22, shallowWater: 0.8 } }
+}, "ocean", 4, 6), false, "floating decorations should not spawn on shore water tiles");
+
+let decorationTile = null;
+for (let dx = 0; dx < 64 && !decorationTile; dx += 1) {
+  for (let dy = 0; dy < 64 && !decorationTile; dy += 1) {
+    if (context.PS.render.waterRendering.shouldPlaceDecoration({
+      biome: "ocean",
+      detail: { surface: "open water", materialSignals: { waterDepth: 0.65 } }
+    }, "ocean", dx, dy)) {
+      decorationTile = { x: dx, y: dy };
+    }
+  }
+}
+assert.ok(decorationTile, "deterministic open-water decoration sampling should find a placed decoration");
+const decorationSample = {
+  biome: "ocean",
+  detail: { surface: "open water", materialSignals: { waterDepth: 0.65 } }
+};
+const decorationAtStart = context.PS.render.waterRendering.getDecorationRenderInfo(decorationSample, "ocean", decorationTile.x, decorationTile.y, 16, 0);
+const decorationLater = context.PS.render.waterRendering.getDecorationRenderInfo(decorationSample, "ocean", decorationTile.x, decorationTile.y, 16, 2000);
+assert.ok(decorationAtStart && Number.isFinite(decorationAtStart.speedX) && Number.isFinite(decorationAtStart.speedY), "floating decorations should carry deterministic per-tile speeds");
+assert.notDeepStrictEqual(
+  [decorationAtStart.offsetX, decorationAtStart.offsetY],
+  [decorationLater.offsetX, decorationLater.offsetY],
+  "floating decoration offsets should animate over time"
+);
+
+context.world.timeMs = 0;
+const decorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: decorationTile.x,
+  sampleNorth: decorationTile.y,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: decorationSample,
+  screenX: 0,
+  screenY: 0
+}], 1);
+assert.strictEqual(decorationBatches.shadowRects.length, 8, "open-water decorations should emit one batched shadow rect");
+assert.strictEqual(decorationBatches.waterDecorationRects.length, 8, "open-water decorations should emit one batched decoration rect");
+assert.ok(decorationBatches.shadowRects[7] > 0, "decoration shadow rect should include visible alpha");
 
 context.PS.atlas.getTerrainTransitionKey = function (sample) {
   const neighbor = sample && sample.tileBlend && sample.tileBlend.tiles && sample.tileBlend.tiles[0];
@@ -564,7 +628,9 @@ const drew = surfaceTile.drawBatches({
   culled: 2,
   materialCounts: { "grass-lush.0": 1 },
   equivalenceTerrain: 1,
-  equivalenceTransitions: 1
+  equivalenceTransitions: 1,
+  shadowRects: decorationBatches.shadowRects,
+  waterDecorationRects: decorationBatches.waterDecorationRects
 }, {
   sunDirection: [0, 3, 4],
   ambient: 0.41,
@@ -578,10 +644,16 @@ assert.strictEqual(fakeDevice.pipelines[0].descriptor.label, "terrain-tile.gbuff
 assert.strictEqual(fakeDevice.pipelines[1].descriptor.label, "gbuffer-compose.pipeline", "surface tile draw should create compositor pipeline");
 assert.strictEqual(fakeDevice.passes[0].descriptor.label, "gbuffer.terrain-pass", "surface tile draw should first fill the G-buffer");
 assert.strictEqual(fakeDevice.passes[1].descriptor.label, "gbuffer-compose.render-pass", "surface tile draw should composite the G-buffer to the output");
+assert.strictEqual(fakeDevice.passes[2].descriptor.label, "shadow.render-pass", "surface tile draw should overlay water decoration shadows after composition");
+assert.strictEqual(fakeDevice.passes[3].descriptor.label, "particle.render-pass", "surface tile draw should overlay floating water decorations after shadows");
 assert.strictEqual(fakeDevice.passes[0].descriptor.colorAttachments.length, 2, "surface tile G-buffer pass should use MRT albedo and normal attachments");
+assert.strictEqual(fakeDevice.passes[2].descriptor.colorAttachments[0].loadOp, "load", "water decoration shadows should preserve the composed terrain target");
+assert.strictEqual(fakeDevice.passes[3].descriptor.colorAttachments[0].loadOp, "load", "water decoration particles should preserve the shadowed terrain target");
 assert.strictEqual(fakeDevice.passes[0].drawArgs[0], 4, "surface tile draw should draw quad vertices");
 assert.strictEqual(fakeDevice.passes[0].drawArgs[1], 1, "surface tile draw should draw one instance");
 assert.deepStrictEqual(fakeDevice.passes[1].drawArgs, [4, 1, 0, 0], "surface tile compositor should draw one fullscreen quad");
+assert.deepStrictEqual(fakeDevice.passes[2].drawArgs, [4, 1, 0, 0], "water decoration shadows should draw one rect instance");
+assert.deepStrictEqual(fakeDevice.passes[3].drawArgs, [4, 1, 0, 0], "water decorations should draw one particle rect instance");
 assert.strictEqual(textureWrites.length, 1, "atlas page should upload through GPUQueue.writeTexture");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.instances"; }), "instance data should upload to the WebGPU instance buffer");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.uniforms"; }), "canvas uniforms should upload to WebGPU");
@@ -599,6 +671,12 @@ assert.ok(queueWrites.some(function (write) {
     nearly(write.data[6], 0.18) &&
     nearly(write.data[7], 0.07);
 }), "surface tile G-buffer compositor should forward lighting uniforms");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "shadow.instances.storage" && write.size === 8;
+}), "surface tile draw should upload water decoration shadows through the real shadow storage buffer");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "particle.instances.storage" && write.size === 8;
+}), "surface tile draw should upload floating water decorations through the real particle storage buffer");
 assert.strictEqual(submissions.length, 1, "surface tile draw should submit a command buffer");
 
 const stats = surfaceTile.getStats();
@@ -609,5 +687,7 @@ assert.strictEqual(stats.culledCount, 2, "stats should preserve cull counts");
 assert.strictEqual(stats.equivalenceTerrainDrawCount, 1, "stats should preserve equivalence terrain counts");
 assert.strictEqual(stats.equivalenceTransitionDrawCount, 1, "stats should preserve equivalence transition counts");
 assert.strictEqual(stats.lastError, "", "successful draw should clear lastError");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().shadowDrawCount, 1, "real shadow renderer should count water decoration shadows");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().particleDrawCount, 1, "real particle renderer should count floating water decorations");
 
 console.log("webgpu surface tile checks passed");

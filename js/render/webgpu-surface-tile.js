@@ -374,6 +374,44 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     return this.appendBatches(this.beginBatches(), address, cellCache, alpha);
   },
 
+  drawRectBatches: function (readyBatches, spec, device, context, encoder, width, height) {
+    var textureView = spec.textureView || null;
+
+    if (!PS.render.webgpuEntity) {
+      return;
+    }
+
+    if (
+      readyBatches.shadowRects &&
+      readyBatches.shadowRects.length > 0 &&
+      typeof PS.render.webgpuEntity.drawShadowRects === "function"
+    ) {
+      PS.render.webgpuEntity.drawShadowRects(new Float32Array(readyBatches.shadowRects), {
+        device: device,
+        context: context,
+        commandEncoder: encoder,
+        textureView: textureView,
+        width: width,
+        height: height
+      });
+    }
+
+    if (
+      readyBatches.waterDecorationRects &&
+      readyBatches.waterDecorationRects.length > 0 &&
+      typeof PS.render.webgpuEntity.drawParticleRects === "function"
+    ) {
+      PS.render.webgpuEntity.drawParticleRects(new Float32Array(readyBatches.waterDecorationRects), {
+        device: device,
+        context: context,
+        commandEncoder: encoder,
+        textureView: textureView,
+        width: width,
+        height: height
+      });
+    }
+  },
+
   drawBatches: function (batches, options) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
@@ -489,6 +527,8 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         });
       }
     }
+
+    this.drawRectBatches(readyBatches, spec, device, context, encoder, width, height);
 
     if (!spec.commandEncoder) {
       device.queue.submit([encoder.finish()]);

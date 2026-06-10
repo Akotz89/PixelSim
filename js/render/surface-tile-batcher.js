@@ -22,6 +22,8 @@ PS.render.surfaceTileBatcher.beginBatches = function () {
     equivalenceTerrain: 0,
     equivalenceTransitions: 0,
     pointLights: [],
+    waterDecorationRects: [],
+    shadowRects: [],
     pageBufferToken: state.pageBufferToken
   };
 };
@@ -82,6 +84,50 @@ PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample,
   }
 
   return false;
+};
+
+PS.render.surfaceTileBatcher.appendWaterDecoration = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY) {
+  var decoration = PS.render.waterRendering && typeof PS.render.waterRendering.getDecorationRenderInfo === "function"
+    ? PS.render.waterRendering.getDecorationRenderInfo(sample, biome, tileX, tileY, samplePixelSize)
+    : null;
+  var rectX;
+  var rectY;
+  var shadowX;
+  var shadowY;
+  var color;
+
+  if (!target || !decoration || !target.waterDecorationRects || !target.shadowRects) {
+    return false;
+  }
+
+  rectX = screenX + samplePixelSize * 0.5 - decoration.width * 0.5 + decoration.offsetX;
+  rectY = screenY + samplePixelSize * 0.5 - decoration.height * 0.5 + decoration.offsetY;
+  shadowX = rectX + samplePixelSize * 0.08;
+  shadowY = rectY + samplePixelSize * 0.12;
+  color = decoration.color || [0.5, 0.7, 0.45, 0.8];
+
+  target.shadowRects.push(
+    shadowX,
+    shadowY,
+    decoration.width * 1.12,
+    decoration.height * 0.85,
+    0.015,
+    0.025,
+    0.04,
+    0.34
+  );
+  target.waterDecorationRects.push(
+    rectX,
+    rectY,
+    decoration.width,
+    decoration.height,
+    color[0],
+    color[1],
+    color[2],
+    color[3]
+  );
+
+  return true;
 };
 
 PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biome, sample, tileX, tileY) {
@@ -510,6 +556,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       : null;
 
     PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY);
+    PS.render.surfaceTileBatcher.appendWaterDecoration(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY);
     PS.render.surfaceTileBatcher.appendInstance(
       page,
       screenX,
