@@ -3,6 +3,10 @@ PS.render = PS.render || {};
 PS.render.surface = PS.render.surface || {};
 
 PS.render.surface.getChunkSampleCount = function () {
+  if (typeof world !== "undefined" && world && world.isCameraInteracting) {
+    return Math.max(4, Math.round(Number(CONFIG.PLANET_SURFACE_INTERACTIVE_CHUNK_SAMPLES) || 4));
+  }
+
   return Math.max(8, Math.round(Number(CONFIG.PLANET_SURFACE_CHUNK_SAMPLES) || 32));
 };
 

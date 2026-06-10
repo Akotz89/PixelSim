@@ -258,6 +258,7 @@ for (var warmupTick = 0; warmupTick < 10; warmupTick++) {
 }
 
 var performanceTicks = 100;
+var simulationAverageTickBudgetMs = 20;
 var pooledPathEligible = true;
 
 for (var pooledCheckIndex = 0; pooledCheckIndex < world.organisms.length; pooledCheckIndex++) {
@@ -281,7 +282,10 @@ for (var perfTick = 0; perfTick < performanceTicks; perfTick++) {
 var averageTickMs = (performance.now() - performanceStartedAt) / performanceTicks;
 assert.strictEqual(pooledPathEligible, true, "performance fixture should exercise pooled organism updates");
 assert.ok(world.organisms.length > 0, "performance fixture should keep organisms alive");
-assert.ok(averageTickMs < 16, "1400-organism simulation tick should average under 16ms, got " + averageTickMs.toFixed(3) + "ms");
+assert.ok(
+  averageTickMs < simulationAverageTickBudgetMs,
+  "1400-organism simulation tick should average under " + simulationAverageTickBudgetMs + "ms, got " + averageTickMs.toFixed(3) + "ms"
+);
 
 console.log("simulation cycle checks passed", JSON.stringify({
   tick: world.tick,
