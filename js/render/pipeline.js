@@ -414,6 +414,20 @@ PS.render.pipeline.registerLayer("water.displacement", {
   }
 });
 
+PS.render.pipeline.registerLayer("environment.ice", {
+  order: 32.5,
+  drawLayer: PS.render.DrawLayer.WATER_SURFACE,
+  family: "environment",
+  semantic: "deterministic threshold ice overlay with water-local autotile masks",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawIceOverlay === "function") {
+      PS.render.environmentOverlays.drawIceOverlay();
+    }
+  }
+});
+
 PS.render.pipeline.registerLayer("settlement.shadows", {
   order: 48,
   drawLayer: PS.render.DrawLayer.SHADOW,

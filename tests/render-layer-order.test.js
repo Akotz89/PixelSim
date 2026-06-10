@@ -229,6 +229,8 @@ function layer(id) {
 }
 
 assert.strictEqual(layer("terrain.base").drawLayer, context.PS.render.DrawLayer.TERRAIN_BASE, "terrain should map to base layer");
+assert.strictEqual(layer("environment.ice").order, 32.5, "ice overlay should register above water displacement and below snow");
+assert.strictEqual(layer("environment.ice").drawLayer, context.PS.render.DrawLayer.WATER_SURFACE, "ice overlay should draw on the water surface layer");
 assert.strictEqual(layer("vegetation.grass").order, 34, "grass density should register immediately before world vegetation");
 assert.strictEqual(layer("vegetation.grass").drawLayer, context.PS.render.DrawLayer.TERRAIN_DECORATION, "grass density should submit as terrain decoration");
 assert.strictEqual(layer("vegetation.world").order, 35, "world vegetation should register between terrain and entity layers");

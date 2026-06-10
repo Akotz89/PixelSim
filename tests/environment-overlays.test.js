@@ -16,13 +16,21 @@ const pipelineSource = read("js/render/pipeline.js");
 assert.ok(namespaceSource.indexOf("js/render/environment-overlays.js") > namespaceSource.indexOf("js/render/vegetation-render.js"), "environment overlays should load after vegetation renderer");
 assert.ok(namespaceSource.indexOf("js/render/environment-overlays.js") < namespaceSource.indexOf("js/render/pipeline.js"), "environment overlays should load before pipeline registration");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.snow"') >= 0, "pipeline should register snow environment overlay");
+assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.ice"') >= 0, "pipeline should register ice environment overlay");
 assert.ok(pipelineSource.indexOf("order: 33") >= 0, "snow overlay should render before grass and world vegetation overlays");
+assert.ok(pipelineSource.indexOf("order: 32.5") >= 0, "ice overlay should render on top of the water layer before snow");
 assert.strictEqual(overlaySource.toLowerCase().indexOf("webgl"), -1, "environment overlays must not add legacy WebGL hooks");
 
 const drawCalls = [];
 const context = {
   PS: {
     render: {
+      waterRendering: {
+        isWaterSample(sample) {
+          const detail = sample && sample.detail || {};
+          return sample && (sample.biome === "ocean" || String(detail.surface || "").indexOf("water") >= 0);
+        }
+      },
       webgpuEntity: {
         drawParticleRects(values) {
           drawCalls.push(Array.from(values));
@@ -112,5 +120,38 @@ assert.ok(info.offsetY >= -7 && info.offsetY <= 0, "snow Y offset should follow 
 assert.strictEqual(overlays.drawSnowOverlay(), true, "snow overlay should submit WebGPU rects");
 assert.ok(drawCalls[0].length > 0 && drawCalls[0].length % 8 === 0, "snow overlay rect payload should use rect/color stride");
 assert.strictEqual(overlays.getStats().snowOverlayCount, drawCalls[0].length / 8, "snow overlay stats should count submitted rects");
+
+context.world.planetTiles = [];
+for (let i = 0; i < 12; i += 1) {
+  context.world.planetTiles.push({
+    biome: "ocean",
+    detail: { surface: "open water", materialSignals: { waterDepth: 0.75 } }
+  });
+}
+context.world.globalIce = 0.55;
+const firstIceTiles = [];
+const secondIceTiles = [];
+for (let y = 0; y < 3; y += 1) {
+  for (let x = 0; x < 4; x += 1) {
+    if (overlays.shouldRenderIce(context.world.planetTiles[y * 4 + x], x, y, 0.35)) {
+      firstIceTiles.push(x + "," + y);
+    }
+    if (overlays.shouldRenderIce(context.world.planetTiles[y * 4 + x], x, y, 0.75)) {
+      secondIceTiles.push(x + "," + y);
+    }
+  }
+}
+assert.ok(firstIceTiles.length < secondIceTiles.length, "increasing ice value should gradually freeze more deterministic tiles");
+assert.deepStrictEqual(firstIceTiles, firstIceTiles.slice(), "ice threshold selection should be deterministic");
+assert.strictEqual(overlays.shouldRenderIce({ biome: "grassland", detail: { surface: "grass" } }, 0, 0, 1), false, "ice should not render on non-water samples");
+
+const iceInfo = overlays.getIceTileInfo(context.world.planetTiles[0], 0, 0, 1);
+assert.ok(iceInfo, "high global ice should produce an ice tile");
+assert.ok(iceInfo.mask >= 0 && iceInfo.mask <= 15, "ice overlay should compute its own autotile mask");
+assert.ok(iceInfo.variant >= iceInfo.mask * 16 && iceInfo.variant < iceInfo.mask * 16 + 16, "ice variants should reserve 16 variants per mask");
+
+assert.strictEqual(overlays.drawIceOverlay(), true, "ice overlay should submit WebGPU rects");
+assert.ok(drawCalls[1].length > 0 && drawCalls[1].length % 8 === 0, "ice overlay rect payload should use rect/color stride");
+assert.strictEqual(overlays.getStats().iceOverlayCount, drawCalls[1].length / 8, "ice overlay stats should count submitted rects");
 
 console.log("environment overlay checks passed");

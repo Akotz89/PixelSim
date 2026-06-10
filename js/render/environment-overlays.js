@@ -5,7 +5,8 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
   height: 0,
   snowBaseData: null,
   stats: {
-    snowOverlayCount: 0
+    snowOverlayCount: 0,
+    iceOverlayCount: 0
   },
 
   initSnowBase: function (width, height) {
@@ -174,6 +175,69 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
     };
   },
 
+  getGlobalIce: function () {
+    if (typeof world !== "undefined" && world) {
+      if (Number.isFinite(Number(world.globalIce))) { return Math.max(0, Math.min(1, Number(world.globalIce))); }
+      if (Number.isFinite(Number(world.ice))) { return Math.max(0, Math.min(1, Number(world.ice))); }
+      if (world.weather && Number.isFinite(Number(world.weather.ice))) {
+        return Math.max(0, Math.min(1, Number(world.weather.ice)));
+      }
+    }
+    return 0;
+  },
+
+  isWaterSample: function (sample) {
+    if (PS.render.waterRendering && typeof PS.render.waterRendering.isWaterSample === "function") {
+      return PS.render.waterRendering.isWaterSample(sample, sample && sample.biome);
+    }
+
+    var detail = sample && sample.detail ? sample.detail : {};
+    var surface = String(detail.surface || sample && sample.surface || "").toLowerCase();
+    var biome = String(sample && sample.biome || "").toLowerCase();
+    var signals = detail.materialSignals || sample && sample.materialSignals || {};
+
+    return biome === "ocean" || biome === "lake" || surface.indexOf("water") >= 0 || Number(signals.waterDepth) > 0.05;
+  },
+
+  getIceThreshold: function (tileX, tileY) {
+    return this.hash(tileX, tileY, 113) & 65535;
+  },
+
+  shouldRenderIce: function (sample, tileX, tileY, iceValue) {
+    var ice = iceValue === undefined ? this.getGlobalIce() : Math.max(0, Math.min(1, Number(iceValue) || 0));
+    var threshold = this.getIceThreshold(tileX, tileY);
+
+    return this.isWaterSample(sample) && ice * 65535 > threshold;
+  },
+
+  computeIceMask: function (tileX, tileY, iceValue) {
+    var mask = 0;
+
+    if (this.shouldRenderIce(this.getSample(tileX + 1, tileY), tileX + 1, tileY, iceValue)) { mask |= 1; }
+    if (this.shouldRenderIce(this.getSample(tileX - 1, tileY), tileX - 1, tileY, iceValue)) { mask |= 2; }
+    if (this.shouldRenderIce(this.getSample(tileX, tileY + 1), tileX, tileY + 1, iceValue)) { mask |= 4; }
+    if (this.shouldRenderIce(this.getSample(tileX, tileY - 1), tileX, tileY - 1, iceValue)) { mask |= 8; }
+    return mask;
+  },
+
+  getIceTileInfo: function (sample, tileX, tileY, iceValue) {
+    var ice = iceValue === undefined ? this.getGlobalIce() : Math.max(0, Math.min(1, Number(iceValue) || 0));
+    var ran;
+    var mask;
+
+    if (!this.shouldRenderIce(sample, tileX, tileY, ice)) {
+      return null;
+    }
+
+    ran = this.hash(tileX, tileY, 127);
+    mask = this.computeIceMask(tileX, tileY, ice);
+    return {
+      mask: mask,
+      variant: (ran & 15) + mask * 16,
+      alpha: Math.max(0.28, Math.min(0.82, 0.24 + ice * 0.58))
+    };
+  },
+
   getVisibleTileRect: function () {
     if (PS.camera && PS.camera.unified && typeof PS.camera.unified.getVisibleTileRect === "function") {
       return PS.camera.unified.getVisibleTileRect();
@@ -231,8 +295,52 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
     return values;
   },
 
+  buildIceOverlayRects: function () {
+    var rect = this.getVisibleTileRect();
+    var tileSize = Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8);
+    var values = [];
+    var count = 0;
+
+    this.ensureSnowBase();
+
+    for (var y = Math.max(0, Math.floor(Number(rect.minY) || 0)); y <= Math.min(this.height - 1, Math.ceil(Number(rect.maxY) || 0)); y += 1) {
+      for (var x = Math.max(0, Math.floor(Number(rect.minX) || 0)); x <= Math.min(this.width - 1, Math.ceil(Number(rect.maxX) || 0)); x += 1) {
+        var info = this.getIceTileInfo(this.getSample(x, y), x, y);
+
+        if (!info) {
+          continue;
+        }
+
+        values.push(
+          x * tileSize,
+          y * tileSize,
+          tileSize,
+          tileSize,
+          0.62 + (info.mask & 1) * 0.015,
+          0.82 + (info.mask & 2) * 0.012,
+          0.90 + (info.mask & 4) * 0.01,
+          info.alpha
+        );
+        count += 1;
+      }
+    }
+
+    this.stats.iceOverlayCount = count;
+    return values;
+  },
+
   drawSnowOverlay: function () {
     var values = this.buildSnowOverlayRects();
+
+    if (!values || values.length <= 0 || !PS.render.webgpuEntity || typeof PS.render.webgpuEntity.drawParticleRects !== "function") {
+      return false;
+    }
+
+    return PS.render.webgpuEntity.drawParticleRects(new Float32Array(values));
+  },
+
+  drawIceOverlay: function () {
+    var values = this.buildIceOverlayRects();
 
     if (!values || values.length <= 0 || !PS.render.webgpuEntity || typeof PS.render.webgpuEntity.drawParticleRects !== "function") {
       return false;
