@@ -19,6 +19,7 @@ const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
 const compositorSource = read("js/render/webgpu-compositor.js");
 const equivalenceSource = read("js/assets/equivalence.js");
+const waterRenderingSource = read("js/render/water-rendering.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
 const terrainWgsl = read("shaders/terrain.wgsl");
@@ -31,8 +32,9 @@ assert.ok(
   "WebGPU surface tile renderer should load after WebGPU surface underlay"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/surface-tile-batcher.js") < namespaceSource.indexOf("js/render/webgpu-surface-tile.js"),
-  "neutral surface tile batcher should load before the WebGPU surface tile renderer"
+  namespaceSource.indexOf("js/render/water-rendering.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js") &&
+    namespaceSource.indexOf("js/render/surface-tile-batcher.js") < namespaceSource.indexOf("js/render/webgpu-surface-tile.js"),
+  "water rendering helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
 );
 assert.strictEqual(namespaceSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
@@ -69,9 +71,21 @@ assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU su
   "@location(2) uv_rect: vec4<f32>",
   "@location(3) alpha: f32",
   "@location(4) flip_h: f32",
+  "@location(6) water_depth: f32",
+  "@location(7) water_stencil: f32",
+  "@location(8) water_wave: f32",
+  "@location(9) water_growth: f32",
   "textureSample(atlas_texture",
   "color.rgb * input.shade",
-  "input.alpha"
+  "input.alpha",
+  "fn shore_stencil_coverage",
+  "fn water_depth_color",
+  "mix(normal_color, winter_color, 1.0 - clamp(input.water_growth",
+  "let variant = (stencil >> 4u) & 3u",
+  "let variant_bias = f32(variant) * 0.025",
+  "let normal = shade_water(shore, 0.38)",
+  "renderTextured-compatible edge compositing",
+  "input.water_wave / 7.0"
 ].forEach(function (required) {
   assert.ok(terrainTileWgsl.indexOf(required) >= 0, "terrain-tile WGSL should contain " + required);
 });
@@ -87,8 +101,20 @@ assert.strictEqual(terrainTileWgsl.indexOf("color.a * input.alpha"), -1, "terrai
   "texel_size: vec2<f32>",
   "@location(3) uv_rect: vec4<f32>",
   "@location(4) normal_mode: f32",
+  "@location(6) water_depth: f32",
+  "@location(7) water_stencil: f32",
+  "@location(8) water_wave: f32",
+  "@location(9) water_growth: f32",
   "fn sample_split_normal",
   "fn sample_procedural_normal",
+  "fn shore_stencil_coverage",
+  "fn water_depth_color",
+  "mix(normal_color, winter_color, 1.0 - clamp(input.water_growth",
+  "let variant = (stencil >> 4u) & 3u",
+  "let variant_bias = f32(variant) * 0.025",
+  "let normal = shade_water(shore, 0.38)",
+  "renderTextured-compatible edge compositing",
+  "input.water_wave / 7.0",
   "let tile_width = abs(input.uv_rect.z - input.uv_rect.x)",
   "let normal_offset = tile_width * 8.0",
   "let normal_u = clamp(input.uv.x + normal_offset",
@@ -283,6 +309,7 @@ vm.runInContext(targetsSource, context, { filename: "js/render/webgpu-targets.js
 vm.runInContext(gbufferSource, context, { filename: "js/render/webgpu-gbuffer.js" });
 vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-compositor.js" });
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
+vm.runInContext(waterRenderingSource, context, { filename: "js/render/water-rendering.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 vm.runInContext(surfaceTileSource, context, { filename: "js/render/webgpu-surface-tile.js" });
 
@@ -351,7 +378,7 @@ assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit acce
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
 Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
   var page = acceptedTerrainBatches.pages[pageIndex];
-  for (let offset = 10; offset < page.length; offset += 11) {
+  for (let offset = 10; offset < page.length; offset += 15) {
     assert.strictEqual(page.data[offset], 0, "non-split terrain instances should keep procedural G-buffer normal sampling");
   }
 });
@@ -424,17 +451,54 @@ assert.ok(Object.keys(automaticTerrainBatches.materialCounts).some(function (nam
 assert.ok(Object.keys(automaticTerrainBatches.materialCounts).some(function (name) { return name.indexOf("terrain.sand.") === 0; }), "automatic surface batching should select split-atlas sand material");
 Object.keys(automaticTerrainBatches.pages).forEach(function (pageIndex) {
   var page = automaticTerrainBatches.pages[pageIndex];
-  for (let offset = 10; offset < page.length; offset += 11) {
+  for (let offset = 10; offset < page.length; offset += 15) {
     assert.strictEqual(page.data[offset], 1, "split-atlas material instances should set the normal sampling flag");
   }
 });
+
+context.world.timeMs = 1600;
+const waterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 6,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: {
+    biome: "ocean",
+    detail: {
+      surface: "tidal shore",
+      feature: "foam",
+      materialSignals: {
+        waterDepth: 0.22,
+        shallowWater: 0.8,
+        shoreMask: 10,
+        growth: 0.25
+      }
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1);
+const waterPage = waterBatches.pages[Object.keys(waterBatches.pages)[0]];
+assert.strictEqual(context.PS.render.waterRendering.getShoreWaveOffset(0), 0, "shore wave animation should start at frame zero");
+assert.strictEqual(context.PS.render.waterRendering.getShoreWaveOffset(1400), 7, "shore wave animation should ping up to frame seven");
+assert.strictEqual(context.PS.render.waterRendering.getShoreWaveOffset(2200), 3, "shore wave animation should ping back down after frame seven");
+assert.strictEqual(waterPage.data[11], 1, "shore water instances should encode shore depth");
+assert.strictEqual(waterPage.data[12] & 15, 10, "water instances should encode the autotile shore mask in the stencil low nibble");
+assert.strictEqual(Math.floor(waterPage.data[12] / 16) >= 0 && Math.floor(waterPage.data[12] / 16) <= 3, true, "water stencil should reserve four random variants per mask");
+assert.strictEqual(waterPage.data[13], 6, "water instances should encode triangle-wave shore animation offset");
+assert.strictEqual(waterPage.data[14], 0.25, "water instances should encode seasonal growth for water color interpolation");
+assert.strictEqual(context.PS.render.waterRendering.getDepthCode({ biome: "lake", detail: { surface: "open water", materialSignals: { waterDepth: 0.5 } } }, "lake"), 2, "open water should encode normal depth");
+assert.strictEqual(context.PS.render.waterRendering.getDepthCode({ biome: "ocean", detail: { surface: "deep water", materialSignals: { waterDepth: 0.9 } } }, "ocean"), 3, "deep water should encode deep depth");
 
 const drew = surfaceTile.drawBatches({
   pages: {
     0: new Float32Array([
       8, 12, 16, 16,
       0, 0, 0.5, 0.5,
-      1, 0.25, 1
+      1, 0.25, 1, 2, 33, 4, 0.75
     ])
   },
   count: 1,

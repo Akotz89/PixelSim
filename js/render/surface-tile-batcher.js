@@ -2,7 +2,7 @@
 PS.render = PS.render || {};
 PS.render.surfaceTileBatcher = PS.render.surfaceTileBatcher || {};
 
-PS.render.surfaceTileBatcher.strideFloats = 11;
+PS.render.surfaceTileBatcher.strideFloats = 15;
 
 PS.render.surfaceTileBatcher.state = PS.render.surfaceTileBatcher.state || {
   pageBuffers: {},
@@ -356,9 +356,11 @@ PS.render.surfaceTileBatcher.appendInstance = function (
   v1,
   alpha,
   flipH,
-  splitNormal
+  splitNormal,
+  waterInfo
 ) {
   var offset = page.length;
+  var water = waterInfo || null;
 
   page.data[offset] = x;
   page.data[offset + 1] = y;
@@ -371,6 +373,10 @@ PS.render.surfaceTileBatcher.appendInstance = function (
   page.data[offset + 8] = alpha;
   page.data[offset + 9] = flipH;
   page.data[offset + 10] = splitNormal ? 1 : 0;
+  page.data[offset + 11] = water ? water.depthCode : 0;
+  page.data[offset + 12] = water ? water.stencilIndex : 0;
+  page.data[offset + 13] = water ? water.waveOffset : 0;
+  page.data[offset + 14] = water ? water.growth : 1;
   page.length += PS.render.surfaceTileBatcher.strideFloats;
 };
 
@@ -471,6 +477,9 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     var screenX = screenOffsetX + cellData.screenX * (samplePixelSize / CONFIG.TILE_SIZE);
     var screenY = screenOffsetY + cellData.screenY * (samplePixelSize / CONFIG.TILE_SIZE);
     var featherAlpha = PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.getAlpha === "function" ? PS.render.surfaceReadyFeather.getAlpha(address, screenX, screenY, samplePixelSize) : 1;
+    var waterInfo = PS.render.waterRendering && typeof PS.render.waterRendering.getRenderInfo === "function"
+      ? PS.render.waterRendering.getRenderInfo(sample, biome, tileX, tileY)
+      : null;
 
     PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY);
     PS.render.surfaceTileBatcher.appendInstance(
@@ -485,7 +494,8 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       cell.v1,
       tileAlpha * featherAlpha,
       flipH,
-      cell.splitAtlas
+      cell.splitAtlas,
+      waterInfo
     );
     target.count++;
   }
