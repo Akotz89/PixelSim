@@ -565,7 +565,61 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
   var drawnChunks = 0;
   var pendingChunks = 0;
   var placeholderChunks = 0;
+  var fallbackBudget = PS.render.surfaceRender.getFallbackChunksPerPass();
+  var fallbackGeneratedThisPass = 0;
+  var fallbackPendingChunks = 0;
+  var fallbackChunks = 0;
   var readyChunks = [];
+
+  function queueReadyChunk(address, chunk, chunkAlpha, extra) {
+    var screenRect = PS.render.surface.getChunkScreenRect(address);
+    var drawAddress = Object.assign({}, address, {
+      renderScreenX: screenRect.x,
+      renderScreenY: screenRect.y,
+      renderSamplePixelSize: screenRect.width / Math.max(1, address.chunkSamples)
+    }, extra || {});
+
+    if (PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.applyAddress === "function") {
+      PS.render.surfaceReadyFeather.applyAddress(drawAddress, canvas);
+    }
+
+    readyChunks.push({
+      address: drawAddress,
+      cellCache: chunk.cellCache,
+      alpha: chunkAlpha
+    });
+  }
+
+  function queueParentFallback(fineAddress, chunkAlpha) {
+    var lineage = PS.render.surface.getChunkLineage(fineAddress);
+
+    for (var parentIndex = 0; parentIndex < lineage.length; parentIndex++) {
+      var parentInfo = lineage[parentIndex];
+      var parentAddress = PS.render.surface.getChunkParentAddress(fineAddress, parentInfo.zoomLevel);
+      var allowFallbackGenerate = fallbackGeneratedThisPass < fallbackBudget;
+      var generatedBefore = localSurfaceRenderChunkCache.stats.generatedChunks;
+      var parentChunk = PS.render.surfaceRender.getChunk(parentAddress, allowFallbackGenerate);
+      var generatedAfter = localSurfaceRenderChunkCache.stats.generatedChunks;
+
+      if (generatedAfter > generatedBefore) {
+        fallbackGeneratedThisPass += generatedAfter - generatedBefore;
+      }
+
+      if (!parentChunk || parentChunk.readyState !== "ready" || !Array.isArray(parentChunk.cellCache)) {
+        fallbackPendingChunks++;
+        continue;
+      }
+
+      queueReadyChunk(parentAddress, parentChunk, chunkAlpha, {
+        fallbackForChunkKey: fineAddress.chunkKey,
+        fallbackZoomLevel: parentAddress.zoomLevel
+      });
+      fallbackChunks++;
+      return true;
+    }
+
+    return false;
+  }
 
   localSurfaceRenderChunkCache.stats.lastVisibleChunks = queue.visibleCount || 0;
   localSurfaceRenderChunkCache.stats.lastVisibleQueueChunks = queue.visibleCount || 0;
@@ -577,11 +631,20 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
   for (var i = 0; i < queue.length; i++) {
     var item = queue[i];
     var allowGenerate = generatedThisPass < generatedBudget;
+    var generatedBefore = localSurfaceRenderChunkCache.stats.generatedChunks;
     var chunk = PS.render.surfaceRender.getChunk(item.address, allowGenerate);
+    var generatedAfter = localSurfaceRenderChunkCache.stats.generatedChunks;
+
+    if (generatedAfter > generatedBefore) {
+      generatedThisPass += generatedAfter - generatedBefore;
+    }
 
     if (!chunk || chunk.readyState !== "ready" || !Array.isArray(chunk.cellCache)) {
       pendingChunks++;
-      if (allowGenerate) {
+      if (item.queueType === "visible") {
+        queueParentFallback(item.address, alpha);
+      }
+      if (allowGenerate && generatedAfter === generatedBefore) {
         generatedThisPass++;
       }
       continue;
@@ -591,20 +654,7 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
       continue;
     }
 
-    var drawAddress = Object.assign({}, item.address, {
-      renderScreenX: item.screenX,
-      renderScreenY: item.screenY,
-      renderSamplePixelSize: item.width / Math.max(1, item.address.chunkSamples)
-    });
-    if (PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.applyAddress === "function") {
-      PS.render.surfaceReadyFeather.applyAddress(drawAddress, canvas);
-    }
-
-    readyChunks.push({
-      address: drawAddress,
-      cellCache: chunk.cellCache,
-      alpha: alpha
-    });
+    queueReadyChunk(item.address, chunk, alpha);
   }
 
   if (readyChunks.length > 0) {
@@ -621,7 +671,14 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
 
   localSurfaceRenderChunkCache.stats.lastPendingChunks = pendingChunks;
   localSurfaceRenderChunkCache.stats.lastGeneratedThisPass = generatedThisPass;
+  localSurfaceRenderChunkCache.stats.lastFallbackChunks = fallbackChunks;
+  localSurfaceRenderChunkCache.stats.lastFallbackGeneratedThisPass = fallbackGeneratedThisPass;
+  localSurfaceRenderChunkCache.stats.lastFallbackPendingChunks = fallbackPendingChunks;
   localSurfaceRenderChunkCache.stats.lastPlaceholderChunks = placeholderChunks;
+
+  if (pendingChunks > 0 && typeof world !== "undefined" && world) {
+    world.needsRender = true;
+  }
 
   if (PS.render.webgpuSurfaceTile && PS.render.webgpuSurfaceTile.state) {
     PS.render.webgpuSurfaceTile.state.lastFrameMs = Math.max(

@@ -225,6 +225,16 @@ assertNear(getPlanetView().zoomLevel, initialZoom + 0.25, 1e-12, "fractional zoo
 var localAfter = getPlanetLatLonFromCanvasPoint(cursorX, cursorY);
 assertNear(localAfter.latitude, localBefore.latitude, 1e-9, "anchored local latitude");
 assertNear(localAfter.longitude, localBefore.longitude, 1e-9, "anchored local longitude");
+var fractionalScaleInfo = getPlanetCameraScaleInfo();
+assert.strictEqual(fractionalScaleInfo.anchorLevel, initialZoom, "fractional zoom should retain a stable cache anchor level");
+assert.ok(
+  fractionalScaleInfo.metersPerSample < CONFIG.PLANET_ZOOM_LEVELS[initialZoom].metersPerSample &&
+  fractionalScaleInfo.metersPerSample > CONFIG.PLANET_ZOOM_LEVELS[initialZoom + 1].metersPerSample,
+  "fractional zoom should interpolate meters per sample between configured levels"
+);
+PS.camera.setZoom(initialZoom);
+assert.strictEqual(getPlanetCameraScaleInfo().metersPerSample, CONFIG.PLANET_ZOOM_LEVELS[initialZoom].metersPerSample, "integer zoom should preserve exact configured scale");
+PS.camera.setZoom(initialZoom + 0.25);
 var zoomTransitionStats = PS.camera.getZoomTransitionStats();
 assert.strictEqual(zoomTransitionStats.lastZoomDirection, 1, "anchored zoom should record forward zoom direction");
 assertNear(zoomTransitionStats.lastZoomFrom, initialZoom, 1e-12, "anchored zoom should record source zoom");
@@ -313,6 +323,83 @@ assertNear(
   1e-9,
   "scale bar pixel width should derive from meters per canvas pixel"
 );
+
+PS.render.surfaceRender.resetChunkCache();
+var surfaceSampleA = PS.render.surface.getChunkSample(centerLatLon.latitude, centerLatLon.longitude);
+var surfaceSampleB = PS.render.surface.getChunkSample(centerLatLon.latitude, centerLatLon.longitude);
+var surfaceCacheStats = getPlanetSurfaceCacheStats();
+assert.strictEqual(surfaceSampleA, surfaceSampleB, "same surface location and zoom should reuse the cached sample object");
+assert.strictEqual(surfaceSampleA.surfaceChunkKey, centerAddress.chunkKey, "cached sample should preserve deterministic chunk key");
+assert.strictEqual(surfaceSampleA.surfaceSampleMeters, 1, "cached house sample should preserve one-meter scale");
+assert.ok(surfaceCacheStats.hits >= 1, "surface cache stats should record same-location hits");
+
+var parentAddress = getPlanetSurfaceChunkParentAddress(centerAddress, finalGroundZoomIndex - 1);
+var lineage = getPlanetSurfaceChunkLineage(centerAddress);
+var parentSample = getPlanetSurfaceChunkSampleAtAddress(parentAddress, 0, 0);
+assert.ok(parentAddress, "fine chunk should expose a parent address");
+assert.strictEqual(parentAddress.zoomLevel, finalGroundZoomIndex - 1, "parent address should target the requested coarser LOD");
+assert.ok(lineage.length >= finalGroundZoomIndex, "fine chunk should expose parent lineage across coarser LODs");
+assert.ok(getPlanetSurfaceChunkLineageLabel(lineage).indexOf(parentAddress.scaleName) >= 0, "lineage label should include parent scale names");
+assert.notStrictEqual(parentSample.surfaceChunkKey, surfaceSampleA.surfaceChunkKey, "parent and fine samples should keep separate LOD cache keys");
+assert.strictEqual(parentSample.surfaceSampleMeters, parentAddress.sampleMeters, "addressed parent sample should use the parent LOD sample scale");
+assert.strictEqual(parentSample.surfaceChunkKey, parentAddress.chunkKey, "addressed parent sample should stay keyed to the parent chunk");
+
+var visibleChunks = getPlanetVisibleSurfaceChunks(1, 3);
+assert.ok(visibleChunks.length > 0, "visible surface chunk enumeration should return chunks directly");
+assert.ok(visibleChunks.length <= 3, "visible surface chunk enumeration should honor the working-set limit");
+assert.ok(visibleChunks.totalCandidateChunks >= visibleChunks.length, "visible chunk stats should retain the uncropped candidate count");
+if (visibleChunks.length > 1) {
+  assert.ok(
+    visibleChunks[0].priorityScore <= visibleChunks[1].priorityScore,
+    "visible chunk enumeration should sort by priority"
+  );
+}
+
+var renderChunkA = PS.render.surfaceRender.getChunk(centerAddress, true);
+var renderChunkB = PS.render.surfaceRender.getChunk(centerAddress, true);
+assert.ok(renderChunkA && renderChunkA.readyState === "ready", "render cache should generate a reusable ready chunk");
+assert.strictEqual(renderChunkA, renderChunkB, "render cache should reuse ready chunks for the same address");
+PS.render.surfaceRender.markDirty(centerAddress);
+var renderChunkC = PS.render.surfaceRender.getChunk(centerAddress, true);
+var renderStatsAfterDirty = PS.render.surfaceRender.getCacheStats();
+assert.notStrictEqual(renderChunkC, renderChunkA, "dirty render chunk should regenerate on next request");
+assert.ok(renderStatsAfterDirty.dirtyInvalidations >= 1, "render cache stats should record dirty invalidation");
+
+var originalChunksPerPass = CONFIG.PLANET_SURFACE_RENDER_CHUNKS_PER_PASS;
+var originalIdleChunksPerPass = CONFIG.PLANET_SURFACE_RENDER_IDLE_CHUNKS_PER_PASS;
+var originalVisibleChunkLimit = CONFIG.PLANET_SURFACE_VISIBLE_CHUNK_LIMIT;
+var originalChunkSamples = CONFIG.PLANET_SURFACE_CHUNK_SAMPLES;
+var originalFallbackChunksPerPass = CONFIG.PLANET_SURFACE_RENDER_FALLBACK_CHUNKS_PER_PASS;
+var originalRendererDrawTilemap = PS.render.renderer.drawTilemap;
+var drawnTilemapPayload = null;
+CONFIG.PLANET_SURFACE_CHUNK_SAMPLES = 1;
+CONFIG.PLANET_SURFACE_RENDER_CHUNKS_PER_PASS = 1;
+CONFIG.PLANET_SURFACE_RENDER_IDLE_CHUNKS_PER_PASS = 1;
+CONFIG.PLANET_SURFACE_RENDER_FALLBACK_CHUNKS_PER_PASS = 2;
+CONFIG.PLANET_SURFACE_VISIBLE_CHUNK_LIMIT = 6;
+PS.render.surfaceRender.resetChunkCache();
+PS.render.renderer.drawTilemap = function (payload) {
+  drawnTilemapPayload = payload;
+  return true;
+};
+assert.strictEqual(PS.render.terrain.drawLocalSurface(1), true, "progressive local surface draw should submit ready chunks");
+var progressiveRenderStats = PS.render.surfaceRender.getCacheStats();
+assert.ok(drawnTilemapPayload && Array.isArray(drawnTilemapPayload.chunks), "local terrain draw should submit chunk batches to the renderer");
+assert.ok(progressiveRenderStats.lastVisibleChunks > 1, "progressive draw should enumerate multiple visible chunks");
+assert.ok(progressiveRenderStats.lastGeneratedThisPass <= 1, "progressive draw should honor the per-pass generation budget");
+assert.ok(
+  progressiveRenderStats.lastPendingChunks > 0,
+  "progressive draw should track pending visible chunks " + JSON.stringify(progressiveRenderStats)
+);
+assert.ok(progressiveRenderStats.lastFallbackChunks > 0, "pending chunks should draw coarser parent fallback chunks");
+assert.ok(progressiveRenderStats.lastFallbackGeneratedThisPass <= 2, "parent fallback generation should honor its budget");
+assert.strictEqual(world.needsRender, true, "pending chunks should schedule another render pass");
+CONFIG.PLANET_SURFACE_RENDER_CHUNKS_PER_PASS = originalChunksPerPass;
+CONFIG.PLANET_SURFACE_RENDER_IDLE_CHUNKS_PER_PASS = originalIdleChunksPerPass;
+CONFIG.PLANET_SURFACE_VISIBLE_CHUNK_LIMIT = originalVisibleChunkLimit;
+CONFIG.PLANET_SURFACE_CHUNK_SAMPLES = originalChunkSamples;
+CONFIG.PLANET_SURFACE_RENDER_FALLBACK_CHUNKS_PER_PASS = originalFallbackChunksPerPass;
+PS.render.renderer.drawTilemap = originalRendererDrawTilemap;
 
 world.planetView.zoomLevel = 0;
 var orbitScaleInfo = getPlanetCameraScaleInfo();
