@@ -292,6 +292,8 @@ world.planetView = {
 var centerLatLon = getPlanetLatLonFromCanvasPoint(canvas.width / 2, canvas.height / 2);
 var centerPoint = getPlanetLocalCanvasPoint(centerLatLon.longitude, centerLatLon.latitude);
 var centerAddress = getPlanetSurfaceSampleAddress(centerLatLon.latitude, centerLatLon.longitude);
+var groundScaleInfo = getPlanetCameraScaleInfo();
+var groundScaleBar = PS.camera.getScaleBar(220);
 
 assertNear(centerLatLon.latitude, world.planetView.latitude, 1e-9, "meter projection center latitude");
 assertNear(centerLatLon.longitude, world.planetView.longitude, 1e-9, "meter projection center longitude");
@@ -299,6 +301,26 @@ assertNear(centerPoint.x, canvas.width / 2, 1e-6, "meter projection center x");
 assertNear(centerPoint.y, canvas.height / 2, 1e-6, "meter projection center y");
 assert.strictEqual(centerAddress.zoomLevel, finalGroundZoomIndex, "final zoom should select meter surface LOD");
 assert.strictEqual(centerAddress.sampleMeters, 1, "final zoom should use one-meter samples");
+assert.strictEqual(groundScaleInfo.metersPerSample, 1, "house scale should report one meter per surface sample");
+assertNear(groundScaleInfo.footprintWidthKm, WORLD_WIDTH / 1000, 1e-12, "house scale should report viewport footprint width");
+assertNear(groundScaleInfo.footprintHeightKm, WORLD_HEIGHT / 1000, 1e-12, "house scale should report viewport footprint height");
+assert.ok(Number.isFinite(groundScaleInfo.approximateAltitudeKm) && groundScaleInfo.approximateAltitudeKm > 0, "house scale camera altitude should be finite");
+assert.ok(groundScaleBar.distanceMeters > 0, "scale bar should choose a positive nice distance");
+assert.ok(groundScaleBar.pixelWidth >= 80, "scale bar should remain readable at house scale");
+assertNear(
+  groundScaleBar.pixelWidth,
+  groundScaleBar.distanceMeters / groundScaleInfo.metersPerCanvasPixel,
+  1e-9,
+  "scale bar pixel width should derive from meters per canvas pixel"
+);
+
+world.planetView.zoomLevel = 0;
+var orbitScaleInfo = getPlanetCameraScaleInfo();
+assert.ok(
+  orbitScaleInfo.approximateAltitudeKm > groundScaleInfo.approximateAltitudeKm,
+  "camera altitude should grow consistently from house scale to orbit scale"
+);
+world.planetView.zoomLevel = finalGroundZoomIndex;
 
 fillPlanetTiles("ocean");
 var oceanTile = getPlanetTile(Math.floor(WORLD_WIDTH / 2), Math.floor(WORLD_HEIGHT / 2));
