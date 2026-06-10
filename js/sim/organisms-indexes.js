@@ -1,7 +1,24 @@
 "use strict";
-function getOrganismTravelKmPerTick() {
+function getLimbMovementMultiplierFromValue(limbCount) {
+  return 0.5 + clamp(
+    Number(limbCount) / Math.max(1, Number(CONFIG.TRAIT_LIMB_COUNT_MAX) || 1),
+    0,
+    1
+  ) * 0.5;
+}
+
+function getLimbMovementMultiplier(traits) {
+  var limbCount = traits && Number.isFinite(Number(traits.limbCount))
+    ? Number(traits.limbCount)
+    : CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
+
+  return getLimbMovementMultiplierFromValue(limbCount);
+}
+
+function getOrganismTravelKmPerTick(traits) {
   return Math.max(0, Number(CONFIG.ORGANISM_TRAVEL_KM_PER_DAY) || 0) *
-    Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0);
+    Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0) *
+    (traits ? getLimbMovementMultiplier(traits) : 1);
 }
 
 function getOrganismBucketSize() {

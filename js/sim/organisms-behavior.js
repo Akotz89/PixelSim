@@ -24,6 +24,34 @@ function applyTerrainEnergyCost(organism, traits) {
   organism.energy -= getTerrainEnergyCost(traits, organism.x, organism.y);
 }
 
+function getBodySizeEnergyMultiplier(traits) {
+  var bodySize = Number(traits && traits.bodySize);
+
+  if (!Number.isFinite(bodySize)) {
+    bodySize = CONFIG.TRAIT_BODY_SIZE_DEFAULT;
+  }
+
+  return 0.5 + bodySize * 0.3;
+}
+
+function getBodySizeMetabolismMultiplier(traits) {
+  var bodySize = Number(traits && traits.bodySize);
+
+  if (!Number.isFinite(bodySize)) {
+    bodySize = CONFIG.TRAIT_BODY_SIZE_DEFAULT;
+  }
+
+  return 0.7 + bodySize * 0.2;
+}
+
+function getTraitAdjustedFoodEnergyValue(traits) {
+  return CONFIG.FOOD_ENERGY_VALUE * getBodySizeEnergyMultiplier(traits);
+}
+
+function getTraitAdjustedMetabolismCost(traits) {
+  return traits.metabolism * getBodySizeMetabolismMultiplier(traits);
+}
+
 function chooseRoamingDirection(organism, traits) {
   var bestDirections = [];
   var bestMismatch = Infinity;
@@ -63,7 +91,7 @@ function eatFoodOnCurrentTile(organism) {
     return false;
   }
 
-  organism.energy += CONFIG.FOOD_ENERGY_VALUE;
+  organism.energy += getTraitAdjustedFoodEnergyValue(ensureOrganismTraits(organism));
 
   if (typeof recordFoodConsumed === "function") {
     recordFoodConsumed(1);
@@ -276,10 +304,10 @@ function updateOrganism(organism) {
     ? organism.longitude
     : getPlanetLongitudeForTile(organism.x);
   organism.age++;
-  organism.travelKm = Math.max(0, Number(organism.travelKm) || 0) + getOrganismTravelKmPerTick();
+  organism.travelKm = Math.max(0, Number(organism.travelKm) || 0) + getOrganismTravelKmPerTick(traits);
 
   if (world.tick % 3 === 0) {
-    organism.energy -= traits.metabolism;
+    organism.energy -= getTraitAdjustedMetabolismCost(traits);
     applyTerrainEnergyCost(organism, traits);
   }
 
@@ -311,7 +339,7 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
   }
 
   var arrays = PS.pools.organism.arrays;
-  var travelKmPerTick = getOrganismTravelKmPerTick();
+  var baseTravelKmPerTick = getOrganismTravelKmPerTick();
   var applyEnergyCostThisTick = world.tick % 3 === 0;
   var foragingInterval = Math.max(1, Math.round(Number(CONFIG.ORGANISM_FORAGING_INTERVAL) || 1));
   var foodPositions = world.foodPositions || {};
@@ -331,7 +359,9 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
     var x = getWrappedWorldX(arrays.x[pooledIndex]);
     var y = getClampedWorldY(arrays.y[pooledIndex]);
     var energy = arrays.energy[pooledIndex];
-    var travelKm = Math.max(0, Number(arrays.travelKm[pooledIndex]) || 0) + travelKmPerTick;
+    var limbCount = arrays.limbCount[pooledIndex];
+    var travelKm = Math.max(0, Number(arrays.travelKm[pooledIndex]) || 0) +
+      baseTravelKmPerTick * getLimbMovementMultiplierFromValue(limbCount);
     var carnivory = arrays.carnivory[pooledIndex];
 
     if (energy <= 0) {
@@ -349,7 +379,9 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
     arrays.age[pooledIndex]++;
 
     if (applyEnergyCostThisTick) {
-      energy -= arrays.metabolism[pooledIndex];
+      energy -= arrays.metabolism[pooledIndex] * getBodySizeMetabolismMultiplier({
+        bodySize: arrays.bodySize[pooledIndex]
+      });
       energy -= Math.abs(arrays.terrainAffinity[pooledIndex] - getTerrainAffinityTargetValue(x, y)) *
         CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
     }
@@ -410,7 +442,9 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
     var foodKey = x + ":" + y;
 
     if (!isPooledCarnivore && foodPositions[foodKey] && removeFoodAtPosition(x, y)) {
-      energy += CONFIG.FOOD_ENERGY_VALUE;
+      energy += getTraitAdjustedFoodEnergyValue({
+        bodySize: arrays.bodySize[pooledIndex]
+      });
 
       if (typeof recordFoodConsumed === "function") {
         recordFoodConsumed(1);
