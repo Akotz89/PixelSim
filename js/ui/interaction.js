@@ -36,7 +36,7 @@ function registerSimulationInputActions() {
     return setMenuOpen(false);
   });
   PS.input.on("toggle_performance", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target) || !window.PS || !PS.debug || !PS.debug.performance) {
+    if (!PS.debug || !PS.debug.performance) {
       return false;
     }
 
@@ -44,7 +44,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("toggle_overlays", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target) || !window.PS || !PS.debug || !PS.debug.overlays) {
+    if (!PS.debug || !PS.debug.overlays) {
       return false;
     }
 
@@ -52,7 +52,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("toggle_profiler", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target) || !window.PS || !PS.debug || !PS.debug.profiler) {
+    if (!PS.debug || !PS.debug.profiler) {
       return false;
     }
 
@@ -60,7 +60,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("toggle_console", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target) || !window.PS || !PS.debug || !PS.debug.console) {
+    if (!PS.debug || !PS.debug.console) {
       return false;
     }
 
@@ -68,7 +68,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("cycle_observation_overlay", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target) || !window.PS || !PS.ui || !PS.ui.observationOverlays) {
+    if (!PS.ui || !PS.ui.observationOverlays) {
       return false;
     }
 
@@ -76,83 +76,51 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("toggle_menu", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     toggleMenuOpen();
     return true;
   });
   PS.input.on("toggle_pause", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     toggleSimulationPaused();
     return true;
   });
   PS.input.on("step_once", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     stepSimulationOnce();
     return true;
   });
   PS.input.on("zoom_in_large", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     zoomPlanetView(1);
     return true;
   });
   PS.input.on("zoom_out_large", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     zoomPlanetView(-1);
     return true;
   });
   PS.input.on("zoom_in", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     zoomPlanetView(0.5);
     return true;
   });
   PS.input.on("zoom_out", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     zoomPlanetView(-0.5);
     return true;
   });
   PS.input.on("pan_up", function(event) {
-    return shouldIgnoreSimulationShortcut(event.target) ? false : panPlanetViewFromKeyboard(0, 24);
+    return panPlanetViewFromKeyboard(0, 24);
   });
   PS.input.on("pan_down", function(event) {
-    return shouldIgnoreSimulationShortcut(event.target) ? false : panPlanetViewFromKeyboard(0, -24);
+    return panPlanetViewFromKeyboard(0, -24);
   });
   PS.input.on("pan_left", function(event) {
-    return shouldIgnoreSimulationShortcut(event.target) ? false : panPlanetViewFromKeyboard(-24, 0);
+    return panPlanetViewFromKeyboard(-24, 0);
   });
   PS.input.on("pan_right", function(event) {
-    return shouldIgnoreSimulationShortcut(event.target) ? false : panPlanetViewFromKeyboard(24, 0);
+    return panPlanetViewFromKeyboard(24, 0);
   });
   PS.input.on("restart", function(event) {
-    if (shouldIgnoreSimulationShortcut(event.target)) {
-      return false;
-    }
-
     requestRestartSimulationFromControls();
     return true;
   });
   PS.input.on("menu_page_controls", function(event) {
-    if (!world.isMenuOpen || shouldIgnoreSimulationShortcut(event.target)) {
+    if (!world.isMenuOpen) {
       return false;
     }
 
@@ -160,7 +128,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("menu_page_status", function(event) {
-    if (!world.isMenuOpen || shouldIgnoreSimulationShortcut(event.target)) {
+    if (!world.isMenuOpen) {
       return false;
     }
 
@@ -168,7 +136,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("menu_page_ecosystem", function(event) {
-    if (!world.isMenuOpen || shouldIgnoreSimulationShortcut(event.target)) {
+    if (!world.isMenuOpen) {
       return false;
     }
 
@@ -176,7 +144,7 @@ function registerSimulationInputActions() {
     return true;
   });
   PS.input.on("menu_page_log", function(event) {
-    if (!world.isMenuOpen || shouldIgnoreSimulationShortcut(event.target)) {
+    if (!world.isMenuOpen) {
       return false;
     }
 
@@ -204,6 +172,10 @@ function shouldIgnoreSimulationShortcut(target) {
 }
 
 function handleSimulationShortcut(event) {
+  if (shouldIgnoreSimulationShortcut(event.target)) {
+    return false;
+  }
+
   var handled = PS.input && typeof PS.input.handleKeyDown === "function"
     ? PS.input.handleKeyDown(event)
     : false;

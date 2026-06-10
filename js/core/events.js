@@ -4,6 +4,7 @@ PS.events = PS.events || {};
 PS.events.listeners = PS.events.listeners || {};
 PS.events.history = PS.events.history || [];
 PS.events.historyLimit = PS.events.historyLimit || 256;
+PS.events.historyCursor = PS.events.historyCursor || 0;
 PS.events.types = PS.eventTypes || PS.events.types || {};
 PS.events.payloads = PS.eventPayloads || PS.events.payloads || {};
 PS.events.emitCounts = PS.events.emitCounts || {};
@@ -68,10 +69,11 @@ PS.events.emit = function (name, payload) {
 
   PS.events.emitCounts[name] = (PS.events.emitCounts[name] || 0) + 1;
 
-  PS.events.history.push(entry);
-
-  if (PS.events.history.length > PS.events.historyLimit) {
-    PS.events.history.shift();
+  if (PS.events.history.length < PS.events.historyLimit) {
+    PS.events.history.push(entry);
+  } else if (PS.events.historyLimit > 0) {
+    PS.events.history[PS.events.historyCursor] = entry;
+    PS.events.historyCursor = (PS.events.historyCursor + 1) % PS.events.historyLimit;
   }
 
   var handlers = PS.events.listeners[name] || [];
@@ -150,6 +152,7 @@ PS.events.clearStats = function () {
 
 PS.events.clearHistory = function () {
   PS.events.history.length = 0;
+  PS.events.historyCursor = 0;
 };
 
 PS.events.getMilestoneContract = function() {
@@ -324,14 +327,6 @@ PS.events.milestoneDetectors = {
       value: value
     };
   },
-  populationAtLeast: function(definition) {
-    var value = Array.isArray(world.organisms) ? world.organisms.length : 0;
-
-    return {
-      passed: value >= definition.threshold,
-      value: value
-    };
-  },
   settlementDevelopmentAtLeast: function(definition) {
     var value = 0;
 
@@ -369,6 +364,8 @@ PS.events.milestoneDetectors = {
     };
   }
 };
+
+PS.events.milestoneDetectors.populationAtLeast = PS.events.milestoneDetectors.organismsAtLeast;
 
 PS.events.getMilestoneDefinitions = function() {
   return Array.isArray(PS.config.milestones) ? PS.config.milestones : [];
