@@ -1,9 +1,5 @@
 "use strict";
 function getProbeMissionsForSave() {
-  if (typeof updateProbeMissionReadiness === "function") {
-    updateProbeMissionReadiness();
-  }
-
   if (!Array.isArray(world.probeMissions)) {
     return [];
   }
@@ -12,14 +8,6 @@ function getProbeMissionsForSave() {
 }
 
 function getStarSystemsForSave() {
-  if (typeof updateStarMapReadiness === "function") {
-    updateStarMapReadiness();
-  }
-
-  if (typeof updateGalacticInfluenceReadiness === "function") {
-    updateGalacticInfluenceReadiness();
-  }
-
   if (!Array.isArray(world.starSystems)) {
     return [];
   }
@@ -28,10 +16,6 @@ function getStarSystemsForSave() {
 }
 
 function getInterstellarFleetsForSave() {
-  if (typeof updateInterstellarFleetReadiness === "function") {
-    updateInterstellarFleetReadiness();
-  }
-
   if (!Array.isArray(world.interstellarFleets)) {
     return [];
   }
@@ -40,10 +24,6 @@ function getInterstellarFleetsForSave() {
 }
 
 function getEmpireSectorsForSave() {
-  if (typeof updateEmpireSectorReadiness === "function") {
-    updateEmpireSectorReadiness();
-  }
-
   if (!Array.isArray(world.empireSectors)) {
     return [];
   }
@@ -70,7 +50,7 @@ function copyLayerStateForSave(layerState) {
     return null;
   }
 
-  return JSON.parse(JSON.stringify(layerState));
+  return clonePersistencePlainValue(layerState);
 }
 
 function createSaveConfigDelta() {
@@ -143,32 +123,6 @@ function createWorldSubsystemSaveData() {
 }
 
 function createWorldSaveData() {
-  var networkSummary = null;
-
-  if (typeof updateColonyNetworkState === "function") {
-    networkSummary = updateColonyNetworkState();
-  }
-
-  if (typeof updateSpaceProgramReadiness === "function") {
-    updateSpaceProgramReadiness(networkSummary);
-  }
-
-  if (typeof updateGalacticInfluenceReadiness === "function") {
-    updateGalacticInfluenceReadiness();
-  }
-
-  if (typeof updateInterstellarFleetReadiness === "function") {
-    updateInterstellarFleetReadiness();
-  }
-
-  if (typeof updateEmpireSectorReadiness === "function") {
-    updateEmpireSectorReadiness();
-  }
-
-  if (typeof updateEmpireLegacyReadiness === "function") {
-    updateEmpireLegacyReadiness();
-  }
-
   return {
     id: PIXELDARIUM_SAVE_ID,
     version: PIXELDARIUM_SAVE_VERSION,

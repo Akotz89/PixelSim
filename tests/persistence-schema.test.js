@@ -48,6 +48,20 @@ const restoreEntitiesSource = read("js/systems/persistence-restore-entities.js")
 const saveDataSource = read("js/systems/persistence-save-data.js");
 const stateSource = read("js/systems/state.js");
 const domRefsSource = read("js/ui/dom-refs.js");
+[
+  "js/systems/persistence-db.js",
+  "js/systems/persistence-config.js",
+  "js/systems/save-migration.js",
+  "js/systems/persistence-save-data.js",
+  "js/systems/persistence-restore-entities.js",
+  "js/systems/persistence-io.js"
+].forEach(function(persistenceFile) {
+  assert.strictEqual(
+    /JSON\.parse\s*\(\s*JSON\.stringify/.test(read(persistenceFile)),
+    false,
+    persistenceFile + " should use clonePersistencePlainValue instead of JSON stringify deep clones"
+  );
+});
 assert.strictEqual(
   restoreEntitiesSource.indexOf("function(value)" + " { return value; }"),
   -1,
@@ -56,6 +70,50 @@ assert.strictEqual(
 assert.strictEqual(saveDataSource.indexOf("legacy" + "ConfigSchema"), -1, "new saves should not carry the old full config blob");
 assert.ok(saveDataSource.indexOf("config: createSaveConfigDelta()") >= 0, "new saves should store delta config");
 assert.ok(saveDataSource.indexOf("subsystems: createWorldSubsystemSaveData()") >= 0, "new saves should include grouped subsystem data");
+[
+  "updateColonyNetworkState",
+  "updateSpaceProgramReadiness",
+  "updateProbeMissionReadiness",
+  "updateStarMapReadiness",
+  "updateGalacticInfluenceReadiness",
+  "updateInterstellarFleetReadiness",
+  "updateEmpireSectorReadiness",
+  "updateEmpireLegacyReadiness"
+].forEach(function(mutatingSaveCall) {
+  assert.strictEqual(
+    saveDataSource.indexOf(mutatingSaveCall),
+    -1,
+    "createWorldSaveData and save helpers should not mutate readiness state via " + mutatingSaveCall
+  );
+});
+[
+  "updateOrbitalInfrastructureState",
+  "updatePlanetarySurveyReadiness"
+].forEach(function(mutatingSaveCall) {
+  assert.strictEqual(
+    read("js/systems/persistence-db.js").indexOf(mutatingSaveCall),
+    -1,
+    "persistence-db save helpers should not mutate readiness state via " + mutatingSaveCall
+  );
+});
+[
+  "updateColonyNetworkState",
+  "updateSpaceProgramReadiness",
+  "updateOrbitalInfrastructureState",
+  "updatePlanetarySurveyReadiness",
+  "updateProbeMissionReadiness",
+  "updateStarMapReadiness",
+  "updateGalacticInfluenceReadiness",
+  "updateInterstellarFleetReadiness",
+  "updateEmpireSectorReadiness",
+  "updateEmpireLegacyReadiness"
+].forEach(function(mutatingRestoreCall) {
+  assert.strictEqual(
+    read("js/systems/persistence-io.js").indexOf(mutatingRestoreCall),
+    -1,
+    "restoreWorldFromSaveData should restore saved progression state without mutating via " + mutatingRestoreCall
+  );
+});
 assert.strictEqual(stateSource.indexOf("document.getElementById"), -1, "state.js should not query DOM elements directly");
 assert.strictEqual(stateSource.indexOf("document.querySelectorAll"), -1, "state.js should not query DOM collections directly");
 assert.ok(domRefsSource.indexOf("document.getElementById") >= 0, "DOM references should live in dom-refs.js");

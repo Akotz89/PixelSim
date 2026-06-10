@@ -35,7 +35,7 @@ PS.systems.persistenceConfig = (function() {
       return value;
     }
 
-    return JSON.parse(JSON.stringify(value));
+    return clonePersistencePlainValue(value);
   }
 
   function valuesMatch(left, right) {

@@ -5,6 +5,35 @@ const PIXELDARIUM_SAVE_STORE = "saves";
 const PIXELDARIUM_SAVE_ID = "latest";
 const PIXELDARIUM_SAVE_VERSION = 3;
 
+function clonePersistencePlainValue(value) {
+  var key;
+  var clone;
+
+  if (value === null || typeof value !== "object") {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    clone = new Array(value.length);
+
+    for (var i = 0; i < value.length; i++) {
+      clone[i] = clonePersistencePlainValue(value[i]);
+    }
+
+    return clone;
+  }
+
+  clone = {};
+
+  for (key in value) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) {
+      clone[key] = clonePersistencePlainValue(value[key]);
+    }
+  }
+
+  return clone;
+}
+
 function openPixeldariumDatabase() {
   return new Promise(function(resolve, reject) {
     if (!window.indexedDB) {
@@ -287,10 +316,6 @@ function getSettlementRoutesForSave() {
 }
 
 function getOrbitalAssetsForSave() {
-  if (typeof updateOrbitalInfrastructureState === "function") {
-    updateOrbitalInfrastructureState();
-  }
-
   if (!Array.isArray(world.orbitalAssets)) {
     return [];
   }
@@ -299,10 +324,6 @@ function getOrbitalAssetsForSave() {
 }
 
 function getPlanetaryBodiesForSave() {
-  if (typeof updatePlanetarySurveyReadiness === "function") {
-    updatePlanetarySurveyReadiness();
-  }
-
   if (!Array.isArray(world.planetaryBodies)) {
     return [];
   }

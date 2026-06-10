@@ -76,7 +76,7 @@ function applyWorldSaveData(saveData) {
   world.tick = Number(saveData.tick);
   world.deepTimeYears = Math.max(0, restoreNumber(saveData.deepTimeYears, 0));
   if (PS.time && saveData.timeScale) {
-    PS.time.timeScale = JSON.parse(JSON.stringify(saveData.timeScale));
+    PS.time.timeScale = clonePersistencePlainValue(saveData.timeScale);
   }
   world.speed = clamp(Math.round(Number(saveData.speed)), 1, 10);
   world.era = String(saveData.era || "Organisms");
@@ -151,10 +151,10 @@ function applyWorldSaveData(saveData) {
   world.empireLegacyReady = Boolean(saveData.empireLegacyReady);
   world.empireLegacyComplete = Boolean(saveData.empireLegacyComplete);
   world.lastEmpireLegacyTick = Math.max(0, Math.round(restoreNumber(saveData.lastEmpireLegacyTick, 0)));
-  world.geology = saveData.geology ? JSON.parse(JSON.stringify(saveData.geology)) : null;
-  world.atmosphere = saveData.atmosphere ? JSON.parse(JSON.stringify(saveData.atmosphere)) : null;
-  world.abiogenesis = saveData.abiogenesis ? JSON.parse(JSON.stringify(saveData.abiogenesis)) : null;
-  world.microbial = saveData.microbial ? JSON.parse(JSON.stringify(saveData.microbial)) : null;
+  world.geology = saveData.geology ? clonePersistencePlainValue(saveData.geology) : null;
+  world.atmosphere = saveData.atmosphere ? clonePersistencePlainValue(saveData.atmosphere) : null;
+  world.abiogenesis = saveData.abiogenesis ? clonePersistencePlainValue(saveData.abiogenesis) : null;
+  world.microbial = saveData.microbial ? clonePersistencePlainValue(saveData.microbial) : null;
   world.microbialReady = Boolean(saveData.microbialReady || (world.microbial && world.microbial.totalDensity > 0.1));
   restoreBiologyAggregateState(saveData);
   world.lineages = restoreLineages(saveData.lineages);
@@ -194,51 +194,11 @@ function applyWorldSaveData(saveData) {
     ensureOutpostRoutes();
   }
 
-  if (typeof updateColonyNetworkState === "function") {
-    var networkSummary = updateColonyNetworkState();
-
-    if (typeof updateSpaceProgramReadiness === "function") {
-      updateSpaceProgramReadiness(networkSummary);
-    }
-  }
-
-  if (typeof updateOrbitalInfrastructureState === "function") {
-    updateOrbitalInfrastructureState();
-  }
-
-  if (typeof updatePlanetarySurveyReadiness === "function") {
-    updatePlanetarySurveyReadiness();
-  }
-
-  if (typeof updateProbeMissionReadiness === "function") {
-    updateProbeMissionReadiness();
-  }
-
-  if (typeof updateStarMapReadiness === "function") {
-    updateStarMapReadiness();
-  }
-
-  if (typeof updateGalacticInfluenceReadiness === "function") {
-    updateGalacticInfluenceReadiness();
-  }
-
-  if (typeof updateInterstellarFleetReadiness === "function") {
-    updateInterstellarFleetReadiness();
-  }
-
-  if (typeof updateEmpireSectorReadiness === "function") {
-    updateEmpireSectorReadiness();
-  }
-
-  if (typeof updateEmpireLegacyReadiness === "function") {
-    updateEmpireLegacyReadiness();
-  }
-
   world.traitHistory = restoreTraitHistory(saveData.traitHistory);
   world.ecosystemHistory = restoreEcosystemHistory(saveData.ecosystemHistory);
   world.eventLog = restoreSimulationEvents(saveData.eventLog);
   world.timelineEvents = restoreSimulationEvents(saveData.timelineEvents, 0);
-  world.milestonesReached = saveData.milestonesReached ? JSON.parse(JSON.stringify(saveData.milestonesReached)) : {};
+  world.milestonesReached = saveData.milestonesReached ? clonePersistencePlainValue(saveData.milestonesReached) : {};
   world.ecosystemSummary = null;
 
   if (typeof refreshEcosystemSummary === "function") {

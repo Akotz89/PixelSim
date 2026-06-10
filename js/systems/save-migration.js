@@ -39,7 +39,7 @@ function normalizeMigratedOrganism(organism) {
 }
 
 function cloneSaveDataForMigration(saveData) {
-  return JSON.parse(JSON.stringify(saveData));
+  return clonePersistencePlainValue(saveData);
 }
 
 PS.systems.saveMigration = {

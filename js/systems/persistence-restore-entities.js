@@ -131,10 +131,10 @@ function restoreEmpireSectors(sectors) {
 
 function restoreBiologyAggregateState(saveData) {
   world.biologyPopulations = Array.isArray(saveData.biologyPopulations)
-    ? JSON.parse(JSON.stringify(saveData.biologyPopulations))
+    ? clonePersistencePlainValue(saveData.biologyPopulations)
     : [];
   world.biologyRepresentatives = Array.isArray(saveData.biologyRepresentatives)
-    ? JSON.parse(JSON.stringify(saveData.biologyRepresentatives))
+    ? clonePersistencePlainValue(saveData.biologyRepresentatives)
     : [];
   world.biologyPopulationById = {};
   world.biologyRepresentativeById = {};

@@ -163,6 +163,7 @@ function createContext() {
 const context = createContext();
 runFile(context, "js/core/event-types.js");
 runFile(context, "js/core/events.js");
+runFile(context, "js/core/world-grid.js");
 runFile(context, "js/systems/spatial.js");
 runFile(context, "js/sim/modifiers.js");
 runFile(context, "js/sim/trait-registry.js");

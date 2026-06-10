@@ -30,43 +30,23 @@ function normalizeSpatialEntityId(entityId) {
 }
 
 function getSpatialWrappedX(x) {
-  if (PS.worldGrid && typeof PS.worldGrid.getWrappedX === "function") {
-    return PS.worldGrid.getWrappedX(x);
-  }
-
-  return getWrappedWorldX(x);
+  return PS.worldGrid.getWrappedX(x);
 }
 
 function getSpatialClampedY(y) {
-  if (PS.worldGrid && typeof PS.worldGrid.getClampedY === "function") {
-    return PS.worldGrid.getClampedY(y);
-  }
-
-  return getClampedWorldY(y);
+  return PS.worldGrid.getClampedY(y);
 }
 
 function getSpatialDistance(leftX, leftY, rightX, rightY) {
-  if (PS.worldGrid && typeof PS.worldGrid.getTileManhattanDistance === "function") {
-    return PS.worldGrid.getTileManhattanDistance(leftX, leftY, rightX, rightY);
-  }
-
-  return getTileManhattanDistance(leftX, leftY, rightX, rightY);
+  return PS.worldGrid.getTileManhattanDistance(leftX, leftY, rightX, rightY);
 }
 
 function getSpatialWrappedChunkIndexes(centerX, radius, chunkSize) {
-  if (PS.worldGrid && typeof PS.worldGrid.getWrappedBucketIndexes === "function") {
-    return PS.worldGrid.getWrappedBucketIndexes(centerX, radius, chunkSize, WORLD_WIDTH);
-  }
-
-  return getWrappedBucketIndexes(centerX, radius, chunkSize, WORLD_WIDTH);
+  return PS.worldGrid.getWrappedBucketIndexes(centerX, radius, chunkSize, WORLD_WIDTH);
 }
 
 function getSpatialClampedChunkIndexes(centerY, radius, chunkSize) {
-  if (PS.worldGrid && typeof PS.worldGrid.getClampedBucketIndexes === "function") {
-    return PS.worldGrid.getClampedBucketIndexes(centerY, radius, chunkSize, WORLD_HEIGHT);
-  }
-
-  return getClampedBucketIndexes(centerY, radius, chunkSize, WORLD_HEIGHT);
+  return PS.worldGrid.getClampedBucketIndexes(centerY, radius, chunkSize, WORLD_HEIGHT);
 }
 
 function getSpatialChunkKey(chunkX, chunkY) {
@@ -106,10 +86,10 @@ PS.spatial = {
     return Math.floor(getSpatialWrappedX(x) / size) + ":" + Math.floor(getSpatialClampedY(y) / size);
   },
   wrappedBucketIndexes: function(x, radius, bucketSize, width) {
-    return getWrappedBucketIndexes(x, radius, bucketSize, width || WORLD_WIDTH);
+    return PS.worldGrid.getWrappedBucketIndexes(x, radius, bucketSize, width || WORLD_WIDTH);
   },
   clampedBucketIndexes: function(y, radius, bucketSize, height) {
-    return getClampedBucketIndexes(y, radius, bucketSize, height || WORLD_HEIGHT);
+    return PS.worldGrid.getClampedBucketIndexes(y, radius, bucketSize, height || WORLD_HEIGHT);
   },
   tileDistance: function(leftX, leftY, rightX, rightY) {
     return getSpatialDistance(leftX, leftY, rightX, rightY);

@@ -4,6 +4,21 @@ const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
+const spatialSource = fs.readFileSync(path.join(root, "js/systems/spatial.js"), "utf8");
+
+[
+  "return getWrappedWorldX(",
+  "return getClampedWorldY(",
+  "return getTileManhattanDistance(",
+  "return getWrappedBucketIndexes(",
+  "return getClampedBucketIndexes("
+].forEach(function(legacyHelperCall) {
+  assert.strictEqual(
+    spatialSource.indexOf(legacyHelperCall),
+    -1,
+    "PS.spatial should route world-grid math through PS.worldGrid instead of legacy helper call " + legacyHelperCall
+  );
+});
 
 const context = {
   assert,
