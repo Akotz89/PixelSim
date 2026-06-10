@@ -179,6 +179,71 @@ PS.core.manifest = [
 
 PS.runtime = PS.runtime || {};
 PS.runtime.errors = PS.runtime.errors || [];
+PS.runtime.requiredFunctions = PS.runtime.requiredFunctions || [
+  "startGame",
+  "drawWorld",
+  "PS.gpu.initialize",
+  "PS.sim.organisms.make",
+  "PS.sim.settlements.update",
+  "PS.sim.evolution.inheritTraits",
+  "PS.render.terrain.draw",
+  "PS.render.pipeline.drawWorld",
+  "PS.render.renderer.getActive",
+  "PS.camera.getZoomLevel",
+  "PS.persistence.save",
+  "PS.time.runFrame",
+  "PS.events.detectMilestones"
+];
+
+PS.runtime.resolvePath = function (pathName) {
+  var parts = String(pathName || "").split(".");
+  var cursor = parts[0] === "PS" ? PS : window[parts[0]];
+
+  for (var i = 1; i < parts.length; i++) {
+    if (!cursor) {
+      return undefined;
+    }
+
+    cursor = cursor[parts[i]];
+  }
+
+  return cursor;
+};
+
+PS.runtime.verify = function (requiredFunctions) {
+  var required = Array.isArray(requiredFunctions) ? requiredFunctions : PS.runtime.requiredFunctions;
+  var missing = [];
+
+  for (var i = 0; i < required.length; i++) {
+    if (typeof PS.runtime.resolvePath(required[i]) !== "function") {
+      missing.push(required[i]);
+    }
+  }
+
+  var result = {
+    ok: missing.length === 0,
+    missing: missing
+  };
+
+  PS.runtime.lastVerification = result;
+
+  if (!result.ok) {
+    var message = "Missing runtime functions: " + missing.join(", ");
+
+    if (PS.log && typeof PS.log === "function") {
+      PS.log("runtime", "WARN", message, { missing: missing });
+    }
+
+    if (typeof PS.runtime.recordError === "function") {
+      PS.runtime.recordError("runtime.verify.missing", {
+        message: message,
+        missing: missing
+      });
+    }
+  }
+
+  return result;
+};
 
 PS.runtime.recordError = function (kind, payload) {
   var entry = {

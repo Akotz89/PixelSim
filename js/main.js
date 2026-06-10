@@ -16,6 +16,10 @@ PS.init = function() {
     }
   }
 
+  if (PS.runtime && typeof PS.runtime.verify === "function") {
+    PS.runtime.verify();
+  }
+
   if (typeof startGame === "function") {
     startGame();
   }
