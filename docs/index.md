@@ -22,8 +22,6 @@
 | [Phase 2 Readiness](phase-2-readiness.md) | `docs/phase-2-readiness.md` | AZR-353 reconciliation of GDD, Linear Phase 2 stories, and current repo evidence |
 | [Agent Studio Handoff](agent-studio-handoff.md) | `docs/agent-studio-handoff.md` | Runtime-safe contract for accepting outputs from the private Pixeldarium Agent Studio repo |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
-| [Agent Studio Pipeline](agent-studio-pipeline.md) | `docs/agent-studio-pipeline.md` | Agent Studio Pipeline lane and tool configurations |
-| [Agent Studio Research](agent-studio-research.md) | `docs/agent-studio-research.md` | Technical research on Blender, Aseprite, ComfyUI, Playwright, and FFmpeg interop |
 
 ## Planning Artifacts
 
@@ -52,6 +50,9 @@ All planning documents live in `skills/planning-artifacts/gdds/gdd-Pixeldarium-2
 - **Linear:** [Pixeldarium Agent Studio](https://linear.app/openclaw-mock-up/project/pixeldarium-agent-studio-35c2d43bfca8)
 - **Private GitHub:** `Akotz89/Pixeldarium-Agent-Studio`
 - **Local root:** `/mnt/c/Users/Aaron/Azyrra/projects/pixeldarium-agent-studio`
+- **Runtime boundary:** this game repo keeps only `docs/agent-studio-handoff.md`
+  and reviewed runtime assets. Pipeline docs, tools, tests, reports, and raw
+  generation outputs belong in the standalone Agent Studio repo.
 
 ## Linear Project
 

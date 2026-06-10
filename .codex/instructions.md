@@ -7,7 +7,7 @@ Run `bash .codex/setup.sh` before committing. It checks:
 - `python3 -c "import ast; ast.parse()"` on all Python scripts (syntax validation)
 - `git diff --check` (whitespace errors)
 - Line ending consistency (must be LF)
-- Agent studio pipeline manifest consistency
+- Standalone Agent Studio validation from `../pixeldarium-agent-studio`
 - Runtime boundary isolation (no tooling references in `js/` or `index.html`)
 
 Do not run inline WSL/bash loops through Antigravity `run_command`. If a
@@ -33,51 +33,22 @@ Key constraints that affect every edit:
 9. **WGSL shaders** — Shaders are .wgsl.js sidecars setting `window.SHADER_*_WGSL`.
 10. **Workers via blob URL** — `new Worker(blobUrl)` pattern required for file://.
 
-## AI Game Studio Workflow
+## Agent Studio Handoff
 
-When doing asset generation work, follow the workflow in AGENTS.md section
-"AI Game Studio". Key commands:
+Asset generation and production tooling now live in the standalone private
+Agent Studio repo:
 
-### Generate a sprite
-```
-# Option 1: Use PixelLab MCP (preferred for pixel art)
-#   Tools: create_character, create_tileset, create_map_object
-#   See tools/agent-studio/docs/pixellab-api-reference.md
-
-# Option 2: Use SpriteCook MCP
-#   Tools: create_image_asset, animate_asset
-
-# Option 3: Use gpt-image-2 with prompt templates
-#   See tools/agent-studio/templates/prompt-templates.md
-
-# Output raw PNG to tools/agent-studio/exports/
+```text
+/mnt/c/Users/Aaron/Azyrra/projects/pixeldarium-agent-studio
 ```
 
-### Post-process a generated sprite
-```bash
-python3 tools/agent-studio/scripts/pipeline_runner.py \
-  --input tools/agent-studio/exports/raw-sprite.png \
-  --palette tools/agent-studio/source/pixeldarium-palette.json \
-  --output tools/agent-studio/exports/processed/ \
-  --tile-size 16
-```
+Do not recreate `tools/agent-studio` in this runtime repo. For asset generation,
+work orders, AI image adapters, post-processing, validation reports, and raw
+outputs, switch to the standalone studio repo and run its validation there.
 
-### Validate a sprite sheet
-```bash
-node tools/agent-studio/verify-sprite-sheet.js \
-  tools/agent-studio/exports/processed/sprite-sheet.png
-```
-
-### Score acceptance
-```bash
-node tools/agent-studio/score-asset-acceptance.js \
-  tools/agent-studio/exports/processed/sprite-sheet.png
-```
-
-### Python dependencies for post-processing
-```bash
-pip install Pillow numpy
-```
+This runtime repo may receive only reviewed game-ready assets plus the minimal
+runtime manifest/script changes required by a scoped integration issue. Follow
+`docs/agent-studio-handoff.md` before accepting any studio output.
 
 ## File Structure (Post-E0)
 
@@ -94,10 +65,7 @@ js/persist/ — save, load, migrate
 js/workers/ — sim-worker.js (WASM compute, blob URL init)
 wasm/       — X.wasm.js sidecars (base64-encoded wasm-pack output)
 shaders/    — X.wgsl.js (WGSL compute/render)
-tools/agent-studio/          — AI asset production (see AGENTS.md)
-tools/agent-studio/scripts/  — Python post-processing pipeline
-tools/agent-studio/source/   — Palette, style refs
-tools/agent-studio/templates/ — Prompt templates
+docs/agent-studio-handoff.md — Runtime-safe Agent Studio handoff contract
 ```
 
 ## Testing
@@ -116,5 +84,6 @@ Current version: 1. Do not change save format without version bump.
 
 - All work tracked under AZR team, Pixeldarium project
 - Branch naming: `aaronkotz89/azr-NNN-description`
-- Epics: AZR-254 to AZR-267 (game), AZR-404 (AI pipeline)
-- Pipeline issues: AZR-414 to AZR-417
+- Epics: AZR-254 to AZR-267 (game), AZR-825 (simulation-first engine)
+- Agent Studio pipeline issues belong in the separate Pixeldarium Agent Studio
+  Linear project, not this runtime project.
