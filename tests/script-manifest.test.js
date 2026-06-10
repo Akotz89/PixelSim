@@ -60,6 +60,7 @@ assert.ok(
 );
 
 const seen = {};
+const globalFunctions = {};
 manifest.forEach(function(scriptPath) {
   assert.strictEqual(typeof scriptPath, "string", "manifest entries should be strings");
   assert.ok(scriptPath.length > 0, "manifest entries should not be empty");
@@ -67,6 +68,18 @@ manifest.forEach(function(scriptPath) {
   seen[scriptPath] = true;
   assert.ok(scriptPath.indexOf("js/legacy/") === -1, "manifest should not include legacy runtime script " + scriptPath);
   assert.ok(fs.existsSync(path.join(root, scriptPath)), "manifest script should exist: " + scriptPath);
+
+  if (scriptPath.endsWith(".js")) {
+    Array.from(read(scriptPath).matchAll(/^function\s+([A-Za-z_$][\w$]*)\s*\(/gm)).forEach(function(match) {
+      const functionName = match[1];
+      assert.strictEqual(
+        globalFunctions[functionName],
+        undefined,
+        "top-level function " + functionName + " is declared in both " + globalFunctions[functionName] + " and " + scriptPath
+      );
+      globalFunctions[functionName] = scriptPath;
+    });
+  }
 });
 
 const strictModeFiles = [];
