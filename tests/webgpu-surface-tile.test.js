@@ -69,10 +69,12 @@ assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU su
   "@location(3) alpha: f32",
   "@location(4) flip_h: f32",
   "textureSample(atlas_texture",
-  "color.rgb * input.shade"
+  "color.rgb * input.shade",
+  "input.alpha"
 ].forEach(function (required) {
   assert.ok(terrainTileWgsl.indexOf(required) >= 0, "terrain-tile WGSL should contain " + required);
 });
+assert.strictEqual(terrainTileWgsl.indexOf("color.a * input.alpha"), -1, "terrain-tile WGSL should reserve atlas alpha for height data");
 
 [
   "@location(0) albedo",
@@ -80,12 +82,21 @@ assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU su
   "@location(1) rect: vec4<f32>",
   "@location(2) uv_rect: vec4<f32>",
   "textureSample(atlas_texture",
+  "texel_size: vec2<f32>",
+  "@location(3) uv_rect: vec4<f32>",
+  "fn sample_height",
+  "clamp(input.uv + offset",
+  "max_uv - tile.texel_size * 0.5",
+  "sample_height(input, vec2<f32>(-tile.texel_size.x, 0.0))",
+  "sample_height(input, vec2<f32>(0.0, tile.texel_size.y))",
   "slope_x",
-  "color.a * input.alpha",
+  "let alpha = input.alpha",
+  "color.a",
   "normal.xy * 0.5"
 ].forEach(function (required) {
   assert.ok(gbufferTerrainWgsl.indexOf(required) >= 0, "gbuffer terrain WGSL should contain " + required);
 });
+assert.strictEqual(gbufferTerrainWgsl.indexOf("color.r - color.g"), -1, "gbuffer terrain normals should not be derived from color channels");
 
 assert.ok(
   surfaceTileSource.indexOf("ensureGbufferPipeline") >= 0 &&
@@ -354,6 +365,11 @@ assert.deepStrictEqual(fakeDevice.passes[1].drawArgs, [4, 1, 0, 0], "surface til
 assert.strictEqual(textureWrites.length, 1, "atlas page should upload through GPUQueue.writeTexture");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.instances"; }), "instance data should upload to the WebGPU instance buffer");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.uniforms"; }), "canvas uniforms should upload to WebGPU");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "terrain-tile.uniforms" &&
+    nearly(write.data[2], 0.5) &&
+    nearly(write.data[3], 0.5);
+}), "terrain uniforms should upload atlas texel size for G-buffer normal sampling");
 assert.ok(queueWrites.some(function (write) {
   return write.buffer.descriptor.label === "gbuffer-compose.uniforms" &&
     nearly(write.data[1], 0.6) &&

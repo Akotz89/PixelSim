@@ -269,15 +269,20 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     return this.state.gbufferPipeline;
   },
 
-  writeUniforms: function (device, width, height) {
+  writeUniforms: function (device, width, height, texture) {
+    var descriptor = texture && texture.descriptor ? texture.descriptor : {};
+    var textureSize = descriptor.size || {};
+    var textureWidth = Math.max(1, Number(textureSize.width) || Number(texture.width) || 1);
+    var textureHeight = Math.max(1, Number(textureSize.height) || Number(texture.height) || 1);
+
     device.queue.writeBuffer(
       this.ensureUniformBuffer(device),
       0,
       new Float32Array([
         Math.max(1, Number(width) || 1),
         Math.max(1, Number(height) || 1),
-        0,
-        0
+        1 / textureWidth,
+        1 / textureHeight
       ])
     );
   },
@@ -391,7 +396,6 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
 
     pipeline = useGbuffer ? this.ensureGbufferPipeline(device) : this.ensurePipeline(device);
     this.ensureQuadBuffer(device);
-    this.writeUniforms(device, width, height);
     encoder = spec.commandEncoder || device.createCommandEncoder({ label: "terrain-tile.encoder" });
 
     for (var i = 0; i < pageKeys.length; i += 1) {
@@ -408,6 +412,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
 
       instanceBuffer = this.ensureInstanceBuffer(device, instanceCount);
       device.queue.writeBuffer(instanceBuffer, 0, pageData, 0, instanceCount * this.strideFloats);
+      this.writeUniforms(device, width, height, texture);
       if (useGbuffer) {
         pass = PS.render.webgpuGbuffer.beginTerrainPass(
           encoder,

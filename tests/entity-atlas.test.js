@@ -398,6 +398,18 @@ function uniqueColorCount(cell) {
   return colors.size;
 }
 
+function uniqueAlphaCount(cell) {
+  const alphas = new Set();
+
+  for (let y = 0; y < cell.h; y++) {
+    for (let x = 0; x < cell.w; x++) {
+      alphas.add(pixelAt(cell, x, y)[3]);
+    }
+  }
+
+  return alphas.size;
+}
+
 assert.ok(page.data instanceof Uint8Array, "atlas page should be a packed RGBA buffer");
 assert.strictEqual(page.width, 256, "atlas page should use stable packed width");
 assert.strictEqual(page.height, 256, "atlas page should use stable packed height");
@@ -408,6 +420,8 @@ assert.strictEqual(roundCell.h, 16, "organism cell should use a 16px pixel sprit
 assert.notDeepStrictEqual(pixelAt(roundCell, 7, 7), pixelAt(angularCell, 7, 7), "trait/lineage differences should change sprite pixels");
 assert.notDeepStrictEqual(pixelAt(oceanCell, 7, 7), pixelAt(forestCell, 7, 7), "ocean and forest terrain cells should use distinct material pixels");
 assert.notDeepStrictEqual(pixelAt(desertCell, 7, 7), pixelAt(volcanicCell, 7, 7), "desert and volcanic terrain cells should use distinct material pixels");
+assert.ok(pixelAt(cliffCell, 7, 7)[3] > pixelAt(deepWaterCell, 7, 7)[3], "terrain atlas alpha should encode higher elevation for G-buffer normals");
+assert.ok(uniqueAlphaCount(cliffCell) > 1, "terrain atlas alpha should include local relief variation");
 assert.ok(uniqueColorCount(oceanCell) >= 5, "water atlas cells should include foam/shadow detail beyond base palette colors");
 assert.ok(uniqueColorCount(forestCell) >= 5, "forest atlas cells should include canopy detail beyond base palette colors");
 assert.ok(uniqueColorCount(desertCell) >= 5, "desert atlas cells should include dune detail beyond base palette colors");

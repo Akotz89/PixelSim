@@ -46,5 +46,5 @@ fn vs_main(input: VertexIn) -> VertexOut {
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
   let color = textureSample(atlas_texture, atlas_sampler, input.uv);
-  return vec4<f32>(color.rgb * input.shade, color.a * input.alpha);
+  return vec4<f32>(color.rgb * input.shade, input.alpha);
 }

@@ -827,17 +827,29 @@ PS.atlas.getTerrainMaterialTile = function (biome, tileX, tileY, sample) {
   return best;
 };
 
-PS.atlas.mixTerrainColor = function (palette, amount) {
+PS.atlas.mixTerrainColor = function (palette, amount, alphaOverride) {
   var shade = clamp(Number(amount) || 0, -1, 1);
   var other = shade >= 0 ? palette.accent : palette.dark;
   var mix = Math.abs(shade);
+  var alpha = alphaOverride !== undefined ? Math.max(0, Math.min(255, Math.round(Number(alphaOverride) || 0))) : 255;
 
   return [
     Math.round(palette.base[0] * (1 - mix) + other[0] * mix),
     Math.round(palette.base[1] * (1 - mix) + other[1] * mix),
     Math.round(palette.base[2] * (1 - mix) + other[2] * mix),
-    255
+    alpha
   ];
+};
+
+PS.atlas.getTerrainHeightAlpha = function (sample, amount) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var tile = sample && sample.tile ? sample.tile : {};
+  var normalizedHeight = Number.isFinite(Number(detail.elevation))
+    ? Number(detail.elevation)
+    : ((Math.tanh(Number(tile.elevation) || 0) + 1) * 0.5);
+  var relief = Number.isFinite(Number(amount)) ? Number(amount) * 0.12 : 0;
+
+  return Math.round(clamp(normalizedHeight + relief, 0, 1) * 255);
 };
 
 PS.atlas.getTerrainPatternAmount = function (pattern, x, y, variant) {
@@ -1080,9 +1092,11 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
 
   for (y = 0; y < cell.h; y++) {
     for (x = 0; x < cell.w; x++) {
+      var patternAmount = PS.atlas.getTerrainPatternAmount(palette.pattern, x, y, variant);
       PS.atlas.writePixel(cell, x, y, PS.atlas.mixTerrainColor(
         palette,
-        PS.atlas.getTerrainPatternAmount(palette.pattern, x, y, variant)
+        patternAmount,
+        PS.atlas.getTerrainHeightAlpha(sample, patternAmount)
       ));
     }
   }
