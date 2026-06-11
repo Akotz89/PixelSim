@@ -62,7 +62,8 @@ const context = {
   Error,
   RegExp,
   Math,
-  WeakMap
+  WeakMap,
+  Uint8Array
 };
 vm.createContext(context);
 vm.runInContext(registrySource, context, { filename: "js/core/tile-registry.js" });
@@ -73,6 +74,112 @@ registry.loadFromJSON(tilesData);
 const Resolver = context.PS.render.TerrainTransitionResolver;
 const resolver = new Resolver(registry, transitionsData);
 const bits = Resolver.BITS;
+const Autotile = context.PS.render.Autotile;
+
+assert.strictEqual(Autotile.computeAutotileMask(0, 0, null), 0, "missing matchFn should produce empty autotile mask");
+
+function makeOrthogonalMatch(mask) {
+  return function(x, y, direction) {
+    if (direction === "N") { return (mask & Autotile.ORTHO_BITS.N) !== 0; }
+    if (direction === "E") { return (mask & Autotile.ORTHO_BITS.E) !== 0; }
+    if (direction === "S") { return (mask & Autotile.ORTHO_BITS.S) !== 0; }
+    if (direction === "W") { return (mask & Autotile.ORTHO_BITS.W) !== 0; }
+    return true;
+  };
+}
+
+function makeCornerMatch(cornerMask) {
+  return function(x, y, direction) {
+    if (direction === "NE") { return (cornerMask & 1) === 0; }
+    if (direction === "SE") { return (cornerMask & 2) === 0; }
+    if (direction === "SW") { return (cornerMask & 4) === 0; }
+    if (direction === "NW") { return (cornerMask & 8) === 0; }
+    return true;
+  };
+}
+
+for (let mask = 0; mask < 16; mask += 1) {
+  const computed = Autotile.computeAutotileMask(8, 8, makeOrthogonalMatch(mask));
+  assert.strictEqual(Autotile.getOrthogonalMask(computed), mask, "orthogonal autotile mask should preserve config " + mask);
+  assert.strictEqual(Autotile.getCornerMask(computed), 0, "matching diagonals should not create corner mask for config " + mask);
+}
+
+for (let cornerMask = 0; cornerMask < 16; cornerMask += 1) {
+  const computed = Autotile.computeAutotileMask(8, 8, makeCornerMatch(cornerMask));
+  assert.strictEqual(Autotile.getOrthogonalMask(computed), 15, "corner fixtures should keep all orthogonal neighbors");
+  assert.strictEqual(Autotile.getCornerMask(computed), cornerMask, "corner autotile mask should preserve config " + cornerMask);
+}
+
+assert.strictEqual(
+  Autotile.computeAutotileMask(0, 0, function(x, y, direction) {
+    return direction === "NE";
+  }),
+  0,
+  "diagonal corners should be gated by both adjacent orthogonal neighbors"
+);
+
+const variant = Autotile.getVariant(3, 4, function(x, y) {
+  return (x * 17 + y * 31) >>> 0;
+});
+assert.strictEqual(variant, Autotile.getVariant(3, 4, function(x, y) {
+  return (x * 17 + y * 31) >>> 0;
+}), "autotile variant should be stable for the same RANMAP value");
+assert.strictEqual(Autotile.getAtlasOffset(Autotile.ORTHO_BITS.N | Autotile.ORTHO_BITS.E, variant), variant * 16 + 3, "atlas offset should use 2-bit variant and 4-bit orthogonal mask");
+
+context.PS.ranmap = {
+  get(x, y) {
+    return (x * 101 + y * 17 + 2) >>> 0;
+  }
+};
+assert.strictEqual(Autotile.getVariant(5, 7), Autotile.getVariant(5, 7), "RANMAP-backed variant should be stable");
+assert.ok(Autotile.getVariant(5, 7) >= 0 && Autotile.getVariant(5, 7) <= 3, "RANMAP-backed variant should be constrained to 2 bits");
+
+const storeGrid = createGrid(5, 5, "grass_lush");
+const storeMatch = Autotile.createMatchFn(storeGrid, "same-terrain", { tileRegistry: registry });
+const store = new Autotile.MaskStore(5, 5, storeMatch, {
+  ranFn: function(x, y) {
+    return (x * 13 + y * 29) >>> 0;
+  }
+});
+store.recomputeAll();
+assert.strictEqual(store.recomputeCount, 25, "full precompute should visit each tile once");
+assert.strictEqual(store.getMask(2, 2), 15, "uniform center tile should match all orthogonal neighbors");
+storeGrid.setTileId(2, 2, "water_shallow");
+const beforePartial = store.recomputeCount;
+const updates = store.recomputeChanged(2, 2);
+assert.strictEqual(store.recomputeCount - beforePartial, 9, "tile change should recompute only the 3x3 affected neighborhood");
+assert.strictEqual(updates.length, 9, "interior tile change should report 9 affected masks");
+assert.strictEqual(store.getMask(2, 2), 0, "changed center tile should no longer match grass neighbors");
+assert.strictEqual(store.getVariant(2, 2), ((2 * 13 + 2 * 29) & 3), "store should keep stable 2-bit variants");
+assert.strictEqual(store.getAtlasOffset(2, 2), store.getVariant(2, 2) * 16, "store atlas offset should use saved mask and variant");
+
+const beforeCornerPartial = store.recomputeCount;
+const edgeUpdates = store.recomputeChanged(0, 0);
+assert.strictEqual(store.recomputeCount - beforeCornerPartial, 4, "corner tile change should only recompute in-bounds affected masks");
+assert.strictEqual(edgeUpdates.length, 4, "corner tile change should report only in-bounds masks");
+
+const presetRegistry = {
+  get(id) {
+    return {
+      grass_lush: { category: "terrain", waterDepth: 0 },
+      water_shallow: { category: "terrain", waterDepth: 0.4 },
+      ice_sheet: { category: "terrain", biome: "ice", waterDepth: 0 },
+      stone_wall: { category: "wall", waterDepth: 0 },
+      room_floor: { category: "floor", waterDepth: 0 }
+    }[id] || null;
+  }
+};
+const presetGrid = createGrid(5, 1, "grass_lush");
+presetGrid.setTileId(0, 0, "water_shallow");
+presetGrid.setTileId(1, 0, "ice_sheet");
+presetGrid.setTileId(2, 0, "stone_wall");
+presetGrid.setTileId(3, 0, "room_floor");
+presetGrid.setTileId(4, 0, "grass_lush");
+assert.strictEqual(Autotile.createMatchFn(presetGrid, "water", { tileRegistry: presetRegistry })(0, 0, "N", 4, 0), true, "water preset should match water tiles");
+assert.strictEqual(Autotile.createMatchFn(presetGrid, "ice", { tileRegistry: presetRegistry })(1, 0, "N", 4, 0), true, "ice preset should match ice tiles");
+assert.strictEqual(Autotile.createMatchFn(presetGrid, "wall", { tileRegistry: presetRegistry })(2, 0, "N", 4, 0), true, "wall preset should match wall tiles");
+assert.strictEqual(Autotile.createMatchFn(presetGrid, "floor", { tileRegistry: presetRegistry })(3, 0, "N", 4, 0), true, "floor preset should match floor tiles");
+assert.strictEqual(Autotile.createMatchFn(presetGrid, "same-terrain", { tileRegistry: presetRegistry })(4, 0, "N", 4, 0), true, "same-terrain preset should match identical tile IDs");
 
 assert.ok(transitionsData.pairs.length >= 5, "transitions data should define required transition pairs");
 assert.strictEqual(resolver.lookup.size, transitionsData.pairs.length * 2, "lookup should include forward and reverse pairs");

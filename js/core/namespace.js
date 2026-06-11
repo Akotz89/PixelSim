@@ -112,6 +112,7 @@ PS.core.manifest = [
   "js/render/surface-natural.js",
   "js/render/surface-hydrology.js",
   "js/render/surface-transitions.js",
+  "js/render/terrain-transitions.js",
   "js/render/surface-material.js",
   "js/render/surface-relief.js",
   "js/render/entities.js",

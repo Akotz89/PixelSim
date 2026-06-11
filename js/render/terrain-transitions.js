@@ -1,6 +1,303 @@
 "use strict";
 PS.render = PS.render || {};
 
+PS.render.Autotile = PS.render.Autotile || {};
+
+PS.render.Autotile.ORTHO_BITS = {
+  N: 1,
+  E: 2,
+  S: 4,
+  W: 8
+};
+
+PS.render.Autotile.CORNER_BITS = {
+  NE: 16,
+  SE: 32,
+  SW: 64,
+  NW: 128
+};
+
+PS.render.Autotile.ORTHO_DIRECTIONS = [
+  { id: "N", dx: 0, dy: -1, bit: PS.render.Autotile.ORTHO_BITS.N },
+  { id: "E", dx: 1, dy: 0, bit: PS.render.Autotile.ORTHO_BITS.E },
+  { id: "S", dx: 0, dy: 1, bit: PS.render.Autotile.ORTHO_BITS.S },
+  { id: "W", dx: -1, dy: 0, bit: PS.render.Autotile.ORTHO_BITS.W }
+];
+
+PS.render.Autotile.CORNER_DIRECTIONS = [
+  {
+    id: "NE",
+    dx: 1,
+    dy: -1,
+    bit: PS.render.Autotile.CORNER_BITS.NE,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.N, PS.render.Autotile.ORTHO_BITS.E]
+  },
+  {
+    id: "SE",
+    dx: 1,
+    dy: 1,
+    bit: PS.render.Autotile.CORNER_BITS.SE,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.S, PS.render.Autotile.ORTHO_BITS.E]
+  },
+  {
+    id: "SW",
+    dx: -1,
+    dy: 1,
+    bit: PS.render.Autotile.CORNER_BITS.SW,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.S, PS.render.Autotile.ORTHO_BITS.W]
+  },
+  {
+    id: "NW",
+    dx: -1,
+    dy: -1,
+    bit: PS.render.Autotile.CORNER_BITS.NW,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.N, PS.render.Autotile.ORTHO_BITS.W]
+  }
+];
+
+PS.render.Autotile.computeAutotileMask = function (tileX, tileY, matchFn) {
+  var x = Math.round(Number(tileX) || 0);
+  var y = Math.round(Number(tileY) || 0);
+  var ortho = PS.render.Autotile.ORTHO_DIRECTIONS;
+  var corners = PS.render.Autotile.CORNER_DIRECTIONS;
+  var mask = 0;
+  var i;
+  var corner;
+
+  if (typeof matchFn !== "function") {
+    return 0;
+  }
+
+  for (i = 0; i < ortho.length; i += 1) {
+    if (matchFn(x + ortho[i].dx, y + ortho[i].dy, ortho[i].id, x, y)) {
+      mask |= ortho[i].bit;
+    }
+  }
+
+  for (i = 0; i < corners.length; i += 1) {
+    corner = corners[i];
+    if (
+      (mask & corner.adjacent[0]) &&
+      (mask & corner.adjacent[1]) &&
+      !matchFn(x + corner.dx, y + corner.dy, corner.id, x, y)
+    ) {
+      mask |= corner.bit;
+    }
+  }
+
+  return mask & 255;
+};
+
+PS.render.Autotile.getOrthogonalMask = function (mask) {
+  return Math.round(Number(mask) || 0) & 15;
+};
+
+PS.render.Autotile.getCornerMask = function (mask) {
+  return (Math.round(Number(mask) || 0) >>> 4) & 15;
+};
+
+PS.render.Autotile.getVariant = function (tileX, tileY, ranFn) {
+  var raw;
+
+  if (typeof ranFn === "function") {
+    raw = ranFn(tileX, tileY);
+  } else if (PS.ranmap && typeof PS.ranmap.get === "function") {
+    raw = PS.ranmap.get(tileX, tileY);
+  } else {
+    raw = Math.imul(Math.round(Number(tileX) || 0) + 374761393, 668265263) ^
+      Math.imul(Math.round(Number(tileY) || 0) + 2246822519, 1274126177);
+  }
+
+  return (Number(raw) >>> 0) & 3;
+};
+
+PS.render.Autotile.getAtlasOffset = function (mask, variant) {
+  return ((Math.round(Number(variant) || 0) & 3) * 16) + PS.render.Autotile.getOrthogonalMask(mask);
+};
+
+PS.render.Autotile.getCornerAtlasOffset = function (mask, variant) {
+  return ((Math.round(Number(variant) || 0) & 3) * 16) + PS.render.Autotile.getCornerMask(mask);
+};
+
+PS.render.Autotile.getTileId = function (grid, tileX, tileY) {
+  var width;
+  var height;
+  var tile;
+
+  if (!grid) {
+    return null;
+  }
+
+  if (typeof grid.getTileId === "function") {
+    return grid.getTileId(tileX, tileY);
+  }
+
+  if (typeof grid.get === "function") {
+    tile = grid.get(tileX, tileY);
+    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
+  }
+
+  width = Number(grid.width) || 0;
+  height = Number(grid.height) || 0;
+  if (Array.isArray(grid.tiles) && width > 0 && height > 0 && tileX >= 0 && tileY >= 0 && tileX < width && tileY < height) {
+    tile = grid.tiles[tileY * width + tileX];
+    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
+  }
+
+  return null;
+};
+
+PS.render.Autotile.getTileDefinition = function (tileRegistry, tileId) {
+  return tileRegistry && typeof tileRegistry.get === "function" ? tileRegistry.get(tileId) : null;
+};
+
+PS.render.Autotile.isModeMatch = function (mode, tileId, tile, centerTileId, centerTile) {
+  var normalized = String(mode || "same-terrain");
+
+  if (!tileId) {
+    return false;
+  }
+
+  if (normalized === "same-terrain") {
+    return tileId === centerTileId;
+  }
+
+  if (normalized === "terrain") {
+    return tile && tile.category === "terrain";
+  }
+
+  if (normalized === "water") {
+    return Number(tile && tile.waterDepth) > 0 || /water|ocean|shore|wetland/.test(tileId);
+  }
+
+  if (normalized === "ice") {
+    return /ice|snow|frost/.test(tileId) || /ice|snow|frost/.test(String(tile && tile.biome || ""));
+  }
+
+  if (normalized === "wall") {
+    return tile && tile.category === "wall" || /wall|cliff|rock_cliff/.test(tileId);
+  }
+
+  if (normalized === "floor") {
+    return tile && tile.category === "floor" || /floor|road|pavement/.test(tileId);
+  }
+
+  if (normalized === "same-category") {
+    return tile && centerTile && tile.category === centerTile.category;
+  }
+
+  return false;
+};
+
+PS.render.Autotile.createMatchFn = function (grid, mode, options) {
+  var settings = options || {};
+  var tileRegistry = settings.tileRegistry || (PS.core && PS.core.TileRegistry) || null;
+
+  if (typeof mode === "function") {
+    return mode;
+  }
+
+  return function (tileX, tileY, direction, centerX, centerY) {
+    var tileId = PS.render.Autotile.getTileId(grid, tileX, tileY);
+    var centerTileId = settings.tileId || PS.render.Autotile.getTileId(grid, centerX, centerY);
+    var tile = PS.render.Autotile.getTileDefinition(tileRegistry, tileId);
+    var centerTile = PS.render.Autotile.getTileDefinition(tileRegistry, centerTileId);
+
+    return PS.render.Autotile.isModeMatch(mode, tileId, tile, centerTileId, centerTile, direction);
+  };
+};
+
+PS.render.Autotile.MaskStore = function MaskStore(width, height, matchFn, options) {
+  var settings = options || {};
+
+  this.width = Math.max(1, Math.round(Number(width) || 1));
+  this.height = Math.max(1, Math.round(Number(height) || 1));
+  this.matchFn = typeof matchFn === "function" ? matchFn : function () { return false; };
+  this.ranFn = settings.ranFn || null;
+  this.masks = new Uint8Array(this.width * this.height);
+  this.variants = new Uint8Array(this.width * this.height);
+  this.recomputeCount = 0;
+};
+
+PS.render.Autotile.MaskStore.prototype.index = function (tileX, tileY) {
+  var x = Math.round(Number(tileX) || 0);
+  var y = Math.round(Number(tileY) || 0);
+
+  if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
+    return -1;
+  }
+
+  return y * this.width + x;
+};
+
+PS.render.Autotile.MaskStore.prototype.recomputeTile = function (tileX, tileY) {
+  var index = this.index(tileX, tileY);
+  var mask;
+
+  if (index < 0) {
+    return null;
+  }
+
+  mask = PS.render.Autotile.computeAutotileMask(tileX, tileY, this.matchFn);
+  this.masks[index] = mask;
+  this.variants[index] = PS.render.Autotile.getVariant(tileX, tileY, this.ranFn);
+  this.recomputeCount += 1;
+
+  return {
+    x: Math.round(Number(tileX) || 0),
+    y: Math.round(Number(tileY) || 0),
+    mask: this.masks[index],
+    variant: this.variants[index],
+    atlasOffset: PS.render.Autotile.getAtlasOffset(this.masks[index], this.variants[index])
+  };
+};
+
+PS.render.Autotile.MaskStore.prototype.recomputeAll = function () {
+  var updates = [];
+  var x;
+  var y;
+
+  for (y = 0; y < this.height; y += 1) {
+    for (x = 0; x < this.width; x += 1) {
+      updates.push(this.recomputeTile(x, y));
+    }
+  }
+
+  return updates;
+};
+
+PS.render.Autotile.MaskStore.prototype.recomputeChanged = function (tileX, tileY) {
+  var updates = [];
+  var dx;
+  var dy;
+  var update;
+
+  for (dy = -1; dy <= 1; dy += 1) {
+    for (dx = -1; dx <= 1; dx += 1) {
+      update = this.recomputeTile(tileX + dx, tileY + dy);
+      if (update) {
+        updates.push(update);
+      }
+    }
+  }
+
+  return updates;
+};
+
+PS.render.Autotile.MaskStore.prototype.getMask = function (tileX, tileY) {
+  var index = this.index(tileX, tileY);
+  return index >= 0 ? this.masks[index] : 0;
+};
+
+PS.render.Autotile.MaskStore.prototype.getVariant = function (tileX, tileY) {
+  var index = this.index(tileX, tileY);
+  return index >= 0 ? this.variants[index] : 0;
+};
+
+PS.render.Autotile.MaskStore.prototype.getAtlasOffset = function (tileX, tileY) {
+  return PS.render.Autotile.getAtlasOffset(this.getMask(tileX, tileY), this.getVariant(tileX, tileY));
+};
+
 PS.render.TerrainTransitionResolver = function (tileRegistry, transitionData) {
   this.tileRegistry = tileRegistry || (PS.core && PS.core.TileRegistry) || null;
   this.transitionData = transitionData || { pairs: [] };
