@@ -29,6 +29,7 @@
 | [Lenia Ecosystem Simulation](lenia-ecosystem-simulation.md) | `docs/lenia-ecosystem-simulation.md` | AZR-838 continuous cellular automata ecosystem, species competition, pH collapse, overlay, and JSON export |
 | [Multi-Physics Coupling](multi-physics-coupling.md) | `docs/multi-physics-coupling.md` | AZR-839 canonical nine-pass simulation order, texture registry, previous-tick read discipline, WASM elevation upload, and timing logs |
 | [Parameter Provenance And Environmental Drivers](parameter-provenance-drivers.md) | `docs/parameter-provenance-drivers.md` | AZR-1059 baseline parameter provenance, environmental driver fields, and causal no-downstream-tuning contract |
+| [Simulation Causality Audit](simulation-causality-audit.md) | `docs/simulation-causality-audit.md` | AZR-1069 target-like constant inventory, classifications, replacement models, and causal-system checklist |
 | [Epoch Scaling](epoch-scaling.md) | `docs/epoch-scaling.md` | AZR-841 13-epoch state machine, upstream atmosphere changes, active pass overlays, timescale scaling, and palette swaps |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
 

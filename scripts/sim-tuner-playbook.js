@@ -25,7 +25,7 @@ const PATTERNS = [
       const check = findCheck(report, "temperatureRange");
       return check && !check.ok;
     },
-    recommendation: "move climate.meanTemperatureC toward 0 and reduce climate.temperatureAmplitudeC before increasing ticks"
+    recommendation: "inspect upstream solar forcing, greenhouse forcing, albedo, and diffusion inputs before changing temperature parameters"
   },
   {
     id: "currents-too-weak",
@@ -40,7 +40,7 @@ const PATTERNS = [
       const check = findCheck(report, "salinityRange");
       return check && !check.ok;
     },
-    recommendation: "move climate.salinityPsu toward 35 and reduce evaporation-biased temperature amplitude"
+    recommendation: "inspect upstream evaporation, freshwater input, ocean ratio, and thermohaline exchange before changing salinity parameters"
   },
   {
     id: "biome-balance-miss",
@@ -48,7 +48,7 @@ const PATTERNS = [
       const check = findCheck(report, "biomeDistribution");
       return check && !check.ok;
     },
-    recommendation: "adjust climate.oceanRatio until oceanRatio > 0.6 and landRatio > 0.2 in the validator report"
+    recommendation: "trace biome distribution through ocean inventory, elevation, moisture, albedo, and seed variance before changing climate.oceanRatio"
   }
 ];
 
