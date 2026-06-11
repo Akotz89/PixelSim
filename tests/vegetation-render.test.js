@@ -14,6 +14,10 @@ const bitsmapSource = read("js/core/bitsmap.js");
 const drawOrderSource = read("js/render/draw-order.js");
 const vegetationGridSource = read("js/sim/vegetation.js");
 const shadowSource = read("js/render/shadow-stamping.js");
+const vegetationCellsSource = read("js/render/vegetation-cells.js");
+const vegetationShadowsSource = read("js/render/vegetation-shadows.js");
+const vegetationOverlaysSource = read("js/render/vegetation-overlays.js");
+const vegetationDrawListSource = read("js/render/vegetation-draw-list.js");
 const vegetationRenderSource = read("js/render/vegetation-render.js");
 const pipelineSource = read("js/render/pipeline.js");
 const atlasSource = read("js/render/entity-atlas.js");
@@ -21,6 +25,11 @@ const selectedVegetationCells = [];
 
 assert.ok(namespaceSource.indexOf("js/render/shadow-stamping.js") < namespaceSource.indexOf("js/render/entities.js"), "shadow stamping should load before entity facades");
 assert.ok(namespaceSource.indexOf("js/render/vegetation-render.js") > namespaceSource.indexOf("js/render/entities.js"), "vegetation render should load after entity facade");
+assert.ok(namespaceSource.indexOf("js/render/vegetation-cells.js") > namespaceSource.indexOf("js/render/entities.js"), "vegetation cell helpers should load after entity facade");
+assert.ok(namespaceSource.indexOf("js/render/vegetation-cells.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation cell helpers should load before vegetation renderer");
+assert.ok(namespaceSource.indexOf("js/render/vegetation-shadows.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation shadow policy should load before vegetation renderer");
+assert.ok(namespaceSource.indexOf("js/render/vegetation-overlays.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation overlay helpers should load before vegetation renderer");
+assert.ok(namespaceSource.indexOf("js/render/vegetation-draw-list.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation draw-list helpers should load before vegetation renderer");
 assert.ok(namespaceSource.indexOf("js/render/vegetation-render.js") < namespaceSource.indexOf("js/render/pipeline.js"), "vegetation render should load before pipeline registration");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("vegetation.world"') >= 0, "pipeline should register world vegetation layer");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("vegetation.grass"') >= 0, "pipeline should register grass density overlay layer");
@@ -28,6 +37,10 @@ assert.ok(pipelineSource.indexOf("order: 34") >= 0, "grass density overlay shoul
 assert.ok(pipelineSource.indexOf("order: 35") >= 0, "world vegetation layer should use pipeline order 35");
 assert.strictEqual(vegetationRenderSource.indexOf("webgl"), -1, "vegetation renderer should not add legacy WebGL hooks");
 assert.ok(vegetationRenderSource.indexOf("drawShadowRects") >= 0, "vegetation renderer should submit shadows through the WebGPU shadow rect path");
+assert.ok(vegetationCellsSource.indexOf("getAcceptedVegetationCellName") >= 0, "vegetation cell helpers should own accepted sprite selection");
+assert.ok(vegetationShadowsSource.indexOf("getShadowSpec") >= 0, "vegetation shadow helpers should own shadow policy");
+assert.ok(vegetationOverlaysSource.indexOf("drawGrassOverlay") >= 0, "vegetation overlay helpers should own grass overlay drawing");
+assert.ok(vegetationDrawListSource.indexOf("buildDrawList") >= 0, "vegetation draw-list helpers should own legacy draw-list facade");
 assert.ok(atlasSource.indexOf("PS.atlas.getVegetationCell") >= 0, "atlas should expose vegetation sprite cells");
 
 const drawCalls = [];
@@ -165,6 +178,10 @@ vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
 vm.runInContext(drawOrderSource, context, { filename: "js/render/draw-order.js" });
 vm.runInContext(vegetationGridSource, context, { filename: "js/sim/vegetation.js" });
 vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js" });
+vm.runInContext(vegetationCellsSource, context, { filename: "js/render/vegetation-cells.js" });
+vm.runInContext(vegetationShadowsSource, context, { filename: "js/render/vegetation-shadows.js" });
+vm.runInContext(vegetationOverlaysSource, context, { filename: "js/render/vegetation-overlays.js" });
+vm.runInContext(vegetationDrawListSource, context, { filename: "js/render/vegetation-draw-list.js" });
 vm.runInContext(vegetationRenderSource, context, { filename: "js/render/vegetation-render.js" });
 
 const vegetation = context.PS.vegetation;
