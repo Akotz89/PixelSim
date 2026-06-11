@@ -256,6 +256,10 @@ window.setupControls = function() {
     if (PS.ui.evolutionaryTree) {
       PS.ui.evolutionaryTree.setup();
     }
+
+    if (PS.ui.exportCapture) {
+      PS.ui.exportCapture.setup();
+    }
   }
 
   if (window.PS && PS.debug) {

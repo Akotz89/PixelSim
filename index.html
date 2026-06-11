@@ -58,6 +58,18 @@
         <button id="export-json-button" class="sim-button" type="button">Export JSON</button>
         <button id="import-json-button" class="sim-button" type="button">Import JSON</button>
         <input id="import-json-file" type="file" accept="application/json,.json" hidden>
+        <div id="export-capture-controls" class="export-capture-controls" aria-label="Capture exports">
+          <select id="capture-mode-select" aria-label="Capture mode">
+            <option value="simulation">Simulation PNG</option>
+            <option value="hud">PNG + HUD context</option>
+          </select>
+          <label>
+            <input id="capture-bookmark-checkbox" type="checkbox">
+            Bookmark
+          </label>
+          <button id="screenshot-export-button" class="sim-button" type="button">PNG</button>
+          <button id="recording-export-button" class="sim-button" type="button">Record</button>
+        </div>
         <span id="speed-label" class="speed-label">Speed: 1x</span>
       </section>
 

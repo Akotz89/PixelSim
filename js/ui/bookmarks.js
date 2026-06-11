@@ -363,6 +363,9 @@ PS.ui.bookmarks = (function() {
 
   function makeBookmarkItem(bookmark) {
     var status = getStatus(bookmark);
+    var captureRef = bookmark.screenshotRef
+      ? "<small>" + escapeText("Capture: " + bookmark.screenshotRef) + "</small>"
+      : "";
 
     return (
       "<article class=\"bookmark-item bookmark-" + escapeText(status.split(" ")[0]) + "\" data-bookmark-id=\"" + escapeText(bookmark.id) + "\">" +
@@ -371,6 +374,7 @@ PS.ui.bookmarks = (function() {
       "<span>" + escapeText(formatTime(bookmark) + " / " + status) + "</span>" +
       "</button>" +
       "<p>" + escapeText(bookmark.note || getTargetLabel(bookmark.target)) + "</p>" +
+      captureRef +
       "<div class=\"bookmark-actions\">" +
       "<button type=\"button\" data-bookmark-action=\"edit\">Note</button>" +
       "<button type=\"button\" data-bookmark-action=\"delete\">Delete</button>" +

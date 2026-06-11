@@ -176,6 +176,10 @@ assert.strictEqual(lineageBookmark.target.type, "lineage");
 assert.strictEqual(lineageBookmark.target.speciesId, 13);
 assert.strictEqual(vm.runInContext("PS.ui.bookmarks.getStatus(world.bookmarks[0])", context), "active");
 
+const captureBookmark = vm.runInContext("PS.ui.bookmarks.create({ label: 'Capture', screenshotRef: 'pixeldarium-seed-microbial.png' })", context);
+assert.strictEqual(captureBookmark.screenshotRef, "pixeldarium-seed-microbial.png");
+assert.ok(vm.runInContext("PS.ui.bookmarks.get('B3').screenshotRef", context).indexOf("pixeldarium") >= 0);
+
 context.world.lineages["7"].isExtinct = true;
 assert.strictEqual(vm.runInContext("PS.ui.bookmarks.getStatus(world.bookmarks[0])", context), "extinct lineage");
 
@@ -224,6 +228,6 @@ assert.strictEqual(vm.runInContext("PS.ui.bookmarks.delete('B9')", context), tru
 assert.strictEqual(context.world.bookmarks.length, 0);
 
 console.log("bookmark checks passed", JSON.stringify({
-  created: 3,
+  created: 4,
   nextBookmarkId: context.world.nextBookmarkId
 }));

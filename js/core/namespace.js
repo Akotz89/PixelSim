@@ -168,6 +168,7 @@ PS.core.manifest = [
   "js/ui/inspect.js",
   "js/ui/camera-input.js",
   "js/ui/persistence-controls.js",
+  "js/ui/export-capture.js",
   "js/ui/interaction.js",
   "js/ui/touch.js",
   "js/ui/spotlight.js",

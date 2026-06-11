@@ -668,6 +668,40 @@ h1 {
   border-color: rgba(255, 120, 120, 0.46);
 }
 
+.export-capture-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.95fr) minmax(0, 0.7fr) minmax(0, 0.9fr);
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
+.export-capture-controls select,
+.export-capture-controls label {
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 8px;
+  color: #dce5ff;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  box-sizing: border-box;
+}
+
+.export-capture-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.export-capture-controls input {
+  margin: 0;
+}
+
 .speed-label {
   padding: 9px 12px;
   color: #dce5ff;
@@ -1632,7 +1666,8 @@ h1 {
 
 .bookmark-jump b,
 .bookmark-jump span,
-.bookmark-item p {
+.bookmark-item p,
+.bookmark-item small {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1659,6 +1694,14 @@ h1 {
   font-size: 12px;
   font-weight: 700;
   line-height: 1.35;
+}
+
+.bookmark-item small {
+  grid-column: 1 / -1;
+  color: #72d7ff;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .bookmark-actions {
