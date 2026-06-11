@@ -121,7 +121,7 @@ PS.render.mountains = PS.render.mountains || (function () {
     return true;
   }
 
-  function appendMountainShadow(target, info, screenX, screenY, samplePixelSize, alpha) {
+  function appendMountainShadow(target, info, screenX, screenY, samplePixelSize, alpha, policy) {
     if (!target || !target.shadowRects || !PS.render.shadows || typeof PS.render.shadows.appendStampedRects !== "function") {
       return 0;
     }
@@ -134,6 +134,7 @@ PS.render.mountains = PS.render.mountains || (function () {
       heightUnits: info.heightUnits,
       alpha: Math.min(0.52, 0.32 * (Number(alpha) || 1)),
       mode: "hard",
+      maxIterations: policy && policy.shadowIterations !== undefined ? policy.shadowIterations : undefined,
       distance2Ground: info.isPeak ? samplePixelSize * 0.42 : samplePixelSize * 0.18,
       color: [0.012, 0.018, 0.028]
     });
@@ -182,7 +183,7 @@ PS.render.mountains = PS.render.mountains || (function () {
 
     if (appended > 0) {
       target.mountainTiles = (target.mountainTiles || 0) + 1;
-      target.mountainShadowRects = (target.mountainShadowRects || 0) + appendMountainShadow(target, info, screenX, screenY, samplePixelSize, drawAlpha);
+      target.mountainShadowRects = (target.mountainShadowRects || 0) + appendMountainShadow(target, info, screenX, screenY, samplePixelSize, drawAlpha, policy);
     }
 
     return appended;

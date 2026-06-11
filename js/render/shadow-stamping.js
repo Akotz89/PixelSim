@@ -106,6 +106,7 @@ PS.render.shadows = PS.render.shadows || (function () {
   function appendStampedRects(target, spec) {
     var options = spec || {};
     var lookup = getHeightLookup(options.heightUnits !== undefined ? options.heightUnits : options.height);
+    var iterations = lookup.iterations;
     var direction = getDirection(options);
     var alpha = clamp(options.alpha === undefined ? 0.35 : options.alpha, 0, 1);
     var modeStrength = getModeStrength(options.mode);
@@ -121,13 +122,17 @@ PS.render.shadows = PS.render.shadows || (function () {
     var falloff;
     var offset;
 
-    if (!target || lookup.iterations <= 0 || alpha <= 0 || width <= 0 || height <= 0) {
+    if (options.maxIterations !== undefined) {
+      iterations = Math.max(0, Math.min(iterations, Math.round(Number(options.maxIterations) || 0)));
+    }
+
+    if (!target || iterations <= 0 || alpha <= 0 || width <= 0 || height <= 0) {
       return 0;
     }
 
-    for (i = 0; i < lookup.iterations; i += 1) {
+    for (i = 0; i < iterations; i += 1) {
       stamp = i + 1;
-      falloff = 1 - (i / Math.max(1, lookup.iterations)) * 0.58;
+      falloff = 1 - (i / Math.max(1, iterations)) * 0.58;
       offset = distance2Ground + lookup.stepPixels * stamp;
       target.push(
         baseX + direction.x * offset,

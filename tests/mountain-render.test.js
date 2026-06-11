@@ -158,6 +158,32 @@ assert.ok(Object.keys(batches.pages).length >= 1, "mountain overlays should appe
 assert.ok(mountainCellCache.every((cellData) => cellData.terrainAtlasCell && cellData.terrainAtlasCell.name === "fallback.rock"), "mountain overlays should not overwrite base terrain atlas cache cells");
 assert.ok(mountainCellCache.every((cellData) => typeof cellData.terrainAtlasEcologyKey === "string"), "mountain overlays should not replace base terrain cache keys");
 
+const worldBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 3,
+  sampleNorth: 3,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 3
+}, mountainCellCache.map((cellData) => ({
+  sample: cellData.sample,
+  screenX: cellData.screenX,
+  screenY: cellData.screenY
+})), 1, {
+  visualPolicy: {
+    level: "WORLD",
+    mountainOverlays: "disabled",
+    autotileTransitions: "disabled",
+    transitionAlphaScale: 0,
+    pointLightScale: 0,
+    waterUvScrollScale: 0,
+    normalLightingStrength: 0
+  }
+});
+assert.strictEqual(worldBatches.count, 9, "world LOD should keep base terrain tiles");
+assert.strictEqual(worldBatches.mountainTiles, undefined, "world LOD should skip multi-tile mountain overlays");
+assert.strictEqual(worldBatches.shadowRects.length, 0, "world LOD should skip stamped mountain shadows");
+
 const plainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
   sampleEast: 0,
   sampleNorth: 0,

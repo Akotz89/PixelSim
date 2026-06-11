@@ -65,8 +65,20 @@ const hard = shadows.makeStampedRects({
   direction: { x: 2, y: 0 },
   color: [0.1, 0.2, 0.3]
 });
+const capped = shadows.makeStampedRects({
+  x: 10,
+  y: 20,
+  width: 6,
+  rectHeight: 3,
+  heightUnits: 31,
+  alpha: 0.5,
+  maxIterations: 2,
+  direction: { x: 2, y: 0 },
+  color: [0.1, 0.2, 0.3]
+});
 
 assert.strictEqual(soft.length / 8, shadows.getHeightLookup(16).iterations, "rect count should match height lookup iterations");
+assert.strictEqual(capped.length / 8, 2, "maxIterations should cap physical shadow stamp count for LOD budgets");
 assert.ok(soft.every(Number.isFinite), "stamped shadow rect values should stay finite");
 assert.ok(soft[0] > 10, "explicit shadow direction should offset stamp x");
 assert.strictEqual(soft[1], 20, "horizontal explicit direction should not offset y");

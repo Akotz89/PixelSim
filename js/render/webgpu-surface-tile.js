@@ -677,16 +677,16 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     return PS.render.surfaceTileBatcher.beginBatches();
   },
 
-  appendBatches: function (batches, address, cellCache, alpha) {
+  appendBatches: function (batches, address, cellCache, alpha, lodState) {
     if (!PS.render.surfaceTileBatcher || typeof PS.render.surfaceTileBatcher.appendBatches !== "function") {
       throw new Error("Terrain batch builder is unavailable");
     }
 
-    return PS.render.surfaceTileBatcher.appendBatches(batches, address, cellCache, alpha);
+    return PS.render.surfaceTileBatcher.appendBatches(batches, address, cellCache, alpha, lodState);
   },
 
-  makeBatches: function (address, cellCache, alpha) {
-    return this.appendBatches(this.beginBatches(), address, cellCache, alpha);
+  makeBatches: function (address, cellCache, alpha, lodState) {
+    return this.appendBatches(this.beginBatches(), address, cellCache, alpha, lodState);
   },
 
   drawRectBatches: function (readyBatches, spec, device, context, encoder, width, height) {
@@ -891,6 +891,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
       }
 
       var batches = this.beginBatches();
+      var lodState = options && options.lodState ? options.lodState : null;
 
       for (var i = 0; i < list.length; i += 1) {
         var item = list[i];
@@ -904,7 +905,8 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
           batches,
           item.address,
           item.cellCache,
-          item.alpha === undefined ? alpha : item.alpha
+          item.alpha === undefined ? alpha : item.alpha,
+          item.lodState || lodState
         );
       }
 
@@ -921,7 +923,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         return false;
       }
 
-      return this.drawBatches(this.makeBatches(address, cellCache, alpha), options);
+      return this.drawBatches(this.makeBatches(address, cellCache, alpha, options && options.lodState), options);
     } catch (error) {
       this.state.lastError = String(error && error.message ? error.message : error);
       return false;

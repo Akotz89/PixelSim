@@ -42,6 +42,14 @@ assert.ok(
 );
 assert.strictEqual(namespaceSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
+assert.ok(
+  surfaceTileSource.indexOf("surfaceTileBatcher.appendBatches(batches, address, cellCache, alpha, lodState)") >= 0,
+  "WebGPU surface tile renderer should forward LOD state into CPU-side terrain batching"
+);
+assert.ok(
+  surfaceTileSource.indexOf("this.makeBatches(address, cellCache, alpha, options && options.lodState)") >= 0,
+  "single-atlas WebGPU terrain draw should build batches with the active LOD state"
+);
 
 [
   { name: "terrain", source: terrainWgsl },

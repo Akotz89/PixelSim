@@ -76,6 +76,7 @@ assert.strictEqual(context.PS.render.lod.getVisualLevel(2), "WORLD", "wide camer
 assert.strictEqual(context.PS.render.lod.getVisualPolicy(11).renderBudgetMs, 16, "surface visual LOD should keep a 16ms render budget");
 assert.strictEqual(context.PS.render.lod.getVisualPolicy(5).renderBudgetMs, 8, "region visual LOD should target the 8ms render budget");
 assert.strictEqual(context.PS.render.lod.getVisualPolicy(2).renderBudgetMs, 4, "world visual LOD should target the 4ms render budget");
+assert.strictEqual(context.PS.render.lod.getVisualPolicy(2).mountainOverlays, "disabled", "world visual LOD should disable detailed mountain overlays");
 assert.strictEqual(context.PS.render.lod.getVisualPolicy(2).autotileTransitions, "disabled", "world visual LOD should disable detailed autotile overlays");
 assert.strictEqual(context.PS.render.lod.getVisualPolicy(2).waterUvScrollScale, 0, "world visual LOD should disable water UV scroll");
 assert.ok(context.PS.render.lod.getVisualPolicy(7.9).transitionAlpha > 0, "near-boundary fractional zoom-out values should expose an LOD transition alpha");

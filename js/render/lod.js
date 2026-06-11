@@ -45,6 +45,7 @@ PS.render.lod.visualPolicies[PS.render.lod.levels.SURFACE] = {
   waterUvScrollScale: 1,
   normalMappedLighting: "per-pixel",
   normalLightingStrength: 1,
+  mountainOverlays: "full",
   autotileTransitions: "full",
   transitionAlphaScale: 1,
   pointLightScale: 1
@@ -62,6 +63,7 @@ PS.render.lod.visualPolicies[PS.render.lod.levels.AREA] = {
   waterUvScrollScale: 0.45,
   normalMappedLighting: "reduced",
   normalLightingStrength: 0.6,
+  mountainOverlays: "full",
   autotileTransitions: "simplified",
   transitionAlphaScale: 0.55,
   pointLightScale: 0.5
@@ -79,6 +81,7 @@ PS.render.lod.visualPolicies[PS.render.lod.levels.REGION] = {
   waterUvScrollScale: 0.2,
   normalMappedLighting: "per-tile",
   normalLightingStrength: 0.3,
+  mountainOverlays: "simplified",
   autotileTransitions: "simplified",
   transitionAlphaScale: 0.25,
   pointLightScale: 0.2
@@ -96,6 +99,7 @@ PS.render.lod.visualPolicies[PS.render.lod.levels.WORLD] = {
   waterUvScrollScale: 0,
   normalMappedLighting: "disabled",
   normalLightingStrength: 0,
+  mountainOverlays: "disabled",
   autotileTransitions: "disabled",
   transitionAlphaScale: 0,
   pointLightScale: 0
