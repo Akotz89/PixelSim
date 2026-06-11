@@ -230,9 +230,9 @@ cacheGrid.setTileId(1, 0, "water_shallow");
 const afterChange = resolver.resolve(1, 1, cacheGrid);
 assert.notStrictEqual(beforeChange.overlays[0].to, afterChange.overlays[0].to, "revision change should invalidate cached transition result");
 
-const largeGrid = createGrid(40, 25, "sand");
-for (let y = 0; y < 25; y += 1) {
-  for (let x = 0; x < 40; x += 1) {
+const largeGrid = createGrid(50, 40, "sand");
+for (let y = 0; y < 40; y += 1) {
+  for (let x = 0; x < 50; x += 1) {
     if ((x + y) % 7 === 0) {
       largeGrid.setTileId(x, y, "grass_lush");
     } else if ((x * 3 + y) % 11 === 0) {
@@ -241,11 +241,11 @@ for (let y = 0; y < 25; y += 1) {
   }
 }
 resolver.invalidate();
-resolver.resolveChunk(largeGrid, 40, 25);
+resolver.resolveChunk(largeGrid, 50, 40);
 const start = performance.now();
-resolver.resolveChunk(largeGrid, 40, 25);
+resolver.resolveChunk(largeGrid, 50, 40);
 const elapsed = performance.now() - start;
-assert.ok(elapsed < 1, "cached transition resolution for 1000 tiles should be under 1ms; got " + elapsed.toFixed(3) + "ms");
-assert.ok(resolver.cacheHits >= 1000, "second chunk pass should use cached transition resolutions");
+assert.ok(elapsed < 1, "cached transition resolution for 2000 tiles should be under 1ms; got " + elapsed.toFixed(3) + "ms");
+assert.ok(resolver.cacheHits >= 2000, "second chunk pass should use cached transition resolutions");
 
 console.log("terrain transition checks passed", JSON.stringify({ elapsedMs: Number(elapsed.toFixed(3)), cacheHits: resolver.cacheHits }));
