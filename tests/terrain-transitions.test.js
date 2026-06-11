@@ -7,6 +7,7 @@ const { performance } = require("perf_hooks");
 const root = path.resolve(__dirname, "..");
 const registrySource = fs.readFileSync(path.join(root, "js/core/tile-registry.js"), "utf8");
 const resolverSource = fs.readFileSync(path.join(root, "js/render/terrain-transitions.js"), "utf8");
+const autotileFacadeSource = fs.readFileSync(path.join(root, "js/render/autotile.js"), "utf8");
 const transitionsSidecarSource = fs.readFileSync(path.join(root, "data/transitions.json.js"), "utf8");
 const tilesData = JSON.parse(fs.readFileSync(path.join(root, "data/tiles.json"), "utf8"));
 const transitionsData = JSON.parse(fs.readFileSync(path.join(root, "data/transitions.json"), "utf8"));
@@ -68,6 +69,7 @@ const context = {
 vm.createContext(context);
 vm.runInContext(registrySource, context, { filename: "js/core/tile-registry.js" });
 vm.runInContext(resolverSource, context, { filename: "js/render/terrain-transitions.js" });
+vm.runInContext(autotileFacadeSource, context, { filename: "js/render/autotile.js" });
 
 const registry = context.PS.core.TileRegistry;
 registry.loadFromJSON(tilesData);
@@ -191,6 +193,9 @@ edgeGrid.setTileId(1, 1, "sand");
 edgeGrid.setTileId(1, 0, "grass_lush");
 let resolved = resolver.resolve(1, 1, edgeGrid);
 assert.strictEqual(resolver.getNeighborMask(1, 1, "sand", edgeGrid), bits.N, "north neighbor should set N bit");
+assert.strictEqual(context.PS.autotile.getMask(1, 1, edgeGrid), bits.N, "public autotile facade should compute the 8-neighbor transition mask");
+assert.strictEqual(context.PS.autotile.getTransitionIndex(1, 1, edgeGrid), 0, "public autotile facade should map mask to transition sprite index");
+assert.strictEqual(context.PS.autotile.getTransitionIndex(1, 1, "E"), 1, "public autotile facade should map explicit neighbor direction to sprite index");
 assert.strictEqual(resolver.maskToSpriteIndex(bits.N), 0, "N mask should map to north edge sprite");
 assert.strictEqual(resolved.baseTile, "sand", "resolved base tile should match grid tile");
 assert.ok(resolved.overlays.some((overlay) => overlay.spriteId === "transitions.grass_sand.0" && overlay.edge === "N"), "grass-sand north edge should produce transition overlay");
