@@ -23,6 +23,7 @@
 | [Phase 2 Readiness](phase-2-readiness.md) | `docs/phase-2-readiness.md` | AZR-353 reconciliation of GDD, Linear Phase 2 stories, and current repo evidence |
 | [Agent Studio Handoff](agent-studio-handoff.md) | `docs/agent-studio-handoff.md` | Runtime-safe contract for accepting outputs from the private Pixeldarium Agent Studio repo |
 | [Agent Simulation Control](agent-simulation-control.md) | `docs/agent-simulation-control.md` | AZR-835 planet-spec schema, headless runner, validator, WASM worker protocol, and tuner playbook |
+| [WASM Simulation Module](wasm-sim-module.md) | `docs/wasm-sim-module.md` | AZR-836 Rust/WASM computation module, file-protocol sidecar, D8 rivers, and WebGPU upload bridge |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
 
 ## Planning Artifacts

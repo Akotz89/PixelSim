@@ -6,6 +6,7 @@ dist/
 .vite/
 tmp/
 reports/
+src/sim/target/
 
 # BMAD symlink (points to monorepo root _bmad/)
 _bmad
