@@ -248,6 +248,10 @@ window.setupControls = function() {
     if (PS.ui.timeline) {
       PS.ui.timeline.setup();
     }
+
+    if (PS.ui.bookmarks) {
+      PS.ui.bookmarks.setup();
+    }
   }
 
   if (window.PS && PS.debug) {

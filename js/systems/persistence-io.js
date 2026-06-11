@@ -66,6 +66,8 @@ function applySubsystemSaveFallbacks(saveData) {
   fallback("timelineEvents", ui.timelineEvents);
   fallback("traitHistory", history.traitHistory);
   fallback("ecosystemHistory", history.ecosystemHistory);
+  fallback("bookmarks", history.bookmarks);
+  fallback("nextBookmarkId", history.nextBookmarkId);
   fallback("milestonesReached", history.milestonesReached);
 
   return source;
@@ -214,6 +216,12 @@ function applyWorldSaveData(saveData) {
 
   world.traitHistory = restoreTraitHistory(saveData.traitHistory);
   world.ecosystemHistory = restoreEcosystemHistory(saveData.ecosystemHistory);
+  if (PS.ui && PS.ui.bookmarks && typeof PS.ui.bookmarks.restore === "function") {
+    PS.ui.bookmarks.restore(saveData.bookmarks, saveData.nextBookmarkId);
+  } else {
+    world.bookmarks = Array.isArray(saveData.bookmarks) ? clonePersistencePlainValue(saveData.bookmarks) : [];
+    world.nextBookmarkId = Math.max(1, Math.round(restoreNumber(saveData.nextBookmarkId, world.bookmarks.length + 1)));
+  }
   world.eventLog = restoreSimulationEvents(saveData.eventLog);
   world.timelineEvents = restoreSimulationEvents(saveData.timelineEvents, 0);
   world.milestonesReached = saveData.milestonesReached ? clonePersistencePlainValue(saveData.milestonesReached) : {};

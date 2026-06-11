@@ -172,6 +172,7 @@ PS.core.manifest = [
   "js/ui/spotlight.js",
   "js/ui/observation-overlays.js",
   "js/ui/timeline.js",
+  "js/ui/bookmarks.js",
   "js/ui/setup.js",
   "js/ui/hud.js",
   "js/ui/panels.js",

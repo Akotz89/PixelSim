@@ -55,6 +55,7 @@ saves do not write the legacy full-config blob.
 | nextSpeciesId | int | Auto-increment counter for biology species IDs |
 | nextBiologyPopulationId | int | Auto-increment counter for aggregate biology population IDs |
 | nextBiologyRepresentativeId | int | Auto-increment counter for watchable representative organism IDs |
+| nextBookmarkId | int | Auto-increment counter for watcher bookmark IDs |
 | microbialReady | bool | Whether microbial field growth has crossed the readiness threshold |
 | nextSettlementId | int | Auto-increment counter |
 | nextSettlementRouteId | int | Auto-increment counter |
@@ -201,6 +202,46 @@ Persisted watcher-facing representative organisms. Unpinned representatives may 
   "lastSelectedTick": 100
 }
 ```
+
+### bookmarks[]
+Watcher-created local annotations. Bookmarks are plain save-data records and do
+not require cloud sync or external storage.
+
+```json
+{
+  "id": "B4",
+  "label": "First life marker",
+  "note": "Track this split",
+  "createdTick": 4212,
+  "tick": 4211,
+  "deepTimeYears": 123456789,
+  "epoch": "Microbial",
+  "camera": {
+    "zoomLevel": 3.5,
+    "latitude": 21.25,
+    "longitude": -73.5,
+    "panEastMeters": 420,
+    "panNorthMeters": -155
+  },
+  "target": {
+    "type": "event",
+    "source": "timeline",
+    "eventType": "life.first",
+    "category": "life.first",
+    "label": "First life",
+    "tick": 4211,
+    "lineageId": 7,
+    "speciesId": 13,
+    "populationId": 17,
+    "inspectTarget": { "type": "tile", "x": 12, "y": 9 }
+  },
+  "screenshotRef": ""
+}
+```
+
+Targets may be `camera`, `tile`, `lineage`, or `event`. Restore keeps stale
+targets readable even when the referenced species, entity, or event no longer
+exists.
 
 ### terrain[]
 Flat array of `WORLD_WIDTH * WORLD_HEIGHT` integers. `0` = barren, `1` = fertile.

@@ -92,6 +92,8 @@ function clearWorld() {
   world.inspectedEntity = null;
   world.ecosystemSummary = null;
   world.ecosystemHistory = [];
+  world.bookmarks = [];
+  world.nextBookmarkId = 1;
   world.simulationAlerts = [];
   world.populationTraitSummary = null;
   world.lineageSummary = null;

@@ -122,6 +122,8 @@ function createWorldSubsystemSaveData() {
     history: {
       traitHistory: world.traitHistory.map(copyTraitHistorySampleForSave),
       ecosystemHistory: (Array.isArray(world.ecosystemHistory) ? world.ecosystemHistory : []).map(copyEcosystemHistorySampleForSave),
+      bookmarks: copyLayerStateForSave(Array.isArray(world.bookmarks) ? world.bookmarks : []),
+      nextBookmarkId: Math.max(1, Math.round(Number(world.nextBookmarkId) || 1)),
       milestonesReached: copyLayerStateForSave(world.milestonesReached || {})
     }
   };
@@ -221,6 +223,8 @@ function createWorldSaveData() {
     organisms: world.organisms.map(copyOrganismForSave),
     traitHistory: world.traitHistory.map(copyTraitHistorySampleForSave),
     ecosystemHistory: (Array.isArray(world.ecosystemHistory) ? world.ecosystemHistory : []).map(copyEcosystemHistorySampleForSave),
+    bookmarks: copyLayerStateForSave(Array.isArray(world.bookmarks) ? world.bookmarks : []),
+    nextBookmarkId: Math.max(1, Math.round(Number(world.nextBookmarkId) || 1)),
     eventLog: (Array.isArray(world.eventLog) ? world.eventLog : []).map(copySimulationEventForSave),
     timelineEvents: (Array.isArray(world.timelineEvents) ? world.timelineEvents : []).map(copySimulationEventForSave),
     milestonesReached: copyLayerStateForSave(world.milestonesReached || {}),

@@ -395,6 +395,36 @@ const root = path.resolve(__dirname, "..");
         effect: "species-split",
         traits: normalizeOrganismTraits({ bodySize: 1.5 })
       }];
+      world.bookmarks = [{
+        id: "B4",
+        label: "First life marker",
+        note: "Track this split",
+        createdTick: 4212,
+        tick: 4211,
+        deepTimeYears: 123456789,
+        epoch: "Empire",
+        camera: {
+          zoomLevel: 3.5,
+          latitude: 21.25,
+          longitude: -73.5,
+          panEastMeters: 420,
+          panNorthMeters: -155
+        },
+        target: {
+          type: "event",
+          source: "timeline",
+          eventType: "life.first",
+          category: "life.first",
+          label: "First life",
+          tick: 4211,
+          lineageId: 7,
+          speciesId: 13,
+          populationId: 17,
+          inspectTarget: { type: "tile", x: 12, y: 9 }
+        },
+        screenshotRef: ""
+      }];
+      world.nextBookmarkId = 5;
       world.milestonesReached = {
         "life.first": {
           tick: 4211,
@@ -512,6 +542,8 @@ const root = path.resolve(__dirname, "..");
       deepTimeYears: world.deepTimeYears,
       timeScale: PS.time && PS.time.timeScale ? Object.assign({}, PS.time.timeScale) : null,
       timelineEvents: world.timelineEvents.slice(),
+      bookmarks: world.bookmarks.slice(),
+      nextBookmarkId: world.nextBookmarkId,
       milestonesReached: Object.assign({}, world.milestonesReached),
       biologyPopulations: world.biologyPopulations.slice(),
       species: world.species.slice(),
@@ -612,6 +644,14 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.saveData.timelineEvents[0].id, 13, "timeline species event id should serialize");
   assert.strictEqual(evidence.importedEvidence.timelineEvents[0].cause, "geographic-isolation", "timeline species event cause should restore");
   assert.strictEqual(evidence.importedEvidence.timelineEvents[0].traits.bodySize, 1.5, "timeline species event traits should restore");
+  assert.strictEqual(evidence.saveData.bookmarks.length, 1, "bookmarks should serialize");
+  assert.strictEqual(evidence.saveData.subsystems.history.bookmarks[0].id, "B4", "subsystem history save should mirror bookmarks");
+  assert.strictEqual(evidence.saveData.nextBookmarkId, 5, "bookmark counter should serialize");
+  assert.strictEqual(evidence.saveData.subsystems.history.nextBookmarkId, 5, "subsystem history save should mirror bookmark counter");
+  assert.strictEqual(evidence.importedEvidence.bookmarks[0].label, "First life marker", "bookmarks should restore labels");
+  assert.strictEqual(evidence.importedEvidence.bookmarks[0].target.eventType, "life.first", "bookmark event target should restore");
+  assert.strictEqual(evidence.importedEvidence.bookmarks[0].camera.latitude, 21.25, "bookmark camera should restore");
+  assert.strictEqual(evidence.importedEvidence.nextBookmarkId, 5, "bookmark counter should restore");
   assert.strictEqual(evidence.importedEvidence.milestonesReached["life.first"].value, 1, "milestone fired state should restore");
   assert.strictEqual(evidence.saveData.nextSpeciesId, 18, "species counter should serialize");
   assert.strictEqual(evidence.saveData.nextBiologyPopulationId, 19, "biology population counter should serialize");

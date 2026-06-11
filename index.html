@@ -179,6 +179,15 @@
       <div id="timeline-list" class="timeline-list">TIMELINE: Waiting for events</div>
     </section>
 
+    <section id="bookmark-panel" data-menu-page="log" aria-label="Bookmarks" hidden>
+      <div class="bookmark-editor">
+        <input id="bookmark-label-input" type="text" maxlength="64" placeholder="Label" spellcheck="false">
+        <textarea id="bookmark-note-input" maxlength="240" placeholder="Note" rows="2"></textarea>
+        <button id="bookmark-add-button" type="button">Bookmark</button>
+      </div>
+      <div id="bookmark-list" class="bookmark-list">BOOKMARKS: -</div>
+    </section>
+
     <section id="persistence-status" data-menu-page="controls" aria-label="Save status">SAVE: Ready</section>
 
       <p class="help" data-menu-page="log" hidden>

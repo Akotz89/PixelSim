@@ -26,6 +26,10 @@ const timelineFilterButtons = typeof document.querySelectorAll === "function"
   ? document.querySelectorAll("[data-timeline-filter]")
   : [];
 const timelineList = document.getElementById("timeline-list");
+const bookmarkLabelInput = document.getElementById("bookmark-label-input");
+const bookmarkNoteInput = document.getElementById("bookmark-note-input");
+const bookmarkAddButton = document.getElementById("bookmark-add-button");
+const bookmarkList = document.getElementById("bookmark-list");
 const ecosystemHistoryCanvas = document.getElementById("ecosystem-history");
 const traitHistoryCanvas = document.getElementById("trait-history");
 

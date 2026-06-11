@@ -139,7 +139,9 @@ const world = {
   },
   history: {
     ecosystemHistory: [],
-    traitHistory: []
+    traitHistory: [],
+    bookmarks: [],
+    nextBookmarkId: 1
   },
   biology: {
     nextLineageId: 1,
