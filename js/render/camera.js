@@ -19,6 +19,22 @@ PS.camera.inertia = PS.camera.inertia || {
   hasZoomAnchor: false
 };
 
+PS.camera.getMotionConfig = function () {
+  return {
+    panAcceleration: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_PAN_ACCELERATION) || 0.62),
+    panFriction: clamp(Number(CONFIG.PLANET_CAMERA_PAN_FRICTION) || 0.84, 0, 0.98),
+    panMaxSpeed: Math.max(0.1, Number(CONFIG.PLANET_CAMERA_PAN_MAX_SPEED) || 42),
+    zoomAcceleration: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_ACCELERATION) || 0.6),
+    zoomFriction: clamp(Number(CONFIG.PLANET_CAMERA_ZOOM_FRICTION) || 0.72, 0, 0.98),
+    zoomMaxSpeed: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_MAX_SPEED) || 0.85)
+  };
+};
+
+PS.camera.clampVelocity = function (value, maxSpeed) {
+  var speed = Math.max(0, Number(maxSpeed) || 0);
+  return clamp(Number(value) || 0, -speed, speed);
+};
+
 PS.camera.getIntegerZoomLevel = function (zoomLevel) {
   return clamp(
     Math.round(Number(zoomLevel) || 0),
@@ -357,11 +373,18 @@ PS.camera.panScreen = function (deltaX, deltaY) {
   var scale = PS.camera.getScale();
   var normalizedDeltaX = Number(deltaX) || 0;
   var normalizedDeltaY = Number(deltaY) || 0;
+  var motion = PS.camera.getMotionConfig();
   var eastKm = -normalizedDeltaX * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
   var northKm = normalizedDeltaY * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
 
-  PS.camera.inertia.panVelocityX = normalizedDeltaX;
-  PS.camera.inertia.panVelocityY = normalizedDeltaY;
+  PS.camera.inertia.panVelocityX = PS.camera.clampVelocity(
+    PS.camera.inertia.panVelocityX + normalizedDeltaX * motion.panAcceleration,
+    motion.panMaxSpeed
+  );
+  PS.camera.inertia.panVelocityY = PS.camera.clampVelocity(
+    PS.camera.inertia.panVelocityY + normalizedDeltaY * motion.panAcceleration,
+    motion.panMaxSpeed
+  );
 
   return PS.camera.panKm(eastKm, northKm);
 };
@@ -482,12 +505,16 @@ PS.camera.getZoomTransitionStats = function () {
 
 PS.camera.adjustZoom = function (delta) {
   var normalizedDelta = Number(delta) || 0;
+  var motion = PS.camera.getMotionConfig();
 
   if (normalizedDelta === 0) {
     return false;
   }
 
-  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.6;
+  PS.camera.inertia.zoomVelocity = PS.camera.clampVelocity(
+    PS.camera.inertia.zoomVelocity + normalizedDelta * motion.zoomAcceleration,
+    motion.zoomMaxSpeed
+  );
   PS.camera.inertia.hasZoomAnchor = false;
   if (typeof markCameraInteracting === "function") {
     markCameraInteracting();
@@ -498,12 +525,16 @@ PS.camera.adjustZoom = function (delta) {
 
 PS.camera.adjustZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
   var normalizedDelta = Number(delta) || 0;
+  var motion = PS.camera.getMotionConfig();
 
   if (normalizedDelta === 0) {
     return false;
   }
 
-  PS.camera.inertia.zoomVelocity += normalizedDelta * 0.6;
+  PS.camera.inertia.zoomVelocity = PS.camera.clampVelocity(
+    PS.camera.inertia.zoomVelocity + normalizedDelta * motion.zoomAcceleration,
+    motion.zoomMaxSpeed
+  );
   PS.camera.inertia.anchorCanvasX = Number(canvasX) || 0;
   PS.camera.inertia.anchorCanvasY = Number(canvasY) || 0;
   PS.camera.inertia.hasZoomAnchor = true;
@@ -525,6 +556,7 @@ PS.camera.stopInertia = function () {
 PS.camera.updateInertia = function () {
   var inertia = PS.camera.inertia;
   var view = PS.camera.getView();
+  var motion = PS.camera.getMotionConfig();
   var maxZoom = PS.camera.getZoomLevels().length - 1;
   var zoomVelocity = Number(inertia.zoomVelocity) || 0;
   var panVelocityX = Number(inertia.panVelocityX) || 0;
@@ -544,7 +576,7 @@ PS.camera.updateInertia = function () {
       inertia.zoomVelocity = 0;
       inertia.zoomAccumulator = 0;
     } else {
-      inertia.zoomVelocity = zoomVelocity * 0.72;
+      inertia.zoomVelocity = zoomVelocity * motion.zoomFriction;
     }
   } else {
     inertia.zoomVelocity = 0;
@@ -557,8 +589,8 @@ PS.camera.updateInertia = function () {
     var northKm = panVelocityY * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
 
     PS.camera.panKm(eastKm, northKm);
-    inertia.panVelocityX = panVelocityX * 0.84;
-    inertia.panVelocityY = panVelocityY * 0.84;
+    inertia.panVelocityX = panVelocityX * motion.panFriction;
+    inertia.panVelocityY = panVelocityY * motion.panFriction;
     didMove = true;
   } else {
     inertia.panVelocityX = 0;

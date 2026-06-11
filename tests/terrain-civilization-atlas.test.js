@@ -114,6 +114,16 @@ const production = terrainCell({ type: "settlement", family: "production", press
 const road = terrainCell({ type: "route", family: "road", pressure: 0.7, routePressure: 0.7 }, 25);
 const canal = terrainCell({ type: "route", family: "canal", pressure: 0.7, routePressure: 0.7 }, 26);
 const dock = terrainCell({ type: "route", family: "dock", pressure: 0.7, routePressure: 0.7 }, 27);
+const housingDescriptor = context.PS.atlas.getBuildingSpriteDescriptor({
+  category: "residential",
+  lineageId: 2,
+  neighbors: { north: true, east: true, south: false, west: true }
+});
+const productionDescriptor = context.PS.atlas.getBuildingSpriteDescriptor({
+  category: "industrial",
+  factionId: 3,
+  neighbors: { north: false, east: true, south: true, west: false }
+});
 
 assert.ok(farm.name.indexOf(".civ.settlement.3.farm") > 0, "farm footprint should use a bounded civilization family key");
 assert.ok(yard.name.indexOf(".civ.settlement.2.yard") > 0, "yard footprint should use a bounded civilization family key");
@@ -139,5 +149,11 @@ assert.ok(
   })).concat([255])),
   "building edge mask should render active per-tile ground texture through the foundation edge"
 );
+assert.strictEqual(housingDescriptor.category, "residential", "building sprites should preserve category organization");
+assert.strictEqual(housingDescriptor.autotileMask, 11, "building descriptor should derive autotile mask from connected neighbors");
+assert.strictEqual(housingDescriptor.sheetPair.source, "housing-room", "building descriptor should expose build-time source sheet");
+assert.strictEqual(housingDescriptor.sheetPair.dest, "building.residential", "building descriptor should expose build-time destination sheet");
+assert.notStrictEqual(housingDescriptor.color, productionDescriptor.color, "building descriptors should vary color by faction/culture seed");
+assert.notStrictEqual(housingDescriptor.destinationSheet, productionDescriptor.destinationSheet, "building categories should not collide in atlas output");
 
 console.log("terrain civilization atlas checks passed");

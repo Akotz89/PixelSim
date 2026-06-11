@@ -39,6 +39,17 @@ window.setupControls = function() {
     }
 
     var surfacePosition = getSurfacePositionFromCanvasEvent(event);
+    var point = getCanvasPointFromEvent(event);
+    if (
+      window.PS &&
+      PS.render &&
+      PS.render.minimap &&
+      typeof PS.render.minimap.focusFromCanvasPoint === "function" &&
+      PS.render.minimap.focusFromCanvasPoint(point.canvasX, point.canvasY)
+    ) {
+      return;
+    }
+
     var tile = getTileFromCanvasEvent(event);
     var inspectedEntity = getInspectableEntityFromTile(tile.x, tile.y);
 

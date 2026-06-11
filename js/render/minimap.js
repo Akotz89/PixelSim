@@ -17,8 +17,10 @@ PS.render.minimap = PS.render.minimap || {
     cellCount: 0,
     settlementCount: 0,
     organismCount: 0,
-    lastDrawn: false
+    lastDrawn: false,
+    dirtyTileCount: 0
   },
+  dirtyTiles: {},
 
   representativeTileByBiome: {
     barren: "grass_dead",
@@ -179,6 +181,61 @@ PS.render.minimap = PS.render.minimap || {
       worldWidth: worldWidth,
       worldHeight: worldHeight
     };
+  },
+
+  getTileFromCanvasPoint: function (canvasX, canvasY, layout) {
+    var currentLayout = layout || this.getLayout();
+    var x = Number(canvasX) || 0;
+    var y = Number(canvasY) || 0;
+
+    if (
+      x < currentLayout.x ||
+      y < currentLayout.y ||
+      x > currentLayout.x + currentLayout.width ||
+      y > currentLayout.y + currentLayout.height
+    ) {
+      return null;
+    }
+
+    return {
+      x: clamp(Math.floor((x - currentLayout.x) / currentLayout.width * currentLayout.worldWidth), 0, currentLayout.worldWidth - 1),
+      y: clamp(Math.floor((y - currentLayout.y) / currentLayout.height * currentLayout.worldHeight), 0, currentLayout.worldHeight - 1)
+    };
+  },
+
+  focusFromCanvasPoint: function (canvasX, canvasY, layout) {
+    var tile = this.getTileFromCanvasPoint(canvasX, canvasY, layout);
+
+    if (!tile || !PS.camera || typeof PS.camera.focusTile !== "function") {
+      return false;
+    }
+
+    PS.camera.focusTile(tile.x, tile.y);
+    if (typeof markCameraInteracting === "function") {
+      markCameraInteracting();
+    }
+    if (world) {
+      world.needsRender = true;
+    }
+    return true;
+  },
+
+  markTileDirty: function (tileX, tileY) {
+    var x = Math.round(Number(tileX) || 0);
+    var y = Math.round(Number(tileY) || 0);
+    var key = x + "," + y;
+
+    if (!this.dirtyTiles[key]) {
+      this.dirtyTiles[key] = { x: x, y: y };
+      this.stats.dirtyTileCount += 1;
+    }
+
+    return this.dirtyTiles[key];
+  },
+
+  clearDirtyTiles: function () {
+    this.dirtyTiles = {};
+    this.stats.dirtyTileCount = 0;
   },
 
   getTileAt: function (tileX, tileY) {

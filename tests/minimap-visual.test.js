@@ -95,6 +95,12 @@ assert.ok(denseForest.brightness < openForest.brightness, "dense forest should r
 
 const layout = { x: 10, y: 20, width: 200, height: 100, worldWidth: 100, worldHeight: 50 };
 const values = [];
+let focusedTile = null;
+context.PS.camera = {
+  focusTile(x, y) {
+    focusedTile = { x, y };
+  }
+};
 context.world.settlements = [{ x: 25, y: 10, active: true, lineageId: 1 }, { x: 50, y: 20, active: true, lineageId: 2 }];
 minimap.pushSettlementRects(values, layout, 1);
 assert.strictEqual(values.length, 16, "settlement overlay should emit one minimap rect per active settlement");
@@ -108,5 +114,16 @@ assert.notDeepStrictEqual(
   plainChannels(values.slice(12, 15)),
   "different settlement lineages should have distinct minimap colors"
 );
+const minimapTile = minimap.getTileFromCanvasPoint(110, 70, layout);
+assert.strictEqual(minimapTile.x, 50, "minimap should map canvas x to world tile x");
+assert.strictEqual(minimapTile.y, 25, "minimap should map canvas y to world tile y");
+assert.strictEqual(minimap.focusFromCanvasPoint(110, 70, layout), true, "minimap click should focus the camera");
+assert.deepStrictEqual(focusedTile, { x: 50, y: 25 }, "minimap focus should route through camera focusTile");
+minimap.markTileDirty(3, 4);
+minimap.markTileDirty(3, 4);
+minimap.markTileDirty(8, 9);
+assert.strictEqual(minimap.getStats().dirtyTileCount, 2, "minimap dirty tracking should support incremental terrain updates");
+minimap.clearDirtyTiles();
+assert.strictEqual(minimap.getStats().dirtyTileCount, 0, "minimap dirty tracking should clear after redraw");
 
 console.log("minimap visual checks passed");

@@ -2,6 +2,85 @@
 PS.render = PS.render || {};
 PS.atlas = PS.atlas || {};
 
+PS.atlas.organismBodyLayers = [
+  "shadow",
+  "bottom",
+  "body",
+  "legs",
+  "arms",
+  "appendages",
+  "head",
+  "face",
+  "equipment",
+  "overlay"
+];
+
+PS.atlas.organismPaletteCategories = ["skin", "hair", "clothing", "faction"];
+
+PS.atlas.getDirectionIndex8 = function (directionX, directionY) {
+  var x = Number(directionX) || 0;
+  var y = Number(directionY) || 0;
+
+  if (Math.abs(x) + Math.abs(y) <= 0.0001) {
+    return 0;
+  }
+
+  return (Math.round((Math.atan2(y, x) + Math.PI) / (Math.PI * 2) * 8) + 4) % 8;
+};
+
+PS.atlas.getAnimationFrameFromSpeed = function (speed, frameCount) {
+  var frames = Math.max(1, Math.round(Number(frameCount) || 4));
+  return clamp(Math.floor(Math.abs(Number(speed) || 0) * frames) % frames, 0, frames - 1);
+};
+
+PS.atlas.getBitShiftedPaletteIndex = function (seed, shift, colorCount) {
+  var normalizedSeed = Math.max(0, Math.floor(Number(seed) || 0));
+  var count = Math.max(1, Math.round(Number(colorCount) || 16));
+  return ((normalizedSeed >> Math.max(0, Math.round(Number(shift) || 0))) & 15) % count;
+};
+
+PS.atlas.getIndividualPalette = function (entity) {
+  var seed = Math.max(1, Math.floor(Number(entity && (entity.seed || entity.id || entity.lineageId)) || 1));
+  var colors = CONFIG && Array.isArray(CONFIG.LINEAGE_COLORS) && CONFIG.LINEAGE_COLORS.length > 0
+    ? CONFIG.LINEAGE_COLORS
+    : ["#72d7ff"];
+  var categories = {};
+
+  for (var i = 0; i < PS.atlas.organismPaletteCategories.length; i += 1) {
+    var category = PS.atlas.organismPaletteCategories[i];
+    var index = PS.atlas.getBitShiftedPaletteIndex(seed, i * 4, 16);
+    categories[category] = {
+      index: index,
+      color: colors[(index + i) % colors.length]
+    };
+  }
+
+  return categories;
+};
+
+PS.atlas.getOrganismLayerComposition = function (organism, options) {
+  var spec = options || {};
+  var speed = spec.speed !== undefined
+    ? Number(spec.speed) || 0
+    : Math.sqrt(Math.pow(Number(organism && organism.directionX) || 0, 2) + Math.pow(Number(organism && organism.directionY) || 0, 2));
+  var direction = PS.atlas.getDirectionIndex8(organism && organism.directionX, organism && organism.directionY);
+  var frame = PS.atlas.getAnimationFrameFromSpeed(speed, 4);
+  var palette = PS.atlas.getIndividualPalette(organism);
+
+  return PS.atlas.organismBodyLayers.map(function (layer, index) {
+    var category = index <= 2 ? "skin" : (index <= 5 ? "clothing" : (index <= 7 ? "hair" : "faction"));
+    return {
+      layer: layer,
+      order: index,
+      paletteCategory: category,
+      paletteIndex: palette[category].index,
+      color: palette[category].color,
+      direction: direction,
+      frame: frame
+    };
+  });
+};
+
 PS.atlas.getOrganismTraitBuckets = function (organism, frameVariant) {
   var traits = organism && organism.traits ? organism.traits : {};
   var carnivory = Number(traits.carnivory) || 0;

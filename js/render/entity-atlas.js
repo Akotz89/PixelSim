@@ -560,6 +560,49 @@ PS.atlas.getSettlementArchetype = function (settlement) {
   return "camp";
 };
 
+PS.atlas.buildingCategories = {
+  residential: { source: "housing-room", autotile: true },
+  industrial: { source: "production-room", autotile: true },
+  military: { source: "outpost-room", autotile: true },
+  civic: { source: "assembly-room", autotile: true }
+};
+
+PS.atlas.getBuildingAutotileMask = function (neighbors) {
+  var n = neighbors || {};
+  var mask = 0;
+
+  if (n.north) { mask |= 1; }
+  if (n.east) { mask |= 2; }
+  if (n.south) { mask |= 4; }
+  if (n.west) { mask |= 8; }
+  return mask;
+};
+
+PS.atlas.getBuildingSpriteDescriptor = function (building) {
+  var category = String(building && building.category || building && building.family || "residential").toLowerCase();
+  var definition = PS.atlas.buildingCategories[category] || PS.atlas.buildingCategories.residential;
+  var lineageId = Math.max(1, Math.round(Number(building && (building.lineageId || building.factionId)) || 1));
+  var mask = PS.atlas.getBuildingAutotileMask(building && building.neighbors);
+  var variant = PS.atlas.getBitShiftedPaletteIndex
+    ? PS.atlas.getBitShiftedPaletteIndex(lineageId * 2654435761 + mask, 3, 16)
+    : mask % 16;
+  var colors = CONFIG && Array.isArray(CONFIG.LINEAGE_COLORS) && CONFIG.LINEAGE_COLORS.length > 0
+    ? CONFIG.LINEAGE_COLORS
+    : ["#72d7ff"];
+
+  return {
+    category: category,
+    sourceSheet: definition.source,
+    destinationSheet: "building." + category + "." + mask + "." + variant,
+    autotileMask: mask,
+    color: colors[(lineageId + variant) % colors.length],
+    sheetPair: {
+      source: definition.source,
+      dest: "building." + category
+    }
+  };
+};
+
 PS.atlas.getSettlementLevelBucket = function (settlement) {
   return clamp(Math.floor((Math.max(1, Math.round(Number(settlement && settlement.level) || 1)) - 1) / 2), 0, 5);
 };

@@ -107,4 +107,16 @@ assert.ok(nightUniforms[4] < noonUniforms[4], "compositor night ambient intensit
 assert.ok(nightUniforms[10] > nightUniforms[8], "compositor night ambient tint should favor blue");
 assert.ok(noonUniforms[8] >= noonUniforms[10], "compositor noon ambient tint should not be blue");
 
+const volcanicEra = lighting.getEraState({ era: "volcanic" });
+const iceEra = lighting.getEraState({ era: "ice" });
+const transitionEra = lighting.getEraState({ fromEra: "volcanic", toEra: "ice", transition: 0.25 });
+const ambientLight = lighting.getEraAmbientLight({ era: "temperate" });
+assert.ok(volcanicEra.ambientColor[0] > volcanicEra.ambientColor[2], "volcanic era ambient should be warm");
+assert.ok(iceEra.ambientColor[2] > iceEra.ambientColor[0], "ice era ambient should be cool blue");
+assert.ok(transitionEra.ambientColor[0] !== volcanicEra.ambientColor[0], "era transitions should interpolate color temperature");
+assert.ok(transitionEra.shadowLength !== volcanicEra.shadowLength, "era transitions should affect shadow behavior");
+assert.strictEqual(ambientLight.rgb.join(","), "1,1,1", "AmbientLight should expose RGB");
+assert.ok(ambientLight.direction && Number.isFinite(ambientLight.direction.x), "AmbientLight should expose direction");
+assert.ok(Number.isFinite(ambientLight.tilt), "AmbientLight should expose tilt");
+
 console.log("lighting cycle checks passed");

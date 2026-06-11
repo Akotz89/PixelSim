@@ -140,6 +140,23 @@ assert.ok(visibleRect.minX <= centerTile.tileX && visibleRect.maxX >= centerTile
 assert.ok(visibleRect.minY <= centerTile.tileY && visibleRect.maxY >= centerTile.tileY, "visible rect should include center tile y");
 assert.ok(visibleRect.minX >= 0 && visibleRect.maxX < WORLD_WIDTH, "visible rect x bounds should be clamped");
 assert.ok(visibleRect.minY >= 0 && visibleRect.maxY < WORLD_HEIGHT, "visible rect y bounds should be clamped");
+CONFIG.PLANET_CAMERA_PAN_ACCELERATION = 0.5;
+CONFIG.PLANET_CAMERA_PAN_FRICTION = 0.5;
+CONFIG.PLANET_CAMERA_PAN_MAX_SPEED = 10;
+CONFIG.PLANET_CAMERA_ZOOM_ACCELERATION = 0.25;
+CONFIG.PLANET_CAMERA_ZOOM_FRICTION = 0.5;
+CONFIG.PLANET_CAMERA_ZOOM_MAX_SPEED = 0.5;
+PS.camera.stopInertia();
+PS.camera.panScreen(1000, -1000);
+assert.strictEqual(PS.camera.inertia.panVelocityX, 10, "camera pan velocity should clamp to configured max speed");
+assert.strictEqual(PS.camera.inertia.panVelocityY, -10, "camera pan velocity should clamp per axis");
+PS.camera.updateInertia();
+assert.strictEqual(PS.camera.inertia.panVelocityX, 5, "camera pan velocity should decay through configured friction");
+assert.strictEqual(PS.camera.inertia.panVelocityY, -5, "camera pan velocity should decay through configured friction");
+PS.camera.adjustZoom(10);
+assert.strictEqual(PS.camera.inertia.zoomVelocity, 0.5, "camera zoom velocity should clamp to configured max speed");
+PS.camera.updateInertia();
+assert.ok(PS.camera.inertia.zoomVelocity <= 0.25, "camera zoom velocity should decay through configured friction");
 
 setPlanetZoomLevel(0);
 assert.strictEqual(camera.getZoomBand(), "orbit", "zoom band should classify orbit");
