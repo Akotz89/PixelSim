@@ -48,6 +48,7 @@ const source = [
   "js/sim/food.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
+  "js/sim/food-web.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js",
@@ -168,6 +169,9 @@ assert.ok(Math.abs(parentPopulation.traitMean.intelligence - 0.6) < 0.0001, "agg
 assert.ok(parentPopulation.traitVariance.sociality > 0, "aggregate population should include sociality variance");
 assert.ok(parentPopulation.traitMean.carnivory > 0, "aggregate population should include carnivory means");
 assert.ok(parentPopulation.traitMean.thermalTolerance >= 0, "aggregate population should include environment trait means");
+assert.strictEqual(parentPopulation.foodWeb.role, "herbivore", "aggregate population should expose dominant trophic role");
+assert.ok(parentPopulation.foodWeb.trophicBalance >= 0, "aggregate population should expose trophic balance metric");
+assert.ok(world.foodWebSummary.roles.herbivore >= 2, "world food-web summary should count population roles");
 assert.ok(parentPopulation.territoryCells.length > 0, "aggregate population should track territory cells");
 assert.strictEqual(parentPopulation.pressure.food, 0, "pressure should summarize local food occupancy");
 assert.ok(parentPopulation.pressure.scarcity >= 0, "pressure should summarize scarcity");

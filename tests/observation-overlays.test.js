@@ -63,7 +63,24 @@ const context = {
         }
       }
     },
-    render: {}
+    render: {},
+    sim: {
+      foodWeb: {
+        getRole(traits) {
+          return Number(traits && traits.carnivory) > 0.5 ? "predator" : "herbivore";
+        }
+      }
+    }
+  },
+  ensureOrganismTraits(organism) {
+    return organism.traits || {};
+  },
+  collectOrganismsInRadius() {
+    return [
+      { traits: { carnivory: 0.9 } },
+      { traits: { carnivory: 0.1 } },
+      { traits: { carnivory: 0.1 } }
+    ];
   },
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -81,6 +98,7 @@ const expectedIds = [
   "observation.temperature",
   "observation.population",
   "observation.resources",
+  "observation.foodweb",
   "observation.atmosphere",
   "observation.microbial"
 ];
@@ -111,6 +129,7 @@ const coldSample = context.PS.render.observationOverlays.getOverlaySample("obser
 });
 const populationSample = context.PS.render.observationOverlays.getOverlaySample("observation.population", 9, 8, {});
 const resourceSample = context.PS.render.observationOverlays.getOverlaySample("observation.resources", 18, 8, {});
+const foodWebSample = context.PS.render.observationOverlays.getOverlaySample("observation.foodweb", 9, 8, {});
 const atmosphereSample = context.PS.render.observationOverlays.getOverlaySample("observation.atmosphere", 1, 1, {});
 const microbialSample = context.PS.render.observationOverlays.getOverlaySample("observation.microbial", 2, 2, {});
 const noneSample = context.PS.render.observationOverlays.getOverlaySample("none", 2, 2, {});
@@ -118,6 +137,7 @@ const noneSample = context.PS.render.observationOverlays.getOverlaySample("none"
 assert.ok(hotSample.red > coldSample.red, "temperature samples should encode warmer low-latitude tiles");
 assert.ok(populationSample.alpha > 0, "population overlay should encode organism density into texture alpha");
 assert.ok(resourceSample.alpha > 0, "resource overlay should encode food density into texture alpha");
+assert.ok(foodWebSample.red > 0 && foodWebSample.alpha > 0, "food-web overlay should encode local predator/prey pressure");
 assert.ok(atmosphereSample.alpha > 0, "atmosphere overlay should encode gas composition into texture alpha");
 assert.ok(microbialSample.alpha > 0, "microbial overlay should encode bloom intensity into texture alpha");
 assert.strictEqual(noneSample.red + noneSample.green + noneSample.blue + noneSample.alpha, 0, "inactive overlay samples should be transparent");

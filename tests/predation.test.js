@@ -56,6 +56,7 @@ const source = [
   "js/core/trait-schema.js",
   "js/core/config.js",
   "js/core/world-grid.js",
+  "js/systems/spatial.js",
   "js/systems/pool-manager.js",
   "js/systems/pools.js",
   "js/sim/food-runtime.js",
@@ -63,6 +64,7 @@ const source = [
   "js/sim/food.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
+  "js/sim/food-web.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -174,6 +176,9 @@ world.organisms.push(predator, prey);
 PS.sim.organisms.update(predator);
 assert.strictEqual(prey.energy, 0, "larger carnivore should kill adjacent prey");
 assert.strictEqual(predator.energy, 82, "successful predation should transfer victim energy");
+assert.strictEqual(prey.deathCause, "predation", "predation death cause should be distinguishable");
+assert.strictEqual(world.foodWebStats.predationEvents, 1, "predation should increment food-web event metrics");
+assert.strictEqual(world.foodWebStats.energyTransferred, 32, "predation should track transferred biomass energy");
 
 resetPredationWorld();
 var smallPredator = makeTestOrganism(10, 10, 0.9, 0.6, 2, 50);
@@ -204,6 +209,15 @@ for (var i = 0; i < world.organisms.length; i++) {
 PS.sim.organisms.removeDead();
 assert.ok(world.organisms.indexOf(mixedPredator) >= 0, "mixed population should keep predator alive after first hunt");
 assert.ok(world.organisms.length >= 3, "mixed population should not immediately collapse");
+
+resetPredationWorld();
+var pooledPredator = makeTestOrganism(10, 10, 0.9, 2.0, 6, 50);
+var pooledPrey = makeTestOrganism(11, 10, 0, 0.7, 2, 40);
+world.organisms.push(pooledPredator, pooledPrey);
+PS.sim.organisms.update(world.organisms[0]);
+assert.strictEqual(world.organisms[1].energy, 0, "pooled prey object should be killed by predation");
+assert.strictEqual(PS.pools.organism.arrays.energy[world.organisms[1].poolIndex], 0, "pooled prey energy array should sync predation death");
+assert.strictEqual(PS.pools.organism.arrays.energy[world.organisms[0].poolIndex], 82, "pooled predator energy array should sync transferred energy");
 
 console.log("predation checks passed");
 `, context);

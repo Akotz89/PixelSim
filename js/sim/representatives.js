@@ -573,6 +573,9 @@ function updatePopulationFromOrganisms(population, organisms, signature) {
   population.traitMean = stats.mean;
   population.traitVariance = stats.variance;
   population.pressure = getPopulationPressure(organisms, population.energyReserve, traitsList);
+  population.foodWeb = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getPopulationMetrics === "function"
+    ? PS.sim.foodWeb.getPopulationMetrics(organisms, traitsList, population.pressure)
+    : null;
   population.representativeIds = representativeIds;
   population.lastUpdatedTick = Math.max(0, Math.round(Number(world.tick) || 0));
   population.isActive = organisms.length > 0;
@@ -674,6 +677,12 @@ function refreshBiologyRepresentatives() {
 
   representativePerfStats.lastRefreshMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
   world.biologyAggregateRefreshSignature = getRepresentativeAggregateSignature();
+  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.refreshSummary === "function") {
+    PS.sim.foodWeb.refreshSummary(world.biologyPopulations);
+    if (typeof PS.sim.foodWeb.emitMilestones === "function") {
+      PS.sim.foodWeb.emitMilestones(world.foodWebSummary);
+    }
+  }
   return world.biologyPopulations;
 }
 

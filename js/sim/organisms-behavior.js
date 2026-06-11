@@ -101,7 +101,9 @@ function eatFoodOnCurrentTile(organism) {
 }
 
 function isCarnivoreTraitSet(traits) {
-  return Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
+  return PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
+    ? PS.sim.foodWeb.getRole(traits) === "predator"
+    : Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
 }
 
 function getPredationSearchRadius(traits) {
@@ -124,6 +126,10 @@ function isPredationPrey(candidate, attacker) {
 
 function findNearestPrey(organism, traits) {
   var radius = getPredationSearchRadius(traits);
+  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.findNearestPrey === "function") {
+    return PS.sim.foodWeb.findNearestPrey(organism, traits, radius);
+  }
+
   var nearestPrey = null;
   var nearestDistance = Infinity;
 
@@ -151,6 +157,10 @@ function moveTowardPrey(organism, prey) {
 }
 
 function getPredationAttackAdvantage(attackerTraits, victimTraits) {
+  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getAttackAdvantage === "function") {
+    return PS.sim.foodWeb.getAttackAdvantage(attackerTraits, victimTraits);
+  }
+
   var attackerSize = Number(attackerTraits.bodySize) || CONFIG.TRAIT_BODY_SIZE_DEFAULT;
   var victimSize = Number(victimTraits.bodySize) || CONFIG.TRAIT_BODY_SIZE_DEFAULT;
   var attackerLimbs = Number(attackerTraits.limbCount) || CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
@@ -183,8 +193,23 @@ function tryAttackPrey(attacker, prey, attackerTraits) {
   var transferredEnergy = Math.max(0, Number(prey.energy) || 0) * CONFIG.PREDATION_ENERGY_TRANSFER_RATIO;
   prey.energy = 0;
   attacker.energy += transferredEnergy;
+  syncPooledOrganismEnergy(prey);
+  syncPooledOrganismEnergy(attacker);
   attacker.lastPredationTick = world.tick;
+  prey.deathCause = "predation";
+  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.recordPredation === "function") {
+    PS.sim.foodWeb.recordPredation(attacker, prey, transferredEnergy);
+  }
   return true;
+}
+
+function syncPooledOrganismEnergy(organism) {
+  var arrays = PS.pools && PS.pools.organism ? PS.pools.organism.arrays : null;
+  var poolIndex = organism && Number.isFinite(Number(organism.poolIndex)) ? Math.round(organism.poolIndex) : -1;
+
+  if (arrays && poolIndex >= 0 && arrays.active[poolIndex]) {
+    arrays.energy[poolIndex] = Math.max(0, Number(organism.energy) || 0);
+  }
 }
 
 function updatePredationForOrganism(organism, traits) {

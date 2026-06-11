@@ -25,6 +25,13 @@ PS.render.overlays = PS.render.overlays || {
       shortcut: "O"
     },
     {
+      id: "observation.foodweb",
+      semantic: "Food Web",
+      blendMode: "screen",
+      alpha: 0.74,
+      shortcut: "O"
+    },
+    {
       id: "observation.atmosphere",
       semantic: "Atmosphere",
       blendMode: "screen",
@@ -69,6 +76,7 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     "observation.temperature",
     "observation.population",
     "observation.resources",
+    "observation.foodweb",
     "observation.atmosphere",
     "observation.microbial"
   ],
@@ -148,6 +156,30 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     if (activeId === "observation.resources") {
       var resources = this.getDensityAt(world.food, tileX, tileY, 2);
       return this.makeSample(86, 255, 118, resources * 220);
+    }
+
+    if (activeId === "observation.foodweb") {
+      var nearby = typeof collectOrganismsInRadius === "function"
+        ? collectOrganismsInRadius(tileX, tileY, 2, 0, 16)
+        : [];
+      var predators = 0;
+      var prey = 0;
+
+      for (var nearbyIndex = 0; nearbyIndex < nearby.length; nearbyIndex++) {
+        var nearbyTraits = typeof ensureOrganismTraits === "function" ? ensureOrganismTraits(nearby[nearbyIndex]) : nearby[nearbyIndex].traits;
+        var role = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
+          ? PS.sim.foodWeb.getRole(nearbyTraits)
+          : (Number(nearbyTraits && nearbyTraits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD ? "predator" : "herbivore");
+
+        if (role === "predator") {
+          predators++;
+        } else {
+          prey++;
+        }
+      }
+
+      var pressure = clamp(predators / Math.max(1, prey), 0, 1);
+      return this.makeSample(255 * pressure, 210 - pressure * 90, 70 + prey * 8, Math.min(230, (predators + prey) * 34));
     }
 
     if (activeId === "observation.atmosphere") {

@@ -3,7 +3,9 @@ function makeFood(x, y) {
   var tileX = getWrappedWorldX(x);
   var tileY = getClampedWorldY(y);
   var surfacePosition = getRandomLatLonInTile(tileX, tileY);
-  var food = PS.pools && PS.pools.ensure() && PS.poolManager.acquire("food");
+  var food = PS.pools && PS.pools.ensure && PS.pools.ensure() && PS.poolManager
+    ? PS.poolManager.acquire("food")
+    : {};
 
   food.x = tileX;
   food.y = tileY;

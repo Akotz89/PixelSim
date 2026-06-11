@@ -323,6 +323,8 @@ function updateEcosystemSummary() {
   var stabilityDetail = summary.momentum + " / " + formatStabilityLimiter(summary.stabilityProfile);
   var populationDetail = summary.populationBalance + " " + formatSignedNumber(world.populationDeltaThisTick, 0);
   var foodRunway = typeof formatFoodRunway === "function" ? formatFoodRunway(summary.foodRunwayTicks) : "-";
+  var foodWeb = world.foodWebSummary || {};
+  var foodWebRoles = foodWeb.roles || {};
   var cards = [
     makeDashboardCard("System", "status",
       makePrimaryMetric("Pressure", summary.pressure, stabilityDetail) +
@@ -344,6 +346,13 @@ function updateEcosystemSummary() {
       makeMetricRow("Runway", foodRunway) +
       makeMetricRow("Regrowth", Math.round((summary.foodRecoveryPressure || 0) * 100) + "% / " + (summary.foodRecoveryAttempts || 0)) +
       makeMetricRow("Food Life", world.totalFoodSpawned + " / " + world.totalFoodConsumed)
+    ),
+    makeDashboardCard("Food Web", "biology",
+      makePrimaryMetric("Trophic", Math.max(0, Math.round(Number(foodWeb.trophicBalance) || 0)) + "/100", foodWeb.recoveryTrend || "unknown") +
+      makeMetricRow("Predators", Math.max(0, Math.round(Number(foodWebRoles.predator) || 0))) +
+      makeMetricRow("Herbivores", Math.max(0, Math.round(Number(foodWebRoles.herbivore) || 0))) +
+      makeMetricRow("Scavengers", Math.max(0, Math.round(Number(foodWebRoles.scavenger) || 0))) +
+      makeMetricRow("Pred Pressure", (Number(foodWeb.predatorPressure) || 0).toFixed(2))
     ),
     makeDashboardCard("Trends", "trend",
       makePrimaryMetric("Stability", formatSignedNumber(trend.stabilityDelta || 0, 0), "since last sample") +
