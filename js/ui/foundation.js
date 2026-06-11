@@ -36,6 +36,7 @@ function updateHud() {
     makeHudMetric("Day", getSimulationDayLabel()),
     makeHudMetric("Food", world.food.length),
     makeHudMetric("Time Scale", PS.time ? PS.time.getTimeScaleLabel() : "-"),
+    makeHudMetric("Compression", PS.time ? PS.time.getTimeCompressionLabel() : "-"),
     makeHudMetric("Water", waterPercent + "%"),
     makeHudMetric("Fertile Land", fertilePercent + "%"),
     makeHudMetric("Zoom", getPlanetScaleLabel()),
@@ -54,7 +55,7 @@ function updateHud() {
     makeHudMetric("Max", world.maxUpdateMs.toFixed(2) + "/" + world.maxDrawMs.toFixed(2) + "ms")
   ].join(""));
 
-  setElementText(speedLabel, "Speed: " + world.speed + "x");
+  setElementHtml(speedLabel, makeTimeCompressionControl());
   syncTuningControls();
   syncControlStates();
   updateEcosystemSummary();
@@ -149,6 +150,22 @@ function makeHudPrimary(label, value, detail) {
   );
 }
 
+function makeTimeCompressionControl() {
+  var compression = PS.time && typeof PS.time.getTimeCompressionLabel === "function"
+    ? PS.time.getTimeCompressionLabel()
+    : "-";
+  var scale = PS.time && typeof PS.time.getTimeScaleLabel === "function"
+    ? PS.time.getTimeScaleLabel()
+    : "-";
+  var state = world.isExtinct ? "extinct" : (world.isPaused ? "paused" : "running");
+
+  return (
+    "<b>" + escapeSummaryText("Speed " + world.speed + "x") + "</b>" +
+    "<span>" + escapeSummaryText(compression) + "</span>" +
+    "<small>" + escapeSummaryText(scale + " / " + state) + "</small>"
+  );
+}
+
 function getTuningInputNumber(input, fallbackValue) {
   if (!input) {
     return fallbackValue;
@@ -165,7 +182,7 @@ function syncTuningControls() {
   setElementText(speedValue, world.speed + "x");
   if (PS.time) {
     setInputValue(timeScaleSlider, PS.time.timeScale.targetIndex);
-    setElementText(timeScaleValue, PS.time.getTimeScaleLabel());
+    setElementText(timeScaleValue, PS.time.getTimeCompressionLabel());
   }
   setInputValue(organismSizeSlider, CONFIG.ORGANISM_DRAW_SIZE);
   setElementText(organismSizeValue, CONFIG.ORGANISM_DRAW_SIZE + "px");

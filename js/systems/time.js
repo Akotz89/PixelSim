@@ -210,8 +210,72 @@ PS.time = {
 
     return "1 month/tick";
   },
+  formatYearsPerSecond: function(yearsPerSecond) {
+    var years = Math.max(0, Number(yearsPerSecond) || 0);
+    var days = years * 365;
+    var months = years * 12;
+
+    if (years <= 0) {
+      return "0 days/sec";
+    }
+
+    if (years >= 1000000000) {
+      return (years / 1000000000).toFixed(years >= 10000000000 ? 0 : 1).replace(/\.0$/, "") + " Gyr/sec";
+    }
+
+    if (years >= 1000000) {
+      return (years / 1000000).toFixed(years >= 10000000 ? 0 : 1).replace(/\.0$/, "") + " Myr/sec";
+    }
+
+    if (years >= 1000) {
+      return (years / 1000).toFixed(years >= 10000 ? 0 : 1).replace(/\.0$/, "") + " kyr/sec";
+    }
+
+    if (years >= 1) {
+      return (years >= 10 ? Math.round(years) : Number(years.toFixed(1)).toString()) + " years/sec";
+    }
+
+    if (months >= 1) {
+      return (months >= 10 ? Math.round(months) : Number(months.toFixed(1)).toString()) + " months/sec";
+    }
+
+    return Math.max(1, Math.round(days)) + " days/sec";
+  },
   getTimeScaleLabel: function() {
     return this.timeScale.manualOverride ? this.timeScale.label + " manual" : this.timeScale.label;
+  },
+  getYearsPerSecond: function() {
+    if (world.isPaused || world.isExtinct) {
+      return 0;
+    }
+
+    var ticksPerSecond = this.dt > 0 ? 1000 / this.dt : 0;
+    var speedScale = Math.max(0, Number(this.effectiveSpeed || this.getTargetSpeed()) || 0) *
+      Math.max(0, Number(CONFIG.SIM_SPEED_MULTIPLIER) || 1);
+
+    return Math.max(0, Number(this.timeScale.currentYearsPerTick) || 0) * ticksPerSecond * speedScale;
+  },
+  getTimeCompressionStateLabel: function() {
+    var labels = [];
+
+    labels.push(this.timeScale.manualOverride ? "manual override" : "adaptive baseline");
+
+    if (world.isPaused) {
+      labels.push("paused");
+    }
+
+    if (world.spotlightState && world.spotlightState.active && world.spotlightState.slowdown) {
+      labels.push("spotlight slowdown");
+    }
+
+    if (this.speedGovernor && this.speedGovernor.active) {
+      labels.push("performance governor");
+    }
+
+    return labels.join(" / ");
+  },
+  getTimeCompressionLabel: function() {
+    return this.formatYearsPerSecond(this.getYearsPerSecond()) + " / " + this.getTimeCompressionStateLabel();
   },
   advanceDeepTime: function(ticks) {
     var tickCount = Math.max(0, Math.round(Number(ticks) || 0));

@@ -156,6 +156,31 @@ assert.strictEqual(manualScale.manualOverride, true, "manual time scale slider s
 assert.strictEqual(manualScale.targetYearsPerTick, 1 / 12, "manual override should keep selected scale despite epoch");
 assert.ok(PS.time.getTimeScaleLabel().indexOf("manual") >= 0, "manual override should be visible in label");
 
+assert.strictEqual(PS.time.formatYearsPerSecond(0.01), "4 days/sec", "sub-month scale should use days/sec");
+assert.strictEqual(PS.time.formatYearsPerSecond(0.25), "3 months/sec", "sub-year scale should use months/sec");
+assert.strictEqual(PS.time.formatYearsPerSecond(12), "12 years/sec", "year scale should use years/sec");
+assert.strictEqual(PS.time.formatYearsPerSecond(30000), "30 kyr/sec", "millennium scale should use kyr/sec");
+assert.strictEqual(PS.time.formatYearsPerSecond(3000000), "3 Myr/sec", "million-year scale should use Myr/sec");
+assert.strictEqual(PS.time.formatYearsPerSecond(3000000000), "3 Gyr/sec", "billion-year scale should use Gyr/sec");
+assert.strictEqual(PS.time.formatYearsPerSecond(0), "0 days/sec", "paused scale should show zero days/sec");
+
+PS.time.setManualTimeScale(3);
+PS.time.effectiveSpeed = 1;
+world.isPaused = false;
+world.spotlightState = { active: false, slowdown: false };
+assert.ok(PS.time.getTimeCompressionLabel().indexOf("kyr/sec") >= 0, "compression label should show simulated time per second");
+assert.ok(PS.time.getTimeCompressionLabel().indexOf("manual override") >= 0, "compression label should show manual mode");
+world.isPaused = true;
+assert.strictEqual(PS.time.getYearsPerSecond(), 0, "paused simulation should report zero simulated time per second");
+assert.ok(PS.time.getTimeCompressionLabel().indexOf("paused") >= 0, "compression label should show pause state");
+world.spotlightState = { active: true, slowdown: true };
+assert.ok(PS.time.getTimeCompressionLabel().indexOf("spotlight slowdown") >= 0, "compression label should show spotlight slowdown");
+PS.time.speedGovernor.active = true;
+assert.ok(PS.time.getTimeCompressionLabel().indexOf("performance governor") >= 0, "compression label should show governor state");
+PS.time.speedGovernor.active = false;
+world.isPaused = false;
+world.spotlightState = { active: false, slowdown: false };
+
 world.deepTimeYears = 0;
 PS.time.reset();
 PS.time.runFrame(100, simulateTick);

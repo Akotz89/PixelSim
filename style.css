@@ -703,11 +703,42 @@ h1 {
 }
 
 .speed-label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
   padding: 9px 12px;
   color: #dce5ff;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
+  font-weight: 800;
+  min-width: 0;
+}
+
+.speed-label b,
+.speed-label span,
+.speed-label small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.speed-label b {
+  color: #f4f7ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.speed-label span {
+  color: #72d7ff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.speed-label small {
+  color: #aeb7d9;
+  font-size: 10px;
   font-weight: 800;
 }
 
