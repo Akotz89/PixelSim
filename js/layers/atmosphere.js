@@ -204,6 +204,32 @@ function applyAtmosphereOrganismSurvival(state, timeStep) {
   state.anoxiaDeaths += deaths;
 }
 
+function syncAtmosphereAliases(state) {
+  var gases = state.gases || {};
+  state.carbonDioxidePpm = Number.isFinite(Number(state.carbonDioxidePpm)) ? Number(state.carbonDioxidePpm) : gases.co2 * 1000000;
+  state.oxygenPercent = Number.isFinite(Number(state.oxygenPercent)) ? Number(state.oxygenPercent) : gases.o2 * 100;
+  state.ozoneIndex = Number.isFinite(Number(state.ozoneIndex)) ? Number(state.ozoneIndex) : gases.o3;
+  return state;
+}
+
+function applyAtmosphereGeochemistrySummary(state) {
+  var geochemistry = PS.sim && PS.sim.geochemistry;
+  var summary = geochemistry && geochemistry.state && geochemistry.state.summary;
+
+  if (!summary) {
+    syncAtmosphereAliases(state);
+    return state;
+  }
+
+  state.carbonDioxidePpm = summary.co2Ppm;
+  state.oxygenPercent = summary.oxygenPercent;
+  state.methanePpm = summary.ch4Ppm;
+  state.sulfurDioxidePpm = summary.so2Ppm;
+  state.oceanPh = summary.oceanPh;
+  state.debugOverlayRows = summary.debugOverlayRows;
+  return state;
+}
+
 PS.layers.atmosphere = PS.layers.register("atmosphere", {
   family: "planet",
   alwaysOn: true,
@@ -229,6 +255,7 @@ PS.layers.atmosphere = PS.layers.register("atmosphere", {
     applyAtmosphereChemistry(state, timeStep);
     updateAtmosphereTemperature(state);
     applyAtmosphereOrganismSurvival(state, timeStep);
+    applyAtmosphereGeochemistrySummary(state);
 
     return state;
   },

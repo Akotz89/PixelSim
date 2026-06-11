@@ -233,9 +233,15 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
 
     if (activeId === "observation.atmosphere") {
       var gases = world.atmosphere && world.atmosphere.gases ? world.atmosphere.gases : {};
-      var oxygen = clamp(Number(gases.o2) || 0, 0, 1);
-      var carbon = clamp(Number(gases.co2) || 0, 0, 1);
-      return this.makeSample(80 + oxygen * 120, 150 + oxygen * 80, 220 + carbon * 35, 70 + Math.max(oxygen, carbon) * 120);
+      var chemistry = world.geochemistry || {};
+      var oxygen = Number.isFinite(Number(chemistry.oxygenPercent))
+        ? clamp(Number(chemistry.oxygenPercent) / 35, 0, 1)
+        : clamp(Number(gases.o2) || 0, 0, 1);
+      var carbon = Number.isFinite(Number(chemistry.co2Ppm))
+        ? clamp(Number(chemistry.co2Ppm) / 100000, 0, 1)
+        : clamp(Number(gases.co2) || 0, 0, 1);
+      var acid = Number.isFinite(Number(chemistry.oceanPh)) ? clamp((8.2 - Number(chemistry.oceanPh)) / 2, 0, 1) : 0;
+      return this.makeSample(80 + oxygen * 120 + acid * 45, 150 + oxygen * 80 - acid * 55, 220 + carbon * 35, 70 + Math.max(oxygen, carbon, acid) * 120);
     }
 
     if (activeId === "observation.microbial") {

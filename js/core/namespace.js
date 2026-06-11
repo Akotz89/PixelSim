@@ -96,6 +96,7 @@ PS.core.manifest = [
   "js/sim/moisture.js",
   "js/sim/pixel-ca.js",
   "js/sim/biome-lut.js",
+  "js/sim/geochemistry.js",
   "wasm/pixeldarium-sim.js",
   "wasm/pixeldarium-sim.wasm.js",
   "js/sim/wasm-bridge.js",
