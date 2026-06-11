@@ -245,6 +245,15 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     }
 
     if (activeId === "observation.microbial") {
+      var lenia = PS.sim && PS.sim.lenia;
+      if (lenia && lenia.state && typeof lenia.getCellDensity === "function") {
+        var microbes = lenia.getCellDensity(tileX, tileY, "microbes");
+        var vegetation = lenia.getCellDensity(tileX, tileY, "vegetation");
+        var coral = lenia.getCellDensity(tileX, tileY, "coral");
+        var lichen = lenia.getCellDensity(tileX, tileY, "lichen");
+        var density = Math.max(microbes, vegetation, coral, lichen);
+        return this.makeSample(82 + coral * 160 + lichen * 70, 120 + vegetation * 135 + microbes * 70, 128 + microbes * 110 + coral * 70, density * 230);
+      }
       var cell = this.getMicrobialCell(tileX, tileY);
       var bloom = clamp(Number(cell && cell.bloomIntensity) || 0, 0, 1);
       var stress = clamp(Number(cell && cell.stress) || 0, 0, 1);

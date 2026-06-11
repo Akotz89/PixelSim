@@ -1,0 +1,20 @@
+"use strict";
+PS.assets = PS.assets || {};
+if (PS.assets.registerJSON) { PS.assets.registerJSON("sim/configs/lenia.json", {
+  "width": 512,
+  "height": 512,
+  "target_tick_ms": 5,
+  "radius": 4,
+  "dt": 0.12,
+  "carrying_capacity": 1,
+  "min_pattern_variance": 0.0002,
+  "coral_ph_threshold": 7.8,
+  "coral_acid_kill_rate": 0.05,
+  "co2_photosynthesis_base_ppm": 420,
+  "species": [
+    { "id": "microbes", "channel": 0, "mu": 0.30, "sigma": 0.10, "beta": 1.0, "habitat": "ocean_coast", "min_temp": -5, "max_temp": 45, "moisture_min": 0.10 },
+    { "id": "vegetation", "channel": 1, "mu": 0.50, "sigma": 0.15, "beta": 1.0, "habitat": "warm_wet_land", "min_temp": 2, "max_temp": 38, "moisture_min": 0.35 },
+    { "id": "coral", "channel": 2, "mu": 0.70, "sigma": 0.08, "beta": 1.0, "habitat": "warm_shallow_ocean", "min_temp": 18, "max_temp": 32, "moisture_min": 0.60 },
+    { "id": "lichen", "channel": 3, "mu": 0.20, "sigma": 0.05, "beta": 1.0, "habitat": "cold_sparse_land", "min_temp": -18, "max_temp": 12, "moisture_min": 0.05 }
+  ]
+}); }
