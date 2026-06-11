@@ -68,9 +68,51 @@ const geo = context.PS.sim.geochemistry;
 const parameterConfig = JSON.parse(parameterConfigSource);
 const driverConfig = JSON.parse(driverConfigSource);
 
+context.PS.assets = {
+  jsonData: {
+    "sim/configs/parameters.json": parameterConfig,
+    "sim/configs/environment-drivers.json": driverConfig
+  }
+};
+assert.strictEqual(parameters.list().length, parameterConfig.parameters.length, "registered sidecar should be the no-loader parameter fallback");
+assert.strictEqual(drivers.normalizeConfig().drivers.length, driverConfig.drivers.length, "registered sidecar should be the no-loader driver fallback");
+
 const registryReport = parameters.validateRegistry(parameterConfig);
 assert.strictEqual(registryReport.valid, true, "all parameters should have unit/range/provenance/cadence");
 assert.ok(parameters.get("atmosphere.co2_ppm", parameterConfig).fields.includes("ocean_ph"), "CO2 should declare ocean pH as affected field");
+
+const requiredParameterIds = [
+  "stellar.mass_solar",
+  "solar.constant_w_m2",
+  "orbital.eccentricity",
+  "orbital.axial_tilt_deg",
+  "planet.radius_km",
+  "planet.gravity_m_s2",
+  "planet.rotation_hours",
+  "surface.ocean_ratio",
+  "surface.albedo",
+  "crust.tectonic_activity",
+  "volcanic.activity",
+  "mineral.abundance_index",
+  "atmosphere.pressure_kpa",
+  "atmosphere.co2_ppm",
+  "atmosphere.o2_ppm",
+  "atmosphere.n2_ppm",
+  "atmosphere.ch4_ppm",
+  "atmosphere.so2_ppm",
+  "ocean.salinity_psu",
+  "ocean.ph",
+  "hydrology.precipitation_mm_tick",
+  "biology.primary_productivity",
+  "biology.co2_to_o2_rate_ppm",
+  "biology.mutation_rate"
+];
+assert.strictEqual(registryReport.count, requiredParameterIds.length, "base parameter catalog should cover the current canonical set");
+requiredParameterIds.forEach(function (id) {
+  const entry = parameters.get(id, parameterConfig);
+  assert.ok(entry, id + " should exist in the base parameter catalog");
+  assert.ok(entry.determinedBy && entry.determinedBy.length > 12, id + " should explain how it is determined");
+});
 
 const hadean = parameters.createBaseline({ config: parameterConfig, epoch: "hadean" });
 const custom = parameters.createBaseline({
@@ -80,13 +122,28 @@ const custom = parameters.createBaseline({
 });
 assert.strictEqual(hadean.values["atmosphere.co2_ppm"], 100000, "epoch preset should seed high Hadean CO2");
 assert.strictEqual(parameters.trace(hadean, "atmosphere.co2_ppm").source, "epoch_preset:hadean", "epoch baseline should keep provenance");
+assert.ok(parameters.trace(hadean, "atmosphere.co2_ppm").determinedBy.indexOf("outgassing") >= 0, "provenance trace should preserve causal determination rule");
 assert.strictEqual(custom.values["atmosphere.co2_ppm"], 900, "planet spec should override baseline CO2");
 assert.strictEqual(parameters.trace(custom, "atmosphere.co2_ppm").source, "planet_spec", "planet spec override should keep provenance");
 
 const fieldContract = drivers.getFieldContract(driverConfig);
 assert.ok(fieldContract.volcanic_emission.readBy.includes("geochemistry"), "volcanic emission should be consumed by geochemistry");
+assert.ok(fieldContract.atmosphere.readBy.includes("heat-diffusion"), "atmosphere should be a named driver output consumed by heat diffusion");
 assert.ok(fieldContract.ocean_ph.readBy.includes("lenia"), "ocean pH should be consumed by Lenia");
 assert.ok(fieldContract.albedo.readBy.includes("heat-diffusion"), "albedo should be consumed by heat diffusion");
+
+driverConfig.drivers.forEach(function (driver) {
+  assert.ok(Array.isArray(driver.causes) && driver.causes.length > 0, driver.id + " should declare upstream causes");
+  assert.ok(Array.isArray(driver.outputs) && driver.outputs.length > 0, driver.id + " should declare upstream outputs");
+  assert.ok(Array.isArray(driver.forbiddenOutputs) && driver.forbiddenOutputs.length > 0, driver.id + " should declare forbidden tuned outcomes");
+  assert.strictEqual(
+    driver.outputs.some(function (field) {
+      return String(field).indexOf("target_") === 0 || String(field).indexOf("coral_density") >= 0;
+    }),
+    false,
+    driver.id + " should not write target outcomes"
+  );
+});
 
 const quiet = drivers.createState({ baseline: parameters.createBaseline({ config: parameterConfig, epoch: "civilization" }) });
 const volcanic = drivers.createState({ baseline: parameters.createBaseline({ config: parameterConfig, epoch: "civilization" }) });

@@ -5,14 +5,15 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
   configPath: "sim/configs/environment-drivers.json",
   defaults: {
     drivers: [
-      { id: "volcanism", cadence: "event_tick", outputs: ["volcanic_emission", "greenhouse_forcing", "mineral_distribution"] },
-      { id: "orbital_solar", cadence: "orbital_tick", outputs: ["solar_forcing", "albedo"] },
-      { id: "asteroid_dust", cadence: "event_tick", outputs: ["dust_opacity", "albedo", "solar_forcing"] },
-      { id: "agent_intervention", cadence: "event_tick", outputs: ["greenhouse_forcing", "albedo", "vegetation_density", "species_density"] },
-      { id: "runaway_biology", cadence: "driver_tick", outputs: ["vegetation_density", "species_density", "greenhouse_forcing", "ocean_ph"] }
+      { id: "volcanism", cadence: "event_tick", causes: ["tectonics", "mantle_heat", "hotspot", "impact"], outputs: ["volcanic_emission", "atmosphere", "greenhouse_forcing", "mineral_distribution", "ocean_ph"], forbiddenOutputs: ["coral_density", "target_biome_distribution"] },
+      { id: "orbital_solar", cadence: "orbital_tick", causes: ["stellar_luminosity", "orbital_distance", "eccentricity", "axial_tilt"], outputs: ["solar_forcing", "seasonality", "albedo"], forbiddenOutputs: ["target_temperature_distribution"] },
+      { id: "asteroid_dust", cadence: "event_tick", causes: ["impact_energy", "ejecta_mass", "impact_location"], outputs: ["dust_opacity", "albedo", "solar_forcing", "mineral_distribution"], forbiddenOutputs: ["target_extinction_rate"] },
+      { id: "agent_intervention", cadence: "event_tick", causes: ["explicit_agent_action"], outputs: ["greenhouse_forcing", "albedo", "vegetation_density", "species_density", "atmosphere"], forbiddenOutputs: ["target_population", "target_biome_distribution"] },
+      { id: "runaway_biology", cadence: "driver_tick", causes: ["primary_productivity", "species_density", "nutrient_limit", "respiration"], outputs: ["vegetation_density", "species_density", "atmosphere", "greenhouse_forcing", "ocean_ph"], forbiddenOutputs: ["coral_density", "target_oxygen_distribution"] }
     ],
     fieldConsumers: {
       volcanic_emission: ["geochemistry", "pixel-ca"],
+      atmosphere: ["geochemistry", "heat-diffusion", "lenia"],
       greenhouse_forcing: ["heat-diffusion", "geochemistry"],
       mineral_distribution: ["geochemistry", "pixel-ca"],
       ocean_ph: ["geochemistry", "lenia"],
@@ -20,6 +21,7 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
       vegetation_density: ["geochemistry", "reaction-diffusion", "lenia"],
       species_density: ["lenia", "biome-lut"],
       solar_forcing: ["heat-diffusion"],
+      seasonality: ["heat-diffusion", "moisture"],
       dust_opacity: ["heat-diffusion", "moisture"]
     }
   },
@@ -27,6 +29,9 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
 
   normalizeConfig: function (config) {
     var source = config || {};
+    if (!Array.isArray(source.drivers) && PS.assets && PS.assets.jsonData && PS.assets.jsonData[this.configPath]) {
+      source = PS.assets.jsonData[this.configPath];
+    }
     return {
       drivers: Array.isArray(source.drivers) ? source.drivers : this.defaults.drivers,
       fieldConsumers: source.fieldConsumers || this.defaults.fieldConsumers

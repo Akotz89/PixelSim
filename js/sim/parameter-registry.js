@@ -5,14 +5,14 @@ PS.sim.parameters = PS.sim.parameters || {
   configPath: "sim/configs/parameters.json",
   defaults: {
     parameters: [
-      { id: "atmosphere.co2_ppm", unit: "ppm", range: [0, 200000], value: 420, provenance: "epoch_preset", updateCadence: "driver_tick", fields: ["atmosphere", "greenhouse_forcing", "ocean_ph"] },
-      { id: "atmosphere.o2_ppm", unit: "ppm", range: [0, 300000], value: 209500, provenance: "epoch_preset", updateCadence: "driver_tick", fields: ["atmosphere"] },
-      { id: "volcanic.activity", unit: "normalized", range: [0, 1], value: 0.05, provenance: "planet_spec_or_epoch_preset", updateCadence: "event_tick", fields: ["volcanic_emission", "mineral_distribution"] },
-      { id: "ocean.ph", unit: "pH", range: [5, 8.6], value: 8.1, provenance: "derived_from_atmosphere.co2_ppm", updateCadence: "driver_tick", fields: ["ocean_ph"] },
-      { id: "surface.albedo", unit: "ratio", range: [0, 1], value: 0.3, provenance: "terrain_and_driver_field", updateCadence: "driver_tick", fields: ["albedo"] },
-      { id: "biology.co2_to_o2_rate_ppm", unit: "ppm/tick", range: [0, 5000], value: 0.42, provenance: "biology_model_parameter", updateCadence: "driver_tick", fields: ["vegetation_density", "species_density", "atmosphere"] },
-      { id: "solar.constant_w_m2", unit: "W/m2", range: [900, 1800], value: 1361, provenance: "stellar_preset", updateCadence: "orbital_tick", fields: ["solar_forcing"] },
-      { id: "mineral.abundance_index", unit: "normalized", range: [0, 1], value: 0.35, provenance: "tectonics_and_volcanism", updateCadence: "event_tick", fields: ["mineral_distribution"] }
+      { id: "atmosphere.co2_ppm", unit: "ppm", range: [0, 200000], value: 420, provenance: "epoch_preset", determinedBy: "outgassing, uptake, weathering, impacts, and biology", updateCadence: "driver_tick", fields: ["atmosphere", "greenhouse_forcing", "ocean_ph"] },
+      { id: "atmosphere.o2_ppm", unit: "ppm", range: [0, 300000], value: 209500, provenance: "epoch_preset", determinedBy: "photosynthesis, respiration, sinks, and escape", updateCadence: "driver_tick", fields: ["atmosphere"] },
+      { id: "volcanic.activity", unit: "normalized", range: [0, 1], value: 0.05, provenance: "planet_spec_or_epoch_preset", determinedBy: "tectonics, hotspots, mantle heat, and impacts", updateCadence: "event_tick", fields: ["volcanic_emission", "mineral_distribution"] },
+      { id: "ocean.ph", unit: "pH", range: [5, 8.6], value: 8.1, provenance: "derived_from_atmosphere.co2_ppm", determinedBy: "atmospheric CO2, alkalinity, biology, and sulfur", updateCadence: "driver_tick", fields: ["ocean_ph"] },
+      { id: "surface.albedo", unit: "ratio", range: [0, 1], value: 0.3, provenance: "terrain_and_driver_field", determinedBy: "surface and cloud state", updateCadence: "driver_tick", fields: ["albedo"] },
+      { id: "biology.co2_to_o2_rate_ppm", unit: "ppm/tick", range: [0, 5000], value: 0.42, provenance: "biology_model_parameter", determinedBy: "productivity, burial, respiration, sinks, and nutrients", updateCadence: "driver_tick", fields: ["vegetation_density", "species_density", "atmosphere"] },
+      { id: "solar.constant_w_m2", unit: "W/m2", range: [900, 1800], value: 1361, provenance: "stellar_preset", determinedBy: "star luminosity and orbit", updateCadence: "orbital_tick", fields: ["solar_forcing"] },
+      { id: "mineral.abundance_index", unit: "normalized", range: [0, 1], value: 0.35, provenance: "tectonics_and_volcanism", determinedBy: "crust chemistry and resurfacing", updateCadence: "event_tick", fields: ["mineral_distribution"] }
     ],
     presets: {
       hadean: { "atmosphere.co2_ppm": 100000, "atmosphere.o2_ppm": 0, "volcanic.activity": 0.85, "surface.albedo": 0.18, "mineral.abundance_index": 0.75 },
@@ -25,6 +25,9 @@ PS.sim.parameters = PS.sim.parameters || {
 
   normalizeConfig: function (config) {
     var source = config || {};
+    if (!Array.isArray(source.parameters) && PS.assets && PS.assets.jsonData && PS.assets.jsonData[this.configPath]) {
+      source = PS.assets.jsonData[this.configPath];
+    }
     return {
       parameters: Array.isArray(source.parameters) ? source.parameters : this.defaults.parameters,
       presets: source.presets || this.defaults.presets
@@ -62,7 +65,7 @@ PS.sim.parameters = PS.sim.parameters || {
   },
 
   validateEntry: function (entry) {
-    return !!(entry && entry.id && entry.unit && Array.isArray(entry.range) && entry.range.length === 2 && entry.provenance && entry.updateCadence);
+    return !!(entry && entry.id && entry.unit && Array.isArray(entry.range) && entry.range.length === 2 && entry.provenance && entry.determinedBy && entry.updateCadence);
   },
 
   validateRegistry: function (config) {
@@ -94,6 +97,7 @@ PS.sim.parameters = PS.sim.parameters || {
         unit: entry.unit,
         range: entry.range.slice(),
         source: hasPlanet ? "planet_spec" : (hasPreset ? "epoch_preset:" + presetId : entry.provenance),
+        determinedBy: entry.determinedBy,
         updateCadence: entry.updateCadence,
         fields: Array.isArray(entry.fields) ? entry.fields.slice() : []
       };
