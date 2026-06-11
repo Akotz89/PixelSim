@@ -11,6 +11,12 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
       { id: "agent_intervention", cadence: "event_tick", causes: ["explicit_agent_action"], outputs: ["greenhouse_forcing", "albedo", "vegetation_density", "species_density", "atmosphere"], forbiddenOutputs: ["target_population", "target_biome_distribution"] },
       { id: "runaway_biology", cadence: "driver_tick", causes: ["primary_productivity", "species_density", "nutrient_limit", "respiration"], outputs: ["vegetation_density", "species_density", "atmosphere", "greenhouse_forcing", "ocean_ph"], forbiddenOutputs: ["coral_density", "target_oxygen_distribution"] }
     ],
+    schema: {
+      eventFields: ["type", "startTick", "durationTicks", "decay", "strength", "causes", "outputs"],
+      allowedDecay: ["none", "linear", "exponential"],
+      forbiddenOutcomePrefixes: ["target_", "desired_", "healthy_"],
+      forbiddenOutcomeFields: ["coral_density", "population_density", "biome_distribution", "target_population"]
+    },
     fieldConsumers: {
       volcanic_emission: ["geochemistry", "pixel-ca"],
       atmosphere: ["geochemistry", "heat-diffusion", "lenia"],
@@ -34,8 +40,59 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
     }
     return {
       drivers: Array.isArray(source.drivers) ? source.drivers : this.defaults.drivers,
+      schema: source.schema || this.defaults.schema,
       fieldConsumers: source.fieldConsumers || this.defaults.fieldConsumers
     };
+  },
+
+  getDriver: function (config, id) {
+    var drivers = this.normalizeConfig(config || this.config || {}).drivers;
+    var key = String(id || "");
+    for (var i = 0; i < drivers.length; i += 1) {
+      if (String(drivers[i].id) === key) { return drivers[i]; }
+    }
+    return null;
+  },
+
+  containsAllowed: function (list, value) {
+    return Array.isArray(list) && list.indexOf(value) >= 0;
+  },
+
+  isForbiddenOutcomeField: function (field, schema) {
+    var key = String(field || "");
+    var forbiddenFields = schema && Array.isArray(schema.forbiddenOutcomeFields) ? schema.forbiddenOutcomeFields : [];
+    var forbiddenPrefixes = schema && Array.isArray(schema.forbiddenOutcomePrefixes) ? schema.forbiddenOutcomePrefixes : [];
+    if (forbiddenFields.indexOf(key) >= 0) { return true; }
+    for (var i = 0; i < forbiddenPrefixes.length; i += 1) {
+      if (key.indexOf(forbiddenPrefixes[i]) === 0) { return true; }
+    }
+    return false;
+  },
+
+  validateDriver: function (driver, schema) {
+    if (!driver || !driver.id || !driver.cadence) { return "missing-id-or-cadence"; }
+    if (!Array.isArray(driver.causes) || driver.causes.length === 0) { return "missing-causes"; }
+    if (!Array.isArray(driver.outputs) || driver.outputs.length === 0) { return "missing-outputs"; }
+    if (!Array.isArray(driver.forbiddenOutputs) || driver.forbiddenOutputs.length === 0) { return "missing-forbidden-outputs"; }
+    if (!driver.eventSchema) { return "missing-event-schema"; }
+    if (!this.containsAllowed(schema.allowedDecay, driver.eventSchema.decay)) { return "invalid-decay"; }
+    if (!Number.isFinite(Number(driver.eventSchema.durationTicks))) { return "invalid-duration"; }
+    for (var i = 0; i < driver.outputs.length; i += 1) {
+      if (this.isForbiddenOutcomeField(driver.outputs[i], schema)) { return "forbidden-output:" + driver.outputs[i]; }
+    }
+    return null;
+  },
+
+  validateConfig: function (config) {
+    var normalized = this.normalizeConfig(config || this.config || {});
+    var drivers = normalized.drivers;
+    var schema = normalized.schema || this.defaults.schema;
+    var errors = [];
+    for (var i = 0; i < drivers.length; i += 1) {
+      var error = this.validateDriver(drivers[i], schema);
+      if (error) { errors.push(String(drivers[i] && drivers[i].id || i) + ":" + error); }
+    }
+    return { valid: errors.length === 0, errors: errors, count: drivers.length };
   },
 
   loadAssets: function (loader) {
@@ -100,43 +157,93 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
     return Math.max(5, Math.min(8.6, 8.1 - 0.3 * ((Math.max(0, Number(co2Ppm) || 0) / 280) - 1)));
   },
 
-  applyEvent: function (state, event) {
+  normalizeEvent: function (state, event, driver) {
     var item = event || {};
-    var type = String(item.type || item.id || "");
-    var strength = Math.max(0, Number(item.strength) || 0);
+    var schema = driver && driver.eventSchema ? driver.eventSchema : {};
+    return {
+      type: String(item.type || item.id || ""),
+      startTick: Math.max(0, Math.round(Number(item.startTick) || Number(state.tick) || Number(schema.startTick) || 0)),
+      durationTicks: Math.max(1, Math.round(Number(item.durationTicks) || Number(item.duration) || Number(schema.durationTicks) || 1)),
+      decay: String(item.decay || schema.decay || "none"),
+      strength: Math.max(0, Number(item.strength) || 0),
+      fields: item.fields || {},
+      forcingDelta: Number(item.forcingDelta || item.delta || 0),
+      causes: item.causes || schema.causes || []
+    };
+  },
+
+  getEventStrengthAtTick: function (event, tick) {
+    var elapsed = Math.max(0, Number(tick) - Number(event.startTick));
+    if (elapsed >= Number(event.durationTicks)) { return 0; }
+    if (event.decay === "linear") {
+      return event.strength * Math.max(0, 1 - elapsed / Math.max(1, event.durationTicks));
+    }
+    if (event.decay === "exponential") {
+      return event.strength * Math.pow(0.5, elapsed / Math.max(1, event.durationTicks));
+    }
+    return event.strength;
+  },
+
+  assertAllowedOutput: function (driver, field) {
+    var key = String(field || "");
+    var schema = this.normalizeConfig(this.config || {}).schema || this.defaults.schema;
+    if (!driver || !Array.isArray(driver.outputs) || driver.outputs.indexOf(key) < 0) {
+      throw new Error("Driver " + String(driver && driver.id || "unknown") + " cannot write undeclared field " + key);
+    }
+    if (this.isForbiddenOutcomeField(key, schema) || (Array.isArray(driver.forbiddenOutputs) && driver.forbiddenOutputs.indexOf(key) >= 0)) {
+      throw new Error("Driver " + String(driver && driver.id || "unknown") + " cannot write forbidden outcome " + key);
+    }
+  },
+
+  setField: function (state, driver, field, value) {
+    this.assertAllowedOutput(driver, field);
+    if (field === "atmosphere") { return; }
+    if (Object.prototype.hasOwnProperty.call(state.fields, field)) {
+      state.fields[field] = value;
+    }
+  },
+
+  applyEvent: function (state, event) {
+    var type = String((event || {}).type || (event || {}).id || "");
+    var driver = this.getDriver(null, type);
+    if (!driver) { throw new Error("Unknown environmental driver event " + type); }
+    var item = this.normalizeEvent(state, event, driver);
+    var strength = this.getEventStrengthAtTick(item, state.tick);
     if (type === "volcanism") {
-      state.fields.volcanic_emission += strength;
+      this.setField(state, driver, "volcanic_emission", state.fields.volcanic_emission + strength);
+      this.assertAllowedOutput(driver, "atmosphere");
       state.atmosphere.co2Ppm += strength * 80;
       state.atmosphere.so2Ppm += strength * 12;
-      state.fields.mineral_distribution = Math.min(1, state.fields.mineral_distribution + strength * 0.08);
+      this.setField(state, driver, "mineral_distribution", Math.min(1, state.fields.mineral_distribution + strength * 0.08));
     } else if (type === "asteroid_dust") {
-      state.fields.dust_opacity += strength;
-      state.fields.albedo = Math.min(1, state.fields.albedo + strength * 0.12);
-      state.fields.solar_forcing *= Math.max(0, 1 - strength * 0.18);
+      this.setField(state, driver, "dust_opacity", state.fields.dust_opacity + strength);
+      this.setField(state, driver, "albedo", Math.min(1, state.fields.albedo + strength * 0.12));
+      this.setField(state, driver, "solar_forcing", state.fields.solar_forcing * Math.max(0, 1 - strength * 0.18));
     } else if (type === "orbital_solar") {
-      state.fields.solar_forcing *= Math.max(0.1, 1 + Number(item.forcingDelta || item.delta || 0));
+      this.setField(state, driver, "solar_forcing", state.fields.solar_forcing * Math.max(0.1, 1 + item.forcingDelta));
     } else if (type === "agent_intervention") {
-      this.applyPatchFields(state, item.fields || {});
+      this.applyPatchFields(state, item.fields || {}, driver);
     } else if (type === "runaway_biology") {
-      this.applyRunawayBiology(state, strength, Number(item.dt) || 1);
+      this.applyRunawayBiology(state, strength, Number((event || {}).dt) || 1, driver);
     }
-    state.events.push({ type: type, strength: strength, tick: state.tick });
+    state.events.push({ type: type, startTick: item.startTick, durationTicks: item.durationTicks, decay: item.decay, strength: strength, tick: state.tick });
     return state;
   },
 
-  applyPatchFields: function (state, fields) {
+  applyPatchFields: function (state, fields, driver) {
     var key;
     for (key in fields) {
-      if (Object.prototype.hasOwnProperty.call(fields, key) && Object.prototype.hasOwnProperty.call(state.fields, key)) {
-        state.fields[key] = Number(fields[key]);
+      if (Object.prototype.hasOwnProperty.call(fields, key)) {
+        this.setField(state, driver, key, Number(fields[key]));
       }
     }
   },
 
-  applyRunawayBiology: function (state, strength, dt) {
+  applyRunawayBiology: function (state, strength, dt, driver) {
     var conversion = Math.max(0, Number(strength) || 0) * Math.max(0, Number(dt) || 1);
-    state.fields.vegetation_density = Math.min(1, state.fields.vegetation_density + conversion * 0.01);
-    state.fields.species_density = Math.min(1, state.fields.species_density + conversion * 0.008);
+    this.setField(state, driver, "vegetation_density", Math.min(1, state.fields.vegetation_density + conversion * 0.01));
+    this.setField(state, driver, "species_density", Math.min(1, state.fields.species_density + conversion * 0.008));
+    this.assertAllowedOutput(driver, "atmosphere");
     state.atmosphere.co2Ppm = Math.max(0, state.atmosphere.co2Ppm - conversion * 25);
     state.atmosphere.o2Ppm = Math.min(300000, state.atmosphere.o2Ppm + conversion * 25);
   },
