@@ -8,6 +8,7 @@ PS.render.vegetation = PS.render.vegetation || {
     belowCount: 0,
     canopyCount: 0,
     grassOverlayCount: 0,
+    shadowCount: 0,
     lastBuildMs: 0
   },
   cellCache: {},
@@ -71,6 +72,128 @@ PS.render.vegetation = PS.render.vegetation || {
     return tileSize * 0.82;
   },
 
+  getCellDrawSize: function (cell, baseSize) {
+    var width = Math.max(1, Number(baseSize) || 1);
+    var cellWidth = cell && Number(cell.w) > 0 ? Number(cell.w) : width;
+    var cellHeight = cell && Number(cell.h) > 0 ? Number(cell.h) : cellWidth;
+    var aspect = Math.max(0.25, Math.min(4, cellHeight / Math.max(1, cellWidth)));
+
+    return {
+      width: width,
+      height: Math.max(1, width * aspect)
+    };
+  },
+
+  getProceduralVegetationCell: function (type, variant, part) {
+    var packedKey = String((variant << 4) | type);
+    var key = packedKey + ":" + String(part || "below");
+    var cell = this.cellCache[key] || null;
+
+    if (!cell && PS.atlas && typeof PS.atlas.getVegetationCell === "function") {
+      cell = PS.atlas.getVegetationCell(type, variant, part);
+      this.cellCache[key] = cell;
+    }
+
+    return cell || null;
+  },
+
+  getAcceptedVegetationCellName: function (type, variant, part) {
+    var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
+    var index = Math.max(0, Math.round(Number(variant) || 0));
+    var normalizedPart = String(part || "below");
+
+    if (type === types.TREE_SMALL || type === types.TREE_MEDIUM || type === types.TREE_BIG) {
+      if (normalizedPart !== "canopy") {
+        return "";
+      }
+      if (type === types.TREE_SMALL) {
+        return "pine." + (index % 3);
+      }
+      if (type === types.TREE_MEDIUM) {
+        return index % 2 === 0 ? "pine." + (index % 3) : "oak." + (index % 3);
+      }
+      return "oak." + (index % 3);
+    }
+
+    if (normalizedPart !== "below") {
+      return "";
+    }
+
+    if (type === types.BUSH) {
+      return index % 4 < 2 ? "berry-bush." + (index % 2) : "leafy-bush." + (index % 2);
+    }
+    if (type === types.FLOWER) {
+      return "flower." + (index % 3);
+    }
+    if (type === types.MUSHROOM) {
+      return "mushroom." + (index % 2);
+    }
+    if (type === types.GRASS_TUFT) {
+      return "grass-tuft." + (index % 2);
+    }
+
+    return "";
+  },
+
+  selectAcceptedVegetationCell: function (type, variant, part, fallbackCell) {
+    var cellName = this.getAcceptedVegetationCellName(type, variant, part);
+    var selected;
+
+    if (
+      !cellName ||
+      !PS.assets ||
+      !PS.assets.equivalence ||
+      typeof PS.assets.equivalence.selectCell !== "function"
+    ) {
+      return null;
+    }
+
+    selected = PS.assets.equivalence.selectCell(
+      "vegetation",
+      cellName,
+      "vegetation",
+      fallbackCell && fallbackCell.name ? fallbackCell.name : ""
+    );
+
+    return selected && selected.renderCell ? selected.renderCell : null;
+  },
+
+  getShadowHeight: function (type) {
+    var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
+
+    if (type === types.TREE_BIG) { return 8; }
+    if (type === types.TREE_MEDIUM) { return 6; }
+    if (type === types.TREE_SMALL) { return 4; }
+    if (type === types.BUSH || type === types.FLOWER || type === types.MUSHROOM || type === types.GRASS_TUFT) { return 1; }
+    if (type === types.ROCK) { return 2; }
+    return 0;
+  },
+
+  appendShadowRect: function (rects, pointX, pointY, size, type, alpha) {
+    var shadowHeight = this.getShadowHeight(type);
+    var normalizedAlpha = Math.max(0, Math.min(1, Number(alpha) || 0));
+    var width;
+    var height;
+
+    if (!rects || shadowHeight <= 0 || normalizedAlpha <= 0) {
+      return false;
+    }
+
+    width = Math.max(2, size * (this.isTreeType(type) ? 0.92 : 0.72));
+    height = Math.max(1, shadowHeight * Math.max(0.4, size / Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8)));
+    rects.push(
+      pointX - width * 0.5 + size * 0.06,
+      pointY + size * 0.22,
+      width,
+      height,
+      0.018,
+      0.028,
+      0.045,
+      Math.min(0.42, (this.isTreeType(type) ? 0.34 : 0.22) * normalizedAlpha)
+    );
+    return true;
+  },
+
   getTilePoint: function (tileX, tileY) {
     if (typeof isGlobeRenderMode !== "function" || !isGlobeRenderMode()) {
       var tileSize = Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8);
@@ -98,13 +221,8 @@ PS.render.vegetation = PS.render.vegetation || {
     var point = this.getTilePoint(tileX, tileY);
     var size = this.getSpriteSize(type) * Math.max(0.2, Number(point && point.scale) || 1);
     var visibility = point && Number.isFinite(Number(point.visibility)) ? Number(point.visibility) : 1;
-    var packedKey = String((variant << 4) | type);
-    var cell = this.cellCache[packedKey + ":below"] || null;
-
-    if (!cell && PS.atlas && typeof PS.atlas.getVegetationCell === "function") {
-      cell = PS.atlas.getVegetationCell(type, variant, "below");
-      this.cellCache[packedKey + ":below"] = cell;
-    }
+    var fallbackCell = this.getProceduralVegetationCell(type, variant, "below");
+    var cell = this.selectAcceptedVegetationCell(type, variant, "below", fallbackCell) || fallbackCell;
 
     if (!point || point.visible === false || !cell) {
       return false;
@@ -120,7 +238,7 @@ PS.render.vegetation = PS.render.vegetation || {
       alpha: visibility,
       sortY: point.y,
       belowCell: cell,
-      canopyCell: this.getCanopyCell(type, variant, packedKey)
+      canopyCell: this.getCanopyCell(type, variant)
     });
     return true;
   },
@@ -197,18 +315,18 @@ PS.render.vegetation = PS.render.vegetation || {
     return PS.render.webgpuEntity.drawParticleRects(new Float32Array(values));
   },
 
-  getCanopyCell: function (type, variant, packedKey) {
-    var key = (packedKey || String((variant << 4) | type)) + ":canopy";
+  getCanopyCell: function (type, variant) {
+    var fallbackCell;
+    var acceptedCell;
 
     if (!this.isTreeType(type)) {
       return null;
     }
 
-    if (!this.cellCache[key] && PS.atlas && typeof PS.atlas.getVegetationCell === "function") {
-      this.cellCache[key] = PS.atlas.getVegetationCell(type, variant, "canopy");
-    }
+    fallbackCell = this.getProceduralVegetationCell(type, variant, "canopy");
+    acceptedCell = this.selectAcceptedVegetationCell(type, variant, "canopy", fallbackCell);
 
-    return this.cellCache[key] || null;
+    return acceptedCell || fallbackCell || null;
   },
 
   buildDrawList: function () {
@@ -228,6 +346,7 @@ PS.render.vegetation = PS.render.vegetation || {
       this.stats.visibleCount = 0;
       this.stats.belowCount = 0;
       this.stats.canopyCount = 0;
+      this.stats.shadowCount = 0;
       this.stats.lastBuildMs = 0;
       return items;
     }
@@ -253,6 +372,10 @@ PS.render.vegetation = PS.render.vegetation || {
         }
       }
     }
+
+    items.sort(function (a, b) {
+      return a.sortY === b.sortY ? a.tileY - b.tileY || a.tileX - b.tileX : a.sortY - b.sortY;
+    });
 
     this.stats.visibleCount = items.length;
     this.stats.belowCount = items.length;
@@ -297,7 +420,7 @@ PS.render.vegetation = PS.render.vegetation || {
     return PS.render.entities.drawEntityBatches(batches, drawn);
   },
 
-  appendPackedToBatches: function (belowBatches, canopyBatches, tileX, tileY, type, variant) {
+  makePackedBatchItem: function (tileX, tileY, type, variant) {
     var useFlatPoint = typeof isGlobeRenderMode !== "function" || !isGlobeRenderMode();
     var tileSize = Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8);
     var point = useFlatPoint ? null : this.getTilePoint(tileX, tileY);
@@ -305,33 +428,68 @@ PS.render.vegetation = PS.render.vegetation || {
     var pointY = useFlatPoint ? tileY * tileSize + tileSize / 2 : point && point.y;
     var pointScale = useFlatPoint ? 1 : Math.max(0.2, Number(point && point.scale) || 1);
     var visible = useFlatPoint || (point && point.visible !== false);
-    var packedKey = String((variant << 4) | type);
     var size = this.getSpriteSize(type) * pointScale;
     var alpha = useFlatPoint || !point || !Number.isFinite(Number(point.visibility)) ? 1 : Number(point.visibility);
-    var belowCell = this.cellCache[packedKey + ":below"] || null;
+    var fallbackBelowCell = this.getProceduralVegetationCell(type, variant, "below");
+    var belowCell = this.selectAcceptedVegetationCell(type, variant, "below", fallbackBelowCell) || fallbackBelowCell;
+    var canopyCell = this.isTreeType(type) ? this.getCanopyCell(type, variant) : null;
 
     if (!visible) {
+      return null;
+    }
+
+    return {
+      tileX: tileX,
+      tileY: tileY,
+      type: type,
+      variant: variant,
+      pointX: pointX,
+      pointY: pointY,
+      sortY: Number(pointY) || 0,
+      size: size,
+      alpha: alpha,
+      belowCell: belowCell,
+      canopyCell: canopyCell
+    };
+  },
+
+  appendBatchItem: function (belowBatches, canopyBatches, item) {
+    var belowCount = 0;
+    var canopyCount = 0;
+
+    if (!item) {
       return { below: 0, canopy: 0 };
     }
 
-    if (!belowCell && PS.atlas && typeof PS.atlas.getVegetationCell === "function") {
-      belowCell = PS.atlas.getVegetationCell(type, variant, "below");
-      this.cellCache[packedKey + ":below"] = belowCell;
+    if (item.belowCell) {
+      this.appendCellToBatchXY(belowBatches, item.belowCell, item.pointX, item.pointY, item.size, item.alpha, item.size * 0.12);
+      belowCount = 1;
     }
 
-    if (belowCell) {
-      this.appendCellToBatchXY(belowBatches, belowCell, pointX, pointY, size, alpha, size * 0.12);
+    if (item.canopyCell) {
+      this.appendCellToBatchXY(canopyBatches, item.canopyCell, item.pointX, item.pointY, item.size, item.alpha * 0.94, -item.size * 0.28);
+      canopyCount = 1;
     }
 
-    if (this.isTreeType(type)) {
-      var canopyCell = this.getCanopyCell(type, variant, packedKey);
-      if (canopyCell) {
-        this.appendCellToBatchXY(canopyBatches, canopyCell, pointX, pointY, size, alpha * 0.94, -size * 0.28);
-        return { below: belowCell ? 1 : 0, canopy: 1 };
-      }
+    return { below: belowCount, canopy: canopyCount };
+  },
+
+  appendPackedToBatches: function (belowBatches, canopyBatches, tileX, tileY, type, variant) {
+    return this.appendBatchItem(belowBatches, canopyBatches, this.makePackedBatchItem(tileX, tileY, type, variant));
+  },
+
+  appendItemShadowRect: function (rects, item) {
+    if (!item) {
+      return false;
     }
 
-    return { below: belowCell ? 1 : 0, canopy: 0 };
+    return this.appendShadowRect(rects, item.pointX, item.pointY, item.size, item.type, item.alpha);
+  },
+
+  appendPackedShadowRect: function (rects, tileX, tileY, type, variant) {
+    var item = this.makePackedBatchItem(tileX, tileY, type, variant);
+
+    return this.appendItemShadowRect(rects, item);
   },
 
   appendCellToBatch: function (batches, cell, point, size, alpha, offsetY) {
@@ -339,14 +497,16 @@ PS.render.vegetation = PS.render.vegetation || {
   },
 
   appendCellToBatchXY: function (batches, cell, pointX, pointY, size, alpha, offsetY) {
+    var drawSize = this.getCellDrawSize(cell, size);
+
     if (PS.render.webgpuEntity && typeof PS.render.webgpuEntity.appendCell === "function") {
       PS.render.webgpuEntity.appendCell(
         batches,
         cell,
-        pointX - size / 2,
-        pointY - size / 2 + (Number(offsetY) || 0),
-        size,
-        size,
+        pointX - drawSize.width / 2,
+        pointY - drawSize.height / 2 + (Number(offsetY) || 0),
+        drawSize.width,
+        drawSize.height,
         alpha,
         null,
         "vegetation"
@@ -358,7 +518,7 @@ PS.render.vegetation = PS.render.vegetation || {
       batches,
       cell,
       { x: pointX, y: pointY, scale: 1, visibility: alpha, visible: true },
-      size,
+      drawSize.height,
       alpha,
       "vegetation",
       0,
@@ -372,8 +532,11 @@ PS.render.vegetation = PS.render.vegetation || {
     var rect = this.getVisibleTileRect();
     var belowBatches;
     var canopyBatches;
+    var shadowRects;
+    var renderItems = [];
     var belowCount = 0;
     var canopyCount = 0;
+    var shadowCount = 0;
     var cacheKey = grid && grid.data
       ? [
         rect.minX,
@@ -390,17 +553,20 @@ PS.render.vegetation = PS.render.vegetation || {
       this.stats.visibleCount = this.preparedCache.prepared.belowCount;
       this.stats.belowCount = this.preparedCache.prepared.belowCount;
       this.stats.canopyCount = this.preparedCache.prepared.canopyCount;
+      this.stats.shadowCount = this.preparedCache.prepared.shadowCount || 0;
       this.stats.lastBuildMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
       return this.preparedCache.prepared;
     }
 
     belowBatches = PS.render.entities.createEntityBatches();
     canopyBatches = PS.render.entities.createEntityBatches();
+    shadowRects = [];
 
     if (!grid || !grid.data || !belowBatches || !canopyBatches || !PS.atlas || typeof PS.atlas.getVegetationCell !== "function") {
       this.stats.visibleCount = 0;
       this.stats.belowCount = 0;
       this.stats.canopyCount = 0;
+      this.stats.shadowCount = 0;
       this.stats.lastBuildMs = 0;
       return null;
     }
@@ -419,23 +585,41 @@ PS.render.vegetation = PS.render.vegetation || {
         var type = packed & 15;
 
         if (type !== grid.TYPES.NONE) {
-          var counts = this.appendPackedToBatches(belowBatches, canopyBatches, x, y, type, (packed >> 4) & 15);
-          belowCount += counts.below;
-          canopyCount += counts.canopy;
+          var item = this.makePackedBatchItem(x, y, type, (packed >> 4) & 15);
+          if (item) {
+            renderItems.push(item);
+          }
         }
+      }
+    }
+
+    renderItems.sort(function (a, b) {
+      return a.sortY === b.sortY ? a.tileY - b.tileY || a.tileX - b.tileX : a.sortY - b.sortY;
+    });
+
+    for (var itemIndex = 0; itemIndex < renderItems.length; itemIndex += 1) {
+      var renderItem = renderItems[itemIndex];
+      var counts = this.appendBatchItem(belowBatches, canopyBatches, renderItem);
+      belowCount += counts.below;
+      canopyCount += counts.canopy;
+      if (counts.below > 0 && this.appendItemShadowRect(shadowRects, renderItem)) {
+        shadowCount += 1;
       }
     }
 
     this.stats.visibleCount = belowCount;
     this.stats.belowCount = belowCount;
     this.stats.canopyCount = canopyCount;
+    this.stats.shadowCount = shadowCount;
     this.stats.lastBuildMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
 
     var prepared = {
       belowBatches: belowBatches,
       canopyBatches: canopyBatches,
+      shadowRects: shadowRects,
       belowCount: belowCount,
-      canopyCount: canopyCount
+      canopyCount: canopyCount,
+      shadowCount: shadowCount
     };
 
     this.preparedCache = {
@@ -452,6 +636,18 @@ PS.render.vegetation = PS.render.vegetation || {
       return false;
     }
 
+    if (part === "shadow") {
+      if (
+        !prepared.shadowRects ||
+        prepared.shadowRects.length <= 0 ||
+        !PS.render.webgpuEntity ||
+        typeof PS.render.webgpuEntity.drawShadowRects !== "function"
+      ) {
+        return false;
+      }
+      return PS.render.webgpuEntity.drawShadowRects(new Float32Array(prepared.shadowRects));
+    }
+
     if (part === "canopy") {
       return PS.render.entities.drawEntityBatches(prepared.canopyBatches, prepared.canopyCount);
     }
@@ -465,10 +661,19 @@ PS.render.vegetation = PS.render.vegetation || {
     }
 
     if (!PS.render.drawOrder || typeof PS.render.drawOrder.submit !== "function") {
+      this.drawPreparedBatches(prepared, "shadow");
       this.drawPreparedBatches(prepared, "below");
       this.drawPreparedBatches(prepared, "canopy");
       return true;
     }
+
+    PS.render.drawOrder.submit(PS.render.DrawLayer.SHADOW, {
+      id: "vegetation.shadows",
+      sortY: 0,
+      draw: function () {
+        PS.render.vegetation.drawPreparedBatches(prepared, "shadow");
+      }
+    });
 
     PS.render.drawOrder.submit(PS.render.DrawLayer.VEGETATION_TRUNK, {
       id: "vegetation.below",

@@ -90,7 +90,12 @@ const context = {
           "grain"
         ]),
         equivalence_vegetation_scatter_v0: makeLoadedSheet([
-          "oak.0"
+          "oak.0",
+          "pine.0",
+          "berry-bush.0",
+          "flower.0",
+          "grass-tuft.0",
+          "mushroom.0"
         ]),
         equivalence_ui_status_icons_v0: makeLoadedSheet([
           "stat-population"
@@ -143,16 +148,21 @@ context.PS.assets.equivalence.select("workStatus", "entity.intent.work");
 context.PS.assets.equivalence.select("effect", "entity.effect.fallback");
 context.PS.assets.equivalence.selectCell("terrain", "grass-lush.0", "terrainGround", "terrain.fallback");
 context.PS.assets.equivalence.selectCell("transitions", "grass-water.edge.n", "terrainTransition", "terrain.transition.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "pine.0", "vegetation", "entity.vegetation.tree.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "berry-bush.0", "vegetation", "entity.vegetation.bush.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "flower.0", "vegetation", "entity.vegetation.flower.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "grass-tuft.0", "vegetation", "entity.vegetation.tuft.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "mushroom.0", "vegetation", "entity.vegetation.mushroom.fallback");
 
 const selectedCitizen = context.PS.assets.equivalence.select("citizen", "entity.fallback");
 const stats = context.PS.assets.equivalence.getStats();
 
-assert.strictEqual(stats.selected, 10, "accepted equivalence selector should record each render category selection");
-assert.strictEqual(stats.rendered, 10, "accepted equivalence selector should create renderable atlas cells");
+assert.strictEqual(stats.selected, 15, "accepted equivalence selector should record each render category selection");
+assert.strictEqual(stats.rendered, 15, "accepted equivalence selector should create renderable atlas cells");
 assert.strictEqual(stats.missing, 0, "all test equivalence sheets/cells should resolve");
 assert.strictEqual(stats.byUse.citizen, 2, "citizen render category should select accepted creature sheet cells");
 assert.strictEqual(stats.byUse.stockpile, 1, "stockpile render category should select accepted resource sheet cells");
-assert.strictEqual(stats.byUse.vegetation, 1, "vegetation render category should select accepted vegetation sheet cells");
+assert.strictEqual(stats.byUse.vegetation, 6, "vegetation render category should select accepted vegetation sheet cells");
 assert.strictEqual(stats.byUse.settlement, 1, "settlement render category should select accepted structure sheet cells");
 assert.strictEqual(stats.byUse.worldUi, 1, "world UI render category should select accepted UI sheet cells");
 assert.strictEqual(stats.byUse.workStatus, 1, "intent/status render category should select accepted overlay sheet cells");
@@ -162,6 +172,7 @@ assert.strictEqual(stats.byUse.terrainTransition, 1, "terrain transition render 
 assert.strictEqual(stats.bySheet.equivalence_creature_npc_refined_v1, 2, "creature/citizen usage should name the accepted creature sheet");
 assert.strictEqual(stats.bySheet.equivalence_settlement_structures_v0, 1, "settlement usage should name the accepted structure sheet");
 assert.strictEqual(stats.bySheet.equivalence_resource_stockpiles_v0, 1, "stockpile usage should name the accepted resource sheet");
+assert.strictEqual(stats.bySheet.equivalence_vegetation_scatter_v0, 6, "vegetation usage should name the accepted scatter sheet");
 assert.strictEqual(stats.bySheet.equivalence_material_effect_overlays_v0, 1, "effect usage should name the accepted material/effect sheet");
 assert.strictEqual(stats.bySheet.equivalence_terrain_materials_v0, 1, "terrain usage should name the accepted terrain material sheet");
 assert.strictEqual(stats.bySheet.equivalence_terrain_transitions_v0, 1, "transition usage should name the accepted terrain transition sheet");

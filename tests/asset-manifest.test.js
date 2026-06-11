@@ -134,6 +134,16 @@ function assertNearRgb(actual, expected, label) {
 });
 
 assert.strictEqual(manifest.version, 1, "manifest should declare schema version");
+const vegetationScatterSheet = manifest.sheets.equivalence_vegetation_scatter_v0;
+assert.ok(vegetationScatterSheet, "manifest should include accepted vegetation scatter sheet");
+assert.strictEqual(vegetationScatterSheet.path, "assets/pixeldarium-equivalence/vegetation/vegetation_scatter_v0.png", "vegetation scatter sheet path should match accepted PNG");
+assert.strictEqual(vegetationScatterSheet.meta, "assets/pixeldarium-equivalence/vegetation/vegetation_scatter_v0.json", "vegetation scatter sheet should expose JSON metadata");
+assert.ok(vegetationScatterSheet.sprites.some((sprite) => sprite.id === "equivalence.vegetation_scatter_v0.pine.0" && sprite.rect[2] === 32 && sprite.rect[3] === 48), "vegetation scatter sheet should include authored pine tree sprites");
+assert.ok(vegetationScatterSheet.sprites.some((sprite) => sprite.id === "equivalence.vegetation_scatter_v0.oak.2" && sprite.rect[2] === 32 && sprite.rect[3] === 48), "vegetation scatter sheet should include authored oak tree variants");
+assert.ok(vegetationScatterSheet.sprites.some((sprite) => sprite.id === "equivalence.vegetation_scatter_v0.berry-bush.0" && sprite.rect[2] === 16 && sprite.rect[3] === 16), "vegetation scatter sheet should include bush scatter sprites");
+assert.ok(vegetationScatterSheet.sprites.some((sprite) => sprite.id === "equivalence.vegetation_scatter_v0.flower.2" && sprite.rect[2] === 16 && sprite.rect[3] === 16), "vegetation scatter sheet should include flower scatter variants");
+assert.ok(vegetationScatterSheet.sprites.some((sprite) => sprite.id === "equivalence.vegetation_scatter_v0.grass-tuft.1" && sprite.rect[2] === 16 && sprite.rect[3] === 16), "vegetation scatter sheet should include grass tuft scatter sprites");
+assert.ok(vegetationScatterSheet.sprites.some((sprite) => sprite.id === "equivalence.vegetation_scatter_v0.mushroom.1" && sprite.rect[2] === 16 && sprite.rect[3] === 16), "vegetation scatter sheet should include mushroom scatter sprites");
 assert.ok(manifest.sheets.terrain_grass, "manifest should include terrain_grass sheet");
 assert.strictEqual(manifest.sheets.terrain_grass.path, "assets/terrain/grass.png", "terrain grass path should match split-atlas PNG");
 assert.strictEqual(manifest.sheets.terrain_grass.tileSize, 32, "terrain grass tile size should be 32");
