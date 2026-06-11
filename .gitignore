@@ -5,6 +5,7 @@ node_modules/
 dist/
 .vite/
 tmp/
+reports/
 
 # BMAD symlink (points to monorepo root _bmad/)
 _bmad

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pixeldarium.local/schemas/planet-spec.schema.json",
+  "title": "Pixeldarium Planet Spec",
+  "type": "object",
+  "required": ["seed", "width", "height", "climate", "simulation"],
+  "additionalProperties": false,
+  "properties": {
+    "seed": {
+      "type": "string",
+      "minLength": 1
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 2048
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 2048
+    },
+    "climate": {
+      "type": "object",
+      "required": ["meanTemperatureC", "temperatureAmplitudeC", "oceanRatio"],
+      "additionalProperties": false,
+      "properties": {
+        "meanTemperatureC": {
+          "type": "number",
+          "minimum": -80,
+          "maximum": 80
+        },
+        "temperatureAmplitudeC": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "oceanRatio": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 0.95
+        },
+        "salinityPsu": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60,
+          "default": 35
+        },
+        "currentStrength": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "default": 1
+        }
+      }
+    },
+    "simulation": {
+      "type": "object",
+      "required": ["dt", "diffusion", "iterations"],
+      "additionalProperties": false,
+      "properties": {
+        "dt": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 10
+        },
+        "diffusion": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        }
+      }
+    },
+    "exports": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["png"]
+        },
+        "sidecar": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}

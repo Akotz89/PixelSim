@@ -22,6 +22,7 @@
 | [Optimization Implementation Gate](optimization-implementation-gate.md) | `docs/optimization-implementation-gate.md` | AZR-637 implementation handoff gate for rendering, streaming, performance, mass-simulation, and observation work |
 | [Phase 2 Readiness](phase-2-readiness.md) | `docs/phase-2-readiness.md` | AZR-353 reconciliation of GDD, Linear Phase 2 stories, and current repo evidence |
 | [Agent Studio Handoff](agent-studio-handoff.md) | `docs/agent-studio-handoff.md` | Runtime-safe contract for accepting outputs from the private Pixeldarium Agent Studio repo |
+| [Agent Simulation Control](agent-simulation-control.md) | `docs/agent-simulation-control.md` | AZR-835 planet-spec schema, headless runner, validator, WASM worker protocol, and tuner playbook |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
 
 ## Planning Artifacts
