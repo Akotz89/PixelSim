@@ -219,6 +219,37 @@ assert.strictEqual(initial.length, 16, "initial temperature field should match g
 assert.ok(initial[0] < initial[8], "initial temperature should be colder near pole than equator");
 assert.ok(initial.every(Number.isFinite), "initial temperature field should not contain NaN");
 
+const validation = heat.validateTemperatureField(initial, 4, 4);
+assert.strictEqual(validation.valid, true, "initial temperature validation should pass");
+assert.strictEqual(validation.noNaN, true, "temperature validation should reject NaN values");
+assert.ok(validation.equatorC > validation.polarC, "temperature validation should expose a hot equator and cold poles");
+assert.strictEqual(validation.monotonicFromEquator, true, "temperature validation should check equator-to-pole gradient");
+
+const withNaN = initial.slice();
+withNaN[3] = NaN;
+assert.strictEqual(heat.validateTemperatureField(withNaN, 4, 4).valid, false, "temperature validation should fail NaN fields");
+
+const elevation = heat.makeScalarField(4, 4, 1000);
+const flat = heat.makeScalarField(4, 4, 0);
+assert.ok(
+  heat.makeAlbedoField(4, 4, { oceanMask: flat })[0] >= config.albedo.ice,
+  "albedo field should use high ice albedo at polar rows"
+);
+assert.strictEqual(
+  Math.round((elevation[0] * config.lapse_rate) * 10) / 10,
+  6.5,
+  "1000m elevation should produce a measurable 6.5C lapse-rate cooling input"
+);
+
+const map = heat.makeTemperatureMapRgba(initial, 4, 4);
+assert.strictEqual(map.width, 4, "temperature map should preserve width");
+assert.strictEqual(map.height, 4, "temperature map should preserve height");
+assert.strictEqual(map.data.length, 4 * 4 * 4, "temperature map should export RGBA bytes");
+assert.strictEqual(map.mimeType, "image/png", "temperature map should declare PNG export intent");
+assert.strictEqual(map.extension, "png", "temperature map export should identify PNG file extension");
+assert.strictEqual(map.data[3], 255, "temperature map pixels should be opaque");
+assert.ok(map.data[0] < map.data[32], "temperature map should color cold polar pixels differently than warmer bands");
+
 const params = heat.makeParamsData(512, 512, config);
 const view = new DataView(params.buffer);
 assert.strictEqual(params.byteLength, 48, "params should be padded for WebGPU uniform binding alignment");
@@ -254,5 +285,10 @@ assert.strictEqual(fakeDevice.bindGroups.length, 1, "heat dispatch should create
 assert.strictEqual(fakeDevice.bindGroups[0].descriptor.entries.length, 6, "heat bind group should bind temperature, elevation, albedo, greenhouse, and params");
 assert.notStrictEqual(harness.getReadBuffer("temperature").id, readBefore, "heat dispatch should swap temperature ping-pong buffers");
 assert.strictEqual(queueSubmits.length, 1, "owned heat dispatch should submit a command buffer");
+
+const perf = heat.runTicks(3);
+assert.strictEqual(perf.ticks, 3, "heat runTicks should report dispatched tick count");
+assert.ok(Number.isFinite(perf.elapsedMs), "heat runTicks should report elapsed milliseconds");
+assert.ok(harness.passes["heat-diffusion"].dispatches >= 4, "heat runTicks should dispatch repeated compute passes");
 
 console.log("heat diffusion checks passed");
