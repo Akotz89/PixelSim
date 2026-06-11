@@ -146,9 +146,23 @@ PS.sim.biomeLut = PS.sim.biomeLut || {
     });
   },
 
+  getActivePalette: function () {
+    return Array.isArray(this.state.epochPalette) && this.state.epochPalette.length > 0
+      ? this.state.epochPalette
+      : this.getPalette();
+  },
+
+  setEpochPalette: function (paletteId, palette) {
+    this.state.epochPaletteId = String(paletteId || "default");
+    this.state.epochPalette = Array.isArray(palette) ? palette.slice() : [];
+    this.state.currentLut = this.makeLutRgba(this.width, this.height, this.state.epochPalette);
+    this.state.lastValidation = this.validateLut(this.state.currentLut);
+    return this.state.currentLut;
+  },
+
   snapToPalette: function (hex, palette) {
     var source = this.hexToRgb(hex);
-    var colors = Array.isArray(palette) && palette.length > 0 ? palette : this.getPalette();
+    var colors = Array.isArray(palette) && palette.length > 0 ? palette : this.getActivePalette();
     var best = colors[0] || "#000000";
     var bestDistance = Infinity;
 
@@ -281,7 +295,7 @@ PS.sim.biomeLut = PS.sim.biomeLut || {
   },
 
   validateLut: function (lut) {
-    var target = lut || this.makeLutRgba(this.width, this.height);
+    var target = lut || this.makeLutRgba(this.width, this.height, this.getActivePalette());
     var required = this.biomes.map(function (biome) { return biome.id; });
     var included = {};
     var missing = [];

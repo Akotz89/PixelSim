@@ -256,6 +256,16 @@ PS.sim.coupling = PS.sim.coupling || {
     };
   },
 
+  setActivePasses: function (activePassIds) {
+    this.activePassIds = Array.isArray(activePassIds) ? activePassIds.slice() : null;
+    return this.activePassIds;
+  },
+
+  setTimescale: function (ticksPerYear) {
+    this.ticksPerYear = Math.max(0, Number(ticksPerYear) || 0);
+    return this.ticksPerYear;
+  },
+
   now: function () {
     return Date && typeof Date.now === "function" ? Date.now() : new Date().getTime();
   },
@@ -272,6 +282,25 @@ PS.sim.coupling = PS.sim.coupling || {
     var harness = PS.sim && PS.sim.computeHarness;
     var started = this.now();
     var dispatched = [];
+    var activePassIds = Array.isArray(spec.activePassIds) ? spec.activePassIds : this.activePassIds;
+    var disabled = false;
+
+    if (Array.isArray(activePassIds)) {
+      disabled = activePassIds.indexOf(pass.id) < 0;
+    }
+
+    if (disabled) {
+      return this.logPassTiming({
+        id: pass.id,
+        label: pass.label,
+        dispatchIds: [],
+        disabled: true,
+        renderOnly: pass.renderOnly === true,
+        elapsedMs: Math.max(0, this.now() - started),
+        budgetMs: pass.budgetMs,
+        withinBudget: true
+      });
+    }
 
     if (pass.renderOnly) {
       return this.logPassTiming({

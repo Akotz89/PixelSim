@@ -153,6 +153,19 @@ PS.time = {
 
     return 3;
   },
+  getEpochYearsPerTick: function() {
+    if (PS.epochs && typeof PS.epochs.getEpochState === "function") {
+      try {
+        var state = PS.epochs.getEpochState();
+        if (state && Number.isFinite(Number(state.ticksPerYear))) {
+          return Number(state.ticksPerYear);
+        }
+      } catch (error) {
+        return null;
+      }
+    }
+    return null;
+  },
   setManualTimeScale: function(index) {
     var nextIndex = Math.max(0, Math.min(this.timeScales.length - 1, Math.round(Number(index) || 0)));
     var scale = this.timeScales[nextIndex];
@@ -171,10 +184,15 @@ PS.time = {
   },
   updateAdaptiveTimeScale: function(force) {
     var epochId = this.getCurrentEpochId();
+    var epochYearsPerTick = this.timeScale.manualOverride ? null : this.getEpochYearsPerTick();
     var targetIndex = this.timeScale.manualOverride
       ? this.timeScale.targetIndex
       : this.getScaleIndexForEpoch(epochId);
     var target = this.timeScales[targetIndex] || this.timeScales[3];
+    if (epochYearsPerTick !== null) {
+      target = { id: "epoch-state", label: this.formatYearsPerTick(epochYearsPerTick), yearsPerTick: epochYearsPerTick, aliases: [] };
+      targetIndex = -1;
+    }
     var current = Number(this.timeScale.currentYearsPerTick) || target.yearsPerTick;
     var next = force || this.timeScale.manualOverride
       ? target.yearsPerTick

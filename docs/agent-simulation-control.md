@@ -5,6 +5,20 @@ It is intentionally headless and deterministic so CI, Linear handoffs, and
 future Agent Studio workflows can reproduce the same planet seed without a
 browser.
 
+## Epoch Control
+
+AZR-841 adds `PS.epochs.setEpoch(n)` and `PS.epochs.getEpochState()` as the
+agent API for deep-time scaling. Epoch transitions load upstream state first:
+atmospheric CO2/O2/CH4/N2, greenhouse forcing, active simulation pass overlays,
+years-per-tick scaling, ocean state hints, life activation hints, and biome LUT
+palette id. Agents should treat those values as causes, not desired downstream
+population targets.
+
+The epoch config lives at `sim/configs/epoch-configs.json`. It contains 13
+epochs from Hadean through Galactic Civilization. Hadean disables the ocean pass;
+Archean enables it; epoch 3 carries Lenia species spawn hints after biome
+stabilization; epoch 6 runs at one year per tick.
+
 ## Planet Spec
 
 The schema lives at `schemas/planet-spec.schema.json`. Specs may be JSON or the

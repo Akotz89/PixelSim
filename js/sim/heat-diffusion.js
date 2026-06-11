@@ -140,6 +140,19 @@ PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
     return values;
   },
 
+  applyGreenhouseForcing: function (forcing) {
+    var value = Number(forcing) || 0;
+    var harness = PS.sim && PS.sim.computeHarness;
+    var dims = this.state || {};
+    var width = Math.max(1, Math.round(Number(dims.width || (this.config && this.config.width) || 1)));
+    var height = Math.max(1, Math.round(Number(dims.height || (this.config && this.config.height) || 1)));
+    this.greenhouseForcing = value;
+    if (harness && harness.buffers && harness.buffers["heat.greenhouse"] && typeof harness.writeBuffer === "function") {
+      harness.writeBuffer("heat.greenhouse", this.makeScalarField(width, height, value));
+    }
+    return value;
+  },
+
   makeAlbedoField: function (width, height, options) {
     var spec = options || {};
     var config = this.normalizeConfig(spec.config || this.config || {});

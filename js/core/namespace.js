@@ -170,6 +170,8 @@ PS.core.manifest = [
   "js/sim/civilizations.js",
   "js/core/world-gen.js",
   "js/epochs/registry.js",
+  "sim/configs/epoch-configs.json.js",
+  "js/epochs/state-machine.js",
   "js/epochs/primordial.js",
   "js/epochs/microbial.js",
   "js/layers/registry.js",
