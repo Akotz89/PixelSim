@@ -19,26 +19,6 @@ function drawPlanetReferenceGrid() {
   return PS.render.reference.draw();
 }
 
-window.buildTerrainCache = function () {
-  return PS.render && PS.render.terrain && typeof PS.render.terrain.buildCache === "function"
-    ? PS.render.terrain.buildCache()
-    : null;
-};
-window.invalidateTerrainCache = function () {
-  return PS.render && PS.render.terrain && typeof PS.render.terrain.invalidateCache === "function"
-    ? PS.render.terrain.invalidateCache()
-    : true;
-};
-window.getLocalSurfaceRenderCacheStats = function () {
-  return {
-    chunks: 0,
-    lastVisibleChunks: 0,
-    lastPendingChunks: 0,
-    lastGeneratedThisPass: 0,
-    lastFallbackChunks: 0
-  };
-};
-
 window.drawWorld = function() {
   if (window.PS && PS.render && PS.render.pipeline && typeof PS.render.pipeline.drawWorld === "function") {
     PS.render.pipeline.drawWorld();

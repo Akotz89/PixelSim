@@ -23,7 +23,9 @@ function markCameraInteracting() {
     cameraInteractionTimer = window.setTimeout(function() {
       world.isCameraInteracting = false;
       cameraInteractionTimer = null;
-      invalidateTerrainCache();
+      if (PS.render && PS.render.terrain && typeof PS.render.terrain.invalidateCache === "function") {
+        PS.render.terrain.invalidateCache();
+      }
       world.needsRender = true;
     }, Math.max(40, Number(CONFIG.PLANET_CAMERA_INTERACTION_SETTLE_MS) || 140));
   }

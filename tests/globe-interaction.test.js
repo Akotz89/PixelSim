@@ -99,7 +99,6 @@ const context = {
     return true;
   },
   setElementText() {},
-  invalidateTerrainCache() {},
   updateHud() {},
   redrawPlanetView() {},
   toggleSimulationPaused() {

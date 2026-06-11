@@ -47,15 +47,8 @@ cd Pixeldarium
 Before submitting a PR, ensure:
 
 ```bash
-# Syntax check
-for f in config.js state.js utils.js planet.js terrain.js food.js \
-         organisms.js settlements.js render-terrain-cache.js render.js \
-         persistence.js ui.js main.js; do
-  node --check "$f"
-done
-
-# Whitespace check
-git diff --check HEAD
+npm test
+git diff --check
 
 # Line endings (must be LF)
 # .gitattributes enforces this automatically

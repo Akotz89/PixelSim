@@ -161,10 +161,6 @@ PS.core.worldGen.spawnOrganisms = function(context) {
 };
 
 PS.core.worldGen.finalize = function(context) {
-  if (typeof buildTerrainCache === "function") {
-    buildTerrainCache();
-  }
-
   world.prng = context.prng.fork("runtime");
   if (world.prng && typeof world.prng.getState32 === "function") {
     world.rngState = world.prng.getState32();

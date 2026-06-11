@@ -247,6 +247,13 @@ async function waitForServer(server) {
           ? PS.assets.biomesData.biomes.length
           : 0,
         transitionResolverReady: !!PS.render.terrainTransitions,
+        terrainBuildCacheType: PS.render && PS.render.terrain ? typeof PS.render.terrain.buildCache : "missing",
+        globalBuildTerrainCacheType: typeof window.buildTerrainCache,
+        globalInvalidateTerrainCacheType: typeof window.invalidateTerrainCache,
+        globalSurfaceRenderStatsType: typeof window.getLocalSurfaceRenderCacheStats,
+        surfaceRenderStats: PS.render && PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function"
+          ? PS.render.surfaceRender.getCacheStats()
+          : null,
         spriteSystemLoaded: !!PS.spriteSystem,
         atlasLoaded: !!PS.atlas,
         atlasStats: PS.atlas && typeof PS.atlas.getStats === "function" ? PS.atlas.getStats() : null,
@@ -311,6 +318,11 @@ async function waitForServer(server) {
     );
     assert.strictEqual(bootEvidence.biomesLoaded, bootEvidence.startupData.biomes, "startup should retain loaded biome data");
     assert.strictEqual(bootEvidence.transitionResolverReady, false, "Canvas2D terrain transition resolver should not load in runtime");
+    assert.strictEqual(bootEvidence.terrainBuildCacheType, "undefined", "terrain renderer should not expose obsolete build cache entry point");
+    assert.strictEqual(bootEvidence.globalBuildTerrainCacheType, "undefined", "runtime should not expose obsolete buildTerrainCache global");
+    assert.strictEqual(bootEvidence.globalInvalidateTerrainCacheType, "undefined", "runtime should not expose obsolete invalidateTerrainCache global");
+    assert.strictEqual(bootEvidence.globalSurfaceRenderStatsType, "undefined", "runtime should not expose obsolete surface render stats global");
+    assert.strictEqual(bootEvidence.surfaceRenderStats.canvases, null, "surface render stats should not retain a render canvas pool");
     assert.strictEqual(bootEvidence.spriteSystemLoaded, false, "runtime should not load the Canvas2D sprite system");
     assert.strictEqual(bootEvidence.atlasLoaded, true, "runtime should load the packed WebGPU entity atlas");
     assert.ok(bootEvidence.atlasStats.cellCount > 0, "packed WebGPU atlas should generate runtime cells");

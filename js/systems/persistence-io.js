@@ -213,10 +213,6 @@ function applyWorldSaveData(saveData) {
   world.maxUpdateMs = 0;
   world.maxDrawMs = 0;
 
-  if (typeof buildTerrainCache === "function") {
-    buildTerrainCache();
-  }
-
   drawWorld();
   updateHud();
   return saveData;

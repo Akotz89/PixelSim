@@ -25,6 +25,11 @@ const context = {
     systems: {},
     ui: {},
     render: {
+      surfaceRender: {
+        invalidateTerrainCache() {
+          context.cacheInvalidated = true;
+        }
+      },
       terrain: {
         invalidateCache() {
           context.cacheInvalidated = true;
@@ -83,9 +88,6 @@ const context = {
   },
   setElementClass(element, className) {
     element.className = className;
-  },
-  invalidateTerrainCache() {
-    context.cacheInvalidated = true;
   },
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));

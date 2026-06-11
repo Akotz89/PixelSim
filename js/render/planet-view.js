@@ -115,8 +115,8 @@ function getPlanetViewPanVector() {
 }
 
 function invalidatePlanetRenderCache() {
-  if (typeof invalidateTerrainCache === "function") {
-    invalidateTerrainCache();
+  if (PS.render && PS.render.terrain && typeof PS.render.terrain.invalidateCache === "function") {
+    PS.render.terrain.invalidateCache();
   }
 
   world.needsRender = true;

@@ -167,12 +167,8 @@ Pixeldarium/
 ### Validation
 
 ```bash
-# Syntax check all JS files
-for f in config.js state.js utils.js planet.js terrain.js food.js \
-         organisms.js settlements.js render-terrain-cache.js render.js \
-         persistence.js ui.js main.js; do
-  node --check "$f" && echo "$f: OK"
-done
+npm test
+git diff --check
 ```
 
 Or use the included Codex validation script:

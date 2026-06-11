@@ -10,7 +10,15 @@ function updateHud() {
   var lifecycleState = world.isExtinct ? "extinct" : (world.isPaused ? "paused" : "running");
   var planetScaleInfo = getPlanetCameraScaleInfo();
   var planetCacheStats = getPlanetSurfaceCacheStats();
-  var renderCacheStats = getLocalSurfaceRenderCacheStats();
+  var renderCacheStats = PS.render && PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function"
+    ? PS.render.surfaceRender.getCacheStats()
+    : {
+      chunks: 0,
+      lastVisibleChunks: 0,
+      lastPendingChunks: 0,
+      lastGeneratedThisPass: 0,
+      lastFallbackChunks: 0
+    };
   var centerPyramidLineage = getPlanetSurfaceChunkLineage(
     getPlanetLocalSurfaceAddress(Math.floor(WORLD_WIDTH / 2), Math.floor(WORLD_HEIGHT / 2)).address
   );

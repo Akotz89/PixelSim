@@ -134,8 +134,6 @@ PS.deepTime = (function() {
     }
     if (PS.render && PS.render.terrain && typeof PS.render.terrain.invalidateCache === "function") {
       PS.render.terrain.invalidateCache();
-    } else if (typeof invalidateTerrainCache === "function") {
-      invalidateTerrainCache();
     }
     world.needsRender = true;
     return true;

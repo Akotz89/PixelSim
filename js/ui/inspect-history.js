@@ -116,7 +116,15 @@ function updateInspectPanel() {
   var localContext = getLocalInspectContext(tileX, tileY);
   var planetScaleInfo = getPlanetCameraScaleInfo();
   var planetCacheStats = getPlanetSurfaceCacheStats();
-  var renderCacheStats = getLocalSurfaceRenderCacheStats();
+  var renderCacheStats = PS.render && PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function"
+    ? PS.render.surfaceRender.getCacheStats()
+    : {
+      chunks: 0,
+      lastVisibleChunks: 0,
+      lastPendingChunks: 0,
+      lastGeneratedThisPass: 0,
+      lastFallbackChunks: 0
+    };
   var inspectedEntity = world.inspectedEntity;
   var inspectedPyramidLineage = isPlanetLocalView()
     ? getPlanetSurfaceChunkLineage(getPlanetLocalSurfaceAddress(tileX, tileY).address)
