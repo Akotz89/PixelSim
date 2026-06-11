@@ -254,6 +254,61 @@ function getRepresentativeTarget(organism, traits) {
   };
 }
 
+function getRepresentativeMorphologyPreview(organism, traits) {
+  var renderEntities = PS.render && PS.render.entities ? PS.render.entities : null;
+
+  if (renderEntities && typeof renderEntities.getOrganismMorphologyPreview === "function") {
+    return renderEntities.getOrganismMorphologyPreview(organism, 0);
+  }
+
+  var bodySize = Number(traits && traits.bodySize) || 1;
+  var waterDependency = Number(traits && traits.waterDependency) || 0;
+  var terrainAffinity = Number(traits && traits.terrainAffinity) || 0;
+  var thermalTolerance = Number(traits && traits.thermalTolerance) || 0;
+  var carnivory = Number(traits && traits.carnivory) || 0;
+  var camouflage = Number(traits && traits.camouflage) || 0;
+  var movementTendency = Number(traits && traits.movementTendency) || 0;
+  var movementMin = Number(CONFIG && CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN);
+  var movementMax = Number(CONFIG && CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX);
+  var movementRange = Number.isFinite(movementMax - movementMin) && movementMax > movementMin
+    ? (movementTendency - movementMin) / (movementMax - movementMin)
+    : movementTendency;
+  var sociality = Number(traits && traits.sociality) || 0;
+  var intelligence = Number(traits && traits.intelligence) || 0;
+  var scale = bodySize >= 2 ? "large" : (bodySize <= 0.75 ? "tiny" : "mid");
+  var habitat = waterDependency >= 0.75 ? "aquatic" : (terrainAffinity <= 0.25 ? "coastal" : (terrainAffinity >= 0.75 ? "upland" : "terrestrial"));
+  var climate = thermalTolerance >= 0.75 ? "heat-adapted" : (thermalTolerance <= 0.25 ? "cold-adapted" : "temperate");
+  var defense = carnivory >= 0.75 ? "predator" : "soft";
+  var cover = camouflage >= 0.75 ? "camouflaged" : "visible";
+  var motion = movementRange >= 0.75 ? "fast" : (movementRange <= 0.25 ? "slow" : "mobile");
+  var mind = sociality >= 0.5 ? "social" : (intelligence >= 0.5 ? "alert" : "instinctive");
+
+  return {
+    key: [
+      "representative.morphology",
+      Math.round(bodySize * 2),
+      Math.round(waterDependency * 4),
+      Math.round(terrainAffinity * 4),
+      Math.round(thermalTolerance * 4),
+      Math.round(carnivory * 4),
+      Math.round(camouflage * 4),
+      Math.round(movementRange * 4),
+      Math.round(sociality * 3),
+      Math.round(intelligence * 3)
+    ].join("."),
+    label: [scale, habitat, climate, defense, cover, motion, mind].join(" "),
+    tags: {
+      scale: scale,
+      habitat: habitat,
+      climate: climate,
+      defense: defense,
+      cover: cover,
+      motion: motion,
+      mind: mind
+    }
+  };
+}
+
 function ensureBiologyRepresentativeSummary(organism, population, traits) {
   ensureRepresentativeState();
 
@@ -284,6 +339,7 @@ function ensureBiologyRepresentativeSummary(organism, population, traits) {
   record.energy = Math.round(Number(organism.energy) || 0);
   record.age = Math.max(0, Number(organism.age) || 0);
   record.traits = traits;
+  record.morphologyPreview = getRepresentativeMorphologyPreview(organism, traits);
   record.isActive = true;
   record.lastSeenTick = tick;
 
@@ -361,6 +417,7 @@ function syncBiologyRepresentative(organism, options) {
   record.behavior = behavior;
   record.target = target;
   record.traits = traits;
+  record.morphologyPreview = getRepresentativeMorphologyPreview(organism, traits);
   record.isActive = true;
   record.lastSeenTick = tick;
 

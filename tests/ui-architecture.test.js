@@ -63,6 +63,7 @@ assert.ok(read("js/ui/summary.js").indexOf("body \" + traits.bodySize") >= 0, "s
 assert.ok(read("js/ui/summary.js").indexOf("thermal \" + traits.thermalTolerance") >= 0, "summary should expose selected organism environmental traits");
 assert.ok(read("js/ui/summary.js").indexOf("makeSummaryChip(\"Mind\"") >= 0, "trait summary should expose cognition trends");
 assert.ok(read("js/ui/inspect-history.js").indexOf("formatOrganismTraits(organism)") >= 0, "inspect panel should use expanded organism trait formatter");
+assert.ok(read("js/ui/inspect-history.js").indexOf("morphologyPreview") >= 0, "inspect panel should expose representative morphology preview");
 
 const indexSource = read("index.html");
 assert.strictEqual(indexSource.indexOf("js/legacy/"), -1, "index.html should not load legacy runtime scripts");

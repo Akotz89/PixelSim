@@ -4,6 +4,16 @@ PS.atlas = PS.atlas || {};
 
 PS.atlas.getOrganismTraitBuckets = function (organism, frameVariant) {
   var traits = organism && organism.traits ? organism.traits : {};
+  var carnivory = Number(traits.carnivory) || 0;
+  var mobility = Number(traits.movementTendency) || 0;
+  var mobilityMin = Number(CONFIG && CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN);
+  var mobilityMax = Number(CONFIG && CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX);
+  var mobilityRange = Number.isFinite(mobilityMax - mobilityMin) && mobilityMax > mobilityMin
+    ? (mobility - mobilityMin) / (mobilityMax - mobilityMin)
+    : mobility;
+  var terrain = Number(traits.terrainAffinity) || 0;
+  var intelligence = Number(traits.intelligence) || 0;
+  var sociality = Number(traits.sociality) || 0;
 
   return {
     lineage: Math.max(1, Math.round(Number(organism && organism.lineageId) || 1)) % 16,
@@ -14,11 +24,16 @@ PS.atlas.getOrganismTraitBuckets = function (organism, frameVariant) {
     camouflage: clamp(Math.round((Number(traits.camouflage) || 0) * 4), 0, 4),
     thermal: clamp(Math.round((Number(traits.thermalTolerance) || 0) * 4), 0, 4),
     water: clamp(Math.round((Number(traits.waterDependency) || 0) * 4), 0, 4),
+    predator: clamp(Math.round(carnivory * 4), 0, 4),
+    mobility: clamp(Math.round(mobilityRange * 4), 0, 4),
+    terrain: clamp(Math.round(terrain * 4), 0, 4),
+    cognition: clamp(Math.round(intelligence * 3), 0, 3),
+    social: clamp(Math.round(sociality * 3), 0, 3),
     variant: clamp(Math.round(Number(frameVariant) || 0), 0, 3)
   };
 };
 
-PS.atlas.makeTraitHash = function (organism, frameVariant) {
+PS.atlas.makeMorphologyKey = function (organism, frameVariant) {
   var buckets = PS.atlas.getOrganismTraitBuckets(organism, frameVariant);
 
   return [
@@ -31,8 +46,52 @@ PS.atlas.makeTraitHash = function (organism, frameVariant) {
     buckets.camouflage,
     buckets.thermal,
     buckets.water,
+    buckets.predator,
+    buckets.mobility,
+    buckets.terrain,
+    buckets.cognition,
+    buckets.social,
     buckets.variant
   ].join(".");
+};
+
+PS.atlas.makeTraitHash = PS.atlas.makeMorphologyKey;
+
+PS.atlas.getOrganismMorphologyPreview = function (organism, frameVariant) {
+  var buckets = PS.atlas.getOrganismTraitBuckets(organism, frameVariant);
+  var scale = buckets.bodySize >= 5 ? "large" : (buckets.bodySize <= 2 ? "tiny" : "mid");
+  var habitat = buckets.water >= 3 ? "aquatic" : (buckets.terrain <= 1 ? "coastal" : (buckets.terrain >= 3 ? "upland" : "terrestrial"));
+  var climate = buckets.thermal >= 3 ? "heat-adapted" : (buckets.thermal <= 1 ? "cold-adapted" : "temperate");
+  var defense = buckets.predator >= 3 ? "predator" : (buckets.appendageType === 2 || buckets.appendageType === 6 ? "armored" : "soft");
+  var cover = buckets.camouflage >= 3 ? "camouflaged" : "visible";
+  var motion = buckets.mobility >= 3 ? "fast" : (buckets.mobility <= 1 ? "slow" : "mobile");
+  var mind = buckets.social >= 2 ? "social" : (buckets.cognition >= 2 ? "alert" : "instinctive");
+
+  return {
+    key: PS.atlas.makeMorphologyKey(organism, frameVariant),
+    buckets: Object.assign({}, buckets),
+    label: [scale, habitat, climate, defense, cover, motion, mind].join(" "),
+    tags: {
+      scale: scale,
+      habitat: habitat,
+      climate: climate,
+      defense: defense,
+      cover: cover,
+      motion: motion,
+      mind: mind
+    }
+  };
+};
+
+PS.atlas.generateOrganismSprite = function (organism, frameVariant) {
+  var key = PS.atlas.makeMorphologyKey(organism, frameVariant);
+  var cell = PS.atlas.getTraitOrganismCell(organism, frameVariant);
+
+  return {
+    cell: cell,
+    morphologyKey: key,
+    preview: PS.atlas.getOrganismMorphologyPreview(organism, frameVariant)
+  };
 };
 
 PS.atlas.organismAccentColor = function (base, redLift, greenLift, blueLift) {
@@ -95,6 +154,10 @@ PS.atlas.drawOrganismTraitPattern = function (cell, organism, frameVariant) {
   var water = PS.atlas.organismAccentColor(base, -48, 45, 82);
   var earth = PS.atlas.organismAccentColor(base, -42, 28, -30);
   var limb = PS.atlas.organismAccentColor(base, -62, -42, -34);
+  var predator = PS.atlas.organismAccentColor(base, 105, -55, -48);
+  var motion = PS.atlas.organismAccentColor(base, 64, 64, -42);
+  var mind = PS.atlas.organismAccentColor(base, 82, 28, 96);
+  var terrain = PS.atlas.organismAccentColor(base, -28, 36, -18);
   var i;
   var x;
   var y;
@@ -129,6 +192,43 @@ PS.atlas.drawOrganismTraitPattern = function (cell, organism, frameVariant) {
     PS.atlas.writePixel(cell, centerX + radiusX, centerY - 3, limb);
     PS.atlas.writePixel(cell, centerX - radiusX, centerY + 3, limb);
     PS.atlas.writePixel(cell, centerX + radiusX, centerY + 3, limb);
+  }
+
+  if (buckets.predator >= 3) {
+    PS.atlas.writePixel(cell, centerX - 1, centerY + radiusY, predator);
+    PS.atlas.writePixel(cell, centerX + 1, centerY + radiusY, predator);
+    if (buckets.predator >= 4) {
+      PS.atlas.writePixel(cell, centerX, centerY + radiusY + 1, predator);
+    }
+  } else if (buckets.predator <= 1 && (buckets.appendageType === 2 || buckets.appendageType === 6)) {
+    PS.atlas.writePixel(cell, centerX - 3, centerY, limb);
+    PS.atlas.writePixel(cell, centerX + 3, centerY, limb);
+  }
+
+  if (buckets.mobility >= 3) {
+    PS.atlas.writePixel(cell, centerX - radiusX - 1, centerY + 2, motion);
+    PS.atlas.writePixel(cell, centerX + radiusX + 1, centerY + 2, motion);
+  } else if (buckets.mobility <= 1) {
+    PS.atlas.writePixel(cell, centerX - 1, centerY + radiusY - 1, terrain);
+    PS.atlas.writePixel(cell, centerX + 1, centerY + radiusY - 1, terrain);
+  }
+
+  if (buckets.terrain <= 1 && buckets.water < 3) {
+    PS.atlas.writePixel(cell, centerX - radiusX + 1, centerY + radiusY, water);
+    PS.atlas.writePixel(cell, centerX + radiusX - 1, centerY + radiusY, water);
+  } else if (buckets.terrain >= 3) {
+    PS.atlas.writePixel(cell, centerX - radiusX + 1, centerY - radiusY, terrain);
+    PS.atlas.writePixel(cell, centerX + radiusX - 1, centerY - radiusY, terrain);
+  }
+
+  if (buckets.cognition >= 2) {
+    PS.atlas.writePixel(cell, centerX - 1, centerY - radiusY + 2, mind);
+    PS.atlas.writePixel(cell, centerX + 1, centerY - radiusY + 2, mind);
+  }
+
+  if (buckets.social >= 2) {
+    PS.atlas.writePixel(cell, centerX - radiusX + 2, centerY, mind);
+    PS.atlas.writePixel(cell, centerX + radiusX - 2, centerY, mind);
   }
 };
 

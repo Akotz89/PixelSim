@@ -258,6 +258,11 @@ const context = {
           camouflage: Math.max(0, Math.min(4, Math.round((Number(traits.camouflage) || 0) * 4))),
           thermal: Math.max(0, Math.min(4, Math.round((Number(traits.thermalTolerance) || 0) * 4))),
           water: Math.max(0, Math.min(4, Math.round((Number(traits.waterDependency) || 0) * 4))),
+          predator: Math.max(0, Math.min(4, Math.round((Number(traits.carnivory) || 0) * 4))),
+          mobility: Math.max(0, Math.min(4, Math.round((Number(traits.movementTendency) || 0) * 4))),
+          terrain: Math.max(0, Math.min(4, Math.round((Number(traits.terrainAffinity) || 0) * 4))),
+          cognition: Math.max(0, Math.min(3, Math.round((Number(traits.intelligence) || 0) * 3))),
+          social: Math.max(0, Math.min(3, Math.round((Number(traits.sociality) || 0) * 3))),
           variant: Math.max(0, Math.min(3, Math.round(Number(frameVariant) || 0)))
         };
       },
@@ -434,11 +439,12 @@ assert.strictEqual(traitOrganismCellCalls, 1, "unchanged organism render should 
 
 context.world.organisms[0].energy = 250;
 context.PS.render.webgpuEntity.resetFrameStats();
-assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "state-changed organism facade should still render through WebGPU entity batches");
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "non-visual state-changed organism facade should still render through WebGPU entity batches");
 organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
-assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 1, "organism energy bucket change should invalidate cached sprite variant");
-assert.strictEqual(traitOrganismCellCalls, 2, "state-changed organism render should refresh atlas variant resolution once");
-assert.ok(organismPerfStats.lastEstimatedRenderObjectsPerSecond < 10000, "state-change organism render GC pressure should stay below 10,000 objects/sec for bounded changes");
+assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1, "organism energy bucket change should not invalidate non-visual morphology");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "organism energy bucket change should not regenerate sprite variant");
+assert.strictEqual(traitOrganismCellCalls, 1, "non-visual state-changed organism render should not refresh atlas variant resolution");
+assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "non-visual state changes should not estimate sprite cache GC pressure");
 
 const singleOrganismFixture = context.world.organisms;
 const perfOrganisms = [];

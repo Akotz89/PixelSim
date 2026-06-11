@@ -723,23 +723,107 @@ PS.render.entities.getOrganismAnimationSeed = function (organism, index) {
   return seed || 1;
 };
 
+PS.render.entities.generateSprite = function (traits, entityId, context) {
+  var renderContext = context || {};
+  var frameVariant = clamp(Math.round(Number(renderContext.frameVariant) || 0), 0, 3);
+  var organism = renderContext.organism || {
+    id: entityId,
+    representativeId: entityId,
+    lineageId: Math.max(1, Math.round(Number(renderContext.lineageId) || 1)),
+    traits: traits || {}
+  };
+
+  organism.traits = traits || organism.traits || {};
+
+  if (PS.atlas && typeof PS.atlas.generateOrganismSprite === "function") {
+    return PS.atlas.generateOrganismSprite(organism, frameVariant);
+  }
+
+  if (PS.atlas && typeof PS.atlas.getTraitOrganismCell === "function") {
+    return {
+      cell: PS.atlas.getTraitOrganismCell(organism, frameVariant),
+      morphologyKey: PS.atlas.makeTraitHash ? PS.atlas.makeTraitHash(organism, frameVariant) : "entity.organism.fallback." + frameVariant,
+      preview: null
+    };
+  }
+
+  return {
+    cell: null,
+    morphologyKey: "entity.organism.missing." + frameVariant,
+    preview: null
+  };
+};
+
+PS.render.entities.getMorphologyKey = function (traits, entityId, context) {
+  var renderContext = context || {};
+  var frameVariant = clamp(Math.round(Number(renderContext.frameVariant) || 0), 0, 3);
+  var organism = renderContext.organism || {
+    id: entityId,
+    representativeId: entityId,
+    lineageId: Math.max(1, Math.round(Number(renderContext.lineageId) || 1)),
+    traits: traits || {}
+  };
+
+  organism.traits = traits || organism.traits || {};
+
+  if (PS.atlas && typeof PS.atlas.makeMorphologyKey === "function") {
+    return PS.atlas.makeMorphologyKey(organism, frameVariant);
+  }
+
+  if (PS.atlas && typeof PS.atlas.makeTraitHash === "function") {
+    return PS.atlas.makeTraitHash(organism, frameVariant);
+  }
+
+  if (PS.atlas && typeof PS.atlas.getOrganismTraitBuckets === "function") {
+    var buckets = PS.atlas.getOrganismTraitBuckets(organism, frameVariant);
+    return [
+      "entity.organism.trait",
+      buckets.lineage,
+      buckets.bodySize,
+      buckets.bodyShape,
+      buckets.limbCount,
+      buckets.appendageType,
+      buckets.camouflage,
+      buckets.thermal,
+      buckets.water,
+      buckets.predator,
+      buckets.mobility,
+      buckets.terrain,
+      buckets.cognition,
+      buckets.social,
+      buckets.variant
+    ].join(".");
+  }
+
+  return "entity.organism.missing." + frameVariant;
+};
+
+PS.render.entities.getOrganismMorphologyPreview = function (organism, index) {
+  var seed = PS.render.entities.getOrganismAnimationSeed(organism, index);
+  var frameVariant = seed & 3;
+
+  if (PS.atlas && typeof PS.atlas.getOrganismMorphologyPreview === "function") {
+    return PS.atlas.getOrganismMorphologyPreview(organism, frameVariant);
+  }
+
+  return null;
+};
+
 PS.render.entities.getOrganismSpriteCache = function (organism, index) {
   var perf = PS.render.entities.organismRenderPerf;
-  var traits = organism && organism.traits ? organism.traits : {};
   var seed = PS.render.entities.getOrganismAnimationSeed(organism, index);
   var variant = seed & 3;
-  var lineage = Math.max(1, Math.round(Number(organism && organism.lineageId) || 1)) % 16;
-  var bodySize = Math.max(1, Math.min(6, Math.round((Number(traits.bodySize) || 1) * 2)));
-  var bodyShape = Math.max(0, Math.min(7, Math.round(Number(traits.bodyShape) || 0)));
-  var limbCount = Math.max(0, Math.min(12, Math.round(Number(traits.limbCount) || 0)));
-  var appendageType = Math.max(0, Math.min(7, Math.round(Number(traits.appendageType) || 0)));
-  var camouflage = Math.max(0, Math.min(4, Math.round((Number(traits.camouflage) || 0) * 4)));
-  var thermal = Math.max(0, Math.min(4, Math.round((Number(traits.thermalTolerance) || 0) * 4)));
-  var water = Math.max(0, Math.min(4, Math.round((Number(traits.waterDependency) || 0) * 4)));
-  var energyBucket = PS.render.entities.getOrganismEnergyBucket(organism);
-  var headingBucket = PS.render.entities.getOrganismHeadingBucket(organism);
+  var entityId = organism && (organism.representativeId || organism.id || organism.poolIndex);
+  var traits = organism && organism.traits ? organism.traits : {};
+  var morphologyContext = {
+    organism: organism,
+    lineageId: organism && organism.lineageId,
+    frameVariant: variant
+  };
+  var morphologyKey = PS.render.entities.getMorphologyKey(traits, entityId, morphologyContext);
   var cache = organism ? organism._renderSpriteCache : null;
   var changed;
+  var generated;
 
   if (!cache) {
     cache = {};
@@ -748,32 +832,15 @@ PS.render.entities.getOrganismSpriteCache = function (organism, index) {
     }
   }
 
-  changed = cache.variant !== variant ||
-    cache.lineage !== lineage ||
-    cache.bodySize !== bodySize ||
-    cache.bodyShape !== bodyShape ||
-    cache.limbCount !== limbCount ||
-    cache.appendageType !== appendageType ||
-    cache.camouflage !== camouflage ||
-    cache.thermal !== thermal ||
-    cache.water !== water ||
-    cache.energyBucket !== energyBucket ||
-    cache.headingBucket !== headingBucket ||
+  changed = cache.morphologyKey !== morphologyKey ||
     !cache.cell;
 
   if (changed) {
+    generated = PS.render.entities.generateSprite(traits, entityId, morphologyContext);
     cache.variant = variant;
-    cache.lineage = lineage;
-    cache.bodySize = bodySize;
-    cache.bodyShape = bodyShape;
-    cache.limbCount = limbCount;
-    cache.appendageType = appendageType;
-    cache.camouflage = camouflage;
-    cache.thermal = thermal;
-    cache.water = water;
-    cache.energyBucket = energyBucket;
-    cache.headingBucket = headingBucket;
-    cache.cell = PS.atlas.getTraitOrganismCell(organism, variant);
+    cache.morphologyKey = morphologyKey;
+    cache.preview = generated ? generated.preview : null;
+    cache.cell = generated ? generated.cell : null;
     perf.lastSpriteCacheMisses += 1;
   } else {
     perf.lastSpriteCacheHits += 1;

@@ -182,6 +182,7 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Rep State", representativeRecord ? representativeRecord.behavior : "-"));
     detailChips.push(makeInspectChip("Rep Pin", representativeRecord && representativeRecord.pinned ? "pinned" : "open"));
     detailChips.push(makeInspectChip("Bookmark", representativeRecord ? representativeRecord.bookmarkScore.toFixed(2) : "0.00"));
+    detailChips.push(makeInspectChip("Morphology", representativeRecord && representativeRecord.morphologyPreview ? representativeRecord.morphologyPreview.label : "-"));
     detailChips.push(makeInspectChip("Agg Pressure", pressure ? "food " + pressure.food + " scarcity " + pressure.scarcity.toFixed(2) + " terrain " + pressure.terrain.toFixed(2) : "-"));
     detailChips.push(makeInspectChip("Org Unit", "~" + Math.max(1, Math.round(Number(CONFIG.ORGANISM_POPULATION_UNIT) || 1)).toLocaleString()));
     detailChips.push(makeInspectChip("Org Energy", organism.energy));

@@ -130,6 +130,11 @@ parent.traits.metabolism = 1;
 parent.traits.intelligence = 0.8;
 parent.traits.sociality = 0.6;
 parent.traits.carnivory = 0.4;
+parent.traits.bodySize = 2.2;
+parent.traits.camouflage = 0.8;
+parent.traits.thermalTolerance = 0.9;
+parent.traits.waterDependency = 0.9;
+parent.traits.movementTendency = 0.8;
 parent.directionX = 1;
 parent.directionY = 0;
 world.organisms.push(parent);
@@ -173,6 +178,13 @@ assert.strictEqual(representative.speciesId, parent.speciesId, "representative s
 assert.strictEqual(representative.selected, true, "selected representative should be marked for inspection");
 assert.strictEqual(representative.behavior, "breeding", "representative behavior should derive from organism state");
 assert.strictEqual(representative.target.type, "food", "representative target should derive from ecological context");
+assert.ok(representative.morphologyPreview.label.indexOf("aquatic") >= 0, "representative should expose morphology habitat preview");
+assert.ok(representative.morphologyPreview.label.indexOf("camouflaged") >= 0, "representative should expose morphology cover preview");
+assert.ok(
+  representative.morphologyPreview.label.indexOf("fast") >= 0 ||
+  representative.morphologyPreview.label.indexOf("mobile") >= 0,
+  "representative should expose morphology mobility preview"
+);
 
 PS.sim.representatives.pin(parent, true);
 PS.sim.representatives.bookmark(parent, 0.8);
