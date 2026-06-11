@@ -66,6 +66,10 @@ assert.strictEqual(world.nextBiologyPopulationId, 1, "population counter should 
 assert.strictEqual(world.nextBiologyRepresentativeId, 1, "representative counter should start at one");
 assert.deepStrictEqual(world.biologyPopulations, [], "aggregate population container should exist");
 assert.deepStrictEqual(world.biologyRepresentatives, [], "representative container should exist");
+assert.strictEqual(PS.bio.TRAIT_BODY_SIZE, PS.core.traitSchema.getOffset("bodySize"), "body size offset should be globally readable");
+assert.strictEqual(PS.bio.TRAIT_BODY_SHAPE, PS.core.traitSchema.getOffset("body_shape"), "snake-case trait aliases should resolve to canonical offsets");
+assert.strictEqual(PS.bio.TRAIT_STRIDE, PS.core.traitSchema.getKeys().length, "trait stride should match schema key count");
+assert.strictEqual(PS.config.evolution.mutationRates.vision, CONFIG.TRAIT_VISION_MUTATION_STEP, "evolution config should expose per-trait mutation rates");
 
 var organism = makeOrganism(4, 5);
 assert.strictEqual(organism.speciesId, organism.lineageId, "new organism should default species to lineage");
@@ -79,6 +83,8 @@ organism.representativeId = 16;
 organism.traits.bodySize = 1.75;
 organism.traits.limbCount = 8;
 organism.traits.camouflage = 0.9;
+organism.traits = { body_size: 2.25, limb_count: 5, thermal_tolerance: 0.8 };
+organism.traits.waterDependency = -1;
 ensureOrganismLineage(organism);
 
 assert.strictEqual(world.nextSpeciesId, 13, "species counter should advance past assigned species");
@@ -87,9 +93,35 @@ assert.strictEqual(world.nextBiologyRepresentativeId, 17, "representative counte
 assert.strictEqual(PS.pools.organism.arrays.speciesId[organism.poolIndex], 12, "species id should be typed-array backed");
 assert.strictEqual(PS.pools.organism.arrays.populationId[organism.poolIndex], 14, "population id should be typed-array backed");
 assert.strictEqual(PS.pools.organism.arrays.representativeId[organism.poolIndex], 16, "representative id should be typed-array backed");
-assert.strictEqual(PS.pools.organism.arrays.bodySize[organism.poolIndex], 1.75, "body size should be typed-array backed");
-assert.strictEqual(PS.pools.organism.arrays.limbCount[organism.poolIndex], 8, "limb count should be typed-array backed");
+assert.strictEqual(PS.pools.organism.arrays.bodySize[organism.poolIndex], 2.25, "body size should be typed-array backed");
+assert.strictEqual(PS.pools.organism.arrays.limbCount[organism.poolIndex], 5, "limb count should be typed-array backed");
+assert.strictEqual(PS.pools.organism.arrays.traitBuffer[organism.poolIndex * PS.bio.TRAIT_STRIDE + PS.bio.TRAIT_BODY_SIZE], 2.25, "body size should write through packed trait buffer");
+assert.ok(
+  Math.abs(PS.pools.organism.arrays.traitBuffer[organism.poolIndex * PS.bio.TRAIT_STRIDE + PS.bio.TRAIT_CAMOUFLAGE] - 0.9) < 0.0001,
+  "camouflage should write through packed trait buffer"
+);
+assert.ok(Math.abs(organism.traits.thermalTolerance - 0.8) < 0.0001, "snake-case thermal alias should assign canonical trait");
+assert.strictEqual(organism.traits.waterDependency, CONFIG.TRAIT_WATER_DEPENDENCY_MIN, "trait facade should clamp lower bounds");
 assert.ok(organism.traits.waterDependency >= 0, "new AZR-284 trait defaults should normalize");
+
+chance = function() { return true; };
+randomInt = function(max) { return Math.max(0, Math.round(Number(max) || 1) - 1); };
+var inherited = inheritOrganismTraits({
+  vision: CONFIG.TRAIT_VISION_DEFAULT,
+  bodySize: 1,
+  limbCount: 4,
+  bodyShape: 0,
+  appendageType: 0,
+  camouflage: 0.5,
+  thermalTolerance: 0.5,
+  waterDependency: 0.5
+});
+assert.strictEqual(inherited.bodySize, 1 + CONFIG.TRAIT_BODY_SIZE_MUTATION_STEP, "continuous body traits should inherit with configured mutation steps");
+assert.strictEqual(inherited.limbCount, 5, "discrete limb traits should inherit as bounded integers");
+assert.strictEqual(inherited.bodyShape, 1, "discrete body-shape traits should inherit as bounded integers");
+assert.strictEqual(inherited.appendageType, 1, "discrete appendage traits should inherit as bounded integers");
+assert.ok(Math.abs(inherited.camouflage - 0.55) < 0.0001, "environment traits should inherit as bounded continuous values");
+assert.ok(inherited.thermalTolerance <= CONFIG.TRAIT_THERMAL_TOLERANCE_MAX, "thermal inheritance should enforce upper bounds");
 
 console.log("biology model state checks passed");
 `, context);

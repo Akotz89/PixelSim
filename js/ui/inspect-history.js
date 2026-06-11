@@ -31,7 +31,14 @@ function makeTraitHistorySample(summary) {
     terrainAffinity: summary.terrainAffinity,
     intelligence: summary.intelligence,
     sociality: summary.sociality,
-    carnivory: summary.carnivory
+    carnivory: summary.carnivory,
+    bodySize: summary.bodySize,
+    limbCount: summary.limbCount,
+    bodyShape: summary.bodyShape,
+    appendageType: summary.appendageType,
+    camouflage: summary.camouflage,
+    thermalTolerance: summary.thermalTolerance,
+    waterDependency: summary.waterDependency
   };
 }
 
@@ -184,7 +191,7 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Org Pos", organism.x + "," + organism.y));
     detailChips.push(makeInspectChip("Org Lat/Lon", organismSurfacePosition ? organismSurfacePosition.latitude.toFixed(4) + " / " + organismSurfacePosition.longitude.toFixed(4) : "-"));
     detailChips.push(makeInspectChip("Org Dir", organism.directionX + "," + organism.directionY));
-    detailChips.push(makeInspectChip("Org Traits", "V" + traits.vision + " M" + traits.metabolism + " R" + traits.reproductionEnergy + " roam " + traits.movementTendency.toFixed(2) + " hab " + traits.terrainAffinity.toFixed(2)));
+    detailChips.push(makeInspectChip("Org Traits", formatOrganismTraits(organism)));
   } else {
     detailChips.push(makeInspectChip("Organism", "none"));
   }

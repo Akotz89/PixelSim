@@ -68,16 +68,38 @@ function formatOrganismTraits(organism) {
   var traits = ensureOrganismTraits(organism);
 
   return (
-    "traits vision " + traits.vision +
+    "vision " + traits.vision +
     " metabolism " + traits.metabolism +
     " reproduce " + traits.reproductionEnergy +
     " roam " + traits.movementTendency.toFixed(2) +
-    " habitat " + traits.terrainAffinity.toFixed(2)
+    " habitat " + traits.terrainAffinity.toFixed(2) +
+    " body " + traits.bodySize.toFixed(2) +
+    " limbs " + traits.limbCount +
+    " shape " + traits.bodyShape +
+    " appendage " + traits.appendageType +
+    " camo " + traits.camouflage.toFixed(2) +
+    " thermal " + traits.thermalTolerance.toFixed(2) +
+    " water " + traits.waterDependency.toFixed(2) +
+    " predator " + traits.carnivory.toFixed(2) +
+    " mind " + traits.intelligence.toFixed(2) +
+    " social " + traits.sociality.toFixed(2)
   );
 }
 
 function getPopulationTraitSummary() {
   return world.populationTraitSummary;
+}
+
+function getSummaryTraitValue(summary, key) {
+  var value = Number(summary && summary[key]);
+
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  return PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.normalizeTraitValue === "function"
+    ? PS.core.traitSchema.normalizeTraitValue(key, undefined)
+    : 0;
 }
 
 function updateTraitSummary() {
@@ -90,12 +112,19 @@ function updateTraitSummary() {
   }
 
   var chips = [
-    makeSummaryChip("Vision", summary.vision.toFixed(1)),
-    makeSummaryChip("Metabolism", summary.metabolism.toFixed(2)),
-    makeSummaryChip("Reproduce", summary.reproductionEnergy.toFixed(1)),
-    makeSummaryChip("Roam", summary.movementTendency.toFixed(2)),
-    makeSummaryChip("Habitat", summary.terrainAffinity.toFixed(2)),
-    makeSummaryChip("Carnivory", summary.carnivory.toFixed(2))
+    makeSummaryChip("Vision", getSummaryTraitValue(summary, "vision").toFixed(1)),
+    makeSummaryChip("Metabolism", getSummaryTraitValue(summary, "metabolism").toFixed(2)),
+    makeSummaryChip("Reproduce", getSummaryTraitValue(summary, "reproductionEnergy").toFixed(1)),
+    makeSummaryChip("Roam", getSummaryTraitValue(summary, "movementTendency").toFixed(2)),
+    makeSummaryChip("Habitat", getSummaryTraitValue(summary, "terrainAffinity").toFixed(2)),
+    makeSummaryChip("Carnivory", getSummaryTraitValue(summary, "carnivory").toFixed(2)),
+    makeSummaryChip("Body", getSummaryTraitValue(summary, "bodySize").toFixed(2)),
+    makeSummaryChip("Limbs", getSummaryTraitValue(summary, "limbCount").toFixed(1)),
+    makeSummaryChip("Camouflage", getSummaryTraitValue(summary, "camouflage").toFixed(2)),
+    makeSummaryChip("Thermal", getSummaryTraitValue(summary, "thermalTolerance").toFixed(2)),
+    makeSummaryChip("Water", getSummaryTraitValue(summary, "waterDependency").toFixed(2)),
+    makeSummaryChip("Mind", getSummaryTraitValue(summary, "intelligence").toFixed(2)),
+    makeSummaryChip("Social", getSummaryTraitValue(summary, "sociality").toFixed(2))
   ];
 
   setElementClass(traitSummaryText, "summary-grid trait-summary-grid");

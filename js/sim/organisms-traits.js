@@ -89,70 +89,28 @@ function makeInitialOrganismTraits(typeId) {
 
 function inheritOrganismTraits(parentTraits) {
   parentTraits = normalizeOrganismTraits(parentTraits);
+  var definitions;
+  var traits;
+  var i;
 
   // Use trait registry when available (AZR-493)
   if (PS.traitRegistry && PS.traitRegistry.definitionOrder.length > 0) {
     return PS.traitRegistry.inherit(parentTraits);
   }
 
-  // Fallback: original CONFIG-based inheritance
-  return {
-    vision: inheritTraitValue(
-      parentTraits.vision,
-      CONFIG.TRAIT_VISION_MIN,
-      CONFIG.TRAIT_VISION_MAX,
-      CONFIG.TRAIT_VISION_MUTATION_STEP
-    ),
-    metabolism: inheritTraitValue(
-      parentTraits.metabolism,
-      CONFIG.TRAIT_METABOLISM_MIN,
-      CONFIG.TRAIT_METABOLISM_MAX,
-      CONFIG.TRAIT_METABOLISM_MUTATION_STEP
-    ),
-    reproductionEnergy: inheritTraitValue(
-      parentTraits.reproductionEnergy,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MUTATION_STEP
-    ),
-    movementTendency: inheritTraitValue(
-      parentTraits.movementTendency,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MUTATION_STEP
-    ),
-    terrainAffinity: inheritTraitValue(
-      parentTraits.terrainAffinity,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MAX,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
-    ),
-    intelligence: inheritTraitValue(
-      parentTraits.intelligence,
-      CONFIG.TRAIT_INTELLIGENCE_MIN,
-      CONFIG.TRAIT_INTELLIGENCE_MAX,
-      CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP
-    ),
-    sociality: inheritTraitValue(
-      parentTraits.sociality,
-      CONFIG.TRAIT_SOCIALITY_MIN,
-      CONFIG.TRAIT_SOCIALITY_MAX,
-      CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
-    ),
-    carnivory: inheritTraitValue(
-      parentTraits.carnivory,
-      CONFIG.TRAIT_CARNIVORY_MIN,
-      CONFIG.TRAIT_CARNIVORY_MAX,
-      CONFIG.TRAIT_CARNIVORY_MUTATION_STEP
-    ),
-    bodySize: parentTraits.bodySize,
-    limbCount: parentTraits.limbCount,
-    bodyShape: parentTraits.bodyShape,
-    appendageType: parentTraits.appendageType,
-    camouflage: parentTraits.camouflage,
-    thermalTolerance: parentTraits.thermalTolerance,
-    waterDependency: parentTraits.waterDependency
-  };
+  definitions = PS.core.traitSchema.getDefinitions();
+  traits = {};
+
+  for (i = 0; i < definitions.length; i++) {
+    traits[definitions[i].key] = inheritTraitValue(
+      parentTraits[definitions[i].key],
+      CONFIG[definitions[i].configPrefix + "_MIN"],
+      CONFIG[definitions[i].configPrefix + "_MAX"],
+      Number(CONFIG[definitions[i].configPrefix + "_MUTATION_STEP"]) || 0
+    );
+  }
+
+  return normalizeOrganismTraits(traits);
 }
 
 function copyTraitsForLineage(traits) {

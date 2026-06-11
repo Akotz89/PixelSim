@@ -122,7 +122,9 @@ assert.strictEqual(PS.pools.food.capacity, 3, "food capacity should be configura
 assert.ok(PS.poolManager.pools.organisms, "organism pool should register with pool manager");
 assert.ok(PS.poolManager.pools.food, "food pool should register with pool manager");
 assert.ok(PS.pools.organism.arrays.x instanceof Float32Array, "organism x should be typed-array backed");
-assert.strictEqual(Object.keys(PS.pools.organism.arrays).length, 39, "organism pool should expose biology identity, trait, and tile-link arrays");
+assert.strictEqual(Object.keys(PS.pools.organism.arrays).length, 40, "organism pool should expose biology identity, packed trait, compatibility trait, and tile-link arrays");
+assert.ok(PS.pools.organism.arrays.traitBuffer instanceof Float32Array, "organism traits should have a packed stride buffer");
+assert.strictEqual(PS.pools.organism.arrays.traitBuffer.length, 4 * PS.bio.TRAIT_STRIDE, "packed trait buffer should be capacity times schema stride");
 assert.strictEqual(PS.pools.organism.arrays.nextInTile[0], -1, "organism tile-grid next pointer should default to no link");
 assert.strictEqual(PS.pools.organism.arrays.prevInTile[0], -1, "organism tile-grid previous pointer should default to no link");
 
@@ -141,8 +143,10 @@ organism.populationId = 5;
 organism.representativeId = 7;
 organism.traits.bodySize = 1.5;
 organism.traits.limbCount = 6;
+organism.traits.bodyShape = 999;
 assert.strictEqual(PS.pools.organism.arrays.energy[organism.poolIndex], 42, "organism energy should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.vision[organism.poolIndex], 27, "trait writes should update typed array");
+assert.strictEqual(PS.pools.organism.arrays.traitBuffer[organism.poolIndex * PS.bio.TRAIT_STRIDE + PS.bio.TRAIT_VISION], 27, "trait writes should update packed trait buffer");
 assert.strictEqual(PS.pools.organism.arrays.intelligence[organism.poolIndex], 0.5, "intelligence should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.sociality[organism.poolIndex], 0.25, "sociality should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.carnivory[organism.poolIndex], 0.75, "carnivory should write through to typed array");
@@ -151,6 +155,7 @@ assert.strictEqual(PS.pools.organism.arrays.populationId[organism.poolIndex], 5,
 assert.strictEqual(PS.pools.organism.arrays.representativeId[organism.poolIndex], 7, "representative id should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.bodySize[organism.poolIndex], 1.5, "body size should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.limbCount[organism.poolIndex], 6, "limb count should write through to typed array");
+assert.strictEqual(organism.traits.bodyShape, CONFIG.TRAIT_BODY_SHAPE_MAX, "direct trait writes should clamp through schema bounds");
 
 organism.energy = 0;
 world.organisms = [organism];

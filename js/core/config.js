@@ -138,6 +138,13 @@ PS.config.refreshFromConstants = function () {
     carnivoryMax: CONFIG.TRAIT_CARNIVORY_MAX
   };
 
+  PS.config.evolution = {
+    mutationChance: CONFIG.TRAIT_MUTATION_CHANCE,
+    mutationRates: PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.getMutationRates === "function"
+      ? PS.core.traitSchema.getMutationRates()
+      : {}
+  };
+
   PS.config.settlements = {
     spatialBucketSize: CONFIG.SETTLEMENT_SPATIAL_BUCKET_SIZE,
     minLineagePopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,

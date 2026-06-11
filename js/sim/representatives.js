@@ -3,20 +3,25 @@ PS.sim = PS.sim || {};
 
 var REPRESENTATIVE_HISTORY_LIMIT = 12;
 var REPRESENTATIVE_TERRITORY_LIMIT = 8;
-var REPRESENTATIVE_TRAIT_KEYS = [
-  "vision",
-  "metabolism",
-  "reproductionEnergy",
-  "movementTendency",
-  "terrainAffinity",
-  "bodySize",
-  "limbCount",
-  "bodyShape",
-  "appendageType",
-  "camouflage",
-  "thermalTolerance",
-  "waterDependency"
-];
+var REPRESENTATIVE_TRAIT_KEYS = PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.getKeys === "function"
+  ? PS.core.traitSchema.getKeys()
+  : [
+    "vision",
+    "metabolism",
+    "reproductionEnergy",
+    "movementTendency",
+    "terrainAffinity",
+    "intelligence",
+    "sociality",
+    "carnivory",
+    "bodySize",
+    "limbCount",
+    "bodyShape",
+    "appendageType",
+    "camouflage",
+    "thermalTolerance",
+    "waterDependency"
+  ];
 
 var representativePerfStats = {
   lastRefreshMs: 0,

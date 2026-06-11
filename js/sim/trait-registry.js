@@ -107,8 +107,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_BODY_SIZE_MIN,
     max: CONFIG.TRAIT_BODY_SIZE_MAX,
     defaultValue: CONFIG.TRAIT_BODY_SIZE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_BODY_SIZE_MUTATION_STEP,
+    evolvable: true,
     integer: false
   },
   {
@@ -118,8 +118,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_LIMB_COUNT_MIN,
     max: CONFIG.TRAIT_LIMB_COUNT_MAX,
     defaultValue: CONFIG.TRAIT_LIMB_COUNT_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_LIMB_COUNT_MUTATION_STEP,
+    evolvable: true,
     integer: true
   },
   {
@@ -129,8 +129,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_BODY_SHAPE_MIN,
     max: CONFIG.TRAIT_BODY_SHAPE_MAX,
     defaultValue: CONFIG.TRAIT_BODY_SHAPE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_BODY_SHAPE_MUTATION_STEP,
+    evolvable: true,
     integer: true
   },
   {
@@ -140,8 +140,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_APPENDAGE_TYPE_MIN,
     max: CONFIG.TRAIT_APPENDAGE_TYPE_MAX,
     defaultValue: CONFIG.TRAIT_APPENDAGE_TYPE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_APPENDAGE_TYPE_MUTATION_STEP,
+    evolvable: true,
     integer: true
   },
   {
@@ -151,8 +151,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_CAMOUFLAGE_MIN,
     max: CONFIG.TRAIT_CAMOUFLAGE_MAX,
     defaultValue: CONFIG.TRAIT_CAMOUFLAGE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_CAMOUFLAGE_MUTATION_STEP,
+    evolvable: true,
     integer: false
   },
   {
@@ -162,8 +162,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_THERMAL_TOLERANCE_MIN,
     max: CONFIG.TRAIT_THERMAL_TOLERANCE_MAX,
     defaultValue: CONFIG.TRAIT_THERMAL_TOLERANCE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_THERMAL_TOLERANCE_MUTATION_STEP,
+    evolvable: true,
     integer: false
   },
   {
@@ -173,8 +173,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_WATER_DEPENDENCY_MIN,
     max: CONFIG.TRAIT_WATER_DEPENDENCY_MAX,
     defaultValue: CONFIG.TRAIT_WATER_DEPENDENCY_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_WATER_DEPENDENCY_MUTATION_STEP,
+    evolvable: true,
     integer: false
   }
 ];
