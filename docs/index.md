@@ -28,6 +28,7 @@
 | [Molecular Dynamics Zoom](molecular-dynamics-zoom.md) | `docs/molecular-dynamics-zoom.md` | AZR-840 pixel-art molecular dynamics zoom view with Lennard-Jones forces, Velocity Verlet validation, salt hydration, ice ordering, and macro-cell causal inputs |
 | [Lenia Ecosystem Simulation](lenia-ecosystem-simulation.md) | `docs/lenia-ecosystem-simulation.md` | AZR-838 continuous cellular automata ecosystem, species competition, pH collapse, overlay, and JSON export |
 | [Multi-Physics Coupling](multi-physics-coupling.md) | `docs/multi-physics-coupling.md` | AZR-839 canonical nine-pass simulation order, texture registry, previous-tick read discipline, WASM elevation upload, and timing logs |
+| [Parameter Provenance And Environmental Drivers](parameter-provenance-drivers.md) | `docs/parameter-provenance-drivers.md` | AZR-1059 baseline parameter provenance, environmental driver fields, and causal no-downstream-tuning contract |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
 
 ## Planning Artifacts
