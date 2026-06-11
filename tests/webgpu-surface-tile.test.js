@@ -374,12 +374,27 @@ const acceptedTerrainCell = {
   u1: 1,
   v1: 0.5
 };
+const acceptedTransitionCell = {
+  name: "equivalence.terrain_transitions_v0.grass-water.edge.e",
+  pageIndex: 0,
+  u0: 0,
+  v0: 0.5,
+  u1: 0.5,
+  v1: 1
+};
 let acceptedTerrainSelection = null;
+let acceptedTransitionSelection = null;
 
 context.PS.atlas.getTerrainCell = function () {
   return fallbackTerrainCell;
 };
 context.PS.assets.equivalence.selectCell = function (family, cellName, use, fallbackCellId) {
+  if (family === "transitions") {
+    acceptedTransitionSelection = { family, cellName, use, fallbackCellId };
+    return {
+      renderCell: Object.assign({}, acceptedTransitionCell, { name: "equivalence.terrain_transitions_v0." + cellName })
+    };
+  }
   acceptedTerrainSelection = { family, cellName, use, fallbackCellId };
   return {
     renderCell: acceptedTerrainCell
@@ -416,6 +431,113 @@ Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
     assert.strictEqual(page.data[offset], 0, "non-split terrain instances should keep procedural G-buffer normal sampling");
   }
 });
+
+assert.strictEqual(
+  context.PS.render.surfaceTileBatcher.getAcceptedTransitionPair({ type: "coast" }),
+  "grass-water",
+  "coast transitions should use accepted grass-water shoreline cells"
+);
+assert.strictEqual(
+  context.PS.render.surfaceTileBatcher.getAcceptedTransitionPair({ type: "dry" }),
+  "grass-sand",
+  "dry biome edges should use accepted grass-sand cells"
+);
+assert.strictEqual(
+  context.PS.render.surfaceTileBatcher.getAcceptedTransitionPair({ type: "frost" }),
+  "rock-snow",
+  "frost and snow lines should use accepted rock-snow cells"
+);
+assert.strictEqual(
+  context.PS.render.surfaceTileBatcher.getAcceptedTransitionPair({ type: "canopy" }),
+  "grass-forest-floor",
+  "forest floor edges should use accepted grass-forest-floor cells"
+);
+
+context.PS.atlas.getTerrainTransitionInfo = function () {
+  return {
+    type: "coast",
+    mask: 1,
+    neighborBiome: "ocean",
+    weight: 0.4,
+    strength: 0.6
+  };
+};
+
+const automaticTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 256,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: {
+    biome: "grassland",
+    acceptedTransitionCellName: "grass-water.edge.e",
+    detail: { surface: "shoreline" },
+    tileBlend: {
+      transitionStrength: 0.6,
+      biomeWeights: { grassland: 0.6, ocean: 0.4 },
+      xAmount: 0.8,
+      yAmount: 0.5
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1);
+
+assert.strictEqual(automaticTransitionBatches.count, 1, "legacy accepted transition overrides should replace the sparse proof tile");
+assert.strictEqual(automaticTransitionBatches.equivalenceTransitions, 1, "eligible sparse transition tiles should select accepted transition cells");
+assert.strictEqual(acceptedTransitionSelection.family, "transitions", "automatic transition cell should use the transitions equivalence family");
+assert.strictEqual(acceptedTransitionSelection.cellName, "grass-water.edge.e", "coast mask should select the correct accepted shoreline edge");
+assert.strictEqual(acceptedTransitionSelection.use, "terrainTransition", "automatic transition cells should record terrainTransition usage");
+assert.ok(
+  automaticTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.grass-water.edge.e"] > 0,
+  "accepted transition cell should replace fallback material at deterministic sparse proof positions"
+);
+
+delete context.PS.atlas.getTerrainTransitionInfo;
+context.PS.render.terrainTransitions = {
+  resolve(tileX, tileY, grid) {
+    assert.ok(grid && typeof grid.getTileId === "function", "surface transition adapter should pass the active tile grid to the resolver");
+    assert.strictEqual(tileX, 4, "surface transition resolver should receive world tile X");
+    assert.strictEqual(tileY, 7, "surface transition resolver should receive world tile Y");
+    return {
+      baseTile: "sand",
+      overlays: [
+        { sheet: "transitions/grass_sand", spriteIndex: 0 },
+        { sheet: "transitions/snow_rock", spriteIndex: 8 }
+      ]
+    };
+  }
+};
+acceptedTransitionSelection = null;
+const resolverGrid = {
+  getTileId(x, y) {
+    return x === 4 && y === 7 ? "sand" : "grass_lush";
+  }
+};
+const resolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 7,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1,
+  transitionGrid: resolverGrid
+}, [{
+  sample: {
+    biome: "desert",
+    detail: { surface: "sand" }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1);
+assert.strictEqual(resolverTransitionBatches.count, 3, "resolver transitions should draw base terrain plus every accepted overlay");
+assert.strictEqual(resolverTransitionBatches.equivalenceTransitions, 2, "resolver overlays should count as accepted transition draws");
+assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.grass-sand.edge.n"] > 0, "resolver grass-sand edge should map to accepted transition cell");
+assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.rock-snow.inner-corner.ne"] > 0, "resolver snow-rock inner corner should map to accepted rock-snow cell");
+delete context.PS.render.terrainTransitions;
 
 const splitPageData = new Uint8Array(512 * 32 * 4);
 for (let i = 0; i < splitPageData.length; i += 4) {

@@ -218,7 +218,11 @@ PS.render.surfaceTileBatcher.getAcceptedTransitionPair = function (transition) {
     return "grass-sand";
   }
 
-  if (transition.type === "ridge" || transition.type === "canopy") {
+  if (transition.type === "canopy") {
+    return "grass-forest-floor";
+  }
+
+  if (transition.type === "ridge") {
     return "grass-rock";
   }
 
@@ -287,6 +291,94 @@ PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName = function (samp
   if (direction === 1) { return "grass-water.edge.e"; }
   if (direction === 2) { return "grass-water.edge.s"; }
   return "grass-water.edge.w";
+};
+
+PS.render.surfaceTileBatcher.getTransitionGrid = function (address, sample) {
+  return address && (address.transitionGrid || address.tileGrid || address.grid) ||
+    sample && (sample.transitionGrid || sample.tileGrid || sample.grid) ||
+    null;
+};
+
+PS.render.surfaceTileBatcher.getAcceptedResolverTransitionPair = function (sheet) {
+  var key = String(sheet || "").replace(/^transitions\//, "").replace(/_/g, "-");
+
+  if (key === "snow-rock") {
+    return "rock-snow";
+  }
+  if (key === "forest-grass") {
+    return "grass-forest-floor";
+  }
+
+  return key;
+};
+
+PS.render.surfaceTileBatcher.getAcceptedResolverTransitionShape = function (spriteIndex) {
+  var index = Math.round(Number(spriteIndex) || 0);
+
+  if (index === 0) { return "edge.n"; }
+  if (index === 1) { return "edge.e"; }
+  if (index === 2) { return "edge.s"; }
+  if (index === 3) { return "edge.w"; }
+  if (index === 4) { return "corner.ne"; }
+  if (index === 5) { return "corner.se"; }
+  if (index === 6) { return "corner.sw"; }
+  if (index === 7) { return "corner.nw"; }
+  if (index === 8) { return "inner-corner.ne"; }
+  if (index === 9) { return "inner-corner.se"; }
+  if (index === 10) { return "inner-corner.sw"; }
+  if (index === 11) { return "inner-corner.nw"; }
+
+  return "";
+};
+
+PS.render.surfaceTileBatcher.getResolverTransitionCellNames = function (tileX, tileY, grid) {
+  var resolver = PS.render && PS.render.terrainTransitions &&
+    typeof PS.render.terrainTransitions.resolve === "function"
+    ? PS.render.terrainTransitions
+    : null;
+  var resolved;
+  var overlays;
+  var names = [];
+
+  if (!resolver || !grid) {
+    return names;
+  }
+
+  resolved = resolver.resolve(tileX, tileY, grid);
+  overlays = resolved && Array.isArray(resolved.overlays) ? resolved.overlays : [];
+
+  for (var i = 0; i < overlays.length; i += 1) {
+    var pair = PS.render.surfaceTileBatcher.getAcceptedResolverTransitionPair(overlays[i].sheet);
+    var shape = PS.render.surfaceTileBatcher.getAcceptedResolverTransitionShape(overlays[i].spriteIndex);
+
+    if (pair && shape) {
+      names.push(pair + "." + shape);
+    }
+  }
+
+  return names;
+};
+
+PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address, sample, biome, tileX, tileY) {
+  var gridNames = PS.render.surfaceTileBatcher.getResolverTransitionCellNames(
+    tileX,
+    tileY,
+    PS.render.surfaceTileBatcher.getTransitionGrid(address, sample)
+  );
+  var fallbackName;
+
+  if (gridNames.length > 0) {
+    return gridNames;
+  }
+
+  fallbackName = PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) ||
+    PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY);
+
+  return fallbackName ? [fallbackName] : [];
+};
+
+PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions = function (address, sample, tileX, tileY) {
+  return Boolean(PS.render.surfaceTileBatcher.getTransitionGrid(address, sample));
 };
 
 PS.render.surfaceTileBatcher.canSelectAcceptedTerrainMaterial = function (sample) {
@@ -424,6 +516,69 @@ PS.render.surfaceTileBatcher.appendInstance = function (
   page.data[offset + 13] = water ? water.waveOffset : 0;
   page.data[offset + 14] = water ? water.growth : 1;
   page.length += PS.render.surfaceTileBatcher.strideFloats;
+};
+
+PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays = function (
+  target,
+  transitionCellNames,
+  fallbackCell,
+  screenX,
+  screenY,
+  samplePixelSize,
+  alpha
+) {
+  if (
+    !target ||
+    !transitionCellNames ||
+    transitionCellNames.length <= 0 ||
+    !PS.assets ||
+    !PS.assets.equivalence ||
+    typeof PS.assets.equivalence.selectCell !== "function"
+  ) {
+    return 0;
+  }
+
+  var appended = 0;
+
+  for (var i = 0; i < transitionCellNames.length; i += 1) {
+    var cellName = transitionCellNames[i];
+    var selected = PS.assets.equivalence.selectCell(
+      "transitions",
+      cellName,
+      "terrainTransition",
+      fallbackCell && fallbackCell.name ? fallbackCell.name : ""
+    );
+    var cell = selected && selected.renderCell ? selected.renderCell : null;
+
+    if (!cell) {
+      continue;
+    }
+
+    var page = PS.render.surfaceTileBatcher.getPageBuffer(target, cell.pageIndex);
+    PS.render.surfaceTileBatcher.appendInstance(
+      page,
+      screenX,
+      screenY,
+      samplePixelSize,
+      samplePixelSize,
+      cell.u0,
+      cell.v0,
+      cell.u1,
+      cell.v1,
+      alpha,
+      0,
+      cell.splitAtlas,
+      null
+    );
+    target.count++;
+    target.equivalenceTransitions++;
+    if (target.materialCounts) {
+      target.materialCounts[cell.name] = (target.materialCounts[cell.name] || 0) + 1;
+    }
+    appended++;
+  }
+
+  return appended;
 };
 
 PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCache, alpha) {
@@ -573,6 +728,17 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       waterInfo
     );
     target.count++;
+    if (canAttemptAccepted && PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions(address, sample, tileX, tileY)) {
+      PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays(
+        target,
+        PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames(address, sample, biome, tileX, tileY),
+        cell,
+        screenX,
+        screenY,
+        samplePixelSize,
+        tileAlpha * featherAlpha
+      );
+    }
   }
 
   return target;
