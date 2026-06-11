@@ -31,6 +31,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/grass.json",
       "pixelData": "assets/terrain/grass.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4059,6 +4061,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/forest.json",
       "pixelData": "assets/terrain/forest.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4157,6 +4161,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/desert.json",
       "pixelData": "assets/terrain/desert.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4255,6 +4261,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/water.json",
       "pixelData": "assets/terrain/water.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4353,6 +4361,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/ocean.json",
       "pixelData": "assets/terrain/ocean.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4451,6 +4461,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/mountain.json",
       "pixelData": "assets/terrain/mountain.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4549,6 +4561,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/tundra.json",
       "pixelData": "assets/terrain/tundra.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4647,6 +4661,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/wetland.json",
       "pixelData": "assets/terrain/wetland.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4745,6 +4761,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/stone.json",
       "pixelData": "assets/terrain/stone.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4843,6 +4861,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/dirt.json",
       "pixelData": "assets/terrain/dirt.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -4941,6 +4961,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/sand.json",
       "pixelData": "assets/terrain/sand.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -5039,6 +5061,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/ice.json",
       "pixelData": "assets/terrain/ice.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -5137,6 +5161,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/rock.json",
       "pixelData": "assets/terrain/rock.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,
@@ -5235,6 +5261,8 @@ PS.assets.registerJSON("assets/manifest.json", {
       "meta": "assets/terrain/snow.json",
       "pixelData": "assets/terrain/snow.rgba.json",
       "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-511",
       "splitAtlas": {
         "albedoRect": [
           0,

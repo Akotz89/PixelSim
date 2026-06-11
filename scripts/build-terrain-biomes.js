@@ -47,6 +47,23 @@ const sheetAliases = {
   terrain_wetland: "wetland"
 };
 
+const authoredVariantRoles = {
+  grass: ["lush-1", "lush-2", "lush-3", "lush-4", "dry-1", "dry-2", "dead-1", "winter-1"],
+  stone: ["bare-1", "bare-2", "bare-3", "snow-1", "snow-2", "moss-1", "scree-1", "ledge-1"],
+  dirt: ["dark-soil-1", "dark-soil-2", "roots-1", "roots-2", "leaf-litter-1", "leaf-litter-2", "dry-soil-1", "dry-soil-2"],
+  sand: ["dune-1", "dune-2", "pebble-1", "dry-veg-1", "dune-3", "dune-4", "pebble-2", "dry-veg-2"],
+  forest: ["leaf-litter-1", "roots-1", "mushroom-1", "dark-soil-1", "leaf-litter-2", "roots-2", "mushroom-2", "dark-soil-2"],
+  desert: ["dune-1", "dune-2", "pebble-1", "dry-veg-1", "dune-3", "dune-4", "pebble-2", "dry-veg-2"],
+  water: ["deep-1", "deep-2", "shallow-1", "shore-1", "deep-3", "deep-4", "shallow-2", "shore-2"],
+  ice: ["snow-1", "frozen-soil-1", "cracked-ice-1", "winter-1", "snow-2", "frozen-soil-2", "cracked-ice-2", "winter-2"],
+  rock: ["bare-1", "bare-2", "bare-3", "snow-1", "snow-2", "moss-1", "scree-1", "ledge-1"],
+  snow: ["snow-1", "frozen-soil-1", "cracked-ice-1", "winter-1", "snow-2", "frozen-soil-2", "cracked-ice-2", "winter-2"],
+  ocean: ["deep-1", "deep-2", "shallow-1", "shore-1", "deep-3", "deep-4", "shallow-2", "shore-2"],
+  mountain: ["bare-1", "bare-2", "bare-3", "snow-1", "snow-2", "moss-1", "scree-1", "ledge-1"],
+  tundra: ["snow-1", "frozen-soil-1", "cracked-ice-1", "winter-1", "snow-2", "frozen-soil-2", "cracked-ice-2", "winter-2"],
+  wetland: ["pool-1", "reed-1", "mud-1", "marsh-1", "pool-2", "reed-2", "mud-2", "marsh-2"]
+};
+
 function hash(x, y, salt) {
   let value = (x * 374761393 + y * 668265263 + salt * 2246822519) >>> 0;
   value = Math.imul(value ^ (value >>> 13), 1274126177) >>> 0;
@@ -443,7 +460,15 @@ function metadataFor(id) {
     normalColumns: columns,
     normalOffsetX: albedoWidth,
     rows: 1,
-    names: Array.from({ length: columns }, (_, index) => "terrain." + id + "." + index)
+    names: Array.from({ length: columns }, (_, index) => "terrain." + id + "." + index),
+    authored: true,
+    sourceIssue: "AZR-511",
+    sourceKind: "accepted-runtime-art",
+    fallback: "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+    variantRoles: Array.from({ length: columns }, (_, index) => ({
+      id: "terrain." + id + "." + index,
+      role: (authoredVariantRoles[id] && authoredVariantRoles[id][index]) || "variant-" + index
+    }))
   };
 }
 
@@ -453,6 +478,8 @@ function manifestSheetFor(id, file) {
     meta: "assets/terrain/" + id + ".json",
     pixelData: "assets/terrain/" + id + ".rgba.json",
     tileSize,
+    authored: true,
+    sourceIssue: "AZR-511",
     splitAtlas: {
       albedoRect: [0, 0, albedoWidth, height],
       normalRect: [albedoWidth, 0, albedoWidth, height],

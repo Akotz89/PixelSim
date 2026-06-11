@@ -17,5 +17,43 @@ PS.assets.registerJSON("assets/terrain/forest.json", {
     "terrain.forest.5",
     "terrain.forest.6",
     "terrain.forest.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.forest.0",
+      "role": "leaf-litter-1"
+    },
+    {
+      "id": "terrain.forest.1",
+      "role": "roots-1"
+    },
+    {
+      "id": "terrain.forest.2",
+      "role": "mushroom-1"
+    },
+    {
+      "id": "terrain.forest.3",
+      "role": "dark-soil-1"
+    },
+    {
+      "id": "terrain.forest.4",
+      "role": "leaf-litter-2"
+    },
+    {
+      "id": "terrain.forest.5",
+      "role": "roots-2"
+    },
+    {
+      "id": "terrain.forest.6",
+      "role": "mushroom-2"
+    },
+    {
+      "id": "terrain.forest.7",
+      "role": "dark-soil-2"
+    }
   ]
 });

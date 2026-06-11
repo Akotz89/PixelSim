@@ -17,5 +17,43 @@ PS.assets.registerJSON("assets/terrain/water.json", {
     "terrain.water.5",
     "terrain.water.6",
     "terrain.water.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.water.0",
+      "role": "deep-1"
+    },
+    {
+      "id": "terrain.water.1",
+      "role": "deep-2"
+    },
+    {
+      "id": "terrain.water.2",
+      "role": "shallow-1"
+    },
+    {
+      "id": "terrain.water.3",
+      "role": "shore-1"
+    },
+    {
+      "id": "terrain.water.4",
+      "role": "deep-3"
+    },
+    {
+      "id": "terrain.water.5",
+      "role": "deep-4"
+    },
+    {
+      "id": "terrain.water.6",
+      "role": "shallow-2"
+    },
+    {
+      "id": "terrain.water.7",
+      "role": "shore-2"
+    }
   ]
 });

@@ -17,5 +17,43 @@ PS.assets.registerJSON("assets/terrain/dirt.json", {
     "terrain.dirt.5",
     "terrain.dirt.6",
     "terrain.dirt.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.dirt.0",
+      "role": "dark-soil-1"
+    },
+    {
+      "id": "terrain.dirt.1",
+      "role": "dark-soil-2"
+    },
+    {
+      "id": "terrain.dirt.2",
+      "role": "roots-1"
+    },
+    {
+      "id": "terrain.dirt.3",
+      "role": "roots-2"
+    },
+    {
+      "id": "terrain.dirt.4",
+      "role": "leaf-litter-1"
+    },
+    {
+      "id": "terrain.dirt.5",
+      "role": "leaf-litter-2"
+    },
+    {
+      "id": "terrain.dirt.6",
+      "role": "dry-soil-1"
+    },
+    {
+      "id": "terrain.dirt.7",
+      "role": "dry-soil-2"
+    }
   ]
 });

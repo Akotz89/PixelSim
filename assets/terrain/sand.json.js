@@ -17,5 +17,43 @@ PS.assets.registerJSON("assets/terrain/sand.json", {
     "terrain.sand.5",
     "terrain.sand.6",
     "terrain.sand.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.sand.0",
+      "role": "dune-1"
+    },
+    {
+      "id": "terrain.sand.1",
+      "role": "dune-2"
+    },
+    {
+      "id": "terrain.sand.2",
+      "role": "pebble-1"
+    },
+    {
+      "id": "terrain.sand.3",
+      "role": "dry-veg-1"
+    },
+    {
+      "id": "terrain.sand.4",
+      "role": "dune-3"
+    },
+    {
+      "id": "terrain.sand.5",
+      "role": "dune-4"
+    },
+    {
+      "id": "terrain.sand.6",
+      "role": "pebble-2"
+    },
+    {
+      "id": "terrain.sand.7",
+      "role": "dry-veg-2"
+    }
   ]
 });

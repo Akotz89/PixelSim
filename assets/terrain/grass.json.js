@@ -17,5 +17,43 @@ PS.assets.registerJSON("assets/terrain/grass.json", {
     "terrain.grass.5",
     "terrain.grass.6",
     "terrain.grass.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.grass.0",
+      "role": "lush-1"
+    },
+    {
+      "id": "terrain.grass.1",
+      "role": "lush-2"
+    },
+    {
+      "id": "terrain.grass.2",
+      "role": "lush-3"
+    },
+    {
+      "id": "terrain.grass.3",
+      "role": "lush-4"
+    },
+    {
+      "id": "terrain.grass.4",
+      "role": "dry-1"
+    },
+    {
+      "id": "terrain.grass.5",
+      "role": "dry-2"
+    },
+    {
+      "id": "terrain.grass.6",
+      "role": "dead-1"
+    },
+    {
+      "id": "terrain.grass.7",
+      "role": "winter-1"
+    }
   ]
 });
