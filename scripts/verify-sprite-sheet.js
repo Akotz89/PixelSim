@@ -160,6 +160,114 @@ function verifySheet(manifest, sheetId, summary) {
   summary.sourceIssues[sourceIssue] = true;
 }
 
+function verifyPackedAtlas(tileSheetManifest, manifest, tileSheetDefinition, summary) {
+  var cells = tileSheetManifest.cells || {};
+  var pageRects = {};
+  var pageCache = {};
+  var expectedFamilies = {
+    terrain_grass: false,
+    terrain_water: false,
+    terrain_stone: false,
+    terrain_sand: false
+  };
+
+  function getPage(pageIndex) {
+    var key = String(pageIndex);
+    var page = tileSheetManifest.pages[pageIndex];
+
+    if (!pageCache[key]) {
+      assert.ok(page, "packed atlas cell should reference an existing page: " + pageIndex);
+      pageCache[key] = {
+        page: page,
+        size: { width: page.width, height: page.height },
+        raw: inflatePng(fs.readFileSync(path.join(root, page.path)))
+      };
+    }
+
+    return pageCache[key];
+  }
+
+  function assertPaletteCell(cell, cellId) {
+    var pageData = getPage(cell.pageIndex);
+    var rect = cell.rect;
+    var xMax = rect[0] + rect[2];
+    var yMax = rect[1] + rect[3];
+    var nonTransparent = 0;
+    var sampled = 0;
+    var lumaTotal = 0;
+
+    for (var y = rect[1]; y < yMax; y += 4) {
+      for (var x = rect[0]; x < xMax; x += 4) {
+        var rgba = pixel(pageData.raw, pageData.size, x, y);
+        var maxChannel = Math.max(rgba[0], rgba[1], rgba[2]);
+        var minChannel = Math.min(rgba[0], rgba[1], rgba[2]);
+        var luma = rgba[0] * 0.2126 + rgba[1] * 0.7152 + rgba[2] * 0.0722;
+
+        sampled += 1;
+        if (rgba[3] > 0) {
+          nonTransparent += 1;
+          lumaTotal += luma;
+          assert.ok(maxChannel < 248, cellId + " should avoid pure/neon palette channels");
+          assert.ok(maxChannel - minChannel < 190, cellId + " should stay inside muted simulation palette range");
+        }
+      }
+    }
+
+    assert.ok(sampled > 0, cellId + " should have sampled pixels");
+    assert.ok(nonTransparent > 0, cellId + " should contain visible palette pixels");
+    assert.ok(lumaTotal / Math.max(1, nonTransparent) > 8, cellId + " should not be visually blank");
+  }
+
+  Object.keys(cells).forEach(function (cellId) {
+    var cell = cells[cellId];
+    var pageData = getPage(cell.pageIndex);
+    var rect = cell.rect;
+    var pageKey = String(cell.pageIndex);
+
+    assert.ok(Array.isArray(rect) && rect.length === 4, cellId + " should declare a packed atlas rect");
+    assert.ok(rect[2] > 0 && rect[3] > 0, cellId + " rect should have positive dimensions");
+    assert.ok(rect[0] >= 0 && rect[1] >= 0, cellId + " rect should start inside the page");
+    assert.ok(rect[0] + rect[2] <= pageData.page.width, cellId + " rect should fit page width");
+    assert.ok(rect[1] + rect[3] <= pageData.page.height, cellId + " rect should fit page height");
+
+    pageRects[pageKey] = pageRects[pageKey] || [];
+    pageRects[pageKey].forEach(function (previous) {
+      var separated =
+        rect[0] + rect[2] <= previous.rect[0] ||
+        previous.rect[0] + previous.rect[2] <= rect[0] ||
+        rect[1] + rect[3] <= previous.rect[1] ||
+        previous.rect[1] + previous.rect[3] <= rect[1];
+      assert.ok(separated, cellId + " should not overlap packed cell " + previous.id);
+    });
+    pageRects[pageKey].push({ id: cellId, rect: rect });
+    assertPaletteCell(cell, cellId);
+  });
+
+  tileSheetDefinition.sourceSheets.forEach(function (sheetId) {
+    var sheet = manifest.sheets[sheetId];
+    if (!sheet || String(sheetId).indexOf("terrain_") !== 0) {
+      return;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(expectedFamilies, sheetId)) {
+      expectedFamilies[sheetId] = true;
+    }
+
+    sheet.sprites.forEach(function (sprite) {
+      var packedId = sheetId + "." + sprite.id;
+      assert.ok(cells[packedId], "packed atlas should include source sprite " + packedId);
+    });
+  });
+
+  Object.keys(expectedFamilies).forEach(function (sheetId) {
+    assert.strictEqual(expectedFamilies[sheetId], true, "packed atlas should include expected sprite family " + sheetId);
+  });
+
+  summary.packedPages = tileSheetManifest.pages.length;
+  summary.overlapCheckedCells = Object.keys(cells).length;
+  summary.paletteCheckedCells = Object.keys(cells).length;
+}
+
 function verifySpriteSheet(options) {
   var manifestPath = options && options.manifest ? options.manifest : "assets/manifest.json";
   var manifest = readJSON(manifestPath);
@@ -196,6 +304,7 @@ function verifySpriteSheet(options) {
     assertFile(page.pixelData, "tile-sheet page RGBA sidecar");
     assertFile(page.pixelData + ".js", "tile-sheet page RGBA JS sidecar");
   });
+  verifyPackedAtlas(tileSheetManifest, manifest, tileSheetDefinition, summary);
   summary.cells = Object.keys(tileSheetManifest.cells || {}).length;
   assert.ok(summary.cells >= 30, "packed tile sheet should contain at least 30 terrain cells");
   assert.ok(summary.variants >= 30, "terrain manifest should expose at least 30 authored terrain variants");
