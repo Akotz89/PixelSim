@@ -10,6 +10,8 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   shaderPath: "shaders/terrain-tile.wgsl",
   terrainShaderName: "terrain",
   terrainShaderPath: "shaders/terrain.wgsl",
+  tilemapShaderName: "terrain-tilemap",
+  tilemapShaderPath: "shaders/terrain-tilemap.wgsl",
   gbufferShaderName: "gbuffer-terrain",
   gbufferShaderPath: "shaders/gbuffer-terrain.wgsl",
   strideFloats: 15,
@@ -19,13 +21,24 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     gbufferPipeline: null,
     sampler: null,
     uniformBuffer: null,
+    tilemapUniformBuffer: null,
     quadBuffer: null,
     instanceBuffer: null,
+    tilemapPipeline: null,
+    tilemapBindGroups: {},
+    tilemapTextures: {},
+    nextTilemapTextureId: 1,
     instanceCapacity: 0,
     textures: {},
     textureUploadCount: 0,
     drawCount: 0,
     tileDrawCount: 0,
+    tilemapDataTextureDraws: 0,
+    tilemapDirtyUploadMs: 0,
+    tilemapDirtyUploadCount: 0,
+    tilemapDirtyUploadBytes: 0,
+    tilemapMemoryBytes: 0,
+    tilemapVisibleTiles: 0,
     pageDrawCount: 0,
     culledCount: 0,
     materialCounts: {},
@@ -42,6 +55,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     var entries = [
       { name: this.terrainShaderName, path: this.terrainShaderPath },
       { name: this.shaderName, path: this.shaderPath },
+      { name: this.tilemapShaderName, path: this.tilemapShaderPath },
       { name: this.gbufferShaderName, path: this.gbufferShaderPath }
     ];
 
@@ -66,6 +80,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     return PS.render.wgslShaders.loadManifest([
       { name: this.terrainShaderName, path: this.terrainShaderPath },
       { name: this.shaderName, path: this.shaderPath },
+      { name: this.tilemapShaderName, path: this.tilemapShaderPath },
       { name: this.gbufferShaderName, path: this.gbufferShaderPath }
     ], loader);
   },
@@ -81,6 +96,11 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   resetFrameStats: function () {
     var state = this.state;
     state.tileDrawCount = 0;
+    state.tilemapDataTextureDraws = 0;
+    state.tilemapDirtyUploadMs = 0;
+    state.tilemapDirtyUploadCount = 0;
+    state.tilemapDirtyUploadBytes = 0;
+    state.tilemapVisibleTiles = 0;
     state.pageDrawCount = 0;
     state.culledCount = 0;
     state.materialCounts = {};
@@ -120,6 +140,17 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
       });
     }
     return this.state.uniformBuffer;
+  },
+
+  ensureTilemapUniformBuffer: function (device) {
+    if (!this.state.tilemapUniformBuffer) {
+      this.state.tilemapUniformBuffer = device.createBuffer({
+        label: "terrain-tilemap.uniforms",
+        size: 64,
+        usage: 64 | 8
+      });
+    }
+    return this.state.tilemapUniformBuffer;
   },
 
   ensureQuadBuffer: function (device) {
@@ -279,6 +310,34 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     return this.state.gbufferPipeline;
   },
 
+  ensureTilemapPipeline: function (device) {
+    var module;
+
+    if (!this.state.tilemapPipeline) {
+      module = PS.render.wgslShaders.getShaderModule(device, this.tilemapShaderName);
+      this.state.tilemapPipeline = PS.render.wgslShaders.getRenderPipeline({
+        label: "terrain-tilemap.pipeline",
+        layout: "auto",
+        vertex: {
+          module: module,
+          entryPoint: "vs_main"
+        },
+        fragment: {
+          module: module,
+          entryPoint: "fs_main",
+          targets: [{
+            format: this.getFormat()
+          }]
+        },
+        primitive: {
+          topology: "triangle-strip"
+        }
+      }, device);
+    }
+
+    return this.state.tilemapPipeline;
+  },
+
   writeUniforms: function (device, width, height, texture) {
     var descriptor = texture && texture.descriptor ? texture.descriptor : {};
     var textureSize = descriptor.size || {};
@@ -332,6 +391,262 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     this.state.textures[cacheKey] = texture;
     this.state.textureUploadCount += 1;
     return texture;
+  },
+
+  createTilemapLayer: function (width, height, initialData) {
+    var layerWidth = Math.max(1, Math.round(Number(width) || 1));
+    var layerHeight = Math.max(1, Math.round(Number(height) || 1));
+    var byteLength = layerWidth * layerHeight * 4;
+    var estimatedBytes = byteLength * 2 + 64;
+    var data = initialData instanceof Uint8Array && initialData.length === byteLength
+      ? new Uint8Array(initialData)
+      : new Uint8Array(byteLength);
+
+    if (estimatedBytes > 32 * 1024 * 1024) {
+      throw new Error("Tilemap data textures exceed 32MB budget");
+    }
+
+    return {
+      width: layerWidth,
+      height: layerHeight,
+      data: data,
+      dirtyRects: [{ x: 0, y: 0, width: layerWidth, height: layerHeight }],
+      texture: null,
+      textureId: 0,
+      textureVersion: 0,
+      lastUploadMs: 0
+    };
+  },
+
+  markTilemapDirtyRect: function (layer, x, y, width, height) {
+    var rect;
+
+    if (!layer) {
+      return null;
+    }
+
+    rect = {
+      x: Math.max(0, Math.round(Number(x) || 0)),
+      y: Math.max(0, Math.round(Number(y) || 0)),
+      width: Math.max(1, Math.round(Number(width) || 1)),
+      height: Math.max(1, Math.round(Number(height) || 1))
+    };
+    rect.width = Math.min(rect.width, Math.max(0, layer.width - rect.x));
+    rect.height = Math.min(rect.height, Math.max(0, layer.height - rect.y));
+
+    if (rect.width <= 0 || rect.height <= 0) {
+      return null;
+    }
+
+    layer.dirtyRects.push(rect);
+    return rect;
+  },
+
+  setTilemapCell: function (layer, tileX, tileY, tileType, autotileMask, variation, flags) {
+    var x = Math.round(Number(tileX) || 0);
+    var y = Math.round(Number(tileY) || 0);
+    var offset;
+
+    if (!layer || x < 0 || y < 0 || x >= layer.width || y >= layer.height) {
+      return false;
+    }
+
+    offset = (y * layer.width + x) * 4;
+    layer.data[offset] = Math.max(0, Math.min(255, Math.round(Number(tileType) || 0)));
+    layer.data[offset + 1] = Math.max(0, Math.min(255, Math.round(Number(autotileMask) || 0)));
+    layer.data[offset + 2] = Math.max(0, Math.min(255, Math.round(Number(variation) || 0)));
+    layer.data[offset + 3] = Math.max(0, Math.min(255, Math.round(Number(flags) || 0)));
+    this.markTilemapDirtyRect(layer, x, y, 1, 1);
+    return true;
+  },
+
+  ensureTilemapTexture: function (device, layer) {
+    if (!layer.texture) {
+      layer.texture = device.createTexture({
+        label: "terrain-tilemap.data-texture",
+        size: { width: layer.width, height: layer.height },
+        format: "rgba8uint",
+        usage: 4 | 2
+      });
+      layer.textureId = this.state.nextTilemapTextureId;
+      this.state.nextTilemapTextureId += 1;
+      layer.textureVersion += 1;
+    }
+
+    return layer.texture;
+  },
+
+  getTilemapRectData: function (layer, rect) {
+    var rowBytes = rect.width * 4;
+    var data = new Uint8Array(rowBytes * rect.height);
+    var row;
+    var srcStart;
+    var srcEnd;
+
+    for (row = 0; row < rect.height; row += 1) {
+      srcStart = ((rect.y + row) * layer.width + rect.x) * 4;
+      srcEnd = srcStart + rowBytes;
+      data.set(layer.data.subarray(srcStart, srcEnd), row * rowBytes);
+    }
+
+    return data;
+  },
+
+  uploadTilemapDirtyRects: function (device, layer) {
+    var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    var texture = this.ensureTilemapTexture(device, layer);
+    var rects = layer.dirtyRects || [];
+    var uploaded = 0;
+    var uploadedBytes = 0;
+    var i;
+    var rect;
+    var data;
+
+    if (!device.queue || typeof device.queue.writeTexture !== "function") {
+      layer.dirtyRects = [];
+      return { count: 0, elapsedMs: 0 };
+    }
+
+    for (i = 0; i < rects.length; i += 1) {
+      rect = rects[i];
+      if (!rect || rect.width <= 0 || rect.height <= 0) {
+        continue;
+      }
+      data = this.getTilemapRectData(layer, rect);
+      device.queue.writeTexture(
+        { texture: texture, origin: { x: rect.x, y: rect.y, z: 0 } },
+        data,
+        { bytesPerRow: rect.width * 4, rowsPerImage: rect.height },
+        { width: rect.width, height: rect.height }
+      );
+      uploaded += 1;
+      uploadedBytes += data.byteLength;
+    }
+
+    layer.dirtyRects = [];
+    layer.lastUploadMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
+    this.state.tilemapDirtyUploadMs = layer.lastUploadMs;
+    this.state.tilemapDirtyUploadCount = uploaded;
+    this.state.tilemapDirtyUploadBytes = uploadedBytes;
+    return { count: uploaded, bytes: uploadedBytes, elapsedMs: layer.lastUploadMs };
+  },
+
+  writeTilemapUniforms: function (device, options, layer, atlasPage) {
+    var spec = options || {};
+    var canvasWidth = Math.max(1, Number(spec.width) || 1);
+    var canvasHeight = Math.max(1, Number(spec.height) || 1);
+    var tileSize = Math.max(1, Number(spec.tileSize) || Number(typeof CONFIG !== "undefined" && CONFIG.TILE_SIZE) || 16);
+    var cameraX = Number(spec.cameraX) || 0;
+    var cameraY = Number(spec.cameraY) || 0;
+    var zoom = Math.max(0.001, Number(spec.zoom) || 1);
+    var atlasWidth = Math.max(1, Number(atlasPage && atlasPage.width) || 1);
+    var atlasHeight = Math.max(1, Number(atlasPage && atlasPage.height) || 1);
+
+    device.queue.writeBuffer(
+      this.ensureTilemapUniformBuffer(device),
+      0,
+      new Float32Array([
+        canvasWidth, canvasHeight, cameraX, cameraY,
+        tileSize, zoom, layer.width, layer.height,
+        atlasWidth, atlasHeight, Number(spec.atlasTileSize) || tileSize, 0,
+        0, 0, 0, 0
+      ])
+    );
+  },
+
+  createTilemapBindGroup: function (device, pipeline, dataTexture, atlasTexture) {
+    var key = String(dataTexture && dataTexture.__psTilemapTextureId || dataTexture && dataTexture.label || "data") + ":" +
+      String(atlasTexture && atlasTexture.__psTilemapTextureId || atlasTexture && atlasTexture.label || "atlas");
+
+    if (!this.state.tilemapBindGroups[key]) {
+      this.state.tilemapBindGroups[key] = device.createBindGroup({
+        label: "terrain-tilemap.bind-group",
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [
+          { binding: 0, resource: dataTexture.createView() },
+          { binding: 1, resource: atlasTexture.createView() },
+          { binding: 2, resource: this.ensureSampler(device) },
+          { binding: 3, resource: { buffer: this.ensureTilemapUniformBuffer(device) } }
+        ]
+      });
+    }
+
+    return this.state.tilemapBindGroups[key];
+  },
+
+  getTilemapMemoryBytes: function (layers) {
+    var list = Array.isArray(layers) ? layers : [layers];
+    var total = 0;
+
+    list.forEach(function (layer) {
+      if (layer && layer.data) {
+        total += layer.data.byteLength * 2 + 64;
+      }
+    });
+
+    return total;
+  },
+
+  drawDataTextureTilemap: function (layer, options) {
+    var spec = options || {};
+    var device = this.getDevice(spec.device);
+    var context = spec.context || (PS.gpu && PS.gpu.context);
+    var targetCanvas = PS.gpu && PS.gpu.canvas ? PS.gpu.canvas : (typeof canvas !== "undefined" ? canvas : null);
+    var width = spec.width || (targetCanvas ? targetCanvas.width : 1);
+    var height = spec.height || (targetCanvas ? targetCanvas.height : 1);
+    var atlasPageIndex = Math.max(0, Math.round(Number(spec.atlasPageIndex) || 0));
+    var atlasPage = PS.atlas && PS.atlas.pages ? PS.atlas.pages[atlasPageIndex] : null;
+    var atlasTexture;
+    var dataTexture;
+    var pipeline;
+    var encoder;
+    var pass;
+
+    if (!device || typeof device.createCommandEncoder !== "function" || !layer || !layer.data) {
+      return false;
+    }
+
+    if (!context || typeof context.getCurrentTexture !== "function") {
+      return false;
+    }
+
+    atlasTexture = this.getTexture(atlasPageIndex, device);
+    if (!atlasTexture) {
+      return false;
+    }
+
+    dataTexture = this.ensureTilemapTexture(device, layer);
+    dataTexture.__psTilemapTextureId = "data:" + layer.textureId + ":" + layer.textureVersion;
+    this.uploadTilemapDirtyRects(device, layer);
+    this.writeTilemapUniforms(device, { width: width, height: height, tileSize: spec.tileSize, cameraX: spec.cameraX, cameraY: spec.cameraY, zoom: spec.zoom, atlasTileSize: spec.atlasTileSize }, layer, atlasPage);
+    pipeline = this.ensureTilemapPipeline(device);
+    encoder = spec.commandEncoder || device.createCommandEncoder({ label: "terrain-tilemap.encoder" });
+    pass = encoder.beginRenderPass({
+      label: "terrain-tilemap.render-pass",
+      colorAttachments: [{
+        view: spec.textureView || context.getCurrentTexture().createView(),
+        clearValue: { r: 8 / 255, g: 12 / 255, b: 18 / 255, a: 1 },
+        loadOp: spec.loadOp === "load" ? "load" : "clear",
+        storeOp: "store"
+      }]
+    });
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, this.createTilemapBindGroup(device, pipeline, dataTexture, atlasTexture));
+    pass.draw(4, 1, 0, 0);
+    pass.end();
+
+    if (!spec.commandEncoder) {
+      device.queue.submit([encoder.finish()]);
+    }
+
+    this.state.drawCount += 1;
+    this.state.tilemapDataTextureDraws += 1;
+    this.state.tilemapVisibleTiles = layer.width * layer.height;
+    this.state.tilemapMemoryBytes = this.getTilemapMemoryBytes(layer);
+    this.state.tileDrawCount = layer.width * layer.height;
+    this.state.pageDrawCount = 1;
+    this.state.lastError = "";
+    return true;
   },
 
   createBindGroup: function (device, pipeline, texture) {
@@ -603,6 +918,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     return {
       drawCount: this.state.drawCount,
       tileDrawCount: this.state.tileDrawCount,
+      tilemapDataTextureDraws: this.state.tilemapDataTextureDraws,
+      tilemapDirtyUploadMs: this.state.tilemapDirtyUploadMs,
+      tilemapDirtyUploadCount: this.state.tilemapDirtyUploadCount,
+      tilemapDirtyUploadBytes: this.state.tilemapDirtyUploadBytes,
+      tilemapMemoryBytes: this.state.tilemapMemoryBytes,
+      tilemapVisibleTiles: this.state.tilemapVisibleTiles,
       pageDrawCount: this.state.pageDrawCount,
       textureUploadCount: this.state.textureUploadCount,
       culledCount: this.state.culledCount,
@@ -617,10 +938,13 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   rebuildShaders: function () {
     this.state.pipeline = null;
     this.state.gbufferPipeline = null;
+    this.state.tilemapPipeline = null;
   },
 
   rebuildTextures: function () {
     this.state.textures = {};
+    this.state.tilemapTextures = {};
+    this.state.tilemapBindGroups = {};
     this.state.textureUploadCount = 0;
   }
 });

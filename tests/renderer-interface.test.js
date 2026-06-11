@@ -57,6 +57,7 @@ assert.ok(webgpuRendererSource.indexOf('PS.render.Renderer.call(this, "webgpu")'
 assert.ok(webgpuRendererSource.indexOf("PS.render.renderer.setActive(PS.render.webgpuRenderer)") >= 0, "WebGPU renderer should become active at load");
 assert.ok(webgpuRendererSource.indexOf("PS.render.webgpuSurfaceTile.drawTerrainAtlasBatch") >= 0, "WebGPU renderer should route terrain batches to WebGPU surface tiles");
 assert.ok(webgpuRendererSource.indexOf("PS.render.webgpuSurfaceTile.drawTerrainAtlas") >= 0, "WebGPU renderer should route terrain chunks to WebGPU surface tiles");
+assert.ok(webgpuRendererSource.indexOf("PS.render.webgpuSurfaceTile.drawDataTextureTilemap") >= 0, "WebGPU renderer should route data-texture tilemap layers to WebGPU surface tiles");
 assert.strictEqual(webgpuRendererSource.toLowerCase().indexOf("webgl"), -1, "WebGPU renderer source must not reference WebGL");
 assert.strictEqual(webgpuRendererSource.indexOf("getContext(\"webgl2\""), -1, "WebGPU renderer must not request a WebGL2 context");
 

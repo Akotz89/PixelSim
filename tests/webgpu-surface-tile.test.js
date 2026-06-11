@@ -25,6 +25,7 @@ const batcherSource = read("js/render/surface-tile-batcher.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
 const terrainWgsl = read("shaders/terrain.wgsl");
 const terrainTileWgsl = read("shaders/terrain-tile.wgsl");
+const terrainTilemapWgsl = read("shaders/terrain-tilemap.wgsl");
 const gbufferTerrainWgsl = read("shaders/gbuffer-terrain.wgsl");
 const gbufferComposeWgsl = read("shaders/gbuffer-compose.wgsl");
 const particleWgsl = read("shaders/particle.wgsl");
@@ -45,6 +46,7 @@ assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU su
 [
   { name: "terrain", source: terrainWgsl },
   { name: "terrain-tile", source: terrainTileWgsl },
+  { name: "terrain-tilemap", source: terrainTilemapWgsl },
   { name: "gbuffer-terrain", source: gbufferTerrainWgsl }
 ].forEach(function (entry) {
   const sidecar = read("shaders/" + entry.name + ".wgsl.js");
@@ -93,6 +95,18 @@ assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU su
   assert.ok(terrainTileWgsl.indexOf(required) >= 0, "terrain-tile WGSL should contain " + required);
 });
 assert.strictEqual(terrainTileWgsl.indexOf("color.a * input.alpha"), -1, "terrain-tile WGSL should reserve atlas alpha for height data");
+
+[
+  "@group(0) @binding(0) var tile_data: texture_2d<u32>",
+  "@group(0) @binding(1) var atlas_texture: texture_2d<f32>",
+  "textureLoad(tile_data",
+  "tile_id + (variation & 3u) * 16u + (mask & 15u)",
+  "textureSampleLevel(atlas_texture, atlas_sampler, uv, 0.0)",
+  "pass.draw(4, 1"
+].forEach(function (required) {
+  var source = required === "pass.draw(4, 1" ? surfaceTileSource : terrainTilemapWgsl;
+  assert.ok(source.indexOf(required) >= 0, "data-texture tilemap path should contain " + required);
+});
 
 [
   "@location(0) albedo",
@@ -332,6 +346,7 @@ vm.runInContext(surfaceTileSource, context, { filename: "js/render/webgpu-surfac
 const surfaceTile = context.PS.render.webgpuSurfaceTile;
 context.PS.render.wgslShaders.register("terrain", terrainWgsl, { path: "shaders/terrain.wgsl" });
 context.PS.render.wgslShaders.register("terrain-tile", terrainTileWgsl, { path: "shaders/terrain-tile.wgsl" });
+context.PS.render.wgslShaders.register("terrain-tilemap", terrainTilemapWgsl, { path: "shaders/terrain-tilemap.wgsl" });
 context.PS.render.wgslShaders.register("gbuffer-terrain", gbufferTerrainWgsl, { path: "shaders/gbuffer-terrain.wgsl" });
 context.PS.render.wgslShaders.register("gbuffer-compose", gbufferComposeWgsl, { path: "shaders/gbuffer-compose.wgsl" });
 context.PS.render.wgslShaders.register("particle", particleWgsl, { path: "shaders/particle.wgsl" });
@@ -340,6 +355,7 @@ context.PS.render.wgslShaders.register("shadow", shadowWgsl, { path: "shaders/sh
 surfaceTile.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "terrain"; }), "terrain shader should be in WGSL manifest");
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "terrain-tile"; }), "terrain tile shader should be in WGSL manifest");
+assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "terrain-tilemap"; }), "terrain tilemap shader should be in WGSL manifest");
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "gbuffer-terrain"; }), "gbuffer terrain shader should be in WGSL manifest");
 
 const fallbackTerrainCell = {
@@ -689,5 +705,65 @@ assert.strictEqual(stats.equivalenceTransitionDrawCount, 1, "stats should preser
 assert.strictEqual(stats.lastError, "", "successful draw should clear lastError");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().shadowDrawCount, 1, "real shadow renderer should count water decoration shadows");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().particleDrawCount, 1, "real particle renderer should count floating water decorations");
+
+const tilemapLayer = surfaceTile.createTilemapLayer(400, 250);
+assert.strictEqual(tilemapLayer.data.byteLength, 400 * 250 * 4, "tilemap layer should pack RGBA8 tile data");
+assert.ok(surfaceTile.getTilemapMemoryBytes(tilemapLayer) < 32 * 1024 * 1024, "100K tile data texture should stay below 32MB");
+assert.throws(function () {
+  surfaceTile.createTilemapLayer(4096, 4096);
+}, /32MB budget/, "oversized tilemap layers should be rejected before exceeding the 32MB budget");
+assert.strictEqual(surfaceTile.setTilemapCell(tilemapLayer, 7, 9, 3, 12, 2, 1), true, "tilemap cell setter should accept in-bounds cells");
+const packedOffset = (9 * tilemapLayer.width + 7) * 4;
+assert.deepStrictEqual(
+  Array.from(tilemapLayer.data.slice(packedOffset, packedOffset + 4)),
+  [3, 12, 2, 1],
+  "tilemap layer should pack tileType/autotileMask/variation/flags into RGBA channels"
+);
+const writesBeforeTilemap = textureWrites.length;
+const passesBeforeTilemap = fakeDevice.passes.length;
+const drewTilemap = surfaceTile.drawDataTextureTilemap(tilemapLayer, {
+  width: 1920,
+  height: 1080,
+  tileSize: 16,
+  atlasTileSize: 16,
+  cameraX: 32,
+  cameraY: 48,
+  zoom: 2
+});
+assert.strictEqual(drewTilemap, true, "data-texture tilemap draw should submit");
+assert.strictEqual(fakeDevice.passes[passesBeforeTilemap].descriptor.label, "terrain-tilemap.render-pass", "data-texture path should use the tilemap render pass");
+assert.deepStrictEqual(fakeDevice.passes[passesBeforeTilemap].drawArgs, [4, 1, 0, 0], "entire ground data texture should render in exactly one draw call");
+assert.strictEqual(fakeDevice.passes[passesBeforeTilemap].vertexBuffers.length, 0, "data-texture path should not bind per-tile instance buffers");
+assert.ok(textureWrites.length - writesBeforeTilemap >= 2, "data-texture path should upload dirty tile rects with writeTexture");
+assert.ok(textureWrites.some(function (write) {
+  return write.destination.texture.descriptor.label === "terrain-tilemap.data-texture" &&
+    write.layout.bytesPerRow === 4 &&
+    write.size.width === 1 &&
+    write.size.height === 1;
+}), "single changed tile should upload as a 1x1 dirty rect");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "terrain-tilemap.uniforms" &&
+    nearly(write.data[0], 1920) &&
+    nearly(write.data[1], 1080) &&
+    nearly(write.data[4], 16) &&
+    nearly(write.data[5], 2);
+}), "tilemap uniforms should include canvas, tile size, and zoom");
+const tilemapStats = surfaceTile.getStats();
+assert.strictEqual(tilemapStats.tilemapDataTextureDraws, 1, "stats should count data-texture tilemap draws");
+assert.strictEqual(tilemapStats.tilemapVisibleTiles, 100000, "stats should report visible/data texture tile count");
+assert.strictEqual(tilemapStats.tilemapDirtyUploadCount, 2, "initial upload plus one changed tile should produce two dirty-rect uploads");
+assert.strictEqual(tilemapStats.tilemapDirtyUploadBytes, 400 * 250 * 4 + 4, "dirty-rect stats should report deterministic uploaded bytes");
+assert.ok(tilemapStats.tilemapMemoryBytes < 32 * 1024 * 1024, "stats should keep tilemap GPU memory estimate under 32MB");
+
+const bindGroupsBeforeSecondLayer = fakeDevice.bindGroups.length;
+const secondLayer = surfaceTile.createTilemapLayer(2, 2);
+surfaceTile.drawDataTextureTilemap(secondLayer, {
+  width: 64,
+  height: 64,
+  tileSize: 16,
+  atlasTileSize: 16,
+  loadOp: "load"
+});
+assert.ok(fakeDevice.bindGroups.length > bindGroupsBeforeSecondLayer, "separate tilemap layers should get distinct bind groups");
 
 console.log("webgpu surface tile checks passed");

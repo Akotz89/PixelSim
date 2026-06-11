@@ -60,7 +60,12 @@ PS.render.WebGPURenderer.prototype.drawTilemap = function (tileBuffer, camera) {
 
   this.camera = camera || this.camera;
 
-  if (PS.render.webgpuSurfaceTile && Array.isArray(buffer.chunks)) {
+  if (PS.render.webgpuSurfaceTile && buffer.tilemapLayer && typeof PS.render.webgpuSurfaceTile.drawDataTextureTilemap === "function") {
+    drawn = PS.render.webgpuSurfaceTile.drawDataTextureTilemap(
+      buffer.tilemapLayer,
+      buffer.options || {}
+    );
+  } else if (PS.render.webgpuSurfaceTile && Array.isArray(buffer.chunks)) {
     drawn = PS.render.webgpuSurfaceTile.drawTerrainAtlasBatch(
       buffer.chunks,
       buffer.alpha,
