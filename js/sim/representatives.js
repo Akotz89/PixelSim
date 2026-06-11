@@ -738,6 +738,21 @@ function refreshBiologyRepresentatives() {
     }
   }
 
+  for (var populationIndex = 0; populationIndex < world.biologyPopulations.length; populationIndex++) {
+    var populationRecord = world.biologyPopulations[populationIndex];
+    var populationRecordKey = String(Math.max(1, Math.round(Number(populationRecord && populationRecord.id) || 1)));
+
+    if (!grouped[populationRecordKey]) {
+      populationRecord.count = 0;
+      populationRecord.biomass = 0;
+      populationRecord.energyReserve = 0;
+      populationRecord.representativeIds = [];
+      populationRecord.lastUpdatedTick = Math.max(0, Math.round(Number(world.tick) || 0));
+      populationRecord.isActive = false;
+      populationRecord.refreshSignature = "0:0:0:0:0";
+    }
+  }
+
   for (var j = 0; j < world.biologyRepresentatives.length; j++) {
     var record = world.biologyRepresentatives[j];
     record.isActive = Boolean(activeIds[String(record.id)]);

@@ -39,6 +39,13 @@ PS.render.overlays = PS.render.overlays || {
       shortcut: "O"
     },
     {
+      id: "observation.extinction",
+      semantic: "Extinction",
+      blendMode: "screen",
+      alpha: 0.76,
+      shortcut: "O"
+    },
+    {
       id: "observation.atmosphere",
       semantic: "Atmosphere",
       blendMode: "screen",
@@ -85,6 +92,7 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     "observation.resources",
     "observation.foodweb",
     "observation.selection",
+    "observation.extinction",
     "observation.atmosphere",
     "observation.microbial"
   ],
@@ -199,6 +207,25 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
       var innovation = sample ? clamp(Number(sample.innovationPressure) || 0, 0, 1) : 0;
 
       return this.makeSample(90 + selection * 165, 110 + innovation * 120, 210 - isolation * 90, 40 + Math.max(selection, isolation) * 185);
+    }
+
+    if (activeId === "observation.extinction") {
+      var summary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
+        ? PS.sim.massExtinction.getSummary()
+        : null;
+      var latest = summary && (summary.activeEvent || summary.latest);
+      var recovery = summary && summary.recoveryWindow;
+      var eventLocation = latest && latest.location ? latest.location : null;
+      var distance = eventLocation && Number.isFinite(Number(eventLocation.x)) && Number.isFinite(Number(eventLocation.y))
+        ? getTileManhattanDistance(tileX, tileY, eventLocation.x, eventLocation.y)
+        : Infinity;
+      var radius = latest ? Math.max(5, Math.round((Number(latest.severityScore) || 0.3) * 24)) : 1;
+      var devastation = Number.isFinite(distance) ? clamp(1 - distance / radius, 0, 1) : 0;
+      var recoveryBloom = recovery
+        ? clamp(1 - (Math.max(0, Number(recovery.endTick) || 0) - Math.max(0, Number(world.tick) || 0)) / Math.max(1, Number(recovery.durationTicks) || 1), 0, 1)
+        : 0;
+
+      return this.makeSample(220 + devastation * 35, 80 + recoveryBloom * 130, 70 + recoveryBloom * 120, Math.max(devastation * 230, recoveryBloom * 90));
     }
 
     if (activeId === "observation.atmosphere") {

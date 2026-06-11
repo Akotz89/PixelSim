@@ -194,6 +194,17 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Agg Pressure", pressure ? "food " + pressure.food + " scarcity " + pressure.scarcity.toFixed(2) + " terrain " + pressure.terrain.toFixed(2) : "-"));
     detailChips.push(makeInspectChip("Terrain Driver", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.terrainDriver : "-"));
     detailChips.push(makeInspectChip("Selection", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.dominantTrait + " p" + populationRecord.terrainPressure.pressure.toFixed(2) + " iso " + populationRecord.terrainPressure.isolation.toFixed(2) : "-"));
+    if (PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
+      var extinctionSummary = PS.sim.massExtinction.getSummary();
+      var extinctionLatest = extinctionSummary.latest;
+      var recoveryWindow = extinctionSummary.recoveryWindow;
+      var populationExtinctionLoss = extinctionLatest && extinctionLatest.losses && extinctionLatest.losses.byPopulation
+        ? extinctionLatest.losses.byPopulation[String(organism.populationId)] || 0
+        : 0;
+
+      detailChips.push(makeInspectChip("Extinction", extinctionLatest ? extinctionLatest.eventType + " -" + populationExtinctionLoss : "-"));
+      detailChips.push(makeInspectChip("Recovery", recoveryWindow && recoveryWindow.survivorPopulationIds.indexOf(organism.populationId) >= 0 ? "radiating to T" + recoveryWindow.endTick : "-"));
+    }
     detailChips.push(makeInspectChip("Org Unit", "~" + Math.max(1, Math.round(Number(CONFIG.ORGANISM_POPULATION_UNIT) || 1)).toLocaleString()));
     detailChips.push(makeInspectChip("Org Energy", organism.energy));
     detailChips.push(makeInspectChip("Org Age", Math.round(organism.age * Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0)).toLocaleString() + " days"));

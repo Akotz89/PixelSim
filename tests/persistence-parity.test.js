@@ -146,6 +146,42 @@ const root = path.resolve(__dirname, "..");
         divergence: 0.68,
         location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 }
       }];
+      world.massExtinction = {
+        activeEvent: null,
+        recoveryWindow: {
+          id: 2,
+          cause: "volcanic-winter",
+          startTick: 4200,
+          endTick: 5100,
+          durationTicks: 900,
+          survivorPopulationIds: [17],
+          radiationCandidateIds: [17],
+          reproductionMultiplier: 0.72
+        },
+        lastEventTick: 4200,
+        pressureSummary: {
+          eventType: "volcanic-winter",
+          pressure: 0.91
+        }
+      };
+      world.extinctionEvents = [{
+        id: 2,
+        type: "extinction.event",
+        eventType: "volcanic-winter",
+        cause: "volcanic-winter",
+        pressure: 0.91,
+        severityScore: 0.62,
+        killRate: 0.55,
+        prePopulation: 99,
+        postPopulation: 44,
+        affectedSpecies: [{ id: 13, losses: 55, survivors: 44 }],
+        affectedPopulations: [{ id: 17, losses: 55, survivors: 44 }],
+        survivors: { total: 44, bySpecies: { "13": 44 }, byPopulation: { "17": 44 } },
+        losses: { total: 55, bySpecies: { "13": 55 }, byPopulation: { "17": 55 } },
+        recoveryWindow: world.massExtinction.recoveryWindow,
+        location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 },
+        tick: 4200
+      }];
       world.biologyPopulations = [{
         id: 17,
         speciesId: 13,
@@ -458,6 +494,8 @@ const root = path.resolve(__dirname, "..");
       biologyPopulations: world.biologyPopulations.slice(),
       species: world.species.slice(),
       speciationEvents: world.speciationEvents.slice(),
+      massExtinction: world.massExtinction ? Object.assign({}, world.massExtinction) : null,
+      extinctionEvents: world.extinctionEvents.slice(),
       speciesByIdKeys: Object.keys(world.speciesById),
       biologyPopulationByIdKeys: Object.keys(world.biologyPopulationById),
       biologyRepresentatives: world.biologyRepresentatives.slice(),
@@ -564,6 +602,9 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.species[0].cause, "geographic-isolation", "species records should restore");
   assert.deepStrictEqual(evidence.importedEvidence.speciesByIdKeys, ["13"], "species index should rebuild");
   assert.strictEqual(evidence.importedEvidence.speciationEvents[0].id, 13, "speciation event history should restore");
+  assert.strictEqual(evidence.saveData.extinctionEvents[0].eventType, "volcanic-winter", "extinction event history should serialize");
+  assert.strictEqual(evidence.importedEvidence.extinctionEvents[0].losses.total, 55, "extinction event history should restore losses");
+  assert.strictEqual(evidence.importedEvidence.massExtinction.recoveryWindow.endTick, 5100, "active extinction recovery window should restore");
   assert.deepStrictEqual(evidence.importedEvidence.biologyPopulationByIdKeys, ["17"], "biology population index should rebuild");
   assert.strictEqual(evidence.saveData.biologyRepresentatives[0].id, 19, "biology representatives should serialize");
   assert.strictEqual(evidence.importedEvidence.biologyRepresentatives[0].target.type, "food", "biology representatives should restore target data");

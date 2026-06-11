@@ -132,6 +132,19 @@ function copySimulationEventForSave(event) {
     cause: event.cause || null,
     divergence: event.divergence == null ? null : Math.max(0, Math.min(1, Number(event.divergence) || 0)),
     traits: event.traits ? copyOrganismTraitsForSave(event.traits) : null,
+    eventType: event.eventType || null,
+    severityScore: event.severityScore == null ? null : Math.max(0, Math.min(1, Number(event.severityScore) || 0)),
+    killRate: event.killRate == null ? null : Math.max(0, Math.min(1, Number(event.killRate) || 0)),
+    prePopulation: event.prePopulation == null ? null : Math.max(0, Math.round(Number(event.prePopulation) || 0)),
+    postPopulation: event.postPopulation == null ? null : Math.max(0, Math.round(Number(event.postPopulation) || 0)),
+    affectedSpecies: event.affectedSpecies || null,
+    affectedPopulations: event.affectedPopulations || null,
+    survivors: event.survivors || null,
+    losses: event.losses || null,
+    recoveryWindow: event.recoveryWindow || null,
+    survivorPopulationIds: event.survivorPopulationIds || null,
+    radiationCandidateIds: event.radiationCandidateIds || null,
+    durationTicks: event.durationTicks == null ? null : Math.max(0, Math.round(Number(event.durationTicks) || 0)),
     inspectTarget: event.inspectTarget || null
   };
 }

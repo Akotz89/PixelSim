@@ -329,6 +329,12 @@ function updateEcosystemSummary() {
   var foodWebRoles = foodWeb.roles || {};
   var terrainPressure = world.terrainPressureSummary || {};
   var speciesSummary = world.speciesSummary || {};
+  var extinctionSummary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
+    ? PS.sim.massExtinction.getSummary()
+    : { latest: null, recoveryWindow: null, pressureSummary: null, totalEvents: 0 };
+  var extinctionLatest = extinctionSummary.latest || null;
+  var recoveryWindow = extinctionSummary.recoveryWindow || null;
+  var extinctionPressure = extinctionSummary.pressureSummary || {};
   var cards = [
     makeDashboardCard("System", "status",
       makePrimaryMetric("Pressure", summary.pressure, stabilityDetail) +
@@ -370,6 +376,17 @@ function updateEcosystemSummary() {
       makeMetricRow("Extinct", Math.max(0, Math.round(Number(speciesSummary.extinctCount) || 0))) +
       makeMetricRow("Recent", Math.max(0, Math.round(Number(speciesSummary.recentSpeciationCount) || 0))) +
       makeMetricRow("Top", speciesSummary.topSpecies && speciesSummary.topSpecies[0] ? "S" + speciesSummary.topSpecies[0].id + " L" + speciesSummary.topSpecies[0].lineageId : "-")
+    ),
+    makeDashboardCard("Extinction", "biology",
+      makePrimaryMetric(
+        "Events",
+        Math.max(0, Math.round(Number(extinctionSummary.totalEvents) || 0)),
+        recoveryWindow ? "recovery to T" + Math.max(0, Math.round(Number(recoveryWindow.endTick) || 0)) : "dormant"
+      ) +
+      makeMetricRow("Latest", extinctionLatest ? extinctionLatest.eventType : "-") +
+      makeMetricRow("Losses", extinctionLatest ? extinctionLatest.losses.total + " / " + extinctionLatest.prePopulation : "-") +
+      makeMetricRow("Cause Pressure", extinctionPressure.eventType ? extinctionPressure.eventType + " " + (Number(extinctionPressure.pressure) || 0).toFixed(2) : "-") +
+      makeMetricRow("Recovery Pops", recoveryWindow ? recoveryWindow.survivorPopulationIds.length : 0)
     ),
     makeDashboardCard("Trends", "trend",
       makePrimaryMetric("Stability", formatSignedNumber(trend.stabilityDelta || 0, 0), "since last sample") +

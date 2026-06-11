@@ -145,6 +145,11 @@ PS.config.refreshFromConstants = function () {
     speciationMinPopulation: CONFIG.SPECIATION_MIN_POPULATION,
     speciationMinIntervalTicks: CONFIG.SPECIATION_MIN_INTERVAL_TICKS,
     speciationMaxSpecies: CONFIG.SPECIATION_MAX_SPECIES,
+    massExtinctionEnabled: CONFIG.MASS_EXTINCTION_ENABLED !== false,
+    massExtinctionCheckIntervalTicks: CONFIG.MASS_EXTINCTION_CHECK_INTERVAL_TICKS,
+    massExtinctionMinIntervalTicks: CONFIG.MASS_EXTINCTION_MIN_INTERVAL_TICKS,
+    massExtinctionPressureThreshold: CONFIG.MASS_EXTINCTION_PRESSURE_THRESHOLD,
+    massExtinctionRecoveryWindowTicks: CONFIG.MASS_EXTINCTION_RECOVERY_WINDOW_TICKS,
     mutationRates: PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.getMutationRates === "function"
       ? PS.core.traitSchema.getMutationRates()
       : {}

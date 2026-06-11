@@ -33,6 +33,8 @@ function applySubsystemSaveFallbacks(saveData) {
   fallback("lineages", bio.lineages);
   fallback("species", bio.species);
   fallback("speciationEvents", bio.speciationEvents);
+  fallback("massExtinction", bio.massExtinction);
+  fallback("extinctionEvents", bio.extinctionEvents);
   fallback("biologyPopulations", bio.biologyPopulations);
   fallback("biologyRepresentatives", bio.biologyRepresentatives);
   fallback("abiogenesis", bio.abiogenesis);
@@ -170,6 +172,8 @@ function applyWorldSaveData(saveData) {
     world.nextSpeciesId = Math.max(world.nextSpeciesId, speciesId + 1);
   }
   world.speciationEvents = Array.isArray(saveData.speciationEvents) ? clonePersistencePlainValue(saveData.speciationEvents) : [];
+  world.massExtinction = saveData.massExtinction ? clonePersistencePlainValue(saveData.massExtinction) : null;
+  world.extinctionEvents = Array.isArray(saveData.extinctionEvents) ? clonePersistencePlainValue(saveData.extinctionEvents) : [];
   world.settlements = restoreSettlements(saveData.settlements);
   world.settlementRoutes = restoreSettlementRoutes(saveData.settlementRoutes);
   rebuildSettlementIndexes();

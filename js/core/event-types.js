@@ -7,6 +7,8 @@ PS.eventTypes.EPOCH_TRANSITION = "epoch.transition";
 PS.eventTypes.ORGANISM_BORN = "organism.born";
 PS.eventTypes.ORGANISM_DIED = "organism.died";
 PS.eventTypes.SPECIES_NEW = "species.new";
+PS.eventTypes.EXTINCTION_EVENT = "extinction.event";
+PS.eventTypes.EXTINCTION_RECOVERY = "extinction.recovery";
 PS.eventTypes.FOOD_SPAWNED = "food.spawned";
 PS.eventTypes.SETTLEMENT_FOUNDED = "settlement.founded";
 
@@ -39,6 +41,12 @@ PS.eventPayloads[PS.eventTypes.ORGANISM_DIED] = {
 };
 PS.eventPayloads[PS.eventTypes.SPECIES_NEW] = {
   jsdoc: "@payload { id, parentId, lineageId, speciesId, populationId, traits, location, cause, divergence, tick }"
+};
+PS.eventPayloads[PS.eventTypes.EXTINCTION_EVENT] = {
+  jsdoc: "@payload { id, eventType, severityScore, killRate, cause, location, affectedSpecies, survivors, losses, recoveryWindow, tick }"
+};
+PS.eventPayloads[PS.eventTypes.EXTINCTION_RECOVERY] = {
+  jsdoc: "@payload { id, cause, recoveryWindow, survivorPopulationIds, radiationCandidateIds, tick }"
 };
 PS.eventPayloads[PS.eventTypes.FOOD_SPAWNED] = {
   jsdoc: "@payload { id, x, y, amount, source, tick }"

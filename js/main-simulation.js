@@ -67,6 +67,19 @@ function refreshSimulationAlerts() {
     addSimulationAlert(alerts, "danger", "Population crash", String(world.populationDeltaThisTick), 12);
   }
 
+  if (!world.isExtinct && PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
+    var extinctionSummary = PS.sim.massExtinction.getSummary();
+    if (extinctionSummary.recoveryWindow) {
+      addSimulationAlert(
+        alerts,
+        "ready",
+        "Adaptive radiation",
+        "until T" + Math.max(0, Math.round(Number(extinctionSummary.recoveryWindow.endTick) || 0)),
+        14
+      );
+    }
+  }
+
   if (
     !world.isExtinct &&
     ecosystemSummary.reproductionScarcityPressure >= 0.55
@@ -270,6 +283,11 @@ function updateWorld(dt) {
 
   removeDeadOrganisms();
   trimOrganismPopulation();
+
+  if (PS.sim.massExtinction && typeof PS.sim.massExtinction.maybeTrigger === "function") {
+    PS.sim.massExtinction.maybeTrigger();
+  }
+
   world.populationDeltaThisTick = world.organisms.length - organismsAtStartOfTick;
 
   if (typeof refreshLineageRegistry === "function" && shouldRefreshSummaries) {

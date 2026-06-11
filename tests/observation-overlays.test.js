@@ -78,6 +78,23 @@ const context = {
             innovationPressure: 0.58
           };
         }
+      },
+      massExtinction: {
+        getSummary() {
+          return {
+            activeEvent: {
+              eventType: "volcanic-winter",
+              severityScore: 0.7,
+              location: { x: 9, y: 8 }
+            },
+            latest: null,
+            recoveryWindow: {
+              startTick: 20,
+              endTick: 80,
+              durationTicks: 100
+            }
+          };
+        }
       }
     }
   },
@@ -90,6 +107,9 @@ const context = {
       { traits: { carnivory: 0.1 } },
       { traits: { carnivory: 0.1 } }
     ];
+  },
+  getTileManhattanDistance(fromX, fromY, toX, toY) {
+    return Math.abs(fromX - toX) + Math.abs(fromY - toY);
   },
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -109,6 +129,7 @@ const expectedIds = [
   "observation.resources",
   "observation.foodweb",
   "observation.selection",
+  "observation.extinction",
   "observation.atmosphere",
   "observation.microbial"
 ];
@@ -141,6 +162,7 @@ const populationSample = context.PS.render.observationOverlays.getOverlaySample(
 const resourceSample = context.PS.render.observationOverlays.getOverlaySample("observation.resources", 18, 8, {});
 const foodWebSample = context.PS.render.observationOverlays.getOverlaySample("observation.foodweb", 9, 8, {});
 const selectionSample = context.PS.render.observationOverlays.getOverlaySample("observation.selection", 9, 8, {});
+const extinctionSample = context.PS.render.observationOverlays.getOverlaySample("observation.extinction", 9, 8, {});
 const atmosphereSample = context.PS.render.observationOverlays.getOverlaySample("observation.atmosphere", 1, 1, {});
 const microbialSample = context.PS.render.observationOverlays.getOverlaySample("observation.microbial", 2, 2, {});
 const noneSample = context.PS.render.observationOverlays.getOverlaySample("none", 2, 2, {});
@@ -150,6 +172,7 @@ assert.ok(populationSample.alpha > 0, "population overlay should encode organism
 assert.ok(resourceSample.alpha > 0, "resource overlay should encode food density into texture alpha");
 assert.ok(foodWebSample.red > 0 && foodWebSample.alpha > 0, "food-web overlay should encode local predator/prey pressure");
 assert.ok(selectionSample.alpha > 0 && selectionSample.red > 0, "selection overlay should encode terrain pressure");
+assert.ok(extinctionSample.alpha > 0 && extinctionSample.red > extinctionSample.green, "extinction overlay should encode devastation and recovery bloom");
 assert.ok(atmosphereSample.alpha > 0, "atmosphere overlay should encode gas composition into texture alpha");
 assert.ok(microbialSample.alpha > 0, "microbial overlay should encode bloom intensity into texture alpha");
 assert.strictEqual(noneSample.red + noneSample.green + noneSample.blue + noneSample.alpha, 0, "inactive overlay samples should be transparent");

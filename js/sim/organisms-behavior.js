@@ -278,6 +278,15 @@ function getResourceAdjustedReproductionEnergy(traits, scarcityPressure, organis
     multiplier *= PS.sim.terrainPressure.getReproductionMultiplier(traits, organism.x, organism.y);
   }
 
+  if (
+    organism &&
+    PS.sim &&
+    PS.sim.massExtinction &&
+    typeof PS.sim.massExtinction.getRecoveryReproductionMultiplier === "function"
+  ) {
+    multiplier *= PS.sim.massExtinction.getRecoveryReproductionMultiplier(organism);
+  }
+
   return traits.reproductionEnergy * multiplier;
 }
 

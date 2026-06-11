@@ -256,6 +256,19 @@ function restoreSimulationEvent(event) {
     cause: event.cause || null,
     divergence: event.divergence == null ? null : clamp(restoreNumber(event.divergence, 0), 0, 1),
     traits: event.traits ? restoreOrganismTraits(event.traits) : null,
+    eventType: event.eventType || null,
+    severityScore: event.severityScore == null ? null : clamp(restoreNumber(event.severityScore, 0), 0, 1),
+    killRate: event.killRate == null ? null : clamp(restoreNumber(event.killRate, 0), 0, 1),
+    prePopulation: event.prePopulation == null ? null : Math.max(0, Math.round(restoreNumber(event.prePopulation, 0))),
+    postPopulation: event.postPopulation == null ? null : Math.max(0, Math.round(restoreNumber(event.postPopulation, 0))),
+    affectedSpecies: event.affectedSpecies || null,
+    affectedPopulations: event.affectedPopulations || null,
+    survivors: event.survivors || null,
+    losses: event.losses || null,
+    recoveryWindow: event.recoveryWindow || null,
+    survivorPopulationIds: event.survivorPopulationIds || null,
+    radiationCandidateIds: event.radiationCandidateIds || null,
+    durationTicks: event.durationTicks == null ? null : Math.max(0, Math.round(restoreNumber(event.durationTicks, 0))),
     inspectTarget: event.inspectTarget || null
   };
 }

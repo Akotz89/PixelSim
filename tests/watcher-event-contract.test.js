@@ -57,7 +57,7 @@ PS.ui = {
 };
 
 var contract = PS.events.getMilestoneContract();
-["type", "label", "detail", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher", "terrainDriver", "trait", "lineageId", "speciesId", "populationId", "pressure", "effect", "id", "parentId", "cause", "divergence", "traits"].forEach(function(field) {
+["type", "label", "detail", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher", "terrainDriver", "trait", "lineageId", "speciesId", "populationId", "pressure", "effect", "id", "parentId", "cause", "divergence", "traits", "eventType", "severityScore", "killRate", "prePopulation", "postPopulation", "affectedSpecies", "affectedPopulations", "survivors", "losses", "recoveryWindow", "survivorPopulationIds", "radiationCandidateIds", "durationTicks"].forEach(function(field) {
   assert.ok(contract.payloadFields.indexOf(field) >= 0, "contract should include " + field);
 });
 ["eventLog", "timeline", "notification", "spotlight", "overlays"].forEach(function(route) {
@@ -132,6 +132,43 @@ assert.strictEqual(focusedLocations[0].latitude, 12.5, "spotlight route should f
 assert.strictEqual(focusedLocations[0].longitude, -44, "spotlight route should focus longitude");
 assert.strictEqual(world.eventLog.length, 1, "default watcher route should enter visible event log");
 assert.strictEqual(world.timelineEvents.length, 2, "default watcher route should enter timeline");
+
+PS.events.emitMilestone({
+  type: "extinction.event",
+  label: "Mass extinction",
+  detail: "volcanic winter",
+  source: "extinction",
+  eventType: "volcanic-winter",
+  severityScore: 0.62,
+  killRate: 0.58,
+  prePopulation: 20,
+  postPopulation: 8,
+  affectedSpecies: [{ id: 1, losses: 8, survivors: 2 }],
+  affectedPopulations: [{ id: 3, losses: 6, survivors: 1 }],
+  survivors: { total: 8, bySpecies: { "1": 2 }, byPopulation: { "3": 1 } },
+  losses: { total: 12, bySpecies: { "1": 8 }, byPopulation: { "3": 6 } },
+  recoveryWindow: { startTick: 88, endTick: 188 },
+  survivorPopulationIds: [3],
+  radiationCandidateIds: [3],
+  durationTicks: 100,
+  watcher: {
+    eventLog: true,
+    timeline: true,
+    overlays: ["observation.extinction"]
+  }
+});
+
+var extinctionEvent = world.timelineEvents[world.timelineEvents.length - 1];
+assert.strictEqual(extinctionEvent.category, "extinction", "extinction source should infer extinction category");
+assert.strictEqual(extinctionEvent.eventType, "volcanic-winter", "extinction event should preserve event type");
+assert.strictEqual(extinctionEvent.severityScore, 0.62, "extinction event should preserve severity score");
+assert.strictEqual(extinctionEvent.killRate, 0.58, "extinction event should preserve kill rate");
+assert.strictEqual(extinctionEvent.prePopulation, 20, "extinction event should preserve pre-population");
+assert.strictEqual(extinctionEvent.postPopulation, 8, "extinction event should preserve post-population");
+assert.strictEqual(extinctionEvent.losses.total, 12, "extinction event should preserve loss ledger");
+assert.strictEqual(extinctionEvent.survivorPopulationIds[0], 3, "extinction event should preserve survivor population ids");
+assert.strictEqual(extinctionEvent.radiationCandidateIds[0], 3, "extinction event should preserve radiation candidates");
+assert.strictEqual(extinctionEvent.durationTicks, 100, "extinction event should preserve recovery duration");
 
 console.log("watcher event contract checks passed");
 `, context);
