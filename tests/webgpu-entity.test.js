@@ -36,6 +36,26 @@ assert.ok(entitySource.indexOf("usage: 128 | 8") >= 0, "entity instances should 
 assert.ok(entitySource.indexOf("entity-atlas.gbuffer.pipeline") >= 0, "entity renderer should expose a G-buffer MRT pipeline");
 assert.ok(entitySource.indexOf("setVertexBuffer") < 0, "entity renderer should not use vertex-buffer instance attributes");
 assert.ok(entitiesSource.indexOf("PS.render.webgpuEntity.drawBatches") >= 0, "entity facade should route batches to WebGPU entity renderer");
+[
+  "drawOrbitalAssets",
+  "drawPlanetaryBodies",
+  "drawProbeMissions",
+  "drawStarSystems",
+  "drawEmpireSectors",
+  "drawInterstellarFleets",
+  "drawEmpireLegacy"
+].forEach(function (methodName) {
+  assert.strictEqual(
+    entitiesSource.indexOf("PS.render.entities." + methodName + " = function"),
+    -1,
+    methodName + " should not exist as an unused entities-to-overlays wrapper"
+  );
+});
+assert.ok(
+  entitiesSource.indexOf("CONFIG.ORGANISM_RENDER_LOW_ENERGY") >= 0 &&
+    entitiesSource.indexOf("CONFIG.ORGANISM_RENDER_HIGH_ENERGY") >= 0,
+  "organism render energy buckets should use CONFIG thresholds"
+);
 
 ["sprite-batch", "entity-atlas", "particle", "shadow"].forEach(function (name) {
   const shaderPath = path.join(root, "shaders", name + ".wgsl");

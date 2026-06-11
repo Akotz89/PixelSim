@@ -115,15 +115,11 @@ PS.render.entities.getRenderPosition = function (entity, interpolation) {
     renderLongitude = interpolateLongitudeDeg(entity.prevLongitude, surfacePosition.longitude, amount);
   }
 
-  if (isGlobeRenderMode()) {
-    if (isPlanetLocalView()) {
-      return projectPlanetLocalPoint(renderLongitude, renderLatitude);
-    }
-
-    return projectPlanetPoint(renderLongitude, renderLatitude);
+  if (isPlanetLocalView()) {
+    return projectPlanetLocalPoint(renderLongitude, renderLatitude);
   }
 
-  return PS.render.entities.getTileRenderPosition(entity.x, entity.y);
+  return projectPlanetPoint(renderLongitude, renderLatitude);
 };
 
 PS.render.entities.writeRenderPosition = function (entity, interpolation, output) {
@@ -295,11 +291,11 @@ PS.render.entities.getLineageColorById = function (lineageId) {
 };
 
 PS.render.entities.getOrganismColor = function (organism) {
-  if (organism.energy > 200) {
+  if (organism.energy >= CONFIG.ORGANISM_RENDER_HIGH_ENERGY) {
     return "#fff26b";
   }
 
-  if (organism.energy < 60) {
+  if (organism.energy < CONFIG.ORGANISM_RENDER_LOW_ENERGY) {
     return "#ff9c69";
   }
 
@@ -661,11 +657,11 @@ PS.render.entities.drawSettlementEffects = function () {
 PS.render.entities.getOrganismEnergyBucket = function (organism) {
   var energy = Number(organism && organism.energy);
 
-  if (energy > 200) {
+  if (energy >= CONFIG.ORGANISM_RENDER_HIGH_ENERGY) {
     return 2;
   }
 
-  if (energy < 60) {
+  if (energy < CONFIG.ORGANISM_RENDER_LOW_ENERGY) {
     return 0;
   }
 
@@ -1129,34 +1125,6 @@ PS.render.entities.getOrbitEventRenderPosition = function (event, index, total) 
     visibility: 1,
     visible: true
   };
-};
-
-PS.render.entities.drawOrbitalAssets = function () {
-  return false;
-};
-
-PS.render.entities.drawPlanetaryBodies = function () {
-  return false;
-};
-
-PS.render.entities.drawProbeMissions = function () {
-  return false;
-};
-
-PS.render.entities.drawStarSystems = function () {
-  return false;
-};
-
-PS.render.entities.drawEmpireSectors = function () {
-  return false;
-};
-
-PS.render.entities.drawInterstellarFleets = function () {
-  return false;
-};
-
-PS.render.entities.drawEmpireLegacy = function () {
-  return false;
 };
 
 PS.render.entities.rebuildShaders = function () {};
