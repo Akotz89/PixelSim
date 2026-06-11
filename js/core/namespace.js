@@ -94,6 +94,7 @@ PS.core.manifest = [
   "js/sim/thermohaline.js",
   "js/sim/reaction-diffusion.js",
   "js/sim/moisture.js",
+  "js/sim/pixel-ca.js",
   "js/sim/biome-lut.js",
   "js/render/surface-worker-client.js",
   "js/render/surface-ecology.js",
