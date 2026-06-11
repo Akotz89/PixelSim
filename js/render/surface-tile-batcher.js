@@ -758,6 +758,9 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       waterInfo
     );
     target.count++;
+    if (PS.render.mountains && typeof PS.render.mountains.appendMountain === "function") {
+      PS.render.mountains.appendMountain(target, sample, biome, tileX, tileY, screenX, screenY, samplePixelSize, tileAlpha * featherAlpha, lodState, cell);
+    }
     if (canAttemptAccepted && PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions(address, sample, tileX, tileY, lodState)) {
       PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays(
         target,
