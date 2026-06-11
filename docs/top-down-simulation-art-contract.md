@@ -18,6 +18,9 @@ Summary:
 - keep sprite-sheet diffuse/normal production as a separate lane;
 - reject close illustrated village art, isometric views, hero buildings,
   large characters, UI, and copied commercial assets.
+- require actor-scale readability proof when organisms, hazards, factions,
+  resources, VFX, particles, or material fields claim to communicate simulation
+  state. Use `docs/proof-scene-acceptance.md` for the proof-scene shape.
 
 Foundation Art Pack v0.1 candidate outputs now cover:
 

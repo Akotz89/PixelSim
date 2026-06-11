@@ -22,6 +22,9 @@ Every visual or camera issue must state:
 - The screenshot, browser smoke, or pixel-sample evidence used for review.
 - The performance metric used for continuous zoom or overlay rendering.
 - The originality check used to avoid copied external assets or layouts.
+- The proof scene required by `docs/proof-scene-acceptance.md` when the change
+  alters user-visible gameplay, simulation, entity, VFX, camera, overlay, or
+  interaction behavior.
 
 Rendering, streaming, performance, mass-simulation, and observation work must
 also pass `docs/optimization-operating-model.md` and
@@ -81,6 +84,24 @@ Visuals must communicate simulation state at a glance:
 
 Decorative noise is not enough. Detail should explain state, history, pressure,
 or action.
+
+## Actor-Scale Readability Gate
+
+Actor-facing work must state the actor type, primary verb, visible tell,
+simulation consequence, mitigation/adaptation/counterplay, affected zoom bands,
+proof scene, and verification command. This applies to organisms, hazards,
+factions, resources, settlements, citizens, and other entities.
+
+VFX-facing work must state the simulation state being communicated, effect
+layer, actor-scale readability test, dense-prop or overlap stress case,
+hazard/resource/traversable-edge readability, and pass/fail observation.
+
+Water, fog/weather, glow/light, fire, poison, decay, particles, and future magic
+or technology fields must prove state communication when they claim to convey
+state. Decorative polish must be labeled as decorative and must not be accepted
+as simulation readability proof.
+
+See `docs/proof-scene-acceptance.md` for the proof-scene fields and examples.
 
 ## Screenshot And Performance Evidence
 

@@ -22,6 +22,12 @@ test evidence, or Linear handoff:
 
 If one of these fields is not applicable, the implementation must say why.
 
+When a gated implementation changes visible gameplay, simulation, entity, VFX,
+camera, overlay, or interaction behavior, it must also include the proof-scene
+fields from `docs/proof-scene-acceptance.md`. The proof scene supplies the
+watcher-facing pass/fail observation; the optimization gate supplies the
+representation and performance proof.
+
 ## Pass/Fail Rule
 
 An implementation passes the AZR-637 gate only when:
@@ -65,6 +71,7 @@ Optimization gate:
 - Player-perception contract:
 - New constraint or encoding limit:
 - Proof metric:
+- Proof scene, if user-visible behavior changes:
 ```
 
 ## Current Gate Baseline

@@ -37,6 +37,8 @@
 - [ ] `bash .codex/setup.sh` passes
 - [ ] Browser smoke test completed
 - [ ] Deterministic behavior verified (same seed → same result)
+- [ ] User-visible gameplay/simulation/entity/VFX/camera/overlay/interaction changes include a proof scene from `docs/proof-scene-acceptance.md`
+- [ ] Source-video, Chroma, or Hindsight evidence is treated as inspiration only, not local runtime proof
 
 ## Screenshots
 
