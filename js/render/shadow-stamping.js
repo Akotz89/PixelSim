@@ -67,11 +67,12 @@ PS.render.shadows = PS.render.shadows || (function () {
     return LOOKUP[key];
   }
 
-  function getDirection(options) {
+  function getDirection(options, cycleState) {
     var spec = options || {};
     var explicit = readVector(spec.direction || spec.shadowDirection);
     var currentWorld = typeof world !== "undefined" ? world : null;
-    var sun = readSunVector(spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null));
+    var cycle = cycleState || null;
+    var sun = readSunVector(spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null) || (cycle ? cycle.sunDirection : null));
     var tick;
     var angle;
 
@@ -107,7 +108,10 @@ PS.render.shadows = PS.render.shadows || (function () {
     var options = spec || {};
     var lookup = getHeightLookup(options.heightUnits !== undefined ? options.heightUnits : options.height);
     var iterations = lookup.iterations;
-    var direction = getDirection(options);
+    var cycle = PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
+      ? PS.render.lightingCycle.getState(options)
+      : null;
+    var direction = getDirection(options, cycle);
     var alpha = clamp(options.alpha === undefined ? 0.35 : options.alpha, 0, 1);
     var modeStrength = getModeStrength(options.mode);
     var distance2Ground = Math.max(0, Number(options.distance2Ground) || 0);
@@ -133,7 +137,7 @@ PS.render.shadows = PS.render.shadows || (function () {
     for (i = 0; i < iterations; i += 1) {
       stamp = i + 1;
       falloff = 1 - (i / Math.max(1, iterations)) * 0.58;
-      offset = distance2Ground + lookup.stepPixels * stamp;
+      offset = distance2Ground + lookup.stepPixels * (cycle ? cycle.shadowStepScale : 1) * stamp;
       target.push(
         baseX + direction.x * offset,
         baseY + direction.y * offset,
@@ -142,7 +146,7 @@ PS.render.shadows = PS.render.shadows || (function () {
         clamp(color[0], 0, 1),
         clamp(color[1], 0, 1),
         clamp(color[2], 0, 1),
-        clamp(alpha * modeStrength * falloff, 0, 1)
+        clamp(alpha * (cycle ? cycle.shadowAlphaScale : 1) * modeStrength * falloff, 0, 1)
       );
       written += 1;
     }

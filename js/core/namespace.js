@@ -75,6 +75,7 @@ PS.core.manifest = [
   "js/render/wgsl-shader-manager.js",
   "js/render/webgpu-targets.js",
   "js/render/webgpu-gbuffer.js",
+  "js/render/lighting-cycle.js",
   "js/render/webgpu-compositor.js",
   "js/render/webgpu-point-lights.js",
   "js/render/webgpu-water-displacement.js",

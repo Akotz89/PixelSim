@@ -57,7 +57,7 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     if (!this.state.uniformBuffer) {
       this.state.uniformBuffer = device.createBuffer({
         label: "gbuffer-compose.uniforms",
-        size: 32,
+        size: 48,
         usage: 64 | 8
       });
     }
@@ -68,7 +68,10 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
   getSunDirection: function (options) {
     var spec = options || {};
     var currentWorld = typeof world !== "undefined" ? world : null;
-    var value = spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null);
+    var cycle = spec.lightingCycleState || (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
+      ? PS.render.lightingCycle.getState(spec)
+      : null);
+    var value = spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null) || (cycle ? cycle.sunDirection : null);
     var x;
     var y;
     var z;
@@ -100,17 +103,31 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
 
   makeUniformData: function (options) {
     var spec = options || {};
-    var sun = this.getSunDirection(spec);
-    var data = new Float32Array(8);
+    var cycle = spec.lightingCycleState || (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
+      ? PS.render.lightingCycle.getState(spec)
+      : null);
+    var previousCycle = spec.lightingCycleState;
+    var sun;
+    spec.lightingCycleState = cycle;
+    sun = this.getSunDirection(spec);
+    spec.lightingCycleState = previousCycle;
+    var ambientColor = Array.isArray(spec.ambientColor) && spec.ambientColor.length >= 3
+      ? spec.ambientColor
+      : (cycle ? cycle.ambientColor : [1, 1, 1]);
+    var data = new Float32Array(12);
 
     data[0] = sun.x;
     data[1] = sun.y;
     data[2] = sun.z;
     data[3] = 0;
-    data[4] = spec.ambient !== undefined ? Math.max(0, Math.min(1, Number(spec.ambient) || 0)) : 0.32;
-    data[5] = spec.directionalStrength !== undefined ? Math.max(0, Number(spec.directionalStrength) || 0) : 0.52;
-    data[6] = spec.wrapStrength !== undefined ? Math.max(0, Number(spec.wrapStrength) || 0) : 0.16;
-    data[7] = spec.heightTintStrength !== undefined ? Math.max(0, Number(spec.heightTintStrength) || 0) : 0.08;
+    data[4] = spec.ambient !== undefined ? Math.max(0, Math.min(1, Number(spec.ambient) || 0)) : (cycle ? cycle.ambient : 0.32);
+    data[5] = spec.directionalStrength !== undefined ? Math.max(0, Number(spec.directionalStrength) || 0) : (cycle ? cycle.directionalStrength : 0.52);
+    data[6] = spec.wrapStrength !== undefined ? Math.max(0, Number(spec.wrapStrength) || 0) : (cycle ? cycle.wrapStrength : 0.16);
+    data[7] = spec.heightTintStrength !== undefined ? Math.max(0, Number(spec.heightTintStrength) || 0) : (cycle ? cycle.heightTintStrength : 0.08);
+    data[8] = Math.max(0, Math.min(1, Number(ambientColor[0]) || 0));
+    data[9] = Math.max(0, Math.min(1, Number(ambientColor[1]) || 0));
+    data[10] = Math.max(0, Math.min(1, Number(ambientColor[2]) || 0));
+    data[11] = 0;
     return data;
   },
 

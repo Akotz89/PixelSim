@@ -702,7 +702,10 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
         albedoTexture: gbuffer.albedo.texture,
         normalHeightTexture: gbuffer.normalHeight.texture,
         sunDirection: spec.sunDirection,
+        timeOfDay: spec.timeOfDay,
+        lightingCycleState: spec.lightingCycleState,
         ambient: spec.ambient,
+        ambientColor: spec.ambientColor,
         directionalStrength: spec.directionalStrength,
         wrapStrength: spec.wrapStrength,
         heightTintStrength: spec.heightTintStrength

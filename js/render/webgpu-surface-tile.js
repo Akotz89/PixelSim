@@ -741,6 +741,9 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
     var policy = this.getVisualPolicy(spec.lodState);
+    var cycle = PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
+      ? PS.render.lightingCycle.getState(spec)
+      : null;
     var device = this.getDevice(spec.device);
     var context = spec.context || (PS.gpu && PS.gpu.context);
     var targetCanvas = PS.gpu && PS.gpu.canvas ? PS.gpu.canvas : (typeof canvas !== "undefined" ? canvas : null);
@@ -833,13 +836,16 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         normalHeightTexture: gbufferTargets.normalHeight.texture,
         textureView: spec.textureView || null,
         loadOp: spec.loadOp || "clear",
-        sunDirection: spec.sunDirection,
-        ambient: spec.ambient,
-        directionalStrength: (spec.directionalStrength === undefined ? 0.52 : Math.max(0, Number(spec.directionalStrength) || 0)) *
+        sunDirection: spec.sunDirection || (cycle ? cycle.sunDirection : undefined),
+        timeOfDay: spec.timeOfDay,
+        lightingCycleState: cycle,
+        ambient: spec.ambient !== undefined ? spec.ambient : (cycle ? cycle.ambient : undefined),
+        ambientColor: spec.ambientColor || (cycle ? cycle.ambientColor : undefined),
+        directionalStrength: (spec.directionalStrength === undefined ? (cycle ? cycle.directionalStrength : 0.52) : Math.max(0, Number(spec.directionalStrength) || 0)) *
           Math.max(0, Number(policy.normalLightingStrength) || 0),
-        wrapStrength: (spec.wrapStrength === undefined ? 0.16 : Math.max(0, Number(spec.wrapStrength) || 0)) *
+        wrapStrength: (spec.wrapStrength === undefined ? (cycle ? cycle.wrapStrength : 0.16) : Math.max(0, Number(spec.wrapStrength) || 0)) *
           Math.max(0, Number(policy.normalLightingStrength) || 0),
-        heightTintStrength: (spec.heightTintStrength === undefined ? 0.08 : Math.max(0, Number(spec.heightTintStrength) || 0)) *
+        heightTintStrength: (spec.heightTintStrength === undefined ? (cycle ? cycle.heightTintStrength : 0.08) : Math.max(0, Number(spec.heightTintStrength) || 0)) *
           Math.max(0, Number(policy.normalLightingStrength) || 0)
       });
 

@@ -6,6 +6,7 @@ struct VertexOut {
 struct ComposeUniforms {
   sun_direction: vec4<f32>,
   lighting: vec4<f32>,
+  ambient_color: vec4<f32>,
 };
 
 @group(0) @binding(0) var albedo_texture: texture_2d<f32>;
@@ -44,6 +45,6 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
   let wrap = clamp(dot(normal, light_dir) * 0.5 + 0.5, 0.0, 1.0);
   let lit = ambient + directional * compose.lighting.y + wrap * compose.lighting.z;
   let height_tint = clamp(normal_height.a, 0.0, 1.0) * compose.lighting.w;
-  let color = albedo.rgb * clamp(lit, 0.28, 1.22) + vec3<f32>(height_tint);
+  let color = albedo.rgb * compose.ambient_color.rgb * clamp(lit, 0.20, 1.22) + vec3<f32>(height_tint);
   return vec4<f32>(color, albedo.a);
 }
