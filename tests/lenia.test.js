@@ -12,6 +12,7 @@ function read(file) {
 const namespaceSource = read("js/core/namespace.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
+const geochemistrySource = read("js/sim/geochemistry.js");
 const leniaSource = read("js/sim/lenia.js");
 const observationSource = read("js/ui/observation-overlays.js");
 const shaderSource = read("shaders/lenia.wgsl");
@@ -169,8 +170,10 @@ context.window.PS = context.PS;
 vm.createContext(context);
 vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-manager.js" });
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
+vm.runInContext(geochemistrySource, context, { filename: "js/sim/geochemistry.js" });
 vm.runInContext(leniaSource, context, { filename: "js/sim/lenia.js" });
 
+const geochemistry = context.PS.sim.geochemistry;
 const lenia = context.PS.sim.lenia;
 lenia.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "lenia"), "Lenia should register WGSL manifest entry");
@@ -198,14 +201,20 @@ const competition = lenia.runValidationTicks(50, 16, 16, { config });
 const competitionSummary = lenia.summarizeSpecies(competition, 16, 16, config);
 assert.ok(Object.keys(competitionSummary.species).filter((id) => competitionSummary.species[id] > 0.001).length >= 3, "3+ species should compete and occupy niches");
 
+const baselineOceanPh = geochemistry.computeOceanPh(420);
+const highCo2OceanPh = geochemistry.computeOceanPh(900);
+assert.ok(baselineOceanPh > config.coral_ph_threshold, "baseline CO2 chemistry should leave coral pH above the kill threshold");
+assert.ok(highCo2OceanPh < config.coral_ph_threshold, "high CO2 chemistry should drive ocean pH below the coral threshold");
+
 const coralInitial = lenia.makeInitialSpeciesField(16, 16, { seed: 11 });
-const healthyCoral = lenia.runValidationTicks(80, 16, 16, {
+const baselineCoral = lenia.runValidationTicks(500, 16, 16, {
   config,
   initial: coralInitial,
   temperature: lenia.makeScalarField(16, 16, 26),
   moisture: lenia.makeScalarField(16, 16, 1),
   oceanMask: lenia.makeScalarField(16, 16, 1),
-  oceanPh: lenia.makeScalarField(16, 16, 8.1)
+  oceanPh: lenia.makeScalarField(16, 16, baselineOceanPh),
+  co2Ppm: 420
 });
 const acidicCoral = lenia.runValidationTicks(500, 16, 16, {
   config,
@@ -213,9 +222,12 @@ const acidicCoral = lenia.runValidationTicks(500, 16, 16, {
   temperature: lenia.makeScalarField(16, 16, 26),
   moisture: lenia.makeScalarField(16, 16, 1),
   oceanMask: lenia.makeScalarField(16, 16, 1),
-  oceanPh: lenia.makeScalarField(16, 16, 7.4)
+  oceanPh: lenia.makeScalarField(16, 16, highCo2OceanPh),
+  co2Ppm: 900
 });
-assert.ok(lenia.summarizeSpecies(acidicCoral, 16, 16, config).species.coral < lenia.summarizeSpecies(healthyCoral, 16, 16, config).species.coral * 0.35, "ocean pH kill switch should collapse coral density within 500 ticks");
+const baselineCoralDensity = lenia.summarizeSpecies(baselineCoral, 16, 16, config).species.coral;
+const acidicCoralDensity = lenia.summarizeSpecies(acidicCoral, 16, 16, config).species.coral;
+assert.ok(acidicCoralDensity < baselineCoralDensity * 0.35, "geochemistry-derived low pH should causally collapse coral density within 500 ticks");
 
 const exportMap = lenia.exportDistributionMap(evolved, 16, 16, config);
 assert.strictEqual(exportMap.width, 16, "distribution export should encode width");

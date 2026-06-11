@@ -26,6 +26,7 @@
 | [WASM Simulation Module](wasm-sim-module.md) | `docs/wasm-sim-module.md` | AZR-836 Rust/WASM computation module, file-protocol sidecar, D8 rivers, and WebGPU upload bridge |
 | [Geochemistry Simulation](geochemistry-simulation.md) | `docs/geochemistry-simulation.md` | AZR-837 atmospheric, ocean, and soil chemistry grid contract with agent control and debug rows |
 | [Lenia Ecosystem Simulation](lenia-ecosystem-simulation.md) | `docs/lenia-ecosystem-simulation.md` | AZR-838 continuous cellular automata ecosystem, species competition, pH collapse, overlay, and JSON export |
+| [Multi-Physics Coupling](multi-physics-coupling.md) | `docs/multi-physics-coupling.md` | AZR-839 canonical nine-pass simulation order, texture registry, previous-tick read discipline, WASM elevation upload, and timing logs |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
 
 ## Planning Artifacts

@@ -101,6 +101,7 @@ PS.core.manifest = [
   "wasm/pixeldarium-sim.js",
   "wasm/pixeldarium-sim.wasm.js",
   "js/sim/wasm-bridge.js",
+  "js/sim/coupling.js",
   "js/render/surface-worker-client.js",
   "js/render/surface-ecology.js",
   "js/render/surface-ready-feather.js",

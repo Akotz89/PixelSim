@@ -15,7 +15,7 @@ AZR-838 adds `PS.sim.lenia`, a continuous cellular automata contract for post-eq
 - Temperature gates survival ranges.
 - Moisture controls land organism growth.
 - Ocean mask separates land vegetation and marine species.
-- Ocean pH below 7.8 collapses coral density.
+- Ocean pH below 7.8 collapses coral density. The pH field is an input from the geochemistry simulation, so high CO2 lowers pH before Lenia applies coral mortality.
 - Volcanic fields wipe local density.
 - CO2 can boost vegetation photosynthesis efficiency.
 
