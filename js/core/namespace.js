@@ -90,6 +90,7 @@ PS.core.manifest = [
   "js/render/webgpu-renderer.js",
   "js/sim/compute-harness.js",
   "js/sim/heat-diffusion.js",
+  "js/sim/lbm-ocean.js",
   "js/sim/biome-lut.js",
   "js/render/surface-worker-client.js",
   "js/render/surface-ecology.js",
