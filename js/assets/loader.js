@@ -412,6 +412,115 @@ PS.assets.AssetLoader.prototype.createSpriteSheetMeta = function (sheet) {
   };
 };
 
+PS.assets.AssetLoader.prototype.installTileSheetAtlas = function (tileSheetId, atlas) {
+  var built;
+
+  atlas.id = tileSheetId;
+
+  if (PS.assets.tileSheets && PS.assets.tileSheets[tileSheetId]) {
+    built = PS.assets.tileSheets[tileSheetId].reload(atlas);
+  } else {
+    built = new PS.assets.TileSheet(atlas);
+  }
+
+  return built;
+};
+
+PS.assets.AssetLoader.prototype.buildTileSheetAtlasFromSources = function (tileSheetId, definition, loadedSheets) {
+  var sourceIds = definition.sourceSheets || definition.sheetIds || [];
+  var sources = [];
+  var atlas;
+
+  sourceIds.forEach(function (sheetId) {
+    var loaded = loadedSheets[sheetId];
+
+    if (loaded && loaded.sheet) {
+      sources.push({
+        id: loaded.id || sheetId,
+        sheet: loaded.sheet,
+        pixelData: loaded.pixelData
+      });
+    }
+  });
+
+  if (sources.length === 0) {
+    return null;
+  }
+
+  atlas = PS.assets.TileSheetPacker.pack(sources, {
+    pageWidth: definition.pageWidth || 1024,
+    pageHeight: definition.pageHeight || 1024
+  });
+
+  return this.installTileSheetAtlas(tileSheetId, atlas);
+};
+
+PS.assets.AssetLoader.prototype.loadTileSheetAtlas = function (tileSheetId, definition, loadedSheets) {
+  var self = this;
+
+  if (!definition.manifest) {
+    return Promise.resolve(this.buildTileSheetAtlasFromSources(tileSheetId, definition, loadedSheets));
+  }
+
+  return this.loadJSON(definition.manifest).then(function (atlasManifest) {
+    var pageDefinitions = atlasManifest.pages || [];
+
+    return Promise.all(pageDefinitions.map(function (pageDefinition) {
+      return Promise.all([
+        pageDefinition.path ? self.loadImage(pageDefinition.path) : Promise.resolve(null),
+        pageDefinition.pixelData ? self.loadJSON(pageDefinition.pixelData).catch(function () { return null; }) : Promise.resolve(null)
+      ]).then(function (parts) {
+        return {
+          pageIndex: pageDefinition.pageIndex,
+          width: pageDefinition.width,
+          height: pageDefinition.height,
+          image: parts[0],
+          pixelData: parts[1],
+          path: pageDefinition.path || "",
+          filter: pageDefinition.filter || atlasManifest.filter || "nearest",
+          version: pageDefinition.version || 1
+        };
+      });
+    })).then(function (pages) {
+      return self.installTileSheetAtlas(
+        tileSheetId,
+        PS.assets.TileSheetPacker.fromManifest(atlasManifest, pages)
+      );
+    });
+  }).catch(function () {
+    return self.buildTileSheetAtlasFromSources(tileSheetId, definition, loadedSheets);
+  });
+};
+
+PS.assets.AssetLoader.prototype.buildTileSheetAtlases = function (manifest, loadedSheets) {
+  var self = this;
+  var tileSheets = manifest.tileSheets || {};
+  var tileSheetIds = Object.keys(tileSheets);
+  var built = {};
+
+  if (!PS.assets.TileSheet || !PS.assets.TileSheetPacker) {
+    return Promise.resolve(built);
+  }
+
+  return Promise.allSettled(tileSheetIds.map(function (tileSheetId) {
+    var definition = tileSheets[tileSheetId] || {};
+
+    return self.loadTileSheetAtlas(tileSheetId, definition, loadedSheets).then(function (tileSheet) {
+      if (tileSheet) {
+        built[tileSheetId] = tileSheet;
+      }
+      return tileSheet;
+    });
+  })).then(function () {
+    PS.assets.tileSheets = built;
+    if (tileSheetIds.length > 0) {
+      PS.assets.TILE_SHEET = built[manifest.defaultTileSheet || tileSheetIds[0]] || null;
+    }
+
+    return built;
+  });
+};
+
 PS.assets.AssetLoader.prototype.loadSpriteSheetManifest = function (manifest) {
   var self = this;
   var loaded = {};
@@ -462,7 +571,9 @@ PS.assets.AssetLoader.prototype.loadSpriteSheetManifest = function (manifest) {
       return loaded[loadedSheetId];
     });
   })).then(function () {
-    return manifest;
+    return self.buildTileSheetAtlases(manifest, loaded).then(function () {
+      return manifest;
+    });
   });
 };
 

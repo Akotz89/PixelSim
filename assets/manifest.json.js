@@ -1,5 +1,30 @@
 PS.assets.registerJSON("assets/manifest.json", {
   "version": 1,
+  "defaultTileSheet": "terrain_tiles",
+  "tileSheets": {
+    "terrain_tiles": {
+      "pageWidth": 512,
+      "pageHeight": 512,
+      "manifest": "assets/tile-sheets/terrain_tiles.json",
+      "sourceSheets": [
+        "terrain_grass",
+        "terrain_forest",
+        "terrain_desert",
+        "terrain_water",
+        "terrain_ocean",
+        "terrain_mountain",
+        "terrain_tundra",
+        "terrain_wetland",
+        "terrain_stone",
+        "terrain_dirt",
+        "terrain_sand",
+        "terrain_ice",
+        "terrain_rock",
+        "terrain_snow"
+      ],
+      "outputDir": "assets/tile-sheets"
+    }
+  },
   "sheets": {
     "terrain_grass": {
       "path": "assets/terrain/grass.png",

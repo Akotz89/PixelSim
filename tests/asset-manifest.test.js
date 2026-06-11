@@ -295,6 +295,9 @@ function createContext() {
           if (url.startsWith("assets/pixeldarium-equivalence/") && url.endsWith(".json")) {
             return Promise.resolve(JSON.parse(fs.readFileSync(path.join(root, url), "utf8")));
           }
+          if (url.startsWith("assets/tile-sheets/") && url.endsWith(".json")) {
+            return Promise.resolve(JSON.parse(fs.readFileSync(path.join(root, url), "utf8")));
+          }
           return Promise.resolve({});
         }
       });
@@ -328,8 +331,13 @@ function createContext() {
       expectedSheetFetches.push(String(sheet.path).replace(/\.png$/, ".rgba.json"));
     }
   });
+  expectedSheetFetches.push("assets/tile-sheets/terrain_tiles.json");
+  expectedSheetFetches.push("assets/tile-sheets/terrain_tiles.page0.rgba.json");
   const expectedImageLoads = Object.values(manifest.sheets).map((sheet) => sheet.path).filter(Boolean);
+  expectedImageLoads.push("assets/tile-sheets/terrain_tiles.page0.png");
   const handoffSheet = context.PS.assets.loadedSheets.equivalence_creature_npc_refined_v1;
+  const tileSheet = context.PS.assets.TILE_SHEET;
+  const terrainGrassTile = tileSheet.getCell("terrain_grass.terrain.grass.0");
 
   assert.strictEqual(loadedManifest, manifest, "loadManifest should resolve the parsed manifest");
   assert.deepStrictEqual(context.fetchCalls, ["assets/manifest.json"].concat(expectedSheetFetches), "loadManifest should fetch manifest, sheet metadata, and equivalence pixel sidecars");
@@ -346,6 +354,23 @@ function createContext() {
     { x: 224, y: 0, w: 32, h: 32 },
     "loaded sprite sheet should expose grass coordinates"
   );
+  assert.ok(tileSheet, "loadManifest should expose the default indexed TILE_SHEET");
+  assert.strictEqual(context.PS.assets.tileSheets.terrain_tiles, tileSheet, "loadManifest should register named tile sheets");
+  assert.ok(terrainGrassTile, "TILE_SHEET should look up real terrain tile IDs");
+  assert.deepStrictEqual(
+    { x: terrainGrassTile.x, y: terrainGrassTile.y, w: terrainGrassTile.w, h: terrainGrassTile.h },
+    { x: terrainGrassTile.x, y: terrainGrassTile.y, w: 32, h: 32 },
+    "TILE_SHEET should expose integer atlas rects"
+  );
+  assert.strictEqual(Number.isInteger(terrainGrassTile.x), true, "TILE_SHEET x coordinate should be an integer");
+  assert.strictEqual(Number.isInteger(terrainGrassTile.y), true, "TILE_SHEET y coordinate should be an integer");
+  assert.strictEqual(terrainGrassTile.filter, "nearest", "TILE_SHEET cells should preserve nearest filtering");
+
+  const previousTileSheet = context.PS.assets.TILE_SHEET;
+  const previousVersion = previousTileSheet.version;
+  await loader.loadSpriteSheetManifest(manifest);
+  assert.strictEqual(context.PS.assets.TILE_SHEET, previousTileSheet, "manifest reload should preserve existing TILE_SHEET references");
+  assert.strictEqual(previousTileSheet.version, previousVersion + 1, "manifest reload should bump TILE_SHEET version");
 
   console.log("asset manifest checks passed");
 }()).catch((error) => {
