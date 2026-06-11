@@ -96,6 +96,7 @@ function clearWorld() {
   world.populationTraitSummary = null;
   world.lineageSummary = null;
   world.lineageSummaryText = "LINEAGES: -";
+  world.statisticsDashboard = null;
   world.nextLineageId = 1;
   world.nextSpeciesId = 1;
   world.nextBiologyPopulationId = 1;

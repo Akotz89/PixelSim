@@ -160,6 +160,7 @@ PS.core.manifest = [
   "js/ui/panel-manager.js",
   "js/ui/tooltip.js",
   "js/ui/modal.js",
+  "js/ui/statistics-dashboard.js",
   "js/ui/summary.js",
   "js/ui/history-summary.js",
   "js/ui/inspect-history.js",

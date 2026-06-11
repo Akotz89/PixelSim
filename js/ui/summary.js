@@ -260,6 +260,18 @@ function makeMetricRow(label, value) {
   );
 }
 
+function getDashboardTraitMetric(stats, key) {
+  var traits = stats && Array.isArray(stats.traitDistribution) ? stats.traitDistribution : [];
+
+  for (var i = 0; i < traits.length; i++) {
+    if (traits[i].key === key && Number.isFinite(Number(traits[i].value))) {
+      return Number(traits[i].value).toFixed(2);
+    }
+  }
+
+  return "-";
+}
+
 function makeInspectChip(label, value) {
   return (
     "<span class=\"inspect-chip\">" +
@@ -366,7 +378,24 @@ function updateEcosystemSummary() {
   var extinctionLatest = extinctionSummary.latest || null;
   var recoveryWindow = extinctionSummary.recoveryWindow || null;
   var extinctionPressure = extinctionSummary.pressureSummary || {};
+  var stats = typeof getStatisticsDashboardSnapshot === "function"
+    ? getStatisticsDashboardSnapshot(summary)
+    : null;
   var cards = [
+    makeDashboardCard("Planet Stats", "status",
+      makePrimaryMetric("Epoch", stats ? stats.epoch : world.era, stats ? stats.deepTime : "-") +
+      makeMetricRow("Time Scale", stats ? stats.timeScale : "-") +
+      makeMetricRow("Overlay", stats ? stats.overlay : "-") +
+      makeMetricRow("Origin", stats ? stats.microbialStatus : "-") +
+      makeMetricRow("Cadence", stats ? stats.updatedEveryTicks + " ticks" : "-")
+    ),
+    makeDashboardCard("Biodiversity", "biology",
+      makePrimaryMetric("Index", stats ? stats.biodiversity.index + "/100" : "0/100", "evenness") +
+      makeMetricRow("Species", stats ? stats.species.active + " / " + stats.species.total : "-") +
+      makeMetricRow("Extinct", stats ? stats.species.extinct : 0) +
+      makeMetricRow("Top Share", stats ? Math.round(stats.biodiversity.topShare * 100) + "%" : "0%") +
+      makeMetricRow("Biome", stats ? stats.biomeMix.topBiome + " / " + stats.biomeMix.biomeCount : "-")
+    ),
     makeDashboardCard("System", "status",
       makePrimaryMetric("Pressure", summary.pressure, stabilityDetail) +
       makeMetricRow("Lifecycle", lifecycleLabel) +
@@ -376,6 +405,7 @@ function updateEcosystemSummary() {
     ),
     makeDashboardCard("Population", "population",
       makePrimaryMetric("Organisms", summary.population, populationDetail) +
+      makeMetricRow("Estimated", stats ? stats.estimatedIndividuals : summary.population) +
       makeMetricRow("Flow", "+" + world.birthsThisTick + " / -" + world.deathsThisTick) +
       makeMetricRow("Lifetime", world.totalBirths + " / " + world.totalDeaths) +
       makeMetricRow("Mature", summary.matureOrganisms + "/" + summary.population) +
@@ -395,12 +425,26 @@ function updateEcosystemSummary() {
       makeMetricRow("Scavengers", Math.max(0, Math.round(Number(foodWebRoles.scavenger) || 0))) +
       makeMetricRow("Pred Pressure", (Number(foodWeb.predatorPressure) || 0).toFixed(2))
     ),
+    makeDashboardCard("Environment", "status",
+      makePrimaryMetric("Atmosphere", stats && stats.environment.oxygen !== null ? stats.environment.oxygen.toFixed(1) + "% O2" : "-", stats && stats.environment.temperature !== null ? stats.environment.temperature.toFixed(1) + " C" : "-") +
+      makeMetricRow("CO2", stats && stats.environment.carbonDioxide !== null ? Math.round(stats.environment.carbonDioxide) + " ppm" : "-") +
+      makeMetricRow("Ozone", stats && stats.environment.ozone !== null ? stats.environment.ozone.toFixed(2) : "-") +
+      makeMetricRow("Volcanism", stats && stats.environment.volcanic !== null ? stats.environment.volcanic.toFixed(2) : "-") +
+      makeMetricRow("Vents", stats ? stats.environment.hydrothermalVents : 0)
+    ),
     makeDashboardCard("Selection", "biology",
       makePrimaryMetric("Terrain", (Number(terrainPressure.pressure) || 0).toFixed(2), terrainPressure.topDriver || "none") +
       makeMetricRow("Trait", terrainPressure.topTrait || "-") +
       makeMetricRow("Mismatch", (Number(terrainPressure.mismatch) || 0).toFixed(2)) +
       makeMetricRow("Isolation", (Number(terrainPressure.isolation) || 0).toFixed(2)) +
       makeMetricRow("Populations", Math.max(0, Math.round(Number(terrainPressure.highPressurePopulations) || 0)) + "/" + Math.max(0, Math.round(Number(terrainPressure.populationCount) || 0)))
+    ),
+    makeDashboardCard("Traits", "biology",
+      makePrimaryMetric("Distribution", stats ? stats.traitDistribution.length + " traits" : "0 traits", "population means") +
+      makeMetricRow("Body", getDashboardTraitMetric(stats, "bodySize")) +
+      makeMetricRow("Carnivory", getDashboardTraitMetric(stats, "carnivory")) +
+      makeMetricRow("Mind", getDashboardTraitMetric(stats, "intelligence")) +
+      makeMetricRow("Thermal", getDashboardTraitMetric(stats, "thermalTolerance"))
     ),
     makeDashboardCard("Species", "biology",
       makePrimaryMetric("Active", Math.max(0, Math.round(Number(speciesSummary.activeCount) || 0)), Math.max(0, Math.round(Number(speciesSummary.totalCount) || 0)) + " total") +

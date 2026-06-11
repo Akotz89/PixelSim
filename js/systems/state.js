@@ -102,6 +102,7 @@ const world = {
     populationTraitSummary: null,
     lineageSummary: null,
     lineageSummaryText: "LINEAGES: -",
+    statisticsDashboard: null,
     eventLog: [],
     timelineEvents: [],
     timelineFilter: "all",

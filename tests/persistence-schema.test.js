@@ -256,6 +256,7 @@ const runtimeOnlyWorldKeys = new Set([
   "populationTraitSummary",
   "lineageSummary",
   "lineageSummaryText",
+  "statisticsDashboard",
   "timelineFilter",
   "selectedTimelineEvent",
   "activeObservationOverlay",
