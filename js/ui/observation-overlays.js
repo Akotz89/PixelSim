@@ -32,6 +32,13 @@ PS.render.overlays = PS.render.overlays || {
       shortcut: "O"
     },
     {
+      id: "observation.selection",
+      semantic: "Selection",
+      blendMode: "screen",
+      alpha: 0.72,
+      shortcut: "O"
+    },
+    {
       id: "observation.atmosphere",
       semantic: "Atmosphere",
       blendMode: "screen",
@@ -77,6 +84,7 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     "observation.population",
     "observation.resources",
     "observation.foodweb",
+    "observation.selection",
     "observation.atmosphere",
     "observation.microbial"
   ],
@@ -180,6 +188,17 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
 
       var pressure = clamp(predators / Math.max(1, prey), 0, 1);
       return this.makeSample(255 * pressure, 210 - pressure * 90, 70 + prey * 8, Math.min(230, (predators + prey) * 34));
+    }
+
+    if (activeId === "observation.selection") {
+      var sample = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function"
+        ? PS.sim.terrainPressure.getSample(tileX, tileY)
+        : null;
+      var selection = sample ? clamp(Number(sample.pressure) || 0, 0, 1) : 0;
+      var isolation = sample ? clamp(Number(sample.isolation) || 0, 0, 1) : 0;
+      var innovation = sample ? clamp(Number(sample.innovationPressure) || 0, 0, 1) : 0;
+
+      return this.makeSample(90 + selection * 165, 110 + innovation * 120, 210 - isolation * 90, 40 + Math.max(selection, isolation) * 185);
     }
 
     if (activeId === "observation.atmosphere") {

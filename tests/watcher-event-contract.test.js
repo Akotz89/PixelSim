@@ -57,7 +57,7 @@ PS.ui = {
 };
 
 var contract = PS.events.getMilestoneContract();
-["type", "label", "detail", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher"].forEach(function(field) {
+["type", "label", "detail", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher", "terrainDriver", "trait", "lineageId", "speciesId", "populationId", "pressure", "effect"].forEach(function(field) {
   assert.ok(contract.payloadFields.indexOf(field) >= 0, "contract should include " + field);
 });
 ["eventLog", "timeline", "notification", "spotlight", "overlays"].forEach(function(route) {
@@ -74,6 +74,13 @@ var timelineOnly = PS.events.emitMilestone({
   source: "geology",
   severity: "major",
   inspectTarget: { type: "tile", x: 4, y: 5 },
+  terrainDriver: "mountain",
+  trait: "thermalTolerance",
+  lineageId: 7,
+  speciesId: 8,
+  populationId: 9,
+  pressure: 0.73,
+  effect: "survival-cost",
   watcher: {
     eventLog: false,
     timeline: true,
@@ -87,6 +94,13 @@ assert.strictEqual(timelineOnly.payload.category, "geology", "category should in
 assert.strictEqual(world.eventLog.length, 0, "eventLog route should be independently optional");
 assert.strictEqual(world.timelineEvents.length, 1, "timeline route should ingest event independently");
 assert.strictEqual(world.timelineEvents[0].category, "geology", "timeline event should preserve category");
+assert.strictEqual(world.timelineEvents[0].terrainDriver, "mountain", "timeline event should preserve terrain driver");
+assert.strictEqual(world.timelineEvents[0].trait, "thermalTolerance", "timeline event should preserve affected trait");
+assert.strictEqual(world.timelineEvents[0].lineageId, 7, "timeline event should preserve lineage id");
+assert.strictEqual(world.timelineEvents[0].speciesId, 8, "timeline event should preserve species id");
+assert.strictEqual(world.timelineEvents[0].populationId, 9, "timeline event should preserve population id");
+assert.strictEqual(world.timelineEvents[0].pressure, 0.73, "timeline event should preserve pressure");
+assert.strictEqual(world.timelineEvents[0].effect, "survival-cost", "timeline event should preserve effect");
 assert.strictEqual(notifications.length, 1, "notification route should use notification UI");
 assert.strictEqual(focusedTiles[0].x, 4, "spotlight route should focus inspect target tile x");
 assert.strictEqual(focusedTiles[0].y, 5, "spotlight route should focus inspect target tile y");

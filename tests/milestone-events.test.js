@@ -100,5 +100,24 @@ assert.ok(emittedPayloads.every(function(payload) {
   return payload.type && payload.details;
 }), "every emitted milestone should include type and details");
 
+var terrainPayload = PS.events.emitMilestone({
+  type: "biology.terrain-pressure.test",
+  label: "Terrain test",
+  detail: "desert pressure",
+  source: "biology",
+  terrainDriver: "desert",
+  trait: "waterDependency",
+  lineageId: 3,
+  speciesId: 4,
+  populationId: 5,
+  pressure: 0.91,
+  effect: "adaptation-pressure"
+}).payload;
+
+assert.strictEqual(terrainPayload.terrainDriver, "desert", "milestone payload should preserve terrain driver");
+assert.strictEqual(terrainPayload.trait, "waterDependency", "milestone payload should preserve affected terrain trait");
+assert.strictEqual(terrainPayload.populationId, 5, "milestone payload should preserve population id");
+assert.strictEqual(world.timelineEvents[world.timelineEvents.length - 1].effect, "adaptation-pressure", "timeline should preserve terrain event effect");
+
 console.log("milestone event checks passed");
 `, context);

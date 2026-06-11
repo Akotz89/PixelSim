@@ -9,14 +9,26 @@ function moveTowardFood(organism, food) {
 }
 
 function getTerrainAffinityTargetValue(x, y) {
+  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function") {
+    return PS.sim.terrainPressure.getSample(x, y).target.terrainAffinity;
+  }
+
   return isFertile(x, y) ? 1 : 0;
 }
 
 function getTerrainMismatchForTraits(traits, x, y) {
+  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getMismatchSample === "function") {
+    return PS.sim.terrainPressure.getMismatchSample(traits, x, y).mismatch;
+  }
+
   return Math.abs(traits.terrainAffinity - getTerrainAffinityTargetValue(x, y));
 }
 
 function getTerrainEnergyCost(traits, x, y) {
+  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getEnergyCost === "function") {
+    return PS.sim.terrainPressure.getEnergyCost(traits, x, y);
+  }
+
   return getTerrainMismatchForTraits(traits, x, y) * CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
 }
 
@@ -252,10 +264,19 @@ function getReproductionScarcityPressure() {
   return clamp(deficit / Math.max(1, targetFood), 0, 1);
 }
 
-function getResourceAdjustedReproductionEnergy(traits, scarcityPressure) {
+function getResourceAdjustedReproductionEnergy(traits, scarcityPressure, organism) {
   var multiplier = 1 + clamp(scarcityPressure, 0, 1) * (
     CONFIG.REPRODUCTION_SCARCITY_MAX_ENERGY_MULTIPLIER - 1
   );
+
+  if (
+    organism &&
+    PS.sim &&
+    PS.sim.terrainPressure &&
+    typeof PS.sim.terrainPressure.getReproductionMultiplier === "function"
+  ) {
+    multiplier *= PS.sim.terrainPressure.getReproductionMultiplier(traits, organism.x, organism.y);
+  }
 
   return traits.reproductionEnergy * multiplier;
 }
@@ -268,7 +289,7 @@ function reproduceIfReady(organism) {
   }
 
   var scarcityPressure = getReproductionScarcityPressure();
-  var reproductionEnergy = getResourceAdjustedReproductionEnergy(traits, scarcityPressure);
+  var reproductionEnergy = getResourceAdjustedReproductionEnergy(traits, scarcityPressure, organism);
 
   world.reproductionScarcityPressure = Math.max(
     Number(world.reproductionScarcityPressure) || 0,
@@ -407,8 +428,15 @@ function updatePooledOrganismsForTick(organismsAtStartOfTick) {
       energy -= arrays.metabolism[pooledIndex] * getBodySizeMetabolismMultiplier({
         bodySize: arrays.bodySize[pooledIndex]
       });
-      energy -= Math.abs(arrays.terrainAffinity[pooledIndex] - getTerrainAffinityTargetValue(x, y)) *
-        CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
+      energy -= getTerrainEnergyCost({
+        terrainAffinity: arrays.terrainAffinity[pooledIndex],
+        waterDependency: arrays.waterDependency[pooledIndex],
+        thermalTolerance: arrays.thermalTolerance[pooledIndex],
+        camouflage: arrays.camouflage[pooledIndex],
+        movementTendency: arrays.movementTendency[pooledIndex],
+        reproductionEnergy: arrays.reproductionEnergy[pooledIndex],
+        carnivory: arrays.carnivory[pooledIndex]
+      }, x, y);
     }
 
     var vision = arrays.vision[pooledIndex];

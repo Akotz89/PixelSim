@@ -18,7 +18,27 @@ PS.events.categories = {
   extinction: { label: "Extinction", sources: ["extinction", "lifecycle"] }
 };
 PS.events.contract = {
-  payloadFields: ["type", "label", "detail", "details", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher"],
+  payloadFields: [
+    "type",
+    "label",
+    "detail",
+    "details",
+    "tick",
+    "deepTime",
+    "location",
+    "source",
+    "category",
+    "severity",
+    "inspectTarget",
+    "watcher",
+    "terrainDriver",
+    "trait",
+    "lineageId",
+    "speciesId",
+    "populationId",
+    "pressure",
+    "effect"
+  ],
   watcherRoutes: ["eventLog", "timeline", "notification", "spotlight", "overlays"],
   timelineModel: "world.timelineEvents",
   eventLogModel: "world.eventLog"
@@ -208,6 +228,13 @@ PS.events.normalizeMilestonePayload = function (payload) {
     category: PS.events.inferCategory(payload),
     severity: String(payload.severity || "info"),
     inspectTarget: payload.inspectTarget || null,
+    terrainDriver: payload.terrainDriver == null ? null : String(payload.terrainDriver),
+    trait: payload.trait == null ? null : String(payload.trait),
+    lineageId: payload.lineageId == null ? null : Math.max(0, Math.round(Number(payload.lineageId) || 0)),
+    speciesId: payload.speciesId == null ? null : Math.max(0, Math.round(Number(payload.speciesId) || 0)),
+    populationId: payload.populationId == null ? null : Math.max(0, Math.round(Number(payload.populationId) || 0)),
+    pressure: payload.pressure == null ? null : Math.max(0, Math.min(1, Number(payload.pressure) || 0)),
+    effect: payload.effect == null ? null : String(payload.effect),
     watcher: {
       eventLog: payload.watcher && payload.watcher.eventLog === false ? false : true,
       timeline: payload.watcher && payload.watcher.timeline === false ? false : true,
@@ -237,6 +264,13 @@ PS.events.makeMilestoneLogEntry = function(payload) {
     source: payload.source,
     category: payload.category,
     severity: payload.severity,
+    terrainDriver: payload.terrainDriver,
+    trait: payload.trait,
+    lineageId: payload.lineageId,
+    speciesId: payload.speciesId,
+    populationId: payload.populationId,
+    pressure: payload.pressure,
+    effect: payload.effect,
     inspectTarget: payload.inspectTarget
   };
 };

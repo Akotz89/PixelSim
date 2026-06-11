@@ -48,6 +48,7 @@ const source = [
   "js/sim/food.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
+  "js/sim/terrain-pressure.js",
   "js/sim/food-web.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
@@ -106,6 +107,14 @@ function isFertile() {
   return true;
 }
 
+function getTileIndex(x, y) {
+  return getClampedWorldY(y) * WORLD_WIDTH + getWrappedWorldX(x);
+}
+
+function getPlanetTile(x, y) {
+  return world.planetTiles[getTileIndex(x, y)] || null;
+}
+
 PS.config.pools.maxOrganisms = 8;
 PS.config.pools.maxFoodParticles = 8;
 PS.pools.reset();
@@ -117,6 +126,23 @@ world.foodPositions = {};
 world.foodBuckets = {};
 world.organismBuckets = {};
 world.organismsByLineage = {};
+world.planetTiles = new Array(WORLD_WIDTH * WORLD_HEIGHT);
+for (var tileY = 0; tileY < WORLD_HEIGHT; tileY++) {
+  for (var tileX = 0; tileX < WORLD_WIDTH; tileX++) {
+    world.planetTiles[getTileIndex(tileX, tileY)] = {
+      biome: tileX < 8 ? "jungle forest" : "temperate grassland",
+      elevation: 0.35,
+      fertilityScore: 0.8,
+      coastFactor: 0,
+      shallowWater: 0,
+      shelfStrength: 0,
+      riverStrength: tileX < 8 ? 0.6 : 0,
+      slope: 0,
+      latitude: getPlanetLatitudeForTile(tileY),
+      longitude: getPlanetLongitudeForTile(tileX)
+    };
+  }
+}
 world.biologyPopulations = [];
 world.biologyPopulationById = {};
 world.biologyRepresentatives = [];
@@ -169,6 +195,9 @@ assert.ok(Math.abs(parentPopulation.traitMean.intelligence - 0.6) < 0.0001, "agg
 assert.ok(parentPopulation.traitVariance.sociality > 0, "aggregate population should include sociality variance");
 assert.ok(parentPopulation.traitMean.carnivory > 0, "aggregate population should include carnivory means");
 assert.ok(parentPopulation.traitMean.thermalTolerance >= 0, "aggregate population should include environment trait means");
+assert.ok(parentPopulation.terrainPressure, "aggregate population should expose terrain pressure context");
+assert.strictEqual(parentPopulation.terrainPressure.terrainDriver, "forest", "aggregate terrain pressure should expose dominant driver");
+assert.ok(parentPopulation.terrainPressure.affectedTraits.indexOf("camouflage") >= 0, "aggregate terrain pressure should expose affected traits");
 assert.strictEqual(parentPopulation.foodWeb.role, "herbivore", "aggregate population should expose dominant trophic role");
 assert.ok(parentPopulation.foodWeb.trophicBalance >= 0, "aggregate population should expose trophic balance metric");
 assert.ok(world.foodWebSummary.roles.herbivore >= 2, "world food-web summary should count population roles");

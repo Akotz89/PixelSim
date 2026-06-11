@@ -187,6 +187,8 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Trophic Role", foodWeb ? foodWeb.role : "-"));
     detailChips.push(makeInspectChip("Food Web", foodWeb ? "balance " + foodWeb.trophicBalance + " predator " + foodWeb.predatorPressure.toFixed(2) + " " + foodWeb.recoveryTrend : "-"));
     detailChips.push(makeInspectChip("Agg Pressure", pressure ? "food " + pressure.food + " scarcity " + pressure.scarcity.toFixed(2) + " terrain " + pressure.terrain.toFixed(2) : "-"));
+    detailChips.push(makeInspectChip("Terrain Driver", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.terrainDriver : "-"));
+    detailChips.push(makeInspectChip("Selection", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.dominantTrait + " p" + populationRecord.terrainPressure.pressure.toFixed(2) + " iso " + populationRecord.terrainPressure.isolation.toFixed(2) : "-"));
     detailChips.push(makeInspectChip("Org Unit", "~" + Math.max(1, Math.round(Number(CONFIG.ORGANISM_POPULATION_UNIT) || 1)).toLocaleString()));
     detailChips.push(makeInspectChip("Org Energy", organism.energy));
     detailChips.push(makeInspectChip("Org Age", Math.round(organism.age * Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0)).toLocaleString() + " days"));
