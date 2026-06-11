@@ -205,8 +205,11 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
       var selection = sample ? clamp(Number(sample.pressure) || 0, 0, 1) : 0;
       var isolation = sample ? clamp(Number(sample.isolation) || 0, 0, 1) : 0;
       var innovation = sample ? clamp(Number(sample.innovationPressure) || 0, 0, 1) : 0;
+      var lineage = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getHighlightAt === "function"
+        ? PS.sim.lineageTracking.getHighlightAt(tileX, tileY)
+        : 0;
 
-      return this.makeSample(90 + selection * 165, 110 + innovation * 120, 210 - isolation * 90, 40 + Math.max(selection, isolation) * 185);
+      return this.makeSample(90 + selection * 120 + lineage * 45, 110 + innovation * 90 + lineage * 130, 210 - isolation * 80, 40 + Math.max(selection, isolation, lineage) * 185);
     }
 
     if (activeId === "observation.extinction") {

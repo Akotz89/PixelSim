@@ -156,6 +156,7 @@ const world = {
     biologyPopulationById: {},
     biologyRepresentatives: [],
     biologyRepresentativeById: {},
+    trackedLineage: null,
     abiogenesis: null,
     microbial: null,
     microbialReady: false
@@ -256,6 +257,7 @@ defineWorldSubsystemAliases(world, "bio", [
   { group: "biology", key: "extinctionEvents" },
   { group: "biology", key: "biologyPopulations" },
   { group: "biology", key: "biologyRepresentatives" },
+  { group: "biology", key: "trackedLineage" },
   { group: "biology", key: "abiogenesis" },
   { group: "biology", key: "microbial" },
   { group: "biology", key: "microbialReady" }

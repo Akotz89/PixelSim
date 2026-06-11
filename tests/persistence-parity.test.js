@@ -220,6 +220,28 @@ const root = path.resolve(__dirname, "..");
         lastSeenTick: 4240
       }];
       world.biologyRepresentativeById = { "19": world.biologyRepresentatives[0] };
+      world.trackedLineage = {
+        type: "representative",
+        lineageId: 7,
+        speciesId: 13,
+        parentSpeciesId: 5,
+        populationId: 17,
+        representativeId: 19,
+        label: "S13 / L7",
+        selectedTick: 4210,
+        lastUpdatedTick: 4240,
+        pinned: true,
+        stale: false,
+        extinct: false,
+        history: [{
+          tick: 4238,
+          population: 44,
+          traits: { bodySize: 1.4 },
+          rangeCells: 1,
+          status: "active"
+        }],
+        recentEvents: []
+      };
       if (!Array.isArray(world.organisms) || world.organisms.length === 0) {
         const seededOrganism = makeOrganism(12, 9, 7);
         if (seededOrganism) {
@@ -500,6 +522,7 @@ const root = path.resolve(__dirname, "..");
       biologyPopulationByIdKeys: Object.keys(world.biologyPopulationById),
       biologyRepresentatives: world.biologyRepresentatives.slice(),
       biologyRepresentativeByIdKeys: Object.keys(world.biologyRepresentativeById),
+      trackedLineage: world.trackedLineage ? Object.assign({}, world.trackedLineage) : null,
       microbial: Object.assign({}, world.microbial, {
         fields: Object.assign({}, world.microbial && world.microbial.fields),
         populations: world.microbial && world.microbial.populations ? world.microbial.populations.slice() : [],
@@ -609,6 +632,10 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.saveData.biologyRepresentatives[0].id, 19, "biology representatives should serialize");
   assert.strictEqual(evidence.importedEvidence.biologyRepresentatives[0].target.type, "food", "biology representatives should restore target data");
   assert.deepStrictEqual(evidence.importedEvidence.biologyRepresentativeByIdKeys, ["19"], "biology representative index should rebuild");
+  assert.strictEqual(evidence.saveData.trackedLineage.speciesId, 13, "tracked lineage should serialize");
+  assert.strictEqual(evidence.saveData.subsystems.bio.trackedLineage.lineageId, 7, "subsystem bio save should mirror tracked lineage");
+  assert.strictEqual(evidence.importedEvidence.trackedLineage.pinned, true, "tracked lineage pin should restore");
+  assert.strictEqual(evidence.importedEvidence.trackedLineage.status, "active", "tracked lineage status should refresh after restore");
   assert.strictEqual(evidence.saveData.organisms[0].speciesId, 13, "organism species id should serialize");
   assert.strictEqual(evidence.saveData.organisms[0].populationId, 17, "organism population id should serialize");
   assert.strictEqual(evidence.saveData.organisms[0].representativeId, 19, "organism representative id should serialize");

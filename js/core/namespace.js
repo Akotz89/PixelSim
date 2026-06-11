@@ -136,6 +136,7 @@ PS.core.manifest = [
   "js/sim/evolution.js",
   "js/sim/organisms.js",
   "js/sim/representatives.js",
+  "js/sim/lineage-tracking.js",
   "js/sim/settlements-state.js",
   "js/sim/settlements-growth.js",
   "js/sim/civilizations-orbital.js",

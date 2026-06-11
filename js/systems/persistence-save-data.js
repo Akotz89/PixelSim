@@ -84,6 +84,7 @@ function createWorldSubsystemSaveData() {
       extinctionEvents: copyLayerStateForSave(Array.isArray(world.extinctionEvents) ? world.extinctionEvents : []),
       biologyPopulations: copyLayerStateForSave(Array.isArray(world.biologyPopulations) ? world.biologyPopulations : []),
       biologyRepresentatives: copyLayerStateForSave(Array.isArray(world.biologyRepresentatives) ? world.biologyRepresentatives : []),
+      trackedLineage: copyLayerStateForSave(world.trackedLineage),
       abiogenesis: copyLayerStateForSave(world.abiogenesis),
       microbial: copyLayerStateForSave(world.microbial),
       microbialReady: Boolean(world.microbialReady)
@@ -211,6 +212,7 @@ function createWorldSaveData() {
     biologyRepresentatives: copyLayerStateForSave(
       Array.isArray(world.biologyRepresentatives) ? world.biologyRepresentatives : []
     ),
+    trackedLineage: copyLayerStateForSave(world.trackedLineage),
     species: copyLayerStateForSave(Array.isArray(world.species) ? world.species : []),
     speciationEvents: copyLayerStateForSave(Array.isArray(world.speciationEvents) ? world.speciationEvents : []),
     massExtinction: copyLayerStateForSave(world.massExtinction),

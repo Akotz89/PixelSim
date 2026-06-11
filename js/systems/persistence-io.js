@@ -37,6 +37,7 @@ function applySubsystemSaveFallbacks(saveData) {
   fallback("extinctionEvents", bio.extinctionEvents);
   fallback("biologyPopulations", bio.biologyPopulations);
   fallback("biologyRepresentatives", bio.biologyRepresentatives);
+  fallback("trackedLineage", bio.trackedLineage);
   fallback("abiogenesis", bio.abiogenesis);
   fallback("microbial", bio.microbial);
   fallback("microbialReady", bio.microbialReady);
@@ -161,6 +162,7 @@ function applyWorldSaveData(saveData) {
   world.microbial = saveData.microbial ? clonePersistencePlainValue(saveData.microbial) : null;
   world.microbialReady = Boolean(saveData.microbialReady || (world.microbial && world.microbial.totalDensity > 0.1));
   restoreBiologyAggregateState(saveData);
+  world.trackedLineage = saveData.trackedLineage ? clonePersistencePlainValue(saveData.trackedLineage) : null;
   world.lineages = restoreLineages(saveData.lineages);
   world.species = Array.isArray(saveData.species) ? clonePersistencePlainValue(saveData.species) : [];
   world.speciesById = {};
@@ -216,6 +218,10 @@ function applyWorldSaveData(saveData) {
   world.timelineEvents = restoreSimulationEvents(saveData.timelineEvents, 0);
   world.milestonesReached = saveData.milestonesReached ? clonePersistencePlainValue(saveData.milestonesReached) : {};
   world.ecosystemSummary = null;
+
+  if (PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
+    PS.sim.lineageTracking.update(true);
+  }
 
   if (typeof refreshEcosystemSummary === "function") {
     refreshEcosystemSummary();

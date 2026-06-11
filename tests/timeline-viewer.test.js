@@ -31,6 +31,7 @@ function makeButton(filter) {
 const allButton = makeButton("all");
 const extinctionButton = makeButton("extinction");
 const speciationButton = makeButton("speciation");
+const lineageButton = makeButton("lineage");
 const civilizationButton = makeButton("civilization");
 
 const context = {
@@ -39,7 +40,19 @@ const context = {
   focusedLocations: [],
   inspectedTiles: [],
   PS: {
-    ui: {}
+    ui: {},
+    sim: {
+      lineageTracking: {
+        selected: [],
+        eventMatches(event) {
+          return event.lineageId === 7 || event.speciesId === 13;
+        },
+        select(event) {
+          this.selected.push(event);
+          return event;
+        }
+      }
+    }
   },
   world: {
     timelineFilter: "all",
@@ -62,6 +75,8 @@ const context = {
         tick: 10,
         deepTime: 3000,
         category: "biology",
+        lineageId: 7,
+        speciesId: 13,
         location: { latitude: 12.5, longitude: -44 }
       },
       {
@@ -74,7 +89,7 @@ const context = {
       }
     ]
   },
-  timelineFilterButtons: [allButton, extinctionButton, speciationButton, civilizationButton],
+  timelineFilterButtons: [allButton, extinctionButton, speciationButton, lineageButton, civilizationButton],
   timelineList: {
     className: "",
     textContent: "",
@@ -127,7 +142,13 @@ events = context.PS.ui.timeline.getFilteredEvents();
 assert.strictEqual(events.length, 1, "civilization filter should match event category");
 assert.strictEqual(events[0].type, "civilization.first-city", "civilization filter should keep city event");
 
-context.PS.ui.timeline.focusEvent(events[0]);
+context.world.timelineFilter = "lineage";
+events = context.PS.ui.timeline.getFilteredEvents();
+assert.strictEqual(events.length, 1, "lineage filter should use selected lineage matcher");
+assert.strictEqual(events[0].type, "biology.speciation", "lineage filter should keep matching species event");
+
+context.world.timelineFilter = "civilization";
+context.PS.ui.timeline.focusEvent(context.PS.ui.timeline.getFilteredEvents()[0]);
 assert.deepStrictEqual(context.inspectedTiles[0], { x: 5, y: 6 }, "tile event should inspect and focus target tile");
 assert.strictEqual(context.world.selectedTimelineEvent.tick, 30, "selected event should retain event time");
 
@@ -135,5 +156,6 @@ context.world.timelineFilter = "speciation";
 context.PS.ui.timeline.focusEvent(context.PS.ui.timeline.getFilteredEvents()[0]);
 assert.deepStrictEqual(context.focusedLocations[0], { latitude: 12.5, longitude: -44 }, "location event should focus lat/lon");
 assert.strictEqual(context.world.needsRender, true, "location focus should request render");
+assert.strictEqual(context.PS.sim.lineageTracking.selected.length, 1, "timeline focus should select matching lineage target");
 
 console.log("timeline viewer checks passed");

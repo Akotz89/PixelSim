@@ -133,10 +133,19 @@ function updateTraitSummary() {
 
 function updateLineageSummary() {
   var summary = world.lineageSummary || null;
+  var trackedSummary = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getSummary === "function"
+    ? PS.sim.lineageTracking.getSummary()
+    : null;
 
   if (!summary) {
-    setElementClass(lineageSummaryText, "");
-    setElementText(lineageSummaryText, world.lineageSummaryText || "LINEAGES: -");
+    if (!trackedSummary) {
+      setElementClass(lineageSummaryText, "");
+      setElementText(lineageSummaryText, world.lineageSummaryText || "LINEAGES: -");
+      return;
+    }
+
+    setElementClass(lineageSummaryText, "summary-grid lineage-summary-grid");
+    setElementHtml(lineageSummaryText, makeTrackedLineageChips(trackedSummary).join(""));
     return;
   }
 
@@ -159,8 +168,30 @@ function updateLineageSummary() {
     ));
   }
 
+  if (trackedSummary) {
+    chips = chips.concat(makeTrackedLineageChips(trackedSummary));
+  }
+
   setElementClass(lineageSummaryText, "summary-grid lineage-summary-grid");
   setElementHtml(lineageSummaryText, chips.join(""));
+}
+
+function makeTrackedLineageChips(trackedSummary) {
+  var recent = trackedSummary.recentEvents && trackedSummary.recentEvents.length > 0
+    ? trackedSummary.recentEvents[trackedSummary.recentEvents.length - 1].label
+    : "-";
+
+  return [
+    makeSummaryChip("Pinned", trackedSummary.pinned ? trackedSummary.label : "selected " + trackedSummary.label),
+    makeSummaryChip("Status", trackedSummary.status + " / " + trackedSummary.trend),
+    makeSummaryChip("Parent", trackedSummary.parentSpeciesId > 0 ? "S" + trackedSummary.parentSpeciesId : "founder"),
+    makeSummaryChip("Population", trackedSummary.population),
+    makeSummaryChip("Range", trackedSummary.range),
+    makeSummaryChip("Morphology", trackedSummary.morphology),
+    makeSummaryChip("Traits", trackedSummary.traits.join(", ")),
+    makeSummaryChip("Risk", "D" + Math.round(trackedSummary.divergenceRisk * 100) + "% E" + Math.round(trackedSummary.extinctionRisk * 100) + "%"),
+    makeSummaryChip("Recent", recent)
+  ];
 }
 
 function getSettlementSummary() {

@@ -41,6 +41,12 @@ PS.ui.timeline = (function() {
       return true;
     }
 
+    if (normalizedFilter === "lineage") {
+      return PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.eventMatches === "function"
+        ? PS.sim.lineageTracking.eventMatches(event)
+        : false;
+    }
+
     return type.indexOf(normalizedFilter) >= 0 || category === normalizedFilter;
   }
 
@@ -148,6 +154,15 @@ PS.ui.timeline = (function() {
       tick: Number(event.tick) || 0,
       deepTime: Number(event.deepTime) || 0
     };
+
+    if (
+      (event.lineageId || event.speciesId || (event.id && String(event.type || "").indexOf("speciation") >= 0)) &&
+      PS.sim &&
+      PS.sim.lineageTracking &&
+      typeof PS.sim.lineageTracking.select === "function"
+    ) {
+      PS.sim.lineageTracking.select(event, { pinned: true });
+    }
 
     if (event.inspectTarget && event.inspectTarget.type === "tile" && typeof inspectTile === "function") {
       inspectTile(event.inspectTarget.x, event.inspectTarget.y, true);

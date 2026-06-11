@@ -232,6 +232,9 @@ function seedWorld() {
   if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function") {
     PS.sim.representatives.refresh();
   }
+  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
+    PS.sim.lineageTracking.update(true);
+  }
 
   refreshEcosystemSummary();
   syncLifecycleState();
@@ -296,6 +299,9 @@ function updateWorld(dt) {
 
   if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function" && shouldRefreshSummaries) {
     PS.sim.representatives.refresh();
+  }
+  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function" && shouldRefreshSummaries) {
+    PS.sim.lineageTracking.update(false);
   }
 
   // Update environmental modifiers periodically (AZR-493)

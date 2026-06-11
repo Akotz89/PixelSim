@@ -89,7 +89,11 @@ function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspectedEntity
     PS.sim.representatives &&
     PS.sim.representatives.select
   ) {
-    PS.sim.representatives.select(world.inspectedEntity.representativeId);
+    var representative = PS.sim.representatives.select(world.inspectedEntity.representativeId);
+
+    if (representative && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.selectFromRepresentative === "function") {
+      PS.sim.lineageTracking.selectFromRepresentative(representative, { pinned: true });
+    }
   }
 
   if (shouldFocus !== false && !isPlanetLocalView()) {
