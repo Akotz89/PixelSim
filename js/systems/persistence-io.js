@@ -31,6 +31,8 @@ function applySubsystemSaveFallbacks(saveData) {
   fallback("organisms", bio.organisms);
   fallback("food", bio.food);
   fallback("lineages", bio.lineages);
+  fallback("species", bio.species);
+  fallback("speciationEvents", bio.speciationEvents);
   fallback("biologyPopulations", bio.biologyPopulations);
   fallback("biologyRepresentatives", bio.biologyRepresentatives);
   fallback("abiogenesis", bio.abiogenesis);
@@ -158,6 +160,16 @@ function applyWorldSaveData(saveData) {
   world.microbialReady = Boolean(saveData.microbialReady || (world.microbial && world.microbial.totalDensity > 0.1));
   restoreBiologyAggregateState(saveData);
   world.lineages = restoreLineages(saveData.lineages);
+  world.species = Array.isArray(saveData.species) ? clonePersistencePlainValue(saveData.species) : [];
+  world.speciesById = {};
+  for (var speciesIndex = 0; speciesIndex < world.species.length; speciesIndex++) {
+    var speciesRecord = world.species[speciesIndex] || {};
+    var speciesId = Math.max(1, Math.round(restoreNumber(speciesRecord.id, speciesIndex + 1)));
+    speciesRecord.id = speciesId;
+    world.speciesById[String(speciesId)] = speciesRecord;
+    world.nextSpeciesId = Math.max(world.nextSpeciesId, speciesId + 1);
+  }
+  world.speciationEvents = Array.isArray(saveData.speciationEvents) ? clonePersistencePlainValue(saveData.speciationEvents) : [];
   world.settlements = restoreSettlements(saveData.settlements);
   world.settlementRoutes = restoreSettlementRoutes(saveData.settlementRoutes);
   rebuildSettlementIndexes();

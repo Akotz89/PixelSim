@@ -212,6 +212,7 @@ function makeBiologyPopulation(organism) {
     id: populationId,
     speciesId: Math.max(1, Math.round(Number(organism.speciesId) || lineageId)),
     lineageId: lineageId,
+    parentSpeciesId: Math.max(0, Math.round(Number(organism.parentSpeciesId) || 0)),
     parentPopulationId: Math.max(0, Math.round(Number(organism.parentPopulationId) || 0)),
     count: 0,
     biomass: 0,
@@ -630,6 +631,15 @@ function updatePopulationFromOrganisms(population, organisms, signature) {
   population.terrainPressure = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.summarizePopulation === "function"
     ? PS.sim.terrainPressure.summarizePopulation(organisms, traitsList)
     : null;
+  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.evaluatePopulation === "function") {
+    PS.sim.speciation.evaluatePopulation(population, organisms, traitsList);
+    for (var speciesIndex = 0; speciesIndex < representativeIds.length; speciesIndex++) {
+      var representative = getBiologyRepresentativeById(representativeIds[speciesIndex]);
+      if (representative) {
+        representative.speciesId = population.speciesId;
+      }
+    }
+  }
   population.foodWeb = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getPopulationMetrics === "function"
     ? PS.sim.foodWeb.getPopulationMetrics(organisms, traitsList, population.pressure)
     : null;
@@ -746,6 +756,9 @@ function refreshBiologyRepresentatives() {
     if (typeof PS.sim.terrainPressure.emitMilestones === "function") {
       PS.sim.terrainPressure.emitMilestones(world.terrainPressureSummary);
     }
+  }
+  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.refreshSummary === "function") {
+    PS.sim.speciation.refreshSummary(world.biologyPopulations);
   }
   return world.biologyPopulations;
 }

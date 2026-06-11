@@ -262,6 +262,8 @@ const runtimeOnlyWorldKeys = new Set([
   "overlayPerformance",
   "spotlightEvent",
   "spotlightState",
+  "speciesById",
+  "speciesSummary",
   "biologyPopulationById",
   "biologyRepresentativeById",
   "settlementsById",

@@ -119,5 +119,26 @@ assert.strictEqual(terrainPayload.trait, "waterDependency", "milestone payload s
 assert.strictEqual(terrainPayload.populationId, 5, "milestone payload should preserve population id");
 assert.strictEqual(world.timelineEvents[world.timelineEvents.length - 1].effect, "adaptation-pressure", "timeline should preserve terrain event effect");
 
+var speciesPayload = PS.events.emitMilestone({
+  type: "biology.speciation",
+  label: "Speciation",
+  detail: "S8 split from S3",
+  source: "biology",
+  id: 8,
+  parentId: 3,
+  lineageId: 2,
+  speciesId: 8,
+  populationId: 11,
+  traits: { camouflage: 0.75 },
+  cause: "trait-divergence",
+  divergence: 0.66,
+  effect: "species-split"
+}).payload;
+
+assert.strictEqual(speciesPayload.id, 8, "speciation payload should preserve new species id");
+assert.strictEqual(speciesPayload.parentId, 3, "speciation payload should preserve parent species id");
+assert.strictEqual(speciesPayload.cause, "trait-divergence", "speciation payload should preserve cause");
+assert.strictEqual(speciesPayload.divergence, 0.66, "speciation payload should preserve divergence");
+
 console.log("milestone event checks passed");
 `, context);

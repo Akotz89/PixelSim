@@ -175,11 +175,16 @@ function updateInspectPanel() {
     var populationRecord = representativeContext ? representativeContext.population : null;
     var pressure = populationRecord && populationRecord.pressure ? populationRecord.pressure : null;
     var foodWeb = populationRecord && populationRecord.foodWeb ? populationRecord.foodWeb : null;
+    var speciesRecord = PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function"
+      ? PS.sim.speciation.getSpecies(organism.speciesId)
+      : null;
 
     detailChips.push(makeInspectChip("Organism", "L" + ensureOrganismLineage(organism) + parentText));
     detailChips.push(makeInspectChip("Rep ID", representativeRecord ? "R" + representativeRecord.id : "-"));
     detailChips.push(makeInspectChip("Population", populationRecord ? "P" + populationRecord.id + " count " + populationRecord.count : "-"));
     detailChips.push(makeInspectChip("Species", organism.speciesId ? "S" + organism.speciesId : "-"));
+    detailChips.push(makeInspectChip("Parent Species", speciesRecord && speciesRecord.parentId ? "S" + speciesRecord.parentId : "-"));
+    detailChips.push(makeInspectChip("Speciation", populationRecord && populationRecord.speciation ? populationRecord.speciation.cause + " d" + populationRecord.speciation.divergence.toFixed(2) : (speciesRecord ? speciesRecord.cause : "-")));
     detailChips.push(makeInspectChip("Rep State", representativeRecord ? representativeRecord.behavior : "-"));
     detailChips.push(makeInspectChip("Rep Pin", representativeRecord && representativeRecord.pinned ? "pinned" : "open"));
     detailChips.push(makeInspectChip("Bookmark", representativeRecord ? representativeRecord.bookmarkScore.toFixed(2) : "0.00"));

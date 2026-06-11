@@ -244,6 +244,18 @@ function restoreSimulationEvent(event) {
     source: event.source || null,
     category: event.category || null,
     severity: event.severity || null,
+    terrainDriver: event.terrainDriver || null,
+    trait: event.trait || null,
+    lineageId: event.lineageId == null ? null : Math.max(0, Math.round(restoreNumber(event.lineageId, 0))),
+    speciesId: event.speciesId == null ? null : Math.max(0, Math.round(restoreNumber(event.speciesId, 0))),
+    populationId: event.populationId == null ? null : Math.max(0, Math.round(restoreNumber(event.populationId, 0))),
+    pressure: event.pressure == null ? null : clamp(restoreNumber(event.pressure, 0), 0, 1),
+    effect: event.effect || null,
+    id: event.id == null ? null : Math.max(0, Math.round(restoreNumber(event.id, 0))),
+    parentId: event.parentId == null ? null : Math.max(0, Math.round(restoreNumber(event.parentId, 0))),
+    cause: event.cause || null,
+    divergence: event.divergence == null ? null : clamp(restoreNumber(event.divergence, 0), 0, 1),
+    traits: event.traits ? restoreOrganismTraits(event.traits) : null,
     inspectTarget: event.inspectTarget || null
   };
 }

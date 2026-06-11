@@ -6,6 +6,7 @@ PS.eventTypes.EPOCH_TRANSITION = "epoch.transition";
 
 PS.eventTypes.ORGANISM_BORN = "organism.born";
 PS.eventTypes.ORGANISM_DIED = "organism.died";
+PS.eventTypes.SPECIES_NEW = "species.new";
 PS.eventTypes.FOOD_SPAWNED = "food.spawned";
 PS.eventTypes.SETTLEMENT_FOUNDED = "settlement.founded";
 
@@ -35,6 +36,9 @@ PS.eventPayloads[PS.eventTypes.ORGANISM_BORN] = {
 };
 PS.eventPayloads[PS.eventTypes.ORGANISM_DIED] = {
   jsdoc: "@payload { id, representativeId, populationId, speciesId, lineageId, cause, x, y, tick }"
+};
+PS.eventPayloads[PS.eventTypes.SPECIES_NEW] = {
+  jsdoc: "@payload { id, parentId, lineageId, speciesId, populationId, traits, location, cause, divergence, tick }"
 };
 PS.eventPayloads[PS.eventTypes.FOOD_SPAWNED] = {
   jsdoc: "@payload { id, x, y, amount, source, tick }"

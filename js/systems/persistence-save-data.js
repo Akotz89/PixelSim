@@ -78,6 +78,8 @@ function createWorldSubsystemSaveData() {
       organisms: world.organisms.map(copyOrganismForSave),
       food: world.food.map(copyFoodForSave),
       lineages: getLineagesForSave(),
+      species: copyLayerStateForSave(Array.isArray(world.species) ? world.species : []),
+      speciationEvents: copyLayerStateForSave(Array.isArray(world.speciationEvents) ? world.speciationEvents : []),
       biologyPopulations: copyLayerStateForSave(Array.isArray(world.biologyPopulations) ? world.biologyPopulations : []),
       biologyRepresentatives: copyLayerStateForSave(Array.isArray(world.biologyRepresentatives) ? world.biologyRepresentatives : []),
       abiogenesis: copyLayerStateForSave(world.abiogenesis),
@@ -207,6 +209,8 @@ function createWorldSaveData() {
     biologyRepresentatives: copyLayerStateForSave(
       Array.isArray(world.biologyRepresentatives) ? world.biologyRepresentatives : []
     ),
+    species: copyLayerStateForSave(Array.isArray(world.species) ? world.species : []),
+    speciationEvents: copyLayerStateForSave(Array.isArray(world.speciationEvents) ? world.speciationEvents : []),
     camera: copyCameraForSave(),
     organisms: world.organisms.map(copyOrganismForSave),
     traitHistory: world.traitHistory.map(copyTraitHistorySampleForSave),

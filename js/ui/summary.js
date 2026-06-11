@@ -143,10 +143,12 @@ function updateLineageSummary() {
   var newestLabel = summary.newestParentId > 0
     ? "L" + summary.newestId + " <- L" + summary.newestParentId
     : "L" + summary.newestId + " founder";
+  var speciesSummary = world.speciesSummary || null;
   var chips = [
     makeSummaryChip("Active", summary.activeCount),
     makeSummaryChip("Extinct", summary.extinctCount),
-    makeSummaryChip("Newest", newestLabel)
+    makeSummaryChip("Newest", newestLabel),
+    makeSummaryChip("Species", speciesSummary ? speciesSummary.activeCount + " / " + speciesSummary.totalCount : "-")
   ];
 
   for (var i = 0; i < summary.topLineages.length; i++) {
@@ -326,6 +328,7 @@ function updateEcosystemSummary() {
   var foodWeb = world.foodWebSummary || {};
   var foodWebRoles = foodWeb.roles || {};
   var terrainPressure = world.terrainPressureSummary || {};
+  var speciesSummary = world.speciesSummary || {};
   var cards = [
     makeDashboardCard("System", "status",
       makePrimaryMetric("Pressure", summary.pressure, stabilityDetail) +
@@ -361,6 +364,12 @@ function updateEcosystemSummary() {
       makeMetricRow("Mismatch", (Number(terrainPressure.mismatch) || 0).toFixed(2)) +
       makeMetricRow("Isolation", (Number(terrainPressure.isolation) || 0).toFixed(2)) +
       makeMetricRow("Populations", Math.max(0, Math.round(Number(terrainPressure.highPressurePopulations) || 0)) + "/" + Math.max(0, Math.round(Number(terrainPressure.populationCount) || 0)))
+    ),
+    makeDashboardCard("Species", "biology",
+      makePrimaryMetric("Active", Math.max(0, Math.round(Number(speciesSummary.activeCount) || 0)), Math.max(0, Math.round(Number(speciesSummary.totalCount) || 0)) + " total") +
+      makeMetricRow("Extinct", Math.max(0, Math.round(Number(speciesSummary.extinctCount) || 0))) +
+      makeMetricRow("Recent", Math.max(0, Math.round(Number(speciesSummary.recentSpeciationCount) || 0))) +
+      makeMetricRow("Top", speciesSummary.topSpecies && speciesSummary.topSpecies[0] ? "S" + speciesSummary.topSpecies[0].id + " L" + speciesSummary.topSpecies[0].lineageId : "-")
     ),
     makeDashboardCard("Trends", "trend",
       makePrimaryMetric("Stability", formatSignedNumber(trend.stabilityDelta || 0, 0), "since last sample") +

@@ -140,6 +140,11 @@ PS.config.refreshFromConstants = function () {
 
   PS.config.evolution = {
     mutationChance: CONFIG.TRAIT_MUTATION_CHANCE,
+    speciationDistance: CONFIG.SPECIATION_DISTANCE,
+    speciationIsolationWeight: CONFIG.SPECIATION_ISOLATION_WEIGHT,
+    speciationMinPopulation: CONFIG.SPECIATION_MIN_POPULATION,
+    speciationMinIntervalTicks: CONFIG.SPECIATION_MIN_INTERVAL_TICKS,
+    speciationMaxSpecies: CONFIG.SPECIATION_MAX_SPECIES,
     mutationRates: PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.getMutationRates === "function"
       ? PS.core.traitSchema.getMutationRates()
       : {}

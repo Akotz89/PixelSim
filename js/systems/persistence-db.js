@@ -120,6 +120,18 @@ function copySimulationEventForSave(event) {
     source: event.source || null,
     category: event.category || null,
     severity: event.severity || null,
+    terrainDriver: event.terrainDriver || null,
+    trait: event.trait || null,
+    lineageId: event.lineageId == null ? null : Math.max(0, Math.round(Number(event.lineageId) || 0)),
+    speciesId: event.speciesId == null ? null : Math.max(0, Math.round(Number(event.speciesId) || 0)),
+    populationId: event.populationId == null ? null : Math.max(0, Math.round(Number(event.populationId) || 0)),
+    pressure: event.pressure == null ? null : Math.max(0, Math.min(1, Number(event.pressure) || 0)),
+    effect: event.effect || null,
+    id: event.id == null ? null : Math.max(0, Math.round(Number(event.id) || 0)),
+    parentId: event.parentId == null ? null : Math.max(0, Math.round(Number(event.parentId) || 0)),
+    cause: event.cause || null,
+    divergence: event.divergence == null ? null : Math.max(0, Math.min(1, Number(event.divergence) || 0)),
+    traits: event.traits ? copyOrganismTraitsForSave(event.traits) : null,
     inspectTarget: event.inspectTarget || null
   };
 }

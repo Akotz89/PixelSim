@@ -117,10 +117,40 @@ const root = path.resolve(__dirname, "..");
           isExtinct: false
         }
       };
+      world.species = [{
+        id: 13,
+        parentId: 5,
+        lineageId: 7,
+        parentPopulationId: 17,
+        createdTick: 3500,
+        lastSeenTick: 4240,
+        founderTraits: normalizeOrganismTraits({ bodySize: 1.2, camouflage: 0.4 }),
+        traitMean: normalizeOrganismTraits({ bodySize: 1.5, camouflage: 0.75 }),
+        divergence: 0.68,
+        cause: "geographic-isolation",
+        location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 },
+        range: { minX: 12, maxX: 14, minY: 9, maxY: 10, cells: 2 },
+        population: 44,
+        activePopulation: 44,
+        isActive: true,
+        isExtinct: false
+      }];
+      world.speciesById = { "13": world.species[0] };
+      world.speciationEvents = [{
+        tick: 3500,
+        id: 13,
+        parentId: 5,
+        lineageId: 7,
+        populationId: 17,
+        cause: "geographic-isolation",
+        divergence: 0.68,
+        location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 }
+      }];
       world.biologyPopulations = [{
         id: 17,
         speciesId: 13,
         lineageId: 7,
+        parentSpeciesId: 5,
         parentPopulationId: 0,
         count: 44,
         biomass: 120,
@@ -296,7 +326,16 @@ const root = path.resolve(__dirname, "..");
         details: { value: 1 },
         deepTime: { years: 123456789 },
         source: "milestone-detector",
-        severity: "major"
+        severity: "major",
+        id: 13,
+        parentId: 5,
+        lineageId: 7,
+        speciesId: 13,
+        populationId: 17,
+        cause: "geographic-isolation",
+        divergence: 0.68,
+        effect: "species-split",
+        traits: normalizeOrganismTraits({ bodySize: 1.5 })
       }];
       world.milestonesReached = {
         "life.first": {
@@ -417,6 +456,9 @@ const root = path.resolve(__dirname, "..");
       timelineEvents: world.timelineEvents.slice(),
       milestonesReached: Object.assign({}, world.milestonesReached),
       biologyPopulations: world.biologyPopulations.slice(),
+      species: world.species.slice(),
+      speciationEvents: world.speciationEvents.slice(),
+      speciesByIdKeys: Object.keys(world.speciesById),
       biologyPopulationByIdKeys: Object.keys(world.biologyPopulationById),
       biologyRepresentatives: world.biologyRepresentatives.slice(),
       biologyRepresentativeByIdKeys: Object.keys(world.biologyRepresentativeById),
@@ -506,6 +548,9 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.microbialReady, true, "microbial readiness should restore");
   assert.strictEqual(evidence.saveData.timelineEvents.length, 1, "timeline events should serialize");
   assert.strictEqual(evidence.importedEvidence.timelineEvents[0].details.value, 1, "timeline events should restore details");
+  assert.strictEqual(evidence.saveData.timelineEvents[0].id, 13, "timeline species event id should serialize");
+  assert.strictEqual(evidence.importedEvidence.timelineEvents[0].cause, "geographic-isolation", "timeline species event cause should restore");
+  assert.strictEqual(evidence.importedEvidence.timelineEvents[0].traits.bodySize, 1.5, "timeline species event traits should restore");
   assert.strictEqual(evidence.importedEvidence.milestonesReached["life.first"].value, 1, "milestone fired state should restore");
   assert.strictEqual(evidence.saveData.nextSpeciesId, 18, "species counter should serialize");
   assert.strictEqual(evidence.saveData.nextBiologyPopulationId, 19, "biology population counter should serialize");
@@ -515,6 +560,10 @@ const root = path.resolve(__dirname, "..");
   assert.ok(evidence.importedEvidence.nextBiologyRepresentativeId >= 20, "representative counter should advance past restored records");
   assert.strictEqual(evidence.saveData.biologyPopulations[0].id, 17, "biology populations should serialize");
   assert.strictEqual(evidence.importedEvidence.biologyPopulations[0].traitMean.bodySize, 1.4, "biology populations should restore trait means");
+  assert.strictEqual(evidence.saveData.species[0].parentId, 5, "species parent id should serialize");
+  assert.strictEqual(evidence.importedEvidence.species[0].cause, "geographic-isolation", "species records should restore");
+  assert.deepStrictEqual(evidence.importedEvidence.speciesByIdKeys, ["13"], "species index should rebuild");
+  assert.strictEqual(evidence.importedEvidence.speciationEvents[0].id, 13, "speciation event history should restore");
   assert.deepStrictEqual(evidence.importedEvidence.biologyPopulationByIdKeys, ["17"], "biology population index should rebuild");
   assert.strictEqual(evidence.saveData.biologyRepresentatives[0].id, 19, "biology representatives should serialize");
   assert.strictEqual(evidence.importedEvidence.biologyRepresentatives[0].target.type, "food", "biology representatives should restore target data");

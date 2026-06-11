@@ -37,7 +37,12 @@ PS.events.contract = {
     "speciesId",
     "populationId",
     "pressure",
-    "effect"
+    "effect",
+    "id",
+    "parentId",
+    "cause",
+    "divergence",
+    "traits"
   ],
   watcherRoutes: ["eventLog", "timeline", "notification", "spotlight", "overlays"],
   timelineModel: "world.timelineEvents",
@@ -235,6 +240,11 @@ PS.events.normalizeMilestonePayload = function (payload) {
     populationId: payload.populationId == null ? null : Math.max(0, Math.round(Number(payload.populationId) || 0)),
     pressure: payload.pressure == null ? null : Math.max(0, Math.min(1, Number(payload.pressure) || 0)),
     effect: payload.effect == null ? null : String(payload.effect),
+    id: payload.id == null ? null : Math.max(0, Math.round(Number(payload.id) || 0)),
+    parentId: payload.parentId == null ? null : Math.max(0, Math.round(Number(payload.parentId) || 0)),
+    cause: payload.cause == null ? null : String(payload.cause),
+    divergence: payload.divergence == null ? null : Math.max(0, Math.min(1, Number(payload.divergence) || 0)),
+    traits: payload.traits || null,
     watcher: {
       eventLog: payload.watcher && payload.watcher.eventLog === false ? false : true,
       timeline: payload.watcher && payload.watcher.timeline === false ? false : true,
@@ -271,6 +281,11 @@ PS.events.makeMilestoneLogEntry = function(payload) {
     populationId: payload.populationId,
     pressure: payload.pressure,
     effect: payload.effect,
+    id: payload.id,
+    parentId: payload.parentId,
+    cause: payload.cause,
+    divergence: payload.divergence,
+    traits: payload.traits,
     inspectTarget: payload.inspectTarget
   };
 };

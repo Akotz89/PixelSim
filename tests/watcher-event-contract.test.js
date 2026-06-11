@@ -57,7 +57,7 @@ PS.ui = {
 };
 
 var contract = PS.events.getMilestoneContract();
-["type", "label", "detail", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher", "terrainDriver", "trait", "lineageId", "speciesId", "populationId", "pressure", "effect"].forEach(function(field) {
+["type", "label", "detail", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher", "terrainDriver", "trait", "lineageId", "speciesId", "populationId", "pressure", "effect", "id", "parentId", "cause", "divergence", "traits"].forEach(function(field) {
   assert.ok(contract.payloadFields.indexOf(field) >= 0, "contract should include " + field);
 });
 ["eventLog", "timeline", "notification", "spotlight", "overlays"].forEach(function(route) {
@@ -81,6 +81,11 @@ var timelineOnly = PS.events.emitMilestone({
   populationId: 9,
   pressure: 0.73,
   effect: "survival-cost",
+  id: 10,
+  parentId: 6,
+  cause: "geographic-isolation",
+  divergence: 0.82,
+  traits: { terrainAffinity: 0.4 },
   watcher: {
     eventLog: false,
     timeline: true,
@@ -101,6 +106,11 @@ assert.strictEqual(world.timelineEvents[0].speciesId, 8, "timeline event should 
 assert.strictEqual(world.timelineEvents[0].populationId, 9, "timeline event should preserve population id");
 assert.strictEqual(world.timelineEvents[0].pressure, 0.73, "timeline event should preserve pressure");
 assert.strictEqual(world.timelineEvents[0].effect, "survival-cost", "timeline event should preserve effect");
+assert.strictEqual(world.timelineEvents[0].id, 10, "timeline event should preserve species/event id");
+assert.strictEqual(world.timelineEvents[0].parentId, 6, "timeline event should preserve parent id");
+assert.strictEqual(world.timelineEvents[0].cause, "geographic-isolation", "timeline event should preserve cause");
+assert.strictEqual(world.timelineEvents[0].divergence, 0.82, "timeline event should preserve divergence");
+assert.strictEqual(world.timelineEvents[0].traits.terrainAffinity, 0.4, "timeline event should preserve trait payload");
 assert.strictEqual(notifications.length, 1, "notification route should use notification UI");
 assert.strictEqual(focusedTiles[0].x, 4, "spotlight route should focus inspect target tile x");
 assert.strictEqual(focusedTiles[0].y, 5, "spotlight route should focus inspect target tile y");
