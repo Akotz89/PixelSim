@@ -10,6 +10,159 @@ PS.render.lod.tiers = [
   { name: "local", min: 15, max: 20 }
 ];
 
+PS.render.lod.levels = {
+  SURFACE: "SURFACE",
+  AREA: "AREA",
+  REGION: "REGION",
+  WORLD: "WORLD"
+};
+
+PS.render.lod.levelOrder = [
+  PS.render.lod.levels.SURFACE,
+  PS.render.lod.levels.AREA,
+  PS.render.lod.levels.REGION,
+  PS.render.lod.levels.WORLD
+];
+
+PS.render.lod.levelBands = [
+  { name: PS.render.lod.levels.SURFACE, minZoomOut: 0, maxZoomOut: 2 },
+  { name: PS.render.lod.levels.AREA, minZoomOut: 3, maxZoomOut: 5 },
+  { name: PS.render.lod.levels.REGION, minZoomOut: 6, maxZoomOut: 8 },
+  { name: PS.render.lod.levels.WORLD, minZoomOut: 9, maxZoomOut: Infinity }
+];
+
+PS.render.lod.visualPolicies = {};
+PS.render.lod.visualPolicies[PS.render.lod.levels.SURFACE] = {
+  level: PS.render.lod.levels.SURFACE,
+  renderBudgetMs: 16,
+  treeSway: 1,
+  crownShimmerAlpha: 0.5,
+  fallingLeavesPerTree: 4,
+  vegetationMode: "sprites",
+  vegetationSpriteScale: 1,
+  vegetationShadowAlpha: 1,
+  shadowIterations: 4,
+  waterUvScrollScale: 1,
+  normalMappedLighting: "per-pixel",
+  normalLightingStrength: 1,
+  autotileTransitions: "full",
+  transitionAlphaScale: 1,
+  pointLightScale: 1
+};
+PS.render.lod.visualPolicies[PS.render.lod.levels.AREA] = {
+  level: PS.render.lod.levels.AREA,
+  renderBudgetMs: 12,
+  treeSway: 0.35,
+  crownShimmerAlpha: 0,
+  fallingLeavesPerTree: 0,
+  vegetationMode: "sprites",
+  vegetationSpriteScale: 0.78,
+  vegetationShadowAlpha: 0.55,
+  shadowIterations: 2,
+  waterUvScrollScale: 0.45,
+  normalMappedLighting: "reduced",
+  normalLightingStrength: 0.6,
+  autotileTransitions: "simplified",
+  transitionAlphaScale: 0.55,
+  pointLightScale: 0.5
+};
+PS.render.lod.visualPolicies[PS.render.lod.levels.REGION] = {
+  level: PS.render.lod.levels.REGION,
+  renderBudgetMs: 8,
+  treeSway: 0,
+  crownShimmerAlpha: 0,
+  fallingLeavesPerTree: 0,
+  vegetationMode: "dots",
+  vegetationSpriteScale: 0,
+  vegetationShadowAlpha: 0,
+  shadowIterations: 1,
+  waterUvScrollScale: 0.2,
+  normalMappedLighting: "per-tile",
+  normalLightingStrength: 0.3,
+  autotileTransitions: "simplified",
+  transitionAlphaScale: 0.25,
+  pointLightScale: 0.2
+};
+PS.render.lod.visualPolicies[PS.render.lod.levels.WORLD] = {
+  level: PS.render.lod.levels.WORLD,
+  renderBudgetMs: 4,
+  treeSway: 0,
+  crownShimmerAlpha: 0,
+  fallingLeavesPerTree: 0,
+  vegetationMode: "minimap",
+  vegetationSpriteScale: 0,
+  vegetationShadowAlpha: 0,
+  shadowIterations: 0,
+  waterUvScrollScale: 0,
+  normalMappedLighting: "disabled",
+  normalLightingStrength: 0,
+  autotileTransitions: "disabled",
+  transitionAlphaScale: 0,
+  pointLightScale: 0
+};
+
+PS.render.lod.getZoomOutValue = function (zoomLevel) {
+  if (PS.camera && typeof PS.camera.getZoomLevels === "function") {
+    var levels = PS.camera.getZoomLevels();
+    var maxIndex = Math.max(0, levels.length - 1);
+    var normalizedZoom = clamp(Number(zoomLevel) || 0, 0, maxIndex);
+
+    return Math.max(0, maxIndex - normalizedZoom);
+  }
+
+  if (PS.camera && typeof PS.camera.getZoomOutShift === "function") {
+    return PS.camera.getZoomOutShift(zoomLevel);
+  }
+
+  return Math.max(0, Number(zoomLevel) || 0);
+};
+
+PS.render.lod.getVisualLevel = function (zoomLevel) {
+  var zoom = zoomLevel !== undefined
+    ? Number(zoomLevel) || 0
+    : typeof world !== "undefined" && world && world.planetView
+      ? Number(world.planetView.zoomLevel) || 0
+      : 0;
+  var zoomOut = PS.render.lod.getZoomOutValue(zoom);
+
+  for (var i = 0; i < PS.render.lod.levelBands.length; i += 1) {
+    var band = PS.render.lod.levelBands[i];
+    if (zoomOut >= band.minZoomOut && zoomOut <= band.maxZoomOut) {
+      return band.name;
+    }
+  }
+
+  return PS.render.lod.levels.WORLD;
+};
+
+PS.render.lod.getTransitionAmount = function (zoomLevel) {
+  var zoom = zoomLevel !== undefined
+    ? Number(zoomLevel) || 0
+    : typeof world !== "undefined" && world && world.planetView
+      ? Number(world.planetView.zoomLevel) || 0
+      : 0;
+  var zoomOut = PS.render.lod.getZoomOutValue(zoom);
+  var fraction = Math.abs(zoomOut - Math.round(zoomOut));
+  var edgeDistance = Math.min(fraction, 1 - fraction);
+
+  return PS.render.lod.smoothstep(0.28, 0, edgeDistance);
+};
+
+PS.render.lod.getVisualPolicy = function (zoomLevel) {
+  var zoom = zoomLevel !== undefined
+    ? Number(zoomLevel) || 0
+    : typeof world !== "undefined" && world && world.planetView
+      ? Number(world.planetView.zoomLevel) || 0
+      : 0;
+  var level = PS.render.lod.getVisualLevel(zoom);
+  var policy = PS.render.lod.visualPolicies[level] || PS.render.lod.visualPolicies[PS.render.lod.levels.SURFACE];
+
+  return Object.assign({}, policy, {
+    zoomOut: PS.render.lod.getZoomOutValue(zoom),
+    transitionAlpha: PS.render.lod.getTransitionAmount(zoom)
+  });
+};
+
 PS.render.lod.getArchitectureZoom = function (zoomLevel) {
   var levels = PS.camera && typeof PS.camera.getZoomLevels === "function"
     ? PS.camera.getZoomLevels()

@@ -28,6 +28,23 @@ PS.render.surfaceTileBatcher.beginBatches = function () {
   };
 };
 
+PS.render.surfaceTileBatcher.getVisualPolicy = function (lodState) {
+  if (lodState && lodState.visualPolicy) {
+    return lodState.visualPolicy;
+  }
+
+  return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+    ? PS.render.lod.getVisualPolicy()
+    : {
+      level: "SURFACE",
+      pointLightScale: 1,
+      waterUvScrollScale: 1,
+      autotileTransitions: "full",
+      transitionAlphaScale: 1,
+      normalLightingStrength: 1
+    };
+};
+
 PS.render.surfaceTileBatcher.appendPointLight = function (target, x, y, radius, color, intensity, kind) {
   if (!target || !target.pointLights) {
     return false;
@@ -44,7 +61,8 @@ PS.render.surfaceTileBatcher.appendPointLight = function (target, x, y, radius, 
   return true;
 };
 
-PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY) {
+PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState) {
+  var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
   var detail = sample && sample.detail ? sample.detail : {};
   var surface = String(detail.surface || "").toLowerCase();
   var feature = String(detail.feature || "").toLowerCase();
@@ -63,8 +81,12 @@ PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample,
     ? PS.ranmap.variant(tileX, tileY, 13) === 0
     : Math.abs(Math.round(tileX) * 7 + Math.round(tileY) * 11) % 13 === 0;
 
+  if (Math.max(0, Number(policy.pointLightScale) || 0) <= 0) {
+    return false;
+  }
+
   if (ventSignal) {
-    return PS.render.surfaceTileBatcher.appendPointLight(target, centerX, centerY, samplePixelSize * 8, [1, 0.2, 0], 1.05, "volcano");
+    return PS.render.surfaceTileBatcher.appendPointLight(target, centerX, centerY, samplePixelSize * 8, [1, 0.2, 0], 1.05 * policy.pointLightScale, "volcano");
   }
 
   if (lavaSignal > 0.35) {
@@ -74,21 +96,21 @@ PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample,
       centerY,
       samplePixelSize * 4,
       [1, 0.35, 0.05],
-      Math.max(0.55, Math.min(1.2, lavaSignal)),
+      Math.max(0.55, Math.min(1.2, lavaSignal)) * policy.pointLightScale,
       "lava"
     );
   }
 
   if (String(biome || "") === "ocean" && waterDepth > 0.7 && sparseBio) {
-    return PS.render.surfaceTileBatcher.appendPointLight(target, centerX, centerY, samplePixelSize * 2, [0.1, 0.6, 1], 0.42, "bioluminescence");
+    return PS.render.surfaceTileBatcher.appendPointLight(target, centerX, centerY, samplePixelSize * 2, [0.1, 0.6, 1], 0.42 * policy.pointLightScale, "bioluminescence");
   }
 
   return false;
 };
 
-PS.render.surfaceTileBatcher.appendWaterDecoration = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY) {
+PS.render.surfaceTileBatcher.appendWaterDecoration = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState) {
   var decoration = PS.render.waterRendering && typeof PS.render.waterRendering.getDecorationRenderInfo === "function"
-    ? PS.render.waterRendering.getDecorationRenderInfo(sample, biome, tileX, tileY, samplePixelSize)
+    ? PS.render.waterRendering.getDecorationRenderInfo(sample, biome, tileX, tileY, samplePixelSize, undefined, lodState)
     : null;
   var rectX;
   var rectY;
@@ -331,7 +353,8 @@ PS.render.surfaceTileBatcher.getAcceptedResolverTransitionShape = function (spri
   return "";
 };
 
-PS.render.surfaceTileBatcher.getResolverTransitionCellNames = function (tileX, tileY, grid) {
+PS.render.surfaceTileBatcher.getResolverTransitionCellNames = function (tileX, tileY, grid, lodState) {
+  var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
   var resolver = PS.render && PS.render.terrainTransitions &&
     typeof PS.render.terrainTransitions.resolve === "function"
     ? PS.render.terrainTransitions
@@ -340,7 +363,7 @@ PS.render.surfaceTileBatcher.getResolverTransitionCellNames = function (tileX, t
   var overlays;
   var names = [];
 
-  if (!resolver || !grid) {
+  if (!resolver || !grid || policy.autotileTransitions === "disabled") {
     return names;
   }
 
@@ -354,16 +377,21 @@ PS.render.surfaceTileBatcher.getResolverTransitionCellNames = function (tileX, t
     if (pair && shape) {
       names.push(pair + "." + shape);
     }
+
+    if (policy.autotileTransitions === "simplified") {
+      break;
+    }
   }
 
   return names;
 };
 
-PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address, sample, biome, tileX, tileY) {
+PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address, sample, biome, tileX, tileY, lodState) {
   var gridNames = PS.render.surfaceTileBatcher.getResolverTransitionCellNames(
     tileX,
     tileY,
-    PS.render.surfaceTileBatcher.getTransitionGrid(address, sample)
+    PS.render.surfaceTileBatcher.getTransitionGrid(address, sample),
+    lodState
   );
   var fallbackName;
 
@@ -377,8 +405,9 @@ PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address,
   return fallbackName ? [fallbackName] : [];
 };
 
-PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions = function (address, sample, tileX, tileY) {
-  return Boolean(PS.render.surfaceTileBatcher.getTransitionGrid(address, sample));
+PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions = function (address, sample, tileX, tileY, lodState) {
+  var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
+  return Boolean(PS.render.surfaceTileBatcher.getTransitionGrid(address, sample)) && policy.autotileTransitions !== "disabled";
 };
 
 PS.render.surfaceTileBatcher.canSelectAcceptedTerrainMaterial = function (sample) {
@@ -442,8 +471,8 @@ PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample
   };
 };
 
-PS.render.surfaceTileBatcher.makeBatches = function (address, cellCache, alpha) {
-  return PS.render.surfaceTileBatcher.appendBatches(PS.render.surfaceTileBatcher.beginBatches(), address, cellCache, alpha);
+PS.render.surfaceTileBatcher.makeBatches = function (address, cellCache, alpha, lodState) {
+  return PS.render.surfaceTileBatcher.appendBatches(PS.render.surfaceTileBatcher.beginBatches(), address, cellCache, alpha, lodState);
 };
 
 PS.render.surfaceTileBatcher.getPageBuffer = function (batches, pageIndex) {
@@ -581,8 +610,9 @@ PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays = function (
   return appended;
 };
 
-PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCache, alpha) {
+PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCache, alpha, lodState) {
   var target = batches || PS.render.surfaceTileBatcher.beginBatches();
+  var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
   var baseWorldX = address.sampleEast || 0;
   var baseWorldY = address.sampleNorth || 0;
   var screenOffsetX = Number(address.renderScreenX) || 0;
@@ -707,11 +737,11 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     var screenY = screenOffsetY + cellData.screenY * (samplePixelSize / CONFIG.TILE_SIZE);
     var featherAlpha = PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.getAlpha === "function" ? PS.render.surfaceReadyFeather.getAlpha(address, screenX, screenY, samplePixelSize) : 1;
     var waterInfo = PS.render.waterRendering && typeof PS.render.waterRendering.getRenderInfo === "function"
-      ? PS.render.waterRendering.getRenderInfo(sample, biome, tileX, tileY)
+      ? PS.render.waterRendering.getRenderInfo(sample, biome, tileX, tileY, lodState)
       : null;
 
-    PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY);
-    PS.render.surfaceTileBatcher.appendWaterDecoration(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY);
+    PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState);
+    PS.render.surfaceTileBatcher.appendWaterDecoration(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState);
     PS.render.surfaceTileBatcher.appendInstance(
       page,
       screenX,
@@ -728,15 +758,15 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       waterInfo
     );
     target.count++;
-    if (canAttemptAccepted && PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions(address, sample, tileX, tileY)) {
+    if (canAttemptAccepted && PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions(address, sample, tileX, tileY, lodState)) {
       PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays(
         target,
-        PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames(address, sample, biome, tileX, tileY),
+        PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames(address, sample, biome, tileX, tileY, lodState),
         cell,
         screenX,
         screenY,
         samplePixelSize,
-        tileAlpha * featherAlpha
+        tileAlpha * featherAlpha * Math.max(0, Number(policy.transitionAlphaScale) || 0)
       );
     }
   }

@@ -56,6 +56,21 @@ PS.render.vegetation = PS.render.vegetation || {
     return null;
   },
 
+  getVisualPolicy: function (lodState) {
+    if (lodState && lodState.visualPolicy) {
+      return lodState.visualPolicy;
+    }
+
+    return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+      ? PS.render.lod.getVisualPolicy()
+      : {
+        level: "SURFACE",
+        vegetationMode: "sprites",
+        vegetationSpriteScale: 1,
+        vegetationShadowAlpha: 1
+      };
+  },
+
   isTreeType: function (type) {
     var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
     return type === types.TREE_SMALL || type === types.TREE_MEDIUM || type === types.TREE_BIG;
@@ -217,14 +232,15 @@ PS.render.vegetation = PS.render.vegetation || {
       };
   },
 
-  appendDrawItem: function (items, tileX, tileY, type, variant) {
+  appendDrawItem: function (items, tileX, tileY, type, variant, lodState) {
+    var policy = this.getVisualPolicy(lodState);
     var point = this.getTilePoint(tileX, tileY);
-    var size = this.getSpriteSize(type) * Math.max(0.2, Number(point && point.scale) || 1);
+    var size = this.getSpriteSize(type) * Math.max(0.2, Number(point && point.scale) || 1) * Math.max(0, Number(policy.vegetationSpriteScale) || 0);
     var visibility = point && Number.isFinite(Number(point.visibility)) ? Number(point.visibility) : 1;
     var fallbackCell = this.getProceduralVegetationCell(type, variant, "below");
     var cell = this.selectAcceptedVegetationCell(type, variant, "below", fallbackCell) || fallbackCell;
 
-    if (!point || point.visible === false || !cell) {
+    if (!point || point.visible === false || !cell || policy.vegetationMode !== "sprites" || size <= 0) {
       return false;
     }
 
@@ -255,14 +271,15 @@ PS.render.vegetation = PS.render.vegetation || {
     ];
   },
 
-  buildGrassOverlayRects: function () {
+  buildGrassOverlayRects: function (lodState) {
+    var policy = this.getVisualPolicy(lodState);
     var grid = this.getGrid();
     var rect = this.getVisibleTileRect();
     var tileSize = Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8);
     var values = [];
     var count = 0;
 
-    if (!grid || !grid.grassDensityData || typeof grid.getGrassDensity !== "function") {
+    if (!grid || !grid.grassDensityData || typeof grid.getGrassDensity !== "function" || policy.vegetationMode === "minimap") {
       this.stats.grassOverlayCount = 0;
       return values;
     }
@@ -305,8 +322,8 @@ PS.render.vegetation = PS.render.vegetation || {
     return values;
   },
 
-  drawGrassOverlay: function () {
-    var values = this.buildGrassOverlayRects();
+  drawGrassOverlay: function (lodState) {
+    var values = this.buildGrassOverlayRects(lodState);
 
     if (!values || values.length <= 0 || !PS.render.webgpuEntity || typeof PS.render.webgpuEntity.drawParticleRects !== "function") {
       return false;
@@ -329,7 +346,7 @@ PS.render.vegetation = PS.render.vegetation || {
     return acceptedCell || fallbackCell || null;
   },
 
-  buildDrawList: function () {
+  buildDrawList: function (lodState) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var grid = this.getGrid();
     var rect = this.getVisibleTileRect();
@@ -366,7 +383,7 @@ PS.render.vegetation = PS.render.vegetation || {
         var variant = (packed >> 4) & 15;
 
         if (type !== grid.TYPES.NONE) {
-          if (this.appendDrawItem(items, x, y, type, variant) && this.isTreeType(type)) {
+          if (this.appendDrawItem(items, x, y, type, variant, lodState) && this.isTreeType(type)) {
             canopyCount += 1;
           }
         }
@@ -420,7 +437,8 @@ PS.render.vegetation = PS.render.vegetation || {
     return PS.render.entities.drawEntityBatches(batches, drawn);
   },
 
-  makePackedBatchItem: function (tileX, tileY, type, variant) {
+  makePackedBatchItem: function (tileX, tileY, type, variant, lodState) {
+    var policy = this.getVisualPolicy(lodState);
     var useFlatPoint = typeof isGlobeRenderMode !== "function" || !isGlobeRenderMode();
     var tileSize = Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8);
     var point = useFlatPoint ? null : this.getTilePoint(tileX, tileY);
@@ -428,13 +446,13 @@ PS.render.vegetation = PS.render.vegetation || {
     var pointY = useFlatPoint ? tileY * tileSize + tileSize / 2 : point && point.y;
     var pointScale = useFlatPoint ? 1 : Math.max(0.2, Number(point && point.scale) || 1);
     var visible = useFlatPoint || (point && point.visible !== false);
-    var size = this.getSpriteSize(type) * pointScale;
+    var size = this.getSpriteSize(type) * pointScale * Math.max(0, Number(policy.vegetationSpriteScale) || 0);
     var alpha = useFlatPoint || !point || !Number.isFinite(Number(point.visibility)) ? 1 : Number(point.visibility);
     var fallbackBelowCell = this.getProceduralVegetationCell(type, variant, "below");
     var belowCell = this.selectAcceptedVegetationCell(type, variant, "below", fallbackBelowCell) || fallbackBelowCell;
     var canopyCell = this.isTreeType(type) ? this.getCanopyCell(type, variant) : null;
 
-    if (!visible) {
+    if (!visible || policy.vegetationMode !== "sprites" || size <= 0) {
       return null;
     }
 
@@ -474,22 +492,23 @@ PS.render.vegetation = PS.render.vegetation || {
     return { below: belowCount, canopy: canopyCount };
   },
 
-  appendPackedToBatches: function (belowBatches, canopyBatches, tileX, tileY, type, variant) {
-    return this.appendBatchItem(belowBatches, canopyBatches, this.makePackedBatchItem(tileX, tileY, type, variant));
+  appendPackedToBatches: function (belowBatches, canopyBatches, tileX, tileY, type, variant, lodState) {
+    return this.appendBatchItem(belowBatches, canopyBatches, this.makePackedBatchItem(tileX, tileY, type, variant, lodState));
   },
 
-  appendItemShadowRect: function (rects, item) {
+  appendItemShadowRect: function (rects, item, lodState) {
+    var policy = this.getVisualPolicy(lodState);
     if (!item) {
       return false;
     }
 
-    return this.appendShadowRect(rects, item.pointX, item.pointY, item.size, item.type, item.alpha);
+    return this.appendShadowRect(rects, item.pointX, item.pointY, item.size, item.type, item.alpha * Math.max(0, Number(policy.vegetationShadowAlpha) || 0));
   },
 
-  appendPackedShadowRect: function (rects, tileX, tileY, type, variant) {
-    var item = this.makePackedBatchItem(tileX, tileY, type, variant);
+  appendPackedShadowRect: function (rects, tileX, tileY, type, variant, lodState) {
+    var item = this.makePackedBatchItem(tileX, tileY, type, variant, lodState);
 
-    return this.appendItemShadowRect(rects, item);
+    return this.appendItemShadowRect(rects, item, lodState);
   },
 
   appendCellToBatch: function (batches, cell, point, size, alpha, offsetY) {
@@ -526,8 +545,9 @@ PS.render.vegetation = PS.render.vegetation || {
     );
   },
 
-  buildLayerBatches: function () {
+  buildLayerBatches: function (lodState) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    var policy = this.getVisualPolicy(lodState);
     var grid = this.getGrid();
     var rect = this.getVisibleTileRect();
     var belowBatches;
@@ -545,7 +565,11 @@ PS.render.vegetation = PS.render.vegetation || {
         rect.maxY,
         grid.width,
         grid.height,
-        grid.data.length
+        grid.data.length,
+        policy.level,
+        policy.vegetationMode,
+        policy.vegetationSpriteScale,
+        policy.vegetationShadowAlpha
       ].join(":")
       : "";
 
@@ -585,7 +609,7 @@ PS.render.vegetation = PS.render.vegetation || {
         var type = packed & 15;
 
         if (type !== grid.TYPES.NONE) {
-          var item = this.makePackedBatchItem(x, y, type, (packed >> 4) & 15);
+          var item = this.makePackedBatchItem(x, y, type, (packed >> 4) & 15, lodState);
           if (item) {
             renderItems.push(item);
           }
@@ -602,7 +626,7 @@ PS.render.vegetation = PS.render.vegetation || {
       var counts = this.appendBatchItem(belowBatches, canopyBatches, renderItem);
       belowCount += counts.below;
       canopyCount += counts.canopy;
-      if (counts.below > 0 && this.appendItemShadowRect(shadowRects, renderItem)) {
+      if (counts.below > 0 && this.appendItemShadowRect(shadowRects, renderItem, lodState)) {
         shadowCount += 1;
       }
     }
@@ -724,12 +748,12 @@ PS.render.vegetation = PS.render.vegetation || {
     return items.length > 0;
   },
 
-  draw: function () {
+  draw: function (lodState) {
     if (!PS.render.entities || !PS.render.webgpuEntity || typeof PS.render.webgpuEntity.beginBatches !== "function") {
       return false;
     }
 
-    return this.submitPreparedBatches(this.buildLayerBatches());
+    return this.submitPreparedBatches(this.buildLayerBatches(lodState));
   },
 
   getStats: function () {

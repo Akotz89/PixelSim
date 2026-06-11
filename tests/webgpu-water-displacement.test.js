@@ -169,6 +169,11 @@ assert.strictEqual(instances.length, 24, "water displacement should submit exact
 assert.strictEqual(instances[4], 1, "large wave pass should render at full opacity");
 assert.strictEqual(instances[16], 0.25, "small ripple pass should render at quarter opacity");
 assert.notDeepStrictEqual(Array.from(instances.slice(0, 4)), Array.from(instances.slice(12, 16)), "two passes should use distinct displacement and surface scrolls");
+const regionInstances = water.createInstances({ visualPolicy: { level: "REGION", waterUvScrollScale: 0.2 } });
+assert.strictEqual(regionInstances.length, 12, "region LOD should reduce water displacement to one shader pass");
+assert.ok(regionInstances[5] < instances[5], "region LOD should reduce water scroll strength");
+const worldInstances = water.createInstances({ visualPolicy: { level: "WORLD", waterUvScrollScale: 0 } });
+assert.strictEqual(worldInstances.length, 0, "world LOD should disable water displacement instances");
 
 assert.strictEqual(water.draw({ timeSeconds: 3.5, wind: { x: 0.6, y: -0.4, speed: 2 } }), true, "water displacement draw should submit a fullscreen pass");
 assert.strictEqual(fakeDevice.pipelines[0].descriptor.label, "water-displace.pipeline", "water displacement pipeline should be created");
@@ -190,5 +195,24 @@ assert.strictEqual(submissions.length, 1, "standalone water displacement draw sh
 assert.strictEqual(water.getStats().drawCount, 1, "water displacement stats should count draws");
 assert.strictEqual(water.getStats().passDrawCount, 2, "water displacement stats should count the two GPU passes");
 assert.strictEqual(water.getStats().lastError, "", "successful water displacement draw should clear lastError");
+assert.strictEqual(water.draw({
+  timeSeconds: 4,
+  wind: { x: 0.6, y: -0.4, speed: 2 },
+  lodState: { visualPolicy: { level: "REGION", waterUvScrollScale: 0.2 } }
+}), true, "region LOD water displacement should still submit a reduced pass");
+assert.deepStrictEqual(fakePasses[1].drawArgs, [4, 1, 0, 0], "region LOD should draw one water displacement instance");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "water-displace.uniforms" &&
+    nearly(write.data[2], 4) &&
+    nearly(write.data[6], 0.4);
+}), "region LOD should scale uploaded water wind speed");
+const submissionsBeforeWorldLod = submissions.length;
+assert.strictEqual(water.draw({
+  timeSeconds: 5,
+  wind: { x: 0.6, y: -0.4, speed: 2 },
+  lodState: { visualPolicy: { level: "WORLD", waterUvScrollScale: 0 } }
+}), false, "world LOD water displacement should skip the GPU pass");
+assert.strictEqual(submissions.length, submissionsBeforeWorldLod, "world LOD should not submit an empty water displacement command buffer");
+assert.strictEqual(water.getStats().passDrawCount, 0, "world LOD should publish zero water displacement passes");
 
 console.log("webgpu water displacement checks passed");

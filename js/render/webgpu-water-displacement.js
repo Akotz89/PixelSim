@@ -150,7 +150,17 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
     };
   },
 
-  writeUniforms: function (device, width, height, timeSeconds, wind) {
+  getVisualPolicy: function (lodState) {
+    if (lodState && lodState.visualPolicy) {
+      return lodState.visualPolicy;
+    }
+
+    return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+      ? PS.render.lod.getVisualPolicy()
+      : { level: "SURFACE", waterUvScrollScale: 1 };
+  },
+
+  writeUniforms: function (device, width, height, timeSeconds, wind, speedScale) {
     device.queue.writeBuffer(
       this.ensureUniformBuffer(device),
       0,
@@ -161,21 +171,33 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
         0,
         Number(wind.x) || 0,
         Number(wind.y) || 0,
-        Math.max(0, Number(wind.speed) || 0),
+        Math.max(0, Number(wind.speed) || 0) * Math.max(0, Number(speedScale === undefined ? 1 : speedScale) || 0),
         0
       ])
     );
   },
 
-  createInstances: function () {
-    return new Float32Array([
+  createInstances: function (lodState) {
+    var policy = this.getVisualPolicy(lodState);
+    var scale = Math.max(0, Number(policy.waterUvScrollScale) || 0);
+    var data = [
       1.1, -1.1, 1.5, 1.5,
-      1, 0.018, 0.55, 0.72,
+      1, 0.018 * scale, 0.55, 0.72 * scale,
       0.10, 0.20, 0.28, 0.0,
       -0.72, 0.88, -2.1, 1.6,
-      0.25, 0.008, 0.82, 1.15,
+      0.25, 0.008 * scale, 0.82, 1.15 * scale,
       0.18, 0.34, 0.42, 1.0
-    ]);
+    ];
+
+    if (scale <= 0) {
+      return new Float32Array([]);
+    }
+
+    if (scale < 0.5) {
+      return new Float32Array(data.slice(0, this.strideFloats));
+    }
+
+    return new Float32Array(data);
   },
 
   createBindGroup: function (device, pipeline, instanceBuffer) {
@@ -197,7 +219,8 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
     var targetCanvas = PS.gpu && PS.gpu.canvas ? PS.gpu.canvas : (typeof canvas !== "undefined" ? canvas : null);
     var width = spec.width || (targetCanvas ? targetCanvas.width : 1);
     var height = spec.height || (targetCanvas ? targetCanvas.height : 1);
-    var data = this.createInstances();
+    var policy = this.getVisualPolicy(spec.lodState);
+    var data = this.createInstances(spec.lodState);
     var instanceCount = Math.floor(data.length / this.strideFloats);
     var wind = spec.wind || this.getWind();
     var pipeline;
@@ -213,8 +236,15 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
       throw new Error("WebGPU water displacement draw requires a configured WebGPU context");
     }
 
+    if (instanceCount <= 0 || Math.max(0, Number(policy.waterUvScrollScale) || 0) <= 0) {
+      this.state.passDrawCount = 0;
+      this.state.lastFrameMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
+      this.state.lastError = "";
+      return false;
+    }
+
     pipeline = this.ensurePipeline(device);
-    this.writeUniforms(device, width, height, spec.timeSeconds === undefined ? this.getNowSeconds() : spec.timeSeconds, wind);
+    this.writeUniforms(device, width, height, spec.timeSeconds === undefined ? this.getNowSeconds() : spec.timeSeconds, wind, policy.waterUvScrollScale);
     instanceBuffer = this.ensureInstanceBuffer(device, instanceCount);
     device.queue.writeBuffer(instanceBuffer, 0, data, 0, instanceCount * this.strideFloats);
 

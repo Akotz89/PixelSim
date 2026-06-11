@@ -21,6 +21,7 @@ assert.ok(pipelineSource.indexOf("PS.render.lod.getTier") >= 0, "pipeline should
 assert.ok(pipelineSource.indexOf("getPreloadSurfaceLodIndex") >= 0, "pipeline should consume preload LOD readiness state");
 assert.ok(pipelineSource.indexOf("transitionAlpha") >= 0, "pipeline should publish LOD transition alpha");
 assert.ok(pipelineSource.indexOf("getLayerLodAlpha") >= 0, "pipeline should gate layers through LOD alpha");
+assert.ok(pipelineSource.indexOf("getVisualPolicy") >= 0, "pipeline should publish visual LOD policy state");
 assert.ok(pipelineSource.indexOf("PS.render.entities.drawSettlementInfluence()") >= 0, "settlement influence layer should call the border renderer");
 assert.ok(pipelineSource.indexOf("PS.render.entities.drawSettlementRoutes()") >= 0, "settlement route layer should call the route renderer");
 assert.ok(pipelineSource.indexOf("PS.render.entities.drawSettlements()") >= 0, "settlement structure layer should call the structure renderer");
@@ -124,6 +125,16 @@ const context = {
         },
         getPreloadSurfaceLodIndex() {
           return 4;
+        },
+        getVisualPolicy(zoomLevel) {
+          assert.strictEqual(zoomLevel, 7, "pipeline should pass the active zoom level into visual LOD policy lookup");
+          return {
+            level: "WORLD",
+            renderBudgetMs: 4,
+            transitionAlpha: 0,
+            waterUvScrollScale: 0,
+            vegetationMode: "minimap"
+          };
         }
       },
       renderer: {
@@ -315,6 +326,8 @@ assert.strictEqual(stats.lodTier, "region", "pipeline stats should expose consum
 assert.strictEqual(stats.lodTierIndex, 3, "pipeline stats should expose consumed LOD tier index");
 assert.strictEqual(stats.transitionAlpha, 0.25, "pipeline stats should expose LOD transition alpha");
 assert.strictEqual(stats.preloadSurfaceLodIndex, 4, "pipeline stats should expose preload LOD target");
+assert.strictEqual(stats.visualLevel, "WORLD", "pipeline stats should expose visual LOD level");
+assert.strictEqual(stats.visualBudgetMs, 4, "pipeline stats should expose visual LOD render budget");
 assert.ok(stats.submittedLayers > 0, "pipeline stats should count submitted layers");
 assert.ok(stats.skippedLayers > 0, "pipeline stats should count skipped layers outside the active LOD");
 

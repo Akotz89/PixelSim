@@ -10,6 +10,8 @@ PS.render.pipeline.stats = PS.render.pipeline.stats || {
   lodTierIndex: 0,
   transitionAlpha: 0,
   preloadSurfaceLodIndex: 0,
+  visualLevel: "SURFACE",
+  visualBudgetMs: 16,
   submittedLayers: 0,
   skippedLayers: 0,
   blendedLayers: 0,
@@ -141,6 +143,9 @@ PS.render.pipeline.getLodState = function () {
   var preloadIndex = PS.render.lod && typeof PS.render.lod.getPreloadSurfaceLodIndex === "function"
     ? PS.render.lod.getPreloadSurfaceLodIndex()
     : 0;
+  var visualPolicy = PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+    ? PS.render.lod.getVisualPolicy(zoomLevel)
+    : { level: "SURFACE", renderBudgetMs: 16, transitionAlpha: 0 };
 
   return {
     zoomLevel: zoomLevel,
@@ -155,7 +160,10 @@ PS.render.pipeline.getLodState = function () {
     transitionAlpha: Number(tier.transitionAlpha) || 0,
     blendFromPrevious: Number(tier.blendFromPrevious) || 0,
     blendToNext: Number(tier.blendToNext) || 0,
-    preloadSurfaceLodIndex: preloadIndex
+    preloadSurfaceLodIndex: preloadIndex,
+    visualPolicy: visualPolicy,
+    visualLevel: visualPolicy.level,
+    visualBudgetMs: visualPolicy.renderBudgetMs
   };
 };
 
@@ -212,6 +220,8 @@ PS.render.pipeline.publishFrameStats = function (lodState, frameStats, elapsed) 
   stats.lodTierIndex = lodState.tierIndex;
   stats.transitionAlpha = lodState.transitionAlpha;
   stats.preloadSurfaceLodIndex = lodState.preloadSurfaceLodIndex;
+  stats.visualLevel = lodState.visualLevel;
+  stats.visualBudgetMs = lodState.visualBudgetMs;
   stats.submittedLayers = frameStats.submittedLayers;
   stats.skippedLayers = frameStats.skippedLayers;
   stats.blendedLayers = frameStats.blendedLayers;
@@ -222,6 +232,8 @@ PS.render.pipeline.publishFrameStats = function (lodState, frameStats, elapsed) 
     PS.render.renderer.active.stats.lodTierIndex = stats.lodTierIndex;
     PS.render.renderer.active.stats.lodTransitionAlpha = stats.transitionAlpha;
     PS.render.renderer.active.stats.preloadSurfaceLodIndex = stats.preloadSurfaceLodIndex;
+    PS.render.renderer.active.stats.visualLodLevel = stats.visualLevel;
+    PS.render.renderer.active.stats.visualLodBudgetMs = stats.visualBudgetMs;
   }
 
   return stats;
@@ -369,7 +381,7 @@ PS.render.pipeline.registerLayer("vegetation.world", {
   semantic: "Y-sorted world vegetation trunks, bushes, rocks, and tree canopy split passes",
   minTier: "continent",
   maxTier: "local",
-  draw: function () { PS.render.vegetation.draw(); }
+  draw: function (lodState) { PS.render.vegetation.draw(lodState); }
 });
 
 PS.render.pipeline.registerLayer("vegetation.grass", {
@@ -379,9 +391,9 @@ PS.render.pipeline.registerLayer("vegetation.grass", {
   semantic: "4-bit grass density overlay tinted over terrain below world vegetation",
   minTier: "continent",
   maxTier: "local",
-  draw: function () {
+  draw: function (lodState) {
     if (PS.render.vegetation && typeof PS.render.vegetation.drawGrassOverlay === "function") {
-      PS.render.vegetation.drawGrassOverlay();
+      PS.render.vegetation.drawGrassOverlay(lodState);
     }
   }
 });
@@ -407,9 +419,9 @@ PS.render.pipeline.registerLayer("water.displacement", {
   semantic: "shader-driven wind-scrolled water displacement passes",
   minTier: "continent",
   maxTier: "local",
-  draw: function () {
+  draw: function (lodState) {
     if (PS.render.webgpuWaterDisplacement && typeof PS.render.webgpuWaterDisplacement.draw === "function") {
-      PS.render.webgpuWaterDisplacement.draw({ loadOp: "load" });
+      PS.render.webgpuWaterDisplacement.draw({ loadOp: "load", lodState: lodState });
     }
   }
 });

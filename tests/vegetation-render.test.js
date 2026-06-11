@@ -197,4 +197,19 @@ assert.strictEqual(context.PS.render.vegetation.drawGrassOverlay(), true, "grass
 assert.strictEqual(drawCalls[3].drawn, 2, "grass density overlay should draw one rect per non-zero density tile");
 assert.ok(drawCalls[3].values[7] < 0.5 && drawCalls[3].values[15] > drawCalls[3].values[7], "grass overlay alpha should scale by density");
 
+context.PS.render.vegetation.invalidateCache();
+const worldLodState = {
+  visualPolicy: {
+    level: "WORLD",
+    vegetationMode: "minimap",
+    vegetationSpriteScale: 0,
+    vegetationShadowAlpha: 0
+  }
+};
+const worldPrepared = context.PS.render.vegetation.buildLayerBatches(worldLodState);
+assert.strictEqual(worldPrepared.belowCount, 0, "world LOD should skip detailed vegetation sprite batches");
+assert.strictEqual(worldPrepared.canopyCount, 0, "world LOD should skip detailed canopy batches");
+assert.strictEqual(worldPrepared.shadowCount, 0, "world LOD should skip vegetation shadow batches");
+assert.strictEqual(context.PS.render.vegetation.drawGrassOverlay(worldLodState), false, "world LOD should skip per-tile grass overlay rects");
+
 console.log("vegetation render checks passed");

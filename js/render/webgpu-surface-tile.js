@@ -727,9 +727,20 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     }
   },
 
+  getVisualPolicy: function (lodState) {
+    if (lodState && lodState.visualPolicy) {
+      return lodState.visualPolicy;
+    }
+
+    return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+      ? PS.render.lod.getVisualPolicy()
+      : { level: "SURFACE", pointLightScale: 1, normalLightingStrength: 1 };
+  },
+
   drawBatches: function (batches, options) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
+    var policy = this.getVisualPolicy(spec.lodState);
     var device = this.getDevice(spec.device);
     var context = spec.context || (PS.gpu && PS.gpu.context);
     var targetCanvas = PS.gpu && PS.gpu.canvas ? PS.gpu.canvas : (typeof canvas !== "undefined" ? canvas : null);
@@ -824,9 +835,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         loadOp: spec.loadOp || "clear",
         sunDirection: spec.sunDirection,
         ambient: spec.ambient,
-        directionalStrength: spec.directionalStrength,
-        wrapStrength: spec.wrapStrength,
-        heightTintStrength: spec.heightTintStrength
+        directionalStrength: (spec.directionalStrength === undefined ? 0.52 : Math.max(0, Number(spec.directionalStrength) || 0)) *
+          Math.max(0, Number(policy.normalLightingStrength) || 0),
+        wrapStrength: (spec.wrapStrength === undefined ? 0.16 : Math.max(0, Number(spec.wrapStrength) || 0)) *
+          Math.max(0, Number(policy.normalLightingStrength) || 0),
+        heightTintStrength: (spec.heightTintStrength === undefined ? 0.08 : Math.max(0, Number(spec.heightTintStrength) || 0)) *
+          Math.max(0, Number(policy.normalLightingStrength) || 0)
       });
 
       if (PS.render.webgpuPointLights && typeof PS.render.webgpuPointLights.draw === "function") {
@@ -834,7 +848,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
           device: device,
           context: context,
           commandEncoder: encoder,
-          lights: readyBatches.pointLights || [],
+          lights: Math.max(0, Number(policy.pointLightScale) || 0) > 0 ? readyBatches.pointLights || [] : [],
           textureView: spec.textureView || null,
           loadOp: "load",
           width: width,

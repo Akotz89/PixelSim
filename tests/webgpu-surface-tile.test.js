@@ -537,6 +537,62 @@ assert.strictEqual(resolverTransitionBatches.count, 3, "resolver transitions sho
 assert.strictEqual(resolverTransitionBatches.equivalenceTransitions, 2, "resolver overlays should count as accepted transition draws");
 assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.grass-sand.edge.n"] > 0, "resolver grass-sand edge should map to accepted transition cell");
 assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.rock-snow.inner-corner.ne"] > 0, "resolver snow-rock inner corner should map to accepted rock-snow cell");
+const regionVisualLod = {
+  visualPolicy: {
+    level: "REGION",
+    pointLightScale: 0.2,
+    waterUvScrollScale: 0.2,
+    autotileTransitions: "simplified",
+    transitionAlphaScale: 0.25,
+    normalLightingStrength: 0.3
+  }
+};
+const simplifiedResolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 7,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1,
+  transitionGrid: resolverGrid
+}, [{
+  sample: {
+    biome: "desert",
+    detail: { surface: "sand" }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, regionVisualLod);
+assert.strictEqual(simplifiedResolverTransitionBatches.count, 2, "region LOD should simplify resolver transitions to one overlay");
+assert.strictEqual(simplifiedResolverTransitionBatches.equivalenceTransitions, 1, "region LOD should count only the simplified accepted transition overlay");
+const worldVisualLod = {
+  visualPolicy: {
+    level: "WORLD",
+    pointLightScale: 0,
+    waterUvScrollScale: 0,
+    autotileTransitions: "disabled",
+    transitionAlphaScale: 0,
+    normalLightingStrength: 0
+  }
+};
+const disabledResolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 7,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1,
+  transitionGrid: resolverGrid
+}, [{
+  sample: {
+    biome: "desert",
+    detail: { surface: "sand" }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, worldVisualLod);
+assert.strictEqual(disabledResolverTransitionBatches.count, 1, "world LOD should disable accepted transition overlays");
+assert.strictEqual(disabledResolverTransitionBatches.equivalenceTransitions, 0, "world LOD should not count transition overlay draws");
 delete context.PS.render.terrainTransitions;
 
 const splitPageData = new Uint8Array(512 * 32 * 4);
@@ -652,6 +708,32 @@ assert.strictEqual(context.PS.render.waterRendering.shouldPlaceDecoration({
   biome: "ocean",
   detail: { surface: "tidal shore", materialSignals: { waterDepth: 0.22, shallowWater: 0.8 } }
 }, "ocean", 4, 6), false, "floating decorations should not spawn on shore water tiles");
+const worldWaterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 6,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: {
+    biome: "ocean",
+    detail: {
+      surface: "tidal shore",
+      feature: "foam",
+      materialSignals: {
+        waterDepth: 0.22,
+        shallowWater: 0.8,
+        shoreMask: 10,
+        growth: 0.25
+      }
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, worldVisualLod);
+const worldWaterPage = worldWaterBatches.pages[Object.keys(worldWaterBatches.pages)[0]];
+assert.strictEqual(worldWaterPage.data[13], 0, "world LOD should disable encoded shore wave animation");
 
 let decorationTile = null;
 for (let dx = 0; dx < 64 && !decorationTile; dx += 1) {
@@ -694,6 +776,60 @@ const decorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
 assert.strictEqual(decorationBatches.shadowRects.length, 8, "open-water decorations should emit one batched shadow rect");
 assert.strictEqual(decorationBatches.waterDecorationRects.length, 8, "open-water decorations should emit one batched decoration rect");
 assert.ok(decorationBatches.shadowRects[7] > 0, "decoration shadow rect should include visible alpha");
+const worldDecorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: decorationTile.x,
+  sampleNorth: decorationTile.y,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: decorationSample,
+  screenX: 0,
+  screenY: 0
+}], 1, worldVisualLod);
+assert.strictEqual(worldDecorationBatches.shadowRects.length, 0, "world LOD should skip open-water decoration shadows");
+assert.strictEqual(worldDecorationBatches.waterDecorationRects.length, 0, "world LOD should skip open-water decoration particles");
+
+const regionLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 2,
+  sampleNorth: 3,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: {
+    biome: "mountain",
+    detail: {
+      surface: "lava vent",
+      materialSignals: { lava: 1 }
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, regionVisualLod);
+assert.strictEqual(regionLightBatches.pointLights.length, 1, "region LOD should keep a reduced point-light signal");
+assert.ok(nearly(regionLightBatches.pointLights[0].intensity, 1.05 * 0.2), "region LOD should scale point-light intensity by policy");
+const worldLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 2,
+  sampleNorth: 3,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: {
+    biome: "mountain",
+    detail: {
+      surface: "lava vent",
+      materialSignals: { lava: 1 }
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, worldVisualLod);
+assert.strictEqual(worldLightBatches.pointLights.length, 0, "world LOD should skip point-light submissions");
 
 context.PS.atlas.getTerrainTransitionKey = function (sample) {
   const neighbor = sample && sample.tileBlend && sample.tileBlend.tiles && sample.tileBlend.tiles[0];
@@ -827,6 +963,35 @@ assert.strictEqual(stats.equivalenceTransitionDrawCount, 1, "stats should preser
 assert.strictEqual(stats.lastError, "", "successful draw should clear lastError");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().shadowDrawCount, 1, "real shadow renderer should count water decoration shadows");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().particleDrawCount, 1, "real particle renderer should count floating water decorations");
+
+assert.strictEqual(surfaceTile.drawBatches({
+  pages: {
+    0: new Float32Array([
+      8, 12, 16, 16,
+      0, 0, 0.5, 0.5,
+      1, 0.25, 1, 2, 33, 4, 0.75
+    ])
+  },
+  count: 1,
+  culled: 0,
+  materialCounts: {},
+  pointLights: [{ x: 8, y: 8, radius: 12, color: [1, 0.4, 0.1], intensity: 1, kind: "test" }],
+  shadowRects: [],
+  waterDecorationRects: []
+}, {
+  sunDirection: [0, 3, 4],
+  ambient: 0.41,
+  directionalStrength: 0.62,
+  wrapStrength: 0.18,
+  heightTintStrength: 0.07,
+  lodState: regionVisualLod
+}), true, "region LOD surface tile draw should still submit terrain with reduced lighting");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "gbuffer-compose.uniforms" &&
+    nearly(write.data[5], 0.62 * 0.3) &&
+    nearly(write.data[6], 0.18 * 0.3) &&
+    nearly(write.data[7], 0.07 * 0.3);
+}), "region LOD should scale normal-mapped compositor lighting strengths");
 
 const tilemapLayer = surfaceTile.createTilemapLayer(400, 250);
 assert.strictEqual(tilemapLayer.data.byteLength, 400 * 250 * 4, "tilemap layer should pack RGBA8 tile data");

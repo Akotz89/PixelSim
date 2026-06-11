@@ -126,6 +126,16 @@ PS.render.waterRendering.getNowMs = function () {
   return Date.now ? Date.now() : 0;
 };
 
+PS.render.waterRendering.getVisualPolicy = function (lodState) {
+  if (lodState && lodState.visualPolicy) {
+    return lodState.visualPolicy;
+  }
+
+  return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+    ? PS.render.lod.getVisualPolicy()
+    : { level: "SURFACE", waterUvScrollScale: 1 };
+};
+
 PS.render.waterRendering.getDecorationSeed = function (tileX, tileY, salt) {
   var x = Math.round(Number(tileX) || 0);
   var y = Math.round(Number(tileY) || 0);
@@ -160,10 +170,10 @@ PS.render.waterRendering.shouldPlaceDecoration = function (sample, biome, tileX,
   return (PS.render.waterRendering.getDecorationSeed(tileX, tileY, 0) & 7) === 0;
 };
 
-PS.render.waterRendering.getDecorationWaveOffset = function (tileX, tileY, nowMs, axis) {
+PS.render.waterRendering.getDecorationWaveOffset = function (tileX, tileY, nowMs, axis, speedScale) {
   var seed = PS.render.waterRendering.getDecorationSeed(tileX, tileY, axis === "y" ? 1 : 0);
   var phase = seed & 15;
-  var speed = 10 / (1 + ((seed >>> 4) & 15));
+  var speed = (10 / (1 + ((seed >>> 4) & 15))) * Math.max(0, Number(speedScale === undefined ? 1 : speedScale) || 0);
   var seconds = Math.max(0, Number(nowMs) || 0) / 1000;
   var frame = (phase + Math.floor(speed * seconds)) & 15;
   var distance = Math.abs(8 - frame);
@@ -178,7 +188,8 @@ PS.render.waterRendering.getDecorationWaveOffset = function (tileX, tileY, nowMs
   };
 };
 
-PS.render.waterRendering.getDecorationRenderInfo = function (sample, biome, tileX, tileY, samplePixelSize, nowMs) {
+PS.render.waterRendering.getDecorationRenderInfo = function (sample, biome, tileX, tileY, samplePixelSize, nowMs, lodState) {
+  var policy = PS.render.waterRendering.getVisualPolicy(lodState);
   var size = Math.max(1, Number(samplePixelSize) || 1);
   var timeMs = nowMs === undefined ? PS.render.waterRendering.getNowMs() : nowMs;
   var xWave;
@@ -190,13 +201,13 @@ PS.render.waterRendering.getDecorationRenderInfo = function (sample, biome, tile
   var offsetX;
   var offsetY;
 
-  if (!PS.render.waterRendering.shouldPlaceDecoration(sample, biome, tileX, tileY)) {
+  if (Math.max(0, Number(policy.waterUvScrollScale) || 0) <= 0 || !PS.render.waterRendering.shouldPlaceDecoration(sample, biome, tileX, tileY)) {
     return null;
   }
 
   seed = PS.render.waterRendering.getDecorationSeed(tileX, tileY, 2);
-  xWave = PS.render.waterRendering.getDecorationWaveOffset(tileX, tileY, timeMs, "x");
-  yWave = PS.render.waterRendering.getDecorationWaveOffset(tileX, tileY, timeMs, "y");
+  xWave = PS.render.waterRendering.getDecorationWaveOffset(tileX, tileY, timeMs, "x", policy.waterUvScrollScale);
+  yWave = PS.render.waterRendering.getDecorationWaveOffset(tileX, tileY, timeMs, "y", policy.waterUvScrollScale);
   kind = seed % 3;
   width = size * (kind === 0 ? 0.34 : 0.26);
   height = size * (kind === 2 ? 0.18 : 0.22);
@@ -218,7 +229,8 @@ PS.render.waterRendering.getDecorationRenderInfo = function (sample, biome, tile
   };
 };
 
-PS.render.waterRendering.getRenderInfo = function (sample, biome, tileX, tileY) {
+PS.render.waterRendering.getRenderInfo = function (sample, biome, tileX, tileY, lodState) {
+  var policy = PS.render.waterRendering.getVisualPolicy(lodState);
   if (!PS.render.waterRendering.isWaterSample(sample, biome)) {
     return null;
   }
@@ -226,7 +238,7 @@ PS.render.waterRendering.getRenderInfo = function (sample, biome, tileX, tileY) 
   return {
     depthCode: PS.render.waterRendering.getDepthCode(sample, biome),
     stencilIndex: PS.render.waterRendering.getStencilIndex(sample, tileX, tileY),
-    waveOffset: PS.render.waterRendering.getShoreWaveOffset(PS.render.waterRendering.getNowMs()),
+    waveOffset: Math.round(PS.render.waterRendering.getShoreWaveOffset(PS.render.waterRendering.getNowMs()) * Math.max(0, Number(policy.waterUvScrollScale) || 0)),
     growth: PS.render.waterRendering.getSeasonalGrowth(sample)
   };
 };
