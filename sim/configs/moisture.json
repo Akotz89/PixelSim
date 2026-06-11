@@ -1,0 +1,23 @@
+{
+  "width": 512,
+  "height": 512,
+  "target_tick_ms": 5,
+  "max_precipitation_mm": 4000,
+  "evaporation_coefficient": 0.018,
+  "dew_point_c": 12,
+  "ocean_evaporation_multiplier": 2.4,
+  "wind_speed_scale": 1.0,
+  "advection_scale": 0.35,
+  "lift_factor": 0.0025,
+  "saturation_threshold": 0.72,
+  "condensation_rate": 0.55,
+  "rain_shadow_drying": 0.68,
+  "hadley_strength": 0.55,
+  "westerly_strength": 0.35,
+  "precipitation_bands": {
+    "tropical": [2000, 4000],
+    "temperate": [500, 1500],
+    "desert": [50, 250],
+    "polar": [100, 300]
+  }
+}
