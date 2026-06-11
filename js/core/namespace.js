@@ -91,6 +91,7 @@ PS.core.manifest = [
   "js/sim/compute-harness.js",
   "js/sim/heat-diffusion.js",
   "js/sim/lbm-ocean.js",
+  "js/sim/thermohaline.js",
   "js/sim/biome-lut.js",
   "js/render/surface-worker-client.js",
   "js/render/surface-ecology.js",
