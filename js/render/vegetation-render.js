@@ -173,24 +173,34 @@ PS.render.vegetation = PS.render.vegetation || {
     return selected && selected.renderCell ? selected.renderCell : null;
   },
 
-  getShadowHeight: function (type) {
+  getShadowSpec: function (type) {
     var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
 
-    if (type === types.TREE_BIG) { return 8; }
-    if (type === types.TREE_MEDIUM) { return 6; }
-    if (type === types.TREE_SMALL) { return 4; }
-    if (type === types.BUSH || type === types.FLOWER || type === types.MUSHROOM || type === types.GRASS_TUFT) { return 1; }
-    if (type === types.ROCK) { return 2; }
-    return 0;
+    if (type === types.TREE_BIG) { return { height: 8, length: 6, mode: "soft" }; }
+    if (type === types.TREE_MEDIUM) { return { height: 6, length: 4, mode: "soft" }; }
+    if (type === types.TREE_SMALL) { return { height: 4, length: 3, mode: "soft" }; }
+    if (type === types.BUSH) { return { height: 1, length: 1, mode: "hard" }; }
+    if (type === types.ROCK) { return { height: 2, length: 2, mode: "hard" }; }
+    return { height: 0, length: 0, mode: "none" };
+  },
+
+  getShadowHeight: function (type) {
+    return this.getShadowSpec(type).height;
+  },
+
+  getShadowLength: function (type) {
+    return this.getShadowSpec(type).length;
   },
 
   appendShadowRect: function (rects, pointX, pointY, size, type, alpha) {
-    var shadowHeight = this.getShadowHeight(type);
+    var spec = this.getShadowSpec(type);
+    var shadowHeight = spec.height;
+    var shadowLength = spec.length;
     var normalizedAlpha = Math.max(0, Math.min(1, Number(alpha) || 0));
     var width;
     var height;
 
-    if (!rects || shadowHeight <= 0 || normalizedAlpha <= 0) {
+    if (!rects || shadowHeight <= 0 || shadowLength <= 0 || normalizedAlpha <= 0) {
       return false;
     }
 
@@ -203,9 +213,9 @@ PS.render.vegetation = PS.render.vegetation || {
         width: width,
         rectHeight: height,
         heightUnits: shadowHeight,
+        distance2Ground: Math.max(0, shadowLength - 1) * 0.45,
         alpha: Math.min(0.42, (this.isTreeType(type) ? 0.34 : 0.22) * normalizedAlpha),
-        mode: this.isTreeType(type) ? "soft" : "hard",
-        distance2Ground: 0,
+        mode: spec.mode,
         color: [0.018, 0.028, 0.045]
       }) > 0;
     }

@@ -172,13 +172,22 @@ vegetation.init(4, 4);
 vegetation.set(2, 3, vegetation.TYPES.TREE_BIG, 5);
 vegetation.set(0, 1, vegetation.TYPES.BUSH, 2);
 vegetation.set(1, 2, vegetation.TYPES.ROCK, 1);
+vegetation.set(3, 0, vegetation.TYPES.FLOWER, 1);
 vegetation.setGrassDensity(0, 0, 5);
 vegetation.setGrassDensity(1, 0, 15);
 
 const list = context.PS.render.vegetation.buildDrawList();
-assert.deepStrictEqual(JSON.parse(JSON.stringify(list.map((item) => item.tileY))), [3, 2, 1], "vegetation draw list should be Y-sorted by projected screen position");
-assert.strictEqual(context.PS.render.vegetation.getStats().visibleCount, 3, "stats should count visible vegetation");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(list.map((item) => item.tileY))), [0, 3, 2, 1], "vegetation draw list should be Y-sorted by projected screen position");
+assert.strictEqual(context.PS.render.vegetation.getStats().visibleCount, 4, "stats should count visible vegetation");
 assert.strictEqual(context.PS.render.vegetation.getStats().canopyCount, 1, "stats should count tree canopy entries");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(context.PS.render.vegetation.getShadowSpec(vegetation.TYPES.TREE_BIG))), { height: 8, length: 6, mode: "soft" }, "big trees should use AZR-545 shadow dimensions");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(context.PS.render.vegetation.getShadowSpec(vegetation.TYPES.TREE_MEDIUM))), { height: 6, length: 4, mode: "soft" }, "medium trees should use AZR-545 shadow dimensions");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(context.PS.render.vegetation.getShadowSpec(vegetation.TYPES.TREE_SMALL))), { height: 4, length: 3, mode: "soft" }, "small trees should use AZR-545 shadow dimensions");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(context.PS.render.vegetation.getShadowSpec(vegetation.TYPES.BUSH))), { height: 1, length: 1, mode: "hard" }, "bushes should cast short shadows");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(context.PS.render.vegetation.getShadowSpec(vegetation.TYPES.ROCK))), { height: 2, length: 2, mode: "hard" }, "rocks should cast low hard shadows");
+assert.strictEqual(context.PS.render.vegetation.getShadowHeight(vegetation.TYPES.FLOWER), 0, "flowers should not cast vegetation shadows");
+assert.strictEqual(context.PS.render.vegetation.getShadowHeight(vegetation.TYPES.MUSHROOM), 0, "mushrooms should not cast vegetation shadows");
+assert.strictEqual(context.PS.render.vegetation.getShadowHeight(vegetation.TYPES.GRASS_TUFT), 0, "grass tufts should not cast vegetation shadows");
 
 assert.strictEqual(context.PS.render.vegetation.draw(), true, "vegetation renderer should submit draw-order commands");
 context.PS.render.drawOrder.flush({});
@@ -189,7 +198,8 @@ assert.ok(drawCalls[0].drawn > 3, "vegetation should stamp multiple offset shado
 assert.ok(drawCalls[0].values[2] > drawCalls[0].values[18], "tree shadow should be wider than bush shadows");
 assert.ok(drawCalls[0].values[3] > drawCalls[0].values[19], "tree shadow should be taller than low vegetation shadows");
 assert.ok(drawCalls[0].values[7] > drawCalls[0].values[15], "shadow stamp opacity should decrease across tree copies");
-assert.deepStrictEqual(JSON.parse(JSON.stringify(drawCalls[1].cells)), ["veg.3.5.below", "veg.7.1.below", "accepted.leafy-bush.0"], "ground vegetation should sort by projected screen position and keep rocks procedural");
+assert.strictEqual(drawCalls[0].drawn, 4, "only tree, bush, and rock should cast physical vegetation shadow stamps");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(drawCalls[1].cells)), ["veg.5.1.below", "veg.3.5.below", "veg.7.1.below", "accepted.leafy-bush.0"], "ground vegetation should sort by projected screen position and keep rocks procedural");
 assert.deepStrictEqual(JSON.parse(JSON.stringify(drawCalls[2].cells)), ["accepted.oak.2"], "canopy batch should prefer accepted authored tree sprites");
 assert.ok(drawCalls[2].heights[0] > drawCalls[2].widths[0], "accepted tree canopy should preserve 32x48 sprite aspect");
 assert.ok(drawCalls[1].drawn > drawCalls[2].drawn, "below batch should include trunks and ground vegetation");
