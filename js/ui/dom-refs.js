@@ -16,6 +16,13 @@ const inspectSummaryText = document.getElementById("inspect-summary");
 const inspectDetailsText = document.getElementById("inspect-details");
 const traitSummaryText = document.getElementById("trait-summary");
 const lineageSummaryText = document.getElementById("lineage-summary");
+const evolutionTreeFilterButtons = typeof document.querySelectorAll === "function"
+  ? document.querySelectorAll("[data-evolution-tree-filter]")
+  : [];
+const evolutionTreeActionButtons = typeof document.querySelectorAll === "function"
+  ? document.querySelectorAll("[data-evolution-tree-action]")
+  : [];
+const evolutionTreeView = document.getElementById("evolution-tree-view");
 const settlementSummaryText = document.getElementById("settlement-summary");
 const eventLogText = document.getElementById("event-log");
 const observationOverlayButtons = typeof document.querySelectorAll === "function"

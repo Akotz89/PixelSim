@@ -252,6 +252,10 @@ window.setupControls = function() {
     if (PS.ui.bookmarks) {
       PS.ui.bookmarks.setup();
     }
+
+    if (PS.ui.evolutionaryTree) {
+      PS.ui.evolutionaryTree.setup();
+    }
   }
 
   if (window.PS && PS.debug) {
