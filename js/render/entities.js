@@ -434,22 +434,25 @@ PS.render.entities.drawSettlementShadows = function () {
     var width = Math.max(4, size * 1.12);
     var height = Math.max(2, size * 0.42);
     var alpha = point && Number.isFinite(Number(point.visibility)) ? Number(point.visibility) : 1;
+    var heightUnits = Math.max(4, Math.min(31, Math.round(size * 0.78 + (Number(settlement && settlement.level) || 1) * 2)));
 
     if (!point || point.visible === false || settlement && settlement.isActive === false) {
       continue;
     }
 
-    rects.push(
-      point.x - width / 2,
-      point.y + size * 0.28,
-      width,
-      height,
-      0.02,
-      0.035,
-      0.055,
-      Math.max(0, Math.min(0.42, 0.34 * alpha))
-    );
-    drawn += 1;
+    if (PS.render.shadows && typeof PS.render.shadows.appendStampedRects === "function") {
+      drawn += PS.render.shadows.appendStampedRects(rects, {
+        x: point.x - width / 2,
+        y: point.y + size * 0.28,
+        width: width,
+        rectHeight: height,
+        heightUnits: heightUnits,
+        alpha: Math.max(0, Math.min(0.42, 0.34 * alpha)),
+        mode: "hard",
+        distance2Ground: Math.max(0, Number(settlement && settlement.shadowDistance2Ground) || 0),
+        color: [0.02, 0.035, 0.055]
+      });
+    }
   }
 
   return drawn > 0 && PS.render.webgpuEntity.drawShadowRects(new Float32Array(rects));

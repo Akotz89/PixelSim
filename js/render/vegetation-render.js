@@ -196,17 +196,21 @@ PS.render.vegetation = PS.render.vegetation || {
 
     width = Math.max(2, size * (this.isTreeType(type) ? 0.92 : 0.72));
     height = Math.max(1, shadowHeight * Math.max(0.4, size / Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8)));
-    rects.push(
-      pointX - width * 0.5 + size * 0.06,
-      pointY + size * 0.22,
-      width,
-      height,
-      0.018,
-      0.028,
-      0.045,
-      Math.min(0.42, (this.isTreeType(type) ? 0.34 : 0.22) * normalizedAlpha)
-    );
-    return true;
+    if (PS.render.shadows && typeof PS.render.shadows.appendStampedRects === "function") {
+      return PS.render.shadows.appendStampedRects(rects, {
+        x: pointX - width * 0.5 + size * 0.06,
+        y: pointY + size * 0.22,
+        width: width,
+        rectHeight: height,
+        heightUnits: shadowHeight,
+        alpha: Math.min(0.42, (this.isTreeType(type) ? 0.34 : 0.22) * normalizedAlpha),
+        mode: this.isTreeType(type) ? "soft" : "hard",
+        distance2Ground: 0,
+        color: [0.018, 0.028, 0.045]
+      }) > 0;
+    }
+
+    return false;
   },
 
   getTilePoint: function (tileX, tileY) {

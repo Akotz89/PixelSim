@@ -19,6 +19,7 @@ const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
 const compositorSource = read("js/render/webgpu-compositor.js");
 const entitySource = read("js/render/webgpu-entity.js");
+const shadowSource = read("js/render/shadow-stamping.js");
 const entitiesSource = read("js/render/entities.js");
 const gbufferComposeWgsl = read("shaders/gbuffer-compose.wgsl");
 
@@ -29,6 +30,10 @@ assert.ok(
 assert.ok(
   namespaceSource.indexOf("js/render/webgpu-entity.js") < namespaceSource.indexOf("js/render/webgpu-renderer.js"),
   "WebGPU entity renderer should load before the active WebGPU renderer"
+);
+assert.ok(
+  namespaceSource.indexOf("js/render/shadow-stamping.js") < namespaceSource.indexOf("js/render/entities.js"),
+  "shadow stamping helper should load before entity facades"
 );
 assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load legacy entity renderer");
 assert.strictEqual(entitySource.toLowerCase().indexOf("webgl"), -1, "WebGPU entity source must not reference WebGL");
@@ -374,6 +379,7 @@ vm.runInContext(targetsSource, context, { filename: "js/render/webgpu-targets.js
 vm.runInContext(gbufferSource, context, { filename: "js/render/webgpu-gbuffer.js" });
 vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-compositor.js" });
 vm.runInContext(entitySource, context, { filename: "js/render/webgpu-entity.js" });
+vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js" });
 vm.runInContext(entitiesSource, context, { filename: "js/render/entities.js" });
 
 ["sprite-batch", "entity-atlas", "particle", "shadow"].forEach(function (name) {
@@ -517,6 +523,13 @@ assert.ok(organismPerfStats.lastSpriteCacheMisses >= 1 && organismPerfStats.last
 assert.ok(organismPerfStats.lastEstimatedRenderObjectsPerSecond < 10000, "bounded thermal/water changes should stay below 10,000 estimated objects/sec");
 context.world.organisms = singleOrganismFixture;
 
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawSettlementShadows(), true, "settlement shadows should render through stamped WebGPU shadow rects");
+assert.ok(context.PS.render.webgpuEntity.getStats().shadowDrawCount > 2, "settlement shadows should emit multiple stamped shadow instances");
+assert.ok(
+  context.PS.render.webgpuEntity.getStats().shadowDrawCount > context.world.settlements.length,
+  "shadow stats should document physical stamped rect instances rather than logical settlement casters"
+);
 context.PS.render.webgpuEntity.resetFrameStats();
 assert.strictEqual(context.PS.render.entities.drawSettlements(), true, "settlement facade should render through WebGPU entity batches");
 assert.strictEqual(context.PS.render.entities.drawSettlementRoutes(), true, "settlement route facade should render through WebGPU entity batches");
