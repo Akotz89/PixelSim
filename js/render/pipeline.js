@@ -672,5 +672,9 @@ PS.render.pipeline.registerLayer("ui.minimap", {
   maxBand: "settlement",
   minTier: "region",
   maxTier: "local",
-  draw: function () {}
+  draw: function (lodState, alpha) {
+    if (PS.render.minimap && typeof PS.render.minimap.draw === "function") {
+      PS.render.minimap.draw(lodState, alpha);
+    }
+  }
 });

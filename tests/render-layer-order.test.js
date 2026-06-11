@@ -107,6 +107,13 @@ const context = {
           events.push("vegetation");
         }
       },
+      minimap: {
+        draw(lodState, alpha) {
+          assert.strictEqual(lodState.tierName, "region", "minimap should receive the active LOD state");
+          assert.strictEqual(alpha, 1, "minimap should draw at full alpha in the active region tier");
+          events.push("minimap");
+        }
+      },
       lod: {
         getArchitectureZoom(zoomLevel) {
           return 1 + (Number(zoomLevel) || 0) / 7 * 19;
@@ -316,6 +323,7 @@ assert.deepStrictEqual(
     "vegetation",
     "influence",
     "routes",
+    "minimap",
     "end"
   ],
   "pipeline should execute active WebGPU runtime layers through formal draw order"
