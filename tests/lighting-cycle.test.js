@@ -6,21 +6,22 @@ function nearlyDifferent(a, b) {
 
 const packageJson = JSON.parse(read("package.json"));
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const lightingSource = read("js/render/lighting-cycle.js");
 const shadowSource = read("js/render/shadow-stamping.js");
 const compositorSource = read("js/render/webgpu-compositor.js");
 const shaderSource = read("shaders/gbuffer-compose.wgsl");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/lighting-cycle.js") > namespaceSource.indexOf("js/render/webgpu-gbuffer.js"),
+  manifestSource.indexOf("js/render/lighting-cycle.js") > manifestSource.indexOf("js/render/webgpu-gbuffer.js"),
   "lighting cycle should load after G-buffer setup"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/lighting-cycle.js") < namespaceSource.indexOf("js/render/webgpu-compositor.js"),
+  manifestSource.indexOf("js/render/lighting-cycle.js") < manifestSource.indexOf("js/render/webgpu-compositor.js"),
   "lighting cycle should load before compositor consumers"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/lighting-cycle.js") < namespaceSource.indexOf("js/render/shadow-stamping.js"),
+  manifestSource.indexOf("js/render/lighting-cycle.js") < manifestSource.indexOf("js/render/shadow-stamping.js"),
   "lighting cycle should load before stamped shadow consumers"
 );
 assert.ok(

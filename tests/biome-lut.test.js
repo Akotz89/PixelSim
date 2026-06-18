@@ -51,17 +51,18 @@ function hexToRgb(hex) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const biomeSource = read("js/sim/biome-lut.js");
 const shaderSource = read("shaders/biome-render.wgsl");
 const shaderSidecar = read("shaders/biome-render.wgsl.js");
 const png = fs.readFileSync(path.join(root, "assets/biome-lut.png"));
 
 assert.ok(
-  namespaceSource.indexOf("js/sim/biome-lut.js") > namespaceSource.indexOf("js/sim/heat-diffusion.js"),
+  manifestSource.indexOf("js/sim/biome-lut.js") > manifestSource.indexOf("js/sim/heat-diffusion.js"),
   "biome LUT should load after heat diffusion simulation data"
 );
 assert.ok(
-  namespaceSource.indexOf("js/sim/biome-lut.js") < namespaceSource.indexOf("js/render/draw-order.js"),
+  manifestSource.indexOf("js/sim/biome-lut.js") < manifestSource.indexOf("js/render/draw-order.js"),
   "biome LUT should load before draw ordering"
 );
 

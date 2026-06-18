@@ -1,11 +1,12 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const drawOrderSource = read("js/render/draw-order.js");
 const pipelineSource = read("js/render/pipeline.js");
 const debugOverlaySource = read("js/debug/overlays.js");
 
-assert.ok(namespaceSource.indexOf("js/render/draw-order.js") >= 0, "script manifest should load draw-order before pipeline");
+assert.ok(manifestSource.indexOf("js/render/draw-order.js") >= 0, "script manifest should load draw-order before pipeline");
 assert.ok(pipelineSource.indexOf("PS.render.drawOrder.submit") >= 0, "pipeline should submit registered steps through draw order");
 assert.ok(pipelineSource.indexOf("PS.render.drawOrder.flush") >= 0, "pipeline should flush draw order once per frame");
 assert.ok(pipelineSource.indexOf("PS.render.lod.getTier") >= 0, "pipeline should consume LOD tier state");

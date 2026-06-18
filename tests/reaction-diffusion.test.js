@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const source = read("js/sim/reaction-diffusion.js");
@@ -9,8 +10,8 @@ const shaderSidecar = read("shaders/reaction-diffusion.wgsl.js");
 const configSource = read("sim/configs/reaction-diffusion.json");
 const configSidecar = read("sim/configs/reaction-diffusion.json.js");
 
-assert.ok(namespaceSource.indexOf("js/sim/reaction-diffusion.js") > namespaceSource.indexOf("js/sim/thermohaline.js"), "reaction diffusion should load after thermohaline simulation");
-assert.ok(namespaceSource.indexOf("js/sim/reaction-diffusion.js") < namespaceSource.indexOf("js/sim/biome-lut.js"), "reaction diffusion should load before biome visualization bridge");
+assert.ok(manifestSource.indexOf("js/sim/reaction-diffusion.js") > manifestSource.indexOf("js/sim/thermohaline.js"), "reaction diffusion should load after thermohaline simulation");
+assert.ok(manifestSource.indexOf("js/sim/reaction-diffusion.js") < manifestSource.indexOf("js/sim/biome-lut.js"), "reaction diffusion should load before biome visualization bridge");
 
 [
   "@compute @workgroup_size(8, 8, 1)",

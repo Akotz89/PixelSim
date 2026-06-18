@@ -5,6 +5,7 @@ function nearly(actual, expected) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
@@ -15,18 +16,18 @@ const entitiesSource = read("js/render/entities.js");
 const gbufferComposeWgsl = read("shaders/gbuffer-compose.wgsl");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-entity.js") > namespaceSource.indexOf("js/render/webgpu-compositor.js"),
+  manifestSource.indexOf("js/render/webgpu-entity.js") > manifestSource.indexOf("js/render/webgpu-compositor.js"),
   "WebGPU entity renderer should load after WebGPU render target primitives"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-entity.js") < namespaceSource.indexOf("js/render/webgpu-renderer.js"),
+  manifestSource.indexOf("js/render/webgpu-entity.js") < manifestSource.indexOf("js/render/webgpu-renderer.js"),
   "WebGPU entity renderer should load before the active WebGPU renderer"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/shadow-stamping.js") < namespaceSource.indexOf("js/render/entities.js"),
+  manifestSource.indexOf("js/render/shadow-stamping.js") < manifestSource.indexOf("js/render/entities.js"),
   "shadow stamping helper should load before entity facades"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load legacy entity renderer");
+assert.strictEqual(manifestSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load legacy entity renderer");
 assert.strictEqual(entitySource.toLowerCase().indexOf("webgl"), -1, "WebGPU entity source must not reference WebGL");
 assert.ok(entitySource.indexOf("usage: 128 | 8") >= 0, "entity instances should use GPUStorageBuffer usage");
 assert.ok(entitySource.indexOf("entity-atlas.gbuffer.pipeline") >= 0, "entity renderer should expose a G-buffer MRT pipeline");

@@ -6,10 +6,11 @@ const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
 const namespaceSource = fs.readFileSync(path.join(root, "js/core/namespace.js"), "utf8");
+const manifestSource = fs.readFileSync(path.join(root, "js/core/manifest.js"), "utf8");
 const bitsmapSource = fs.readFileSync(path.join(root, "js/core/bitsmap.js"), "utf8");
 
-assert.ok(namespaceSource.indexOf("js/core/bitsmap.js") > namespaceSource.indexOf("js/core/world-grid.js"), "Bitsmap should load with core data structures");
-assert.ok(namespaceSource.indexOf("js/core/bitsmap.js") < namespaceSource.indexOf("js/sim/vegetation.js"), "Bitsmap should load before tile systems consume it");
+assert.ok(manifestSource.indexOf("js/core/bitsmap.js") > manifestSource.indexOf("js/core/world-grid.js"), "Bitsmap should load with core data structures");
+assert.ok(manifestSource.indexOf("js/core/bitsmap.js") < manifestSource.indexOf("js/sim/vegetation.js"), "Bitsmap should load before tile systems consume it");
 
 const context = {
   window: {},

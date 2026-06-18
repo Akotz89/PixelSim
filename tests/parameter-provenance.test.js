@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const parameterSource = read("js/sim/parameter-registry.js");
 const driverSource = read("js/sim/environment-drivers.js");
 const geochemistrySource = read("js/sim/geochemistry.js");
@@ -12,10 +13,10 @@ const docs = read("docs/parameter-provenance-drivers.md");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.ok(packageJson.scripts.test.includes("tests/parameter-provenance.test.js"), "npm test should include parameter provenance checks");
-assert.ok(namespaceSource.indexOf("js/sim/parameter-registry.js") > namespaceSource.indexOf("js/sim/compute-harness.js"), "parameter registry should load after compute primitives");
-assert.ok(namespaceSource.indexOf("js/sim/parameter-registry.js") < namespaceSource.indexOf("js/sim/heat-diffusion.js"), "parameter registry should load before simulation passes");
-assert.ok(namespaceSource.indexOf("js/sim/environment-drivers.js") > namespaceSource.indexOf("js/sim/lenia.js"), "environment drivers should load after physical, chemistry, MD, and Lenia helpers");
-assert.ok(namespaceSource.indexOf("js/sim/environment-drivers.js") < namespaceSource.indexOf("wasm/pixeldarium-sim.js"), "environment drivers should load before WASM bridge and coupling");
+assert.ok(manifestSource.indexOf("js/sim/parameter-registry.js") > manifestSource.indexOf("js/sim/compute-harness.js"), "parameter registry should load after compute primitives");
+assert.ok(manifestSource.indexOf("js/sim/parameter-registry.js") < manifestSource.indexOf("js/sim/heat-diffusion.js"), "parameter registry should load before simulation passes");
+assert.ok(manifestSource.indexOf("js/sim/environment-drivers.js") > manifestSource.indexOf("js/sim/lenia.js"), "environment drivers should load after physical, chemistry, MD, and Lenia helpers");
+assert.ok(manifestSource.indexOf("js/sim/environment-drivers.js") < manifestSource.indexOf("wasm/pixeldarium-sim.js"), "environment drivers should load before WASM bridge and coupling");
 assert.ok(docs.includes("Drivers do not write coral density"), "docs should ban downstream population tuning");
 
 assert.ok(parameterSidecar.includes('PS.assets.registerJSON("sim/configs/parameters.json"'), "parameter sidecar should register JSON");

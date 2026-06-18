@@ -2,6 +2,7 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const { createFakeRenderDevice } = require("./helpers/mock-factories.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const mainLoopSource = read("js/main-loop.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
@@ -16,11 +17,11 @@ const pointLightWgsl = read("shaders/point-light.wgsl");
 const pointLightSidecar = read("shaders/point-light.wgsl.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-compositor.js") < namespaceSource.indexOf("js/render/webgpu-point-lights.js"),
+  manifestSource.indexOf("js/render/webgpu-compositor.js") < manifestSource.indexOf("js/render/webgpu-point-lights.js"),
   "WebGPU point lights should load after the compositor"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-point-lights.js") < namespaceSource.indexOf("js/render/webgpu-entity.js"),
+  manifestSource.indexOf("js/render/webgpu-point-lights.js") < manifestSource.indexOf("js/render/webgpu-entity.js"),
   "WebGPU point lights should load before entity renderers can queue settlement lights"
 );
 assert.ok(

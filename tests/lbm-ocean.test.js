@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const gpuSimRuntimeSource = read("js/sim/gpu-sim-runtime.js");
@@ -11,14 +12,14 @@ const configSource = read("sim/configs/ocean.json");
 const configSidecar = read("sim/configs/ocean.json.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/sim/lbm-ocean.js") > namespaceSource.indexOf("js/sim/heat-diffusion.js"),
+  manifestSource.indexOf("js/sim/lbm-ocean.js") > manifestSource.indexOf("js/sim/heat-diffusion.js"),
   "LBM ocean should load after heat diffusion"
 );
 assert.ok(
-  namespaceSource.indexOf("js/sim/lbm-ocean.js") < namespaceSource.indexOf("js/sim/biome-lut.js"),
+  manifestSource.indexOf("js/sim/lbm-ocean.js") < manifestSource.indexOf("js/sim/biome-lut.js"),
   "LBM ocean should load before biome LUT current visualization"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
+assert.strictEqual(manifestSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
 
 [
   "@compute @workgroup_size(8, 8, 1)",

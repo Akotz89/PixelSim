@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const tileRegistrySource = read("js/core/tile-registry.js");
 const atlasSource = read("js/render/entity-atlas.js");
 const atlasIntentSource = read("js/render/entity-atlas-intents.js");
@@ -10,15 +11,15 @@ const terrainAtlasCivilizationSource = read("js/render/terrain-atlas-civilizatio
 const terrainAtlasDetailSource = read("js/render/terrain-atlas-detail.js");
 const tilesData = JSON.parse(read("data/tiles.json"));
 
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas.js") >= 0, "entity atlas should load in the runtime manifest");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-intents.js") > namespaceSource.indexOf("js/render/entity-atlas.js"), "intent atlas sidecar should load after atlas core");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-civilization.js") > namespaceSource.indexOf("js/render/entity-atlas-intents.js"), "civilization atlas sidecar should load after intent atlas helpers");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-events.js") > namespaceSource.indexOf("js/render/entity-atlas-civilization.js"), "event atlas sidecar should load after entity civilization helpers");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-events.js") < namespaceSource.indexOf("js/render/entities.js"), "event atlas sidecar should load before the entity facade");
-assert.ok(namespaceSource.indexOf("js/render/terrain-atlas-civilization.js") > namespaceSource.indexOf("js/render/entity-atlas-civilization.js"), "terrain civilization atlas sidecar should load after entity civilization helpers");
-assert.ok(namespaceSource.indexOf("js/render/terrain-atlas-civilization.js") < namespaceSource.indexOf("js/render/terrain-atlas-detail.js"), "terrain civilization atlas sidecar should load before terrain detail overlays");
-assert.ok(namespaceSource.indexOf("js/render/terrain-atlas-detail.js") > namespaceSource.indexOf("js/render/entity-atlas.js"), "terrain atlas detail should load after atlas core");
-assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
+assert.ok(manifestSource.indexOf("js/render/entity-atlas.js") >= 0, "entity atlas should load in the runtime manifest");
+assert.ok(manifestSource.indexOf("js/render/entity-atlas-intents.js") > manifestSource.indexOf("js/render/entity-atlas.js"), "intent atlas sidecar should load after atlas core");
+assert.ok(manifestSource.indexOf("js/render/entity-atlas-civilization.js") > manifestSource.indexOf("js/render/entity-atlas-intents.js"), "civilization atlas sidecar should load after intent atlas helpers");
+assert.ok(manifestSource.indexOf("js/render/entity-atlas-events.js") > manifestSource.indexOf("js/render/entity-atlas-civilization.js"), "event atlas sidecar should load after entity civilization helpers");
+assert.ok(manifestSource.indexOf("js/render/entity-atlas-events.js") < manifestSource.indexOf("js/render/entities.js"), "event atlas sidecar should load before the entity facade");
+assert.ok(manifestSource.indexOf("js/render/terrain-atlas-civilization.js") > manifestSource.indexOf("js/render/entity-atlas-civilization.js"), "terrain civilization atlas sidecar should load after entity civilization helpers");
+assert.ok(manifestSource.indexOf("js/render/terrain-atlas-civilization.js") < manifestSource.indexOf("js/render/terrain-atlas-detail.js"), "terrain civilization atlas sidecar should load before terrain detail overlays");
+assert.ok(manifestSource.indexOf("js/render/terrain-atlas-detail.js") > manifestSource.indexOf("js/render/entity-atlas.js"), "terrain atlas detail should load after atlas core");
+assert.strictEqual(manifestSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
 
 const context = {
   PS: {

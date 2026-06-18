@@ -6,6 +6,7 @@ const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
 const namespaceSource = fs.readFileSync(path.join(root, "js/core/namespace.js"), "utf8");
+const manifestSource = fs.readFileSync(path.join(root, "js/core/manifest.js"), "utf8");
 const workerSource = fs.readFileSync(path.join(root, "js/workers/sim-worker.js"), "utf8");
 const clientSource = fs.readFileSync(path.join(root, "js/sim/sim-worker-client.js"), "utf8");
 const wasmGlueSource = fs.readFileSync(path.join(root, "wasm/pixeldarium-sim.js"), "utf8");
@@ -13,10 +14,10 @@ const wasmSidecarSource = fs.readFileSync(path.join(root, "wasm/pixeldarium-sim.
 const wasmBridgeSource = fs.readFileSync(path.join(root, "js/sim/wasm-bridge.js"), "utf8");
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
 
-assert.ok(namespaceSource.includes("js/sim/sim-worker-client.js"), "manifest should expose the simulation worker client");
+assert.ok(manifestSource.includes("js/sim/sim-worker-client.js"), "manifest should expose the simulation worker client");
 assert.ok(
-  namespaceSource.indexOf("js/sim/wasm-bridge.js") < namespaceSource.indexOf("js/sim/sim-worker-client.js") &&
-    namespaceSource.indexOf("js/sim/sim-worker-client.js") < namespaceSource.indexOf("js/sim/coupling.js"),
+  manifestSource.indexOf("js/sim/wasm-bridge.js") < manifestSource.indexOf("js/sim/sim-worker-client.js") &&
+    manifestSource.indexOf("js/sim/sim-worker-client.js") < manifestSource.indexOf("js/sim/coupling.js"),
   "worker client should load after WASM bridge and before coupling"
 );
 assert.ok(workerSource.includes("wasmInit"), "worker should support wasmInit");

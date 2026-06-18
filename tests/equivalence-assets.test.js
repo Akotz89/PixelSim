@@ -1,16 +1,17 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const webgpuSurfaceTileSource = read("js/render/webgpu-surface-tile.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/assets/equivalence.js") > namespaceSource.indexOf("js/assets/sprite-sheet.js"),
+  manifestSource.indexOf("js/assets/equivalence.js") > manifestSource.indexOf("js/assets/sprite-sheet.js"),
   "equivalence selector should load after sprite sheet support"
 );
 assert.ok(
-  namespaceSource.indexOf("js/assets/equivalence.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js"),
+  manifestSource.indexOf("js/assets/equivalence.js") < manifestSource.indexOf("js/render/surface-tile-batcher.js"),
   "equivalence selector should load before terrain batch selection"
 );
 assert.ok(

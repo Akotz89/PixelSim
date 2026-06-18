@@ -3,19 +3,20 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const animationData = JSON.parse(read("data/animations.json"));
 const animationSource = read("js/core/animation.js");
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const mainLoopSource = read("js/main-loop.js");
 
 assert.ok(animationData.animations.organism, "animation data should define organism states");
 assert.strictEqual(animationData.animations.organism.walk_right.fps, 8, "walk_right should run at 8fps");
 assert.ok(animationData.animations.settlement, "animation data should define settlement states");
 assert.ok(animationData.animations.vegetation, "animation data should define vegetation states");
-assert.ok(namespaceSource.indexOf("js/core/animation.js") >= 0, "runtime manifest should load animation core");
+assert.ok(manifestSource.indexOf("js/core/animation.js") >= 0, "runtime manifest should load animation core");
 assert.ok(mainLoopSource.indexOf('loader.loadJSON("data/animations.json")') >= 0, "startup should load animation data");
 assert.ok(mainLoopSource.indexOf("PS.animation.loadDefinitions") >= 0, "startup should register animation definitions");
 assert.ok(animationSource.indexOf("getVisibleOrganismFrame") >= 0, "animation runtime should expose visible organism frame resolution");
 assert.ok(animationSource.indexOf("updateVisibleOrganismFrames") >= 0, "animation runtime should update visible animation frames in a batch");
 assert.ok(animationSource.indexOf("maxVisibleControllers") >= 0, "animation runtime should cap visible animation updates");
-assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
+assert.strictEqual(manifestSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
 assert.strictEqual(animationSource.indexOf("getContext(\"2d\""), -1, "animation runtime must not use Canvas2D");
 
 const context = {

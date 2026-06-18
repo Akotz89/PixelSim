@@ -5,6 +5,7 @@ function nearly(actual, expected) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const mainLoopSource = read("js/main-loop.js");
 const pipelineSource = read("js/render/pipeline.js");
@@ -12,8 +13,8 @@ const waterSource = read("js/render/webgpu-water-displacement.js");
 const waterWgsl = read("shaders/water-displace.wgsl");
 const waterSidecar = read("shaders/water-displace.wgsl.js");
 
-assert.ok(namespaceSource.indexOf("js/render/webgpu-water-displacement.js") > namespaceSource.indexOf("js/render/webgpu-point-lights.js"), "water displacement renderer should load after point-light renderer");
-assert.ok(namespaceSource.indexOf("js/render/webgpu-water-displacement.js") < namespaceSource.indexOf("js/render/webgpu-entity.js"), "water displacement renderer should load before entity renderers");
+assert.ok(manifestSource.indexOf("js/render/webgpu-water-displacement.js") > manifestSource.indexOf("js/render/webgpu-point-lights.js"), "water displacement renderer should load after point-light renderer");
+assert.ok(manifestSource.indexOf("js/render/webgpu-water-displacement.js") < manifestSource.indexOf("js/render/webgpu-entity.js"), "water displacement renderer should load before entity renderers");
 assert.ok(mainLoopSource.indexOf("PS.render.webgpuWaterDisplacement") >= 0, "startup should register water displacement WGSL before first draw");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("water.displacement"') >= 0, "pipeline should register the water displacement layer");
 assert.ok(pipelineSource.indexOf("order: 32") >= 0, "water displacement should render before snow and grass overlays");

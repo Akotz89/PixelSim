@@ -9,12 +9,13 @@ function read(file) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const loaderSource = read("js/assets/loader.js");
 const mainLoopSource = read("js/main-loop.js");
 const terrainSource = read("js/render/terrain.js");
 
-assert.strictEqual(namespaceSource.indexOf("js/render/shader-manager.js"), -1, "runtime manifest must not load the legacy GLSL shader manager");
-assert.strictEqual(namespaceSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
+assert.strictEqual(manifestSource.indexOf("js/render/shader-manager.js"), -1, "runtime manifest must not load the legacy GLSL shader manager");
+assert.strictEqual(manifestSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
 assert.ok(mainLoopSource.indexOf("loadStartupShaders") >= 0, "startup should load shader files before first draw");
 assert.ok(mainLoopSource.indexOf("loadRequiredWgslShaders") >= 0, "startup should load required WGSL shaders before first draw");
 assert.ok(mainLoopSource.indexOf("Required WGSL shaders failed to load") >= 0, "startup should fail loudly when required WGSL is missing");
@@ -59,7 +60,7 @@ assert.ok(terrainSource.indexOf("PS.render.webgpuGlobe.draw") >= 0, "terrain dra
   "js/render/webgl-gbuffer.js",
   "js/render/webgl-compositor.js"
 ].forEach(function (file) {
-  assert.strictEqual(namespaceSource.indexOf(file), -1, "runtime manifest must not load " + file);
+  assert.strictEqual(manifestSource.indexOf(file), -1, "runtime manifest must not load " + file);
 });
 
 console.log("shader manager mandate checks passed");

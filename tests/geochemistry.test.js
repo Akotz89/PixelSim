@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const geochemistrySource = read("js/sim/geochemistry.js");
@@ -15,8 +16,8 @@ const docs = read("docs/geochemistry-simulation.md");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.ok(packageJson.scripts.test.includes("tests/geochemistry.test.js"), "npm test should include geochemistry checks");
-assert.ok(namespaceSource.indexOf("js/sim/geochemistry.js") > namespaceSource.indexOf("js/sim/biome-lut.js"), "geochemistry should load after current Phase 2 sim modules");
-assert.ok(namespaceSource.indexOf("js/sim/geochemistry.js") < namespaceSource.indexOf("js/layers/geology.js"), "geochemistry should load before always-on layers");
+assert.ok(manifestSource.indexOf("js/sim/geochemistry.js") > manifestSource.indexOf("js/sim/biome-lut.js"), "geochemistry should load after current Phase 2 sim modules");
+assert.ok(manifestSource.indexOf("js/sim/geochemistry.js") < manifestSource.indexOf("js/layers/geology.js"), "geochemistry should load before always-on layers");
 assert.ok(docs.includes("Agent Control"), "docs should document agent control");
 assert.ok(docs.includes("debugOverlayRows"), "docs should document debug overlay rows");
 
