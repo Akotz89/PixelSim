@@ -171,6 +171,16 @@ PS.render.lod.getVisualPolicy = function (zoomLevel) {
   });
 };
 
+PS.render.lod.resolveVisualPolicy = function (lodState, fallback) {
+  if (lodState && lodState.visualPolicy) {
+    return lodState.visualPolicy;
+  }
+
+  return typeof PS.render.lod.getVisualPolicy === "function"
+    ? PS.render.lod.getVisualPolicy()
+    : fallback;
+};
+
 PS.render.lod.getArchitectureZoom = function (zoomLevel) {
   var levels = PS.camera && typeof PS.camera.getZoomLevels === "function"
     ? PS.camera.getZoomLevels()

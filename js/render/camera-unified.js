@@ -19,9 +19,14 @@ PS.camera.unified = PS.camera.unified || {
     viewportH: 0
   },
 
+  getCanvas: function () {
+    return (PS.gpu && PS.gpu.canvas) || (typeof canvas !== "undefined" ? canvas : null);
+  },
+
   getViewport: function () {
-    var viewportW = typeof canvas !== "undefined" && canvas ? Number(canvas.width) || 0 : 0;
-    var viewportH = typeof canvas !== "undefined" && canvas ? Number(canvas.height) || 0 : 0;
+    var targetCanvas = this.getCanvas();
+    var viewportW = targetCanvas ? Number(targetCanvas.width) || 0 : 0;
+    var viewportH = targetCanvas ? Number(targetCanvas.height) || 0 : 0;
 
     this.state.viewportW = viewportW;
     this.state.viewportH = viewportH;
@@ -97,11 +102,12 @@ PS.camera.unified = PS.camera.unified || {
   },
 
   clientToScreen: function (clientX, clientY) {
-    var rect = canvas.getBoundingClientRect();
+    var targetCanvas = this.getCanvas();
+    var rect = targetCanvas.getBoundingClientRect();
 
     return {
-      canvasX: (Number(clientX) - rect.left) * (canvas.width / rect.width),
-      canvasY: (Number(clientY) - rect.top) * (canvas.height / rect.height)
+      canvasX: (Number(clientX) - rect.left) * (targetCanvas.width / rect.width),
+      canvasY: (Number(clientY) - rect.top) * (targetCanvas.height / rect.height)
     };
   },
 

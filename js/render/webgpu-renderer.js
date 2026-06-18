@@ -226,6 +226,10 @@ PS.render.WebGPURenderer.prototype.beginFrame = function beginWebgpuRendererFram
     return false;
   }
 
+  if (PS.render.canvasResize && typeof PS.render.canvasResize.applyPendingResize === "function") {
+    PS.render.canvasResize.applyPendingResize();
+  }
+
   return true;
 };
 
