@@ -912,10 +912,6 @@ PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample
   };
 };
 
-PS.render.surfaceTileBatcher.makeBatches = function (address, cellCache, alpha, lodState) {
-  return PS.render.surfaceTileBatcher.appendBatches(PS.render.surfaceTileBatcher.beginBatches(), address, cellCache, alpha, lodState);
-};
-
 PS.render.surfaceTileBatcher.getPageBuffer = function (batches, pageIndex) {
   var state = PS.render.surfaceTileBatcher.state;
   var stride = PS.render.surfaceTileBatcher.strideFloats;

@@ -443,7 +443,7 @@ const acceptedTerrainCache = [{
   screenX: 0,
   screenY: 0
 }];
-const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const acceptedTerrainBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 0,
   sampleNorth: 0,
   renderScreenX: 0,
@@ -501,7 +501,7 @@ context.PS.atlas.getTerrainTransitionInfo = function () {
   };
 };
 
-const automaticTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const automaticTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 256,
   sampleNorth: 0,
   renderScreenX: 0,
@@ -555,7 +555,7 @@ const resolverGrid = {
     return x === 4 && y === 7 ? "sand" : "grass_lush";
   }
 };
-const resolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const resolverTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 7,
   renderScreenX: 0,
@@ -585,7 +585,7 @@ const regionVisualLod = {
     normalLightingStrength: 0.3
   }
 };
-const simplifiedResolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const simplifiedResolverTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 7,
   renderScreenX: 0,
@@ -613,7 +613,7 @@ const worldVisualLod = {
     normalLightingStrength: 0
   }
 };
-const disabledResolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const disabledResolverTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 7,
   renderScreenX: 0,
@@ -681,7 +681,7 @@ context.PS.assets.loadedSheets = {
   }
 };
 
-const automaticTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const automaticTerrainBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 1,
   sampleNorth: 1,
   renderScreenX: 0,
@@ -721,7 +721,7 @@ assert.strictEqual(context.PS.render.surfaceTileBatcher.getAcceptedTerrainMateri
 }, 4, 6), "water-deep.1", "accepted deep water material selection should use the current animated frame phase");
 
 context.world.timeMs = 0;
-const waterMaterialStart = context.PS.render.surfaceTileBatcher.makeBatches({
+const waterMaterialStart = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -734,7 +734,7 @@ const waterMaterialStart = context.PS.render.surfaceTileBatcher.makeBatches({
   screenY: 0
 }], 1);
 context.world.timeMs = 500;
-const waterMaterialNext = context.PS.render.surfaceTileBatcher.makeBatches({
+const waterMaterialNext = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -750,7 +750,7 @@ assert.ok(waterMaterialStart.materialCounts["terrain.water.2"], "water material 
 assert.ok(waterMaterialNext.materialCounts["terrain.water.3"], "water material batching should advance to the next phased water cell");
 
 context.world.timeMs = 1600;
-const waterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const waterBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -789,7 +789,7 @@ assert.strictEqual(context.PS.render.waterRendering.shouldPlaceDecoration({
   biome: "ocean",
   detail: { surface: "tidal shore", materialSignals: { waterDepth: 0.22, shallowWater: 0.8 } }
 }, "ocean", 4, 6), false, "floating decorations should not spawn on shore water tiles");
-const worldWaterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldWaterBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -842,7 +842,7 @@ assert.notDeepStrictEqual(
 );
 
 context.world.timeMs = 0;
-const decorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const decorationBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: decorationTile.x,
   sampleNorth: decorationTile.y,
   renderScreenX: 0,
@@ -857,7 +857,7 @@ const decorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
 assert.strictEqual(decorationBatches.shadowRects.length, 8, "open-water decorations should emit one batched shadow rect");
 assert.strictEqual(decorationBatches.waterDecorationRects.length, 8, "open-water decorations should emit one batched decoration rect");
 assert.ok(decorationBatches.shadowRects[7] > 0, "decoration shadow rect should include visible alpha");
-const worldDecorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldDecorationBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: decorationTile.x,
   sampleNorth: decorationTile.y,
   renderScreenX: 0,
@@ -872,7 +872,7 @@ const worldDecorationBatches = context.PS.render.surfaceTileBatcher.makeBatches(
 assert.strictEqual(worldDecorationBatches.shadowRects.length, 0, "world LOD should skip open-water decoration shadows");
 assert.strictEqual(worldDecorationBatches.waterDecorationRects.length, 0, "world LOD should skip open-water decoration particles");
 
-const regionLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const regionLightBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 3,
   renderScreenX: 0,
@@ -896,7 +896,7 @@ assert.strictEqual(regionLightBatches.displacementRects.length, 16, "region LOD 
 assert.ok(regionLightBatches.displacementRects[7] > 0, "heat-haze displacement should carry a positive source-scaled intensity");
 assert.ok(regionLightBatches.displacementRects[7] < 16 * 0.58, "region LOD should reduce heat-haze displacement intensity");
 assert.ok(regionLightBatches.displacementRects[6] > 16, "heat-haze displacement should carry a source radius for distance falloff");
-const worldLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldLightBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 3,
   renderScreenX: 0,
@@ -953,7 +953,7 @@ const reusableTransitionCellData = {
   screenX: 0,
   screenY: 0
 };
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 9,
   sampleNorth: 9,
   renderScreenX: 0,
@@ -965,7 +965,7 @@ const firstReuseKey = reusableTransitionCellData.terrainAtlasKeyId;
 const firstReuseCellName = reusableTransitionCellData.terrainAtlasCell.name;
 reusableTransitionCellData.sample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
 reusableTransitionCellData.sample.tileBlend.tiles[0].tile.moisture = 2.2;
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 9,
   sampleNorth: 9,
   renderScreenX: 0,
@@ -1020,7 +1020,7 @@ const settlementParcelCacheCell = {
   screenX: 0,
   screenY: 0
 };
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 2,
   renderScreenX: 0,
@@ -1028,7 +1028,7 @@ context.PS.render.surfaceTileBatcher.makeBatches({
   renderSamplePixelSize: 16,
   chunkSamples: 1
 }, [settlementParcelCacheCell], 1, { zoomBand: "settlement", visualPolicy: { level: "LOCAL", transitionAlphaScale: 1 } });
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 2,
   renderScreenX: 0,
