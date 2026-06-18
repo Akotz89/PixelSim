@@ -477,7 +477,7 @@ assert.strictEqual(acceptedTerrainCache[0].terrainEquivalenceKey, undefined, "su
 assert.strictEqual(typeof acceptedTerrainCache[0].terrainAtlasSourceSignature, "object", "surface tile cache should track reusable terrain source signatures");
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
 const acceptedTerrainLutStats = context.PS.render.tileTypeLut.getStats();
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 0,
   sampleNorth: 0,
   renderScreenX: 0,
@@ -1052,7 +1052,7 @@ context.PS.render.webgpuSurfaceTile.makeBatches({
 const firstReuseKey = reusableTransitionCellData.terrainAtlasKeyId;
 const firstReuseCellName = reusableTransitionCellData.terrainAtlasCell.name;
 const reusableTransitionStats = context.PS.render.tileTypeLut.getStats();
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 9,
   sampleNorth: 9,
   renderScreenX: 0,
