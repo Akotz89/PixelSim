@@ -1286,6 +1286,104 @@ PS.render.surfaceTileBatcher.appendInstance = function (
   page.length += PS.render.surfaceTileBatcher.strideFloats;
 };
 
+PS.render.surfaceTileBatcher.isWaterRenderSample = function (sampleSignals, biome) {
+  const extracted = sampleSignals || {};
+  const signals = extracted.signals || {};
+  const biomeKey = String(extracted.biome || biome || "").toLowerCase();
+  const surface = String(extracted.surface || "").toLowerCase();
+  const feature = String(extracted.feature || "").toLowerCase();
+
+  return !!(
+    biomeKey === "ocean" ||
+    biomeKey === "lake" ||
+    surface.indexOf("water") >= 0 ||
+    surface.indexOf("shore") >= 0 ||
+    surface.indexOf("tidal") >= 0 ||
+    feature.indexOf("foam") >= 0 ||
+    Number(signals.waterDepth) > 0 ||
+    Number(signals.shallowWater) > 0 ||
+    Number(signals.shoreMask) > 0
+  );
+};
+
+PS.render.surfaceTileBatcher.getTerrainDrawKeyId = function (cell, waterInfo) {
+  const water = waterInfo || {};
+  const scale = 100000;
+
+  return PS.render.surfaceTileBatcher.combineKeyIds([
+    Number(cell && cell.pageIndex) || 0,
+    PS.render.surfaceTileBatcher.getStableKeyId(cell && cell.name || ""),
+    Math.round((Number(cell && cell.u0) || 0) * scale),
+    Math.round((Number(cell && cell.v0) || 0) * scale),
+    Math.round((Number(cell && cell.u1) || 0) * scale),
+    Math.round((Number(cell && cell.v1) || 0) * scale),
+    cell && cell.splitAtlas ? 1 : 0,
+    Math.round((Number(water.depthCode) || 0) * scale),
+    Math.round((Number(water.stencilIndex) || 0) * scale),
+    Math.round((Number(water.waveOffset) || 0) * scale),
+    Math.round((waterInfo ? Number(water.growth) : 1) * scale)
+  ]);
+};
+
+PS.render.surfaceTileBatcher.resolveTerrainDrawRecord = function (cellData, cell, waterInfo) {
+  const drawKeyId = PS.render.surfaceTileBatcher.getTerrainDrawKeyId(cell, waterInfo);
+  let record = cellData && cellData.terrainDrawKeyId === drawKeyId &&
+    cellData.terrainDrawRecord instanceof Float32Array
+    ? cellData.terrainDrawRecord
+    : null;
+  const water = waterInfo || null;
+
+  if (!record) {
+    record = new Float32Array(9);
+    if (cellData) {
+      cellData.terrainDrawKeyId = drawKeyId;
+      cellData.terrainDrawRecord = record;
+    }
+  }
+
+  record[0] = Number(cell && cell.u0) || 0;
+  record[1] = Number(cell && cell.v0) || 0;
+  record[2] = Number(cell && cell.u1) || 0;
+  record[3] = Number(cell && cell.v1) || 0;
+  record[4] = cell && cell.splitAtlas ? 1 : 0;
+  record[5] = water ? Number(water.depthCode) || 0 : 0;
+  record[6] = water ? Number(water.stencilIndex) || 0 : 0;
+  record[7] = water ? Number(water.waveOffset) || 0 : 0;
+  record[8] = water ? Number(water.growth) || 0 : 1;
+  return record;
+};
+
+PS.render.surfaceTileBatcher.appendTerrainDrawRecord = function (
+  page,
+  x,
+  y,
+  width,
+  height,
+  alpha,
+  flipH,
+  record
+) {
+  const offset = page.length;
+  const source = record || new Float32Array(9);
+
+  page.data[offset] = x;
+  page.data[offset + 1] = y;
+  page.data[offset + 2] = width;
+  page.data[offset + 3] = height;
+  page.data[offset + 4] = source[0];
+  page.data[offset + 5] = source[1];
+  page.data[offset + 6] = source[2];
+  page.data[offset + 7] = source[3];
+  page.data[offset + 8] = alpha;
+  page.data[offset + 9] = flipH;
+  page.data[offset + 10] = source[4];
+  page.data[offset + 11] = source[5];
+  page.data[offset + 12] = source[6];
+  page.data[offset + 13] = source[7];
+  page.data[offset + 14] = source[8];
+  page.length += PS.render.surfaceTileBatcher.strideFloats;
+};
+
 PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays = function (
   target,
   transitionCellNames,
@@ -1567,9 +1665,13 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     var screenX = screenOffsetX + cellData.screenX * (samplePixelSize / CONFIG.TILE_SIZE);
     var screenY = screenOffsetY + cellData.screenY * (samplePixelSize / CONFIG.TILE_SIZE);
     var featherAlpha = PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.getAlpha === "function" ? PS.render.surfaceReadyFeather.getAlpha(address, screenX, screenY, samplePixelSize) : 1;
-    var waterInfo = !hasCivilizationMaterial && PS.render.waterRendering && typeof PS.render.waterRendering.getRenderInfo === "function"
+    const waterInfo = !hasCivilizationMaterial &&
+      PS.render.surfaceTileBatcher.isWaterRenderSample(sampleSignals, biome) &&
+      PS.render.waterRendering &&
+      typeof PS.render.waterRendering.getRenderInfo === "function"
       ? PS.render.waterRendering.getRenderInfo(sample, biome, tileX, tileY, lodState)
       : null;
+    const terrainDrawRecord = PS.render.surfaceTileBatcher.resolveTerrainDrawRecord(cellData, cell, waterInfo);
 
     PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState, sampleSignals);
     PS.render.surfaceTileBatcher.appendSampleTileLight(target, sample, biome, screenX, screenY, samplePixelSize, tileAlpha * featherAlpha, sampleSignals);
@@ -1645,20 +1747,15 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     if (target.materialCounts) {
       target.materialCounts[cell.name] = (target.materialCounts[cell.name] || 0) + 1;
     }
-    PS.render.surfaceTileBatcher.appendInstance(
+    PS.render.surfaceTileBatcher.appendTerrainDrawRecord(
       page,
       screenX,
       screenY,
       samplePixelSize,
       samplePixelSize,
-      cell.u0,
-      cell.v0,
-      cell.u1,
-      cell.v1,
       tileAlpha * featherAlpha,
       flipH,
-      cell.splitAtlas,
-      waterInfo
+      terrainDrawRecord
     );
     target.count++;
     if (PS.render.mountains && typeof PS.render.mountains.appendMountain === "function") {
