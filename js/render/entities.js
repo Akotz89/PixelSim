@@ -1,13 +1,39 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetInterpolatedProjection, projectPlanetPoint } from "./planet-grid.js";
+import { projectPlanetLocalPoint } from "./planet-surface.js";
+import { ensureEntitySurfacePosition, getEntitySurfacePosition, interpolateLongitudeDeg, isGlobeRenderMode, isPlanetLocalView } from "./planet-view.js";
+import { getSettlementById } from "../sim/settlements-state.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 PS.render.entities = PS.render.entities || {};
 
 PS.render.entities.organismRenderPerf = PS.render.entities.organismRenderPerf || {
   lastOrganismRenderCount: 0,
+  lastOrganismVisualMode: "individual",
+  lastOrganismClusterRenderCount: 0,
+  lastOrganismIndividualRenderCount: 0,
   lastSpriteCacheHits: 0,
   lastSpriteCacheMisses: 0,
   lastAnimationSeedComputes: 0,
   lastEstimatedRenderObjectsPerSecond: 0
+};
+
+PS.render.entities.settlementVisualStats = PS.render.entities.settlementVisualStats || {
+  lastSettlementShadowCasters: 0,
+  lastSettlementShadowRects: 0,
+  lastSettlementShadowMaxAlpha: 0,
+  lastSettlementShadowMaxWidth: 0,
+  lastSettlementRouteSegments: 0,
+  lastSettlementRouteBedSegments: 0,
+  lastSettlementInfluenceCells: 0,
+  lastSettlementInfluenceMaxAlpha: 0,
+  lastSettlementWorldUiMarks: 0,
+  lastSettlementWorldUiMaxAlpha: 0,
+  lastSettlementDistrictOffsets: 0
 };
 
 PS.render.entities.getTileRenderPosition = function (tileX, tileY) {
@@ -189,6 +215,16 @@ PS.render.entities.shouldDrawGlobeScaleEntities = function () {
     Boolean(CONFIG.PLANET_DEBUG_OVERLAY);
 };
 
+PS.render.entities.shouldDrawDetailedLocalEntities = function () {
+  var band = PS.render.entities.getCurrentEntityZoomBand();
+
+  return band === "local" || band === "settlement" || Boolean(CONFIG.PLANET_DEBUG_OVERLAY);
+};
+
+PS.render.entities.shouldDrawDetailedSettlementEntities = function () {
+  return PS.render.entities.shouldDrawDetailedLocalEntities();
+};
+
 PS.render.entities.createEntityBatches = function () {
   return PS.render.webgpuEntity && typeof PS.render.webgpuEntity.beginBatches === "function"
     ? PS.render.webgpuEntity.beginBatches()
@@ -223,8 +259,34 @@ PS.render.entities.drawEntityBatches = function (batches, drawn) {
     : false;
 };
 
+PS.render.entities.getCurrentEntityZoomBand = function () {
+  var view = world && world.planetView ? world.planetView : null;
+  var zoom = view ? Number(view.zoomLevel) || 0 : 0;
+
+  if (PS.render.pipeline && typeof PS.render.pipeline.getZoomBand === "function") {
+    return PS.render.pipeline.getZoomBand(zoom);
+  }
+
+  if (zoom >= 19) { return "settlement"; }
+  if (zoom >= 15) { return "local"; }
+  if (zoom >= 10) { return "region"; }
+  if (zoom >= 6) { return "continent"; }
+  if (zoom >= 3) { return "planet"; }
+  return "orbit";
+};
+
+PS.render.entities.getOrganismVisualMode = function () {
+  var band = PS.render.entities.getCurrentEntityZoomBand();
+
+  if (band === "local" || band === "settlement") {
+    return "individual";
+  }
+
+  return band === "region" ? "aggregate" : "hidden";
+};
+
 PS.render.entities.drawFood = function () {
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedLocalEntities()) {
     return false;
   }
 
@@ -311,7 +373,7 @@ PS.render.entities.drawRepresentativeMarker = function (organism, interpolation)
     : null;
   var batches = PS.render.entities.createEntityBatches();
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedLocalEntities()) {
     return false;
   }
 
@@ -325,7 +387,7 @@ PS.render.entities.drawRepresentativeIntents = function () {
   var size = Math.max(4, Number(CONFIG.ORGANISM_DRAW_SIZE) || 4) * 1.2;
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedLocalEntities()) {
     return false;
   }
 
@@ -356,7 +418,7 @@ PS.render.entities.drawSettlementReadiness = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -418,23 +480,40 @@ PS.render.entities.drawSettlementShadows = function () {
   var settlements = world && Array.isArray(world.settlements) ? world.settlements : [];
   var rects = [];
   var drawn = 0;
+  var casters = 0;
+  var maxAlpha = 0;
+  var maxWidth = 0;
+  var stats = PS.render.entities.settlementVisualStats;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
+    stats.lastSettlementShadowCasters = 0;
+    stats.lastSettlementShadowRects = 0;
+    stats.lastSettlementShadowMaxAlpha = 0;
+    stats.lastSettlementShadowMaxWidth = 0;
+    stats.lastSettlementDistrictOffsets = 0;
     return false;
   }
 
   if (!PS.render.webgpuEntity || typeof PS.render.webgpuEntity.drawShadowRects !== "function") {
+    stats.lastSettlementShadowCasters = 0;
+    stats.lastSettlementShadowRects = 0;
+    stats.lastSettlementShadowMaxAlpha = 0;
+    stats.lastSettlementShadowMaxWidth = 0;
+    stats.lastSettlementDistrictOffsets = 0;
     return false;
   }
+
+  stats.lastSettlementDistrictOffsets = 0;
 
   for (var i = 0; i < settlements.length; i += 1) {
     var settlement = settlements[i];
     var point = PS.render.entities.getSettlementRenderPosition(settlement);
     var size = PS.render.entities.getSettlementDrawSize(settlement);
-    var width = Math.max(4, size * 1.12);
-    var height = Math.max(2, size * 0.42);
+    var width = Math.max(4, size * 0.82);
+    var height = Math.max(2, size * 0.24);
     var alpha = point && Number.isFinite(Number(point.visibility)) ? Number(point.visibility) : 1;
-    var heightUnits = Math.max(4, Math.min(31, Math.round(size * 0.78 + (Number(settlement && settlement.level) || 1) * 2)));
+    var shadowAlpha = Math.max(0, Math.min(0.18, 0.15 * alpha));
+    var heightUnits = Math.max(3, Math.min(16, Math.round(size * 0.34 + (Number(settlement && settlement.level) || 1) * 0.8)));
 
     if (!point || point.visible === false || settlement && settlement.isActive === false) {
       continue;
@@ -447,13 +526,22 @@ PS.render.entities.drawSettlementShadows = function () {
         width: width,
         rectHeight: height,
         heightUnits: heightUnits,
-        alpha: Math.max(0, Math.min(0.42, 0.34 * alpha)),
-        mode: "hard",
+        alpha: shadowAlpha,
+        mode: "soft",
         distance2Ground: Math.max(0, Number(settlement && settlement.shadowDistance2Ground) || 0),
+        maxIterations: 3,
         color: [0.02, 0.035, 0.055]
       });
+      casters += 1;
+      maxAlpha = Math.max(maxAlpha, shadowAlpha);
+      maxWidth = Math.max(maxWidth, width);
     }
   }
+
+  stats.lastSettlementShadowCasters = casters;
+  stats.lastSettlementShadowRects = drawn;
+  stats.lastSettlementShadowMaxAlpha = maxAlpha;
+  stats.lastSettlementShadowMaxWidth = maxWidth;
 
   return drawn > 0 && PS.render.webgpuEntity.drawShadowRects(new Float32Array(rects));
 };
@@ -463,7 +551,7 @@ PS.render.entities.drawSettlementCitizens = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -479,8 +567,7 @@ PS.render.entities.drawSettlementCitizens = function () {
 
     for (var citizenIndex = 0; citizenIndex < count; citizenIndex += 1) {
       var selected = PS.assets.equivalence.select("citizen", "entity.fallback");
-      var angle = (Math.PI * 2 * citizenIndex) / count;
-      var offset = baseSize * 1.25;
+      var offset = PS.render.entities.getSettlementDistrictOffset(settlement, "citizen", baseSize * 1.8, citizenIndex);
 
       if (PS.render.entities.appendEntityCell(
         batches,
@@ -489,8 +576,8 @@ PS.render.entities.drawSettlementCitizens = function () {
         baseSize,
         0.95,
         "citizen",
-        Math.cos(angle) * offset,
-        Math.sin(angle) * offset
+        offset.x,
+        offset.y
       )) {
         drawn += 1;
       }
@@ -505,7 +592,7 @@ PS.render.entities.drawSettlementVegetation = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -532,22 +619,28 @@ PS.render.entities.drawSettlementVegetation = function () {
 
 PS.render.entities.drawSettlementWorldUi = function () {
   var settlements = world && Array.isArray(world.settlements) ? world.settlements : [];
-  var metrics = ["population", "food", "development"];
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
+  var maxAlpha = 0;
+  var stats = PS.render.entities.settlementVisualStats;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
+    stats.lastSettlementWorldUiMarks = 0;
+    stats.lastSettlementWorldUiMaxAlpha = 0;
     return false;
   }
 
   if (!batches || !PS.atlas || typeof PS.atlas.getSettlementWorldUiCell !== "function") {
+    stats.lastSettlementWorldUiMarks = 0;
+    stats.lastSettlementWorldUiMaxAlpha = 0;
     return false;
   }
 
   for (var i = 0; i < settlements.length; i += 1) {
     var settlement = settlements[i];
     var point = PS.render.entities.getSettlementRenderPosition(settlement);
-    var baseSize = Math.max(4, PS.render.entities.getSettlementDrawSize(settlement) * 0.28);
+    var metrics = PS.render.entities.getSettlementWorldUiMetrics(settlement);
+    var baseSize = Math.max(3, PS.render.entities.getSettlementDrawSize(settlement) * 0.2);
 
     for (var metricIndex = 0; metricIndex < metrics.length; metricIndex += 1) {
       var fallbackCell = PS.atlas.getSettlementWorldUiCell(settlement, metrics[metricIndex]);
@@ -555,14 +648,18 @@ PS.render.entities.drawSettlementWorldUi = function () {
         ? PS.assets.equivalence.select("worldUi", fallbackCell && fallbackCell.name ? fallbackCell.name : "entity.settlement.world-ui.fallback")
         : null;
       var cell = selected && selected.renderCell ? selected.renderCell : fallbackCell;
-      var offsetX = (metricIndex - 1) * baseSize * 0.75;
-      var offsetY = -baseSize * 1.8;
+      var offset = PS.render.entities.getSettlementDistrictOffset(settlement, "worldUi", baseSize * 2.2, metricIndex);
+      var alpha = settlement && settlement.isOutpost ? 0.66 : 0.76;
 
-      if (PS.render.entities.appendEntityCell(batches, cell, point, baseSize, 0.95, "worldUi", offsetX, offsetY)) {
+      if (PS.render.entities.appendEntityCell(batches, cell, point, baseSize, alpha, "worldUi", offset.x, offset.y)) {
         drawn += 1;
+        maxAlpha = Math.max(maxAlpha, alpha);
       }
     }
   }
+
+  stats.lastSettlementWorldUiMarks = drawn;
+  stats.lastSettlementWorldUiMaxAlpha = maxAlpha;
 
   return PS.render.entities.drawEntityBatches(batches, drawn);
 };
@@ -572,7 +669,7 @@ PS.render.entities.drawSettlementStockpiles = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -591,8 +688,9 @@ PS.render.entities.drawSettlementStockpiles = function () {
     var point = PS.render.entities.getSettlementRenderPosition(settlement);
     var selected = PS.assets.equivalence.select("stockpile", "entity.food.fallback");
     var baseSize = Math.max(5, PS.render.entities.getSettlementDrawSize(settlement) * 0.34);
+    var offset = PS.render.entities.getSettlementDistrictOffset(settlement, "stockpile", baseSize * 1.55, i);
 
-    if (PS.render.entities.appendEntityCell(batches, selected && selected.renderCell, point, baseSize, 0.96, "stockpile", baseSize * 0.72, baseSize * 0.46)) {
+    if (PS.render.entities.appendEntityCell(batches, selected && selected.renderCell, point, baseSize, 0.92, "stockpile", offset.x, offset.y)) {
       drawn += 1;
     }
   }
@@ -605,7 +703,7 @@ PS.render.entities.drawSettlementWorkStatus = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -618,8 +716,9 @@ PS.render.entities.drawSettlementWorkStatus = function () {
     var point = PS.render.entities.getSettlementRenderPosition(settlement);
     var selected = PS.assets.equivalence.select("workStatus", "entity.intent.work");
     var baseSize = Math.max(4, PS.render.entities.getSettlementDrawSize(settlement) * 0.28);
+    var offset = PS.render.entities.getSettlementDistrictOffset(settlement, "workStatus", baseSize * 1.7, i);
 
-    if (PS.render.entities.appendEntityCell(batches, selected && selected.renderCell, point, baseSize, 0.95, "workStatus", -baseSize * 0.55, -baseSize * 1.35)) {
+    if (PS.render.entities.appendEntityCell(batches, selected && selected.renderCell, point, baseSize, 0.86, "workStatus", offset.x, offset.y)) {
       drawn += 1;
     }
   }
@@ -632,7 +731,7 @@ PS.render.entities.drawSettlementEffects = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -698,6 +797,143 @@ PS.render.entities.getOrganismHeadingBucket = function (organism) {
   return 0;
 };
 
+PS.render.entities.getOrganismFacing = function (organism) {
+  var facing = organism ? organism.facing : null;
+  var dx;
+  var dy;
+
+  if (typeof facing === "string") {
+    facing = facing.toLowerCase();
+    if (facing === "south" || facing === "s") {
+      return { code: 0, suffix: "s" };
+    }
+    if (facing === "west" || facing === "w") {
+      return { code: 1, suffix: "w" };
+    }
+    if (facing === "east" || facing === "e") {
+      return { code: 2, suffix: "e" };
+    }
+    if (facing === "north" || facing === "n") {
+      return { code: 3, suffix: "n" };
+    }
+  }
+
+  if (Number.isFinite(Number(facing))) {
+    facing = clamp(Math.round(Number(facing)), 0, 3);
+    return {
+      code: facing,
+      suffix: ["s", "w", "e", "n"][facing]
+    };
+  }
+
+  dx = Math.round(Number(organism && organism.directionX) || 0);
+  dy = Math.round(Number(organism && organism.directionY) || 0);
+
+  if (dx === 0 && dy === 0) {
+    dx = Math.round(Number(organism && organism.x) || 0) - Math.round(Number(organism && organism.prevX) || 0);
+    dy = Math.round(Number(organism && organism.y) || 0) - Math.round(Number(organism && organism.prevY) || 0);
+  }
+
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx < 0 ? { code: 1, suffix: "w" } : { code: 2, suffix: "e" };
+  }
+
+  if (dy < 0) {
+    return { code: 3, suffix: "n" };
+  }
+
+  return dy > 0 ? { code: 0, suffix: "s" } : { code: 0, suffix: "s" };
+};
+
+PS.render.entities.isOrganismMoving = function (organism) {
+  if (!organism) {
+    return false;
+  }
+
+  return Math.round(Number(organism.directionX) || 0) !== 0 ||
+    Math.round(Number(organism.directionY) || 0) !== 0 ||
+    Math.round(Number(organism.x) || 0) !== Math.round(Number(organism.prevX) || 0) ||
+    Math.round(Number(organism.y) || 0) !== Math.round(Number(organism.prevY) || 0);
+};
+
+PS.render.entities.getOrganismWalkFrame = function (organism) {
+  var explicit = Number(organism && organism.animFrame);
+  var nowMs;
+
+  if (!PS.render.entities.isOrganismMoving(organism)) {
+    return 0;
+  }
+
+  if (Number.isFinite(explicit)) {
+    return clamp(Math.round(explicit), 0, 1);
+  }
+
+  nowMs = typeof performance !== "undefined" && performance && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+  return Math.floor(nowMs / 250) & 1;
+};
+
+PS.render.entities.getOrganismCreatureType = function (organism) {
+  var explicit = String(organism && (organism.creatureType || organism.spriteSheet || organism.entityType || organism.typeId) || "").toLowerCase();
+  var traits = organism && organism.traits ? organism.traits : {};
+
+  if (explicit.indexOf("bird") >= 0) {
+    return "bird";
+  }
+
+  if (explicit.indexOf("rabbit") >= 0 || explicit.indexOf("herbivore") >= 0) {
+    return "rabbit";
+  }
+
+  if ((Number(traits.movementTendency) || 0) >= 0.75 && (Number(traits.bodySize) || 1) <= 1.2) {
+    return "bird";
+  }
+
+  return "rabbit";
+};
+
+PS.render.entities.selectAuthoredOrganismCell = function (organism, facing, walkFrame) {
+  var equivalence = PS.assets && PS.assets.equivalence;
+  var type = PS.render.entities.getOrganismCreatureType(organism);
+  var suffix = facing && facing.suffix ? facing.suffix : "s";
+  var sideSuffix = suffix === "w" || suffix === "n" ? "w" : "e";
+  var candidates = [
+    type + "." + suffix + "." + walkFrame,
+    type + "." + suffix + ".walk-" + walkFrame,
+    type + "." + suffix,
+    type + "." + sideSuffix,
+    "rabbit." + suffix,
+    "rabbit." + sideSuffix,
+    "rabbit.s"
+  ];
+  var loadedSheet = equivalence && typeof equivalence.getLoadedSheet === "function"
+    ? equivalence.getLoadedSheet("creatures")
+    : null;
+  var sheet = loadedSheet && loadedSheet.sheet && typeof loadedSheet.sheet.getCell === "function"
+    ? loadedSheet.sheet
+    : null;
+  var selected;
+  var i;
+
+  if (!equivalence || typeof equivalence.selectCell !== "function") {
+    return null;
+  }
+
+  for (i = 0; i < candidates.length; i += 1) {
+    if (sheet && !sheet.getCell(candidates[i])) {
+      continue;
+    }
+
+    selected = equivalence.selectCell("creatures", candidates[i], "creature", "");
+    if (selected && selected.renderCell) {
+      return selected.renderCell;
+    }
+  }
+
+  return null;
+};
+
 PS.render.entities.getOrganismAnimationSeed = function (organism, index) {
   var existing = Number(organism && organism.renderAnimationSeed);
   var stableId;
@@ -725,6 +961,7 @@ PS.render.entities.getOrganismAnimationSeed = function (organism, index) {
 PS.render.entities.generateSprite = function (traits, entityId, context) {
   var renderContext = context || {};
   var frameVariant = clamp(Math.round(Number(renderContext.frameVariant) || 0), 0, 3);
+  var authoredCell = renderContext.authoredCell || null;
   var organism = renderContext.organism || {
     id: entityId,
     representativeId: entityId,
@@ -733,6 +970,14 @@ PS.render.entities.generateSprite = function (traits, entityId, context) {
   };
 
   organism.traits = traits || organism.traits || {};
+
+  if (authoredCell) {
+    return {
+      cell: authoredCell,
+      morphologyKey: renderContext.morphologyKey || ("entity.organism.authored." + frameVariant),
+      preview: null
+    };
+  }
 
   if (PS.atlas && typeof PS.atlas.generateOrganismSprite === "function") {
     return PS.atlas.generateOrganismSprite(organism, frameVariant);
@@ -808,18 +1053,80 @@ PS.render.entities.getOrganismMorphologyPreview = function (organism, index) {
   return null;
 };
 
+PS.render.entities.getOrganismVisualSeed = function (organism, index) {
+  var stableId = Math.round(Number(organism && (organism.representativeId || organism.id || organism.poolIndex)) || 0);
+
+  if (!stableId) {
+    stableId = Math.round((Number(organism && organism.x) || 0) * 73856093) ^
+      Math.round((Number(organism && organism.y) || 0) * 19349663) ^
+      Math.round(Number(index) || 0);
+  }
+
+  return (Math.imul(stableId ^ 0x9e3779b9, 0x85ebca6b) >>> 0) || 1;
+};
+
+PS.render.entities.getOrganismVisualState = function (organism, index) {
+  var facing = PS.render.entities.getOrganismFacing(organism);
+  var walkFrame = PS.render.entities.getOrganismWalkFrame(organism);
+  var seed = PS.render.entities.getOrganismVisualSeed(organism, index);
+  var energy = Number(organism && organism.energy) || 0;
+  var state = walkFrame > 0 || Number(organism && organism.directionX) !== 0 || Number(organism && organism.directionY) !== 0
+    ? "move"
+    : "idle";
+
+  if (organism && organism.isDecaying) {
+    state = "die_decay";
+  } else if (organism && organism.isMigrating) {
+    state = "migrate";
+  } else if (organism && organism.isSleeping) {
+    state = "sleep";
+  } else if (organism && organism.isFighting) {
+    state = "fight";
+  } else if (organism && organism.isConstructing) {
+    state = "construct";
+  } else if (organism && organism.isWorking) {
+    state = "work";
+  } else if (organism && organism.behavior === "foraging") {
+    state = "forage";
+  }
+
+  return {
+    family: "organism",
+    state: state,
+    direction: facing.code,
+    directionSuffix: facing.suffix,
+    frameCount: state === "idle" ? 2 : 4,
+    frameRate: state === "idle" ? 4 : 8,
+    frameVariant: walkFrame,
+    phaseOffset: seed & 1023,
+    tint: PS.render.entities.getLineageColor(organism),
+    statusPixel: energy > 0 && energy < CONFIG.ORGANISM_RENDER_LOW_ENERGY ? "hungry" : ""
+  };
+};
+
 PS.render.entities.getOrganismSpriteCache = function (organism, index) {
   var perf = PS.render.entities.organismRenderPerf;
   var seed = PS.render.entities.getOrganismAnimationSeed(organism, index);
   var variant = seed & 3;
+  var facing = PS.render.entities.getOrganismFacing(organism);
+  var walkFrame = PS.render.entities.getOrganismWalkFrame(organism);
+  var creatureType = PS.render.entities.getOrganismCreatureType(organism);
+  var authoredCandidateKey = [
+    "entity.organism.authored",
+    creatureType,
+    facing.suffix,
+    walkFrame
+  ].join(".");
+  var authoredCell = null;
   var entityId = organism && (organism.representativeId || organism.id || organism.poolIndex);
   var traits = organism && organism.traits ? organism.traits : {};
   var morphologyContext = {
     organism: organism,
     lineageId: organism && organism.lineageId,
-    frameVariant: variant
+    frameVariant: variant,
+    authoredCell: null
   };
-  var morphologyKey = PS.render.entities.getMorphologyKey(traits, entityId, morphologyContext);
+  var morphologyKey;
   var cache = organism ? organism._renderSpriteCache : null;
   var changed;
   var generated;
@@ -831,12 +1138,28 @@ PS.render.entities.getOrganismSpriteCache = function (organism, index) {
     }
   }
 
+  if (cache.authoredCandidateKey === authoredCandidateKey && cache.isAuthored && cache.cell) {
+    perf.lastSpriteCacheHits += 1;
+    return cache;
+  }
+
+  authoredCell = PS.render.entities.selectAuthoredOrganismCell(organism, facing, walkFrame);
+  morphologyContext.authoredCell = authoredCell;
+  morphologyKey = authoredCell
+    ? [
+      authoredCandidateKey,
+      authoredCell.name || authoredCell.sourceCellName || "cell"
+    ].join(".")
+    : PS.render.entities.getMorphologyKey(traits, entityId, morphologyContext);
+
   changed = cache.morphologyKey !== morphologyKey ||
     !cache.cell;
 
   if (changed) {
     generated = PS.render.entities.generateSprite(traits, entityId, morphologyContext);
     cache.variant = variant;
+    cache.authoredCandidateKey = authoredCandidateKey;
+    cache.isAuthored = Boolean(authoredCell);
     cache.morphologyKey = morphologyKey;
     cache.preview = generated ? generated.preview : null;
     cache.cell = generated ? generated.cell : null;
@@ -852,12 +1175,75 @@ PS.render.entities.getOrganismRenderPerfStats = function () {
   return Object.assign({}, PS.render.entities.organismRenderPerf);
 };
 
-PS.render.entities.drawOrganisms = function () {
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+PS.render.entities.getOrganismClusterSources = function () {
+  var populations = world && Array.isArray(world.biologyPopulations) ? world.biologyPopulations : [];
+  var representatives = world && Array.isArray(world.biologyRepresentatives) ? world.biologyRepresentatives : [];
+  var clusters = [];
+  var i;
+
+  for (i = 0; i < populations.length; i += 1) {
+    if (populations[i] && populations[i].isActive !== false && Number(populations[i].count) > 0) {
+      clusters.push(populations[i]);
+    }
+  }
+
+  if (clusters.length > 0) {
+    return clusters;
+  }
+
+  for (i = 0; i < representatives.length; i += 1) {
+    if (representatives[i] && representatives[i].isActive !== false) {
+      clusters.push(representatives[i]);
+    }
+  }
+
+  return clusters;
+};
+
+PS.render.entities.getOrganismClusterCell = function (cluster) {
+  if (PS.atlas && typeof PS.atlas.getPopulationClusterCell === "function") {
+    return PS.atlas.getPopulationClusterCell(cluster);
+  }
+
+  if (PS.atlas && typeof PS.atlas.getRepresentativeIntentCell === "function") {
+    return PS.atlas.getRepresentativeIntentCell(cluster);
+  }
+
+  return null;
+};
+
+PS.render.entities.drawOrganismClusters = function () {
+  var clusters = PS.render.entities.getOrganismClusterSources();
+  var batches = PS.render.entities.createEntityBatches();
+  var baseSize = Math.max(4, Number(CONFIG.ORGANISM_DRAW_SIZE) || 4);
+  var interpolation = typeof getFrameInterpolation === "function" ? getFrameInterpolation() : 1;
+  var perf = PS.render.entities.organismRenderPerf;
+  var drawn = 0;
+
+  if (!batches || !PS.atlas) {
     return false;
   }
 
+  for (var i = 0; i < clusters.length; i += 1) {
+    var cluster = clusters[i];
+    var count = Math.max(1, Math.round(Number(cluster && cluster.count) || 1));
+    var size = baseSize * Math.min(2.65, 1.05 + Math.log(count + 1) * 0.24);
+    var point = PS.render.entities.getRenderPosition(cluster, interpolation);
+    var cell = PS.render.entities.getOrganismClusterCell(cluster);
+
+    if (PS.render.entities.appendEntityCell(batches, cell, point, size, 1, "organism", 0, -size * 0.25)) {
+      drawn += 1;
+    }
+  }
+
+  perf.lastOrganismClusterRenderCount = drawn;
+  perf.lastOrganismIndividualRenderCount = 0;
+  return PS.render.entities.drawEntityBatches(batches, drawn);
+};
+
+PS.render.entities.drawOrganisms = function () {
   var organisms = world && Array.isArray(world.organisms) ? world.organisms : [];
+  var visualMode = PS.render.entities.getOrganismVisualMode();
   var batches = PS.render.webgpuEntity && typeof PS.render.webgpuEntity.beginBatches === "function"
     ? PS.render.webgpuEntity.beginBatches()
     : null;
@@ -867,18 +1253,36 @@ PS.render.entities.drawOrganisms = function () {
   var perf = PS.render.entities.organismRenderPerf;
   var drawn = 0;
 
-  if (!batches || !PS.atlas || typeof PS.atlas.getTraitOrganismCell !== "function") {
-    return false;
-  }
-
   perf.lastOrganismRenderCount = organisms.length;
+  perf.lastOrganismVisualMode = visualMode;
+  perf.lastOrganismClusterRenderCount = 0;
+  perf.lastOrganismIndividualRenderCount = 0;
   perf.lastSpriteCacheHits = 0;
   perf.lastSpriteCacheMisses = 0;
   perf.lastAnimationSeedComputes = 0;
   perf.lastEstimatedRenderObjectsPerSecond = 0;
 
+  if (visualMode === "aggregate") {
+    return PS.render.entities.shouldDrawGlobeScaleEntities()
+      ? PS.render.entities.drawOrganismClusters()
+      : false;
+  }
+
+  if (visualMode === "hidden") {
+    return false;
+  }
+
+  if (!PS.render.entities.shouldDrawDetailedLocalEntities()) {
+    return false;
+  }
+
+  if (!batches || !PS.atlas || typeof PS.atlas.getTraitOrganismCell !== "function") {
+    return false;
+  }
+
   for (var i = 0; i < organisms.length; i += 1) {
     var organism = organisms[i];
+    var visualState = PS.render.entities.getOrganismVisualState(organism, i);
     var point = PS.render.entities.writeRenderPosition(organism, interpolation, pointScratch);
     var spriteCache = PS.render.entities.getOrganismSpriteCache(organism, i);
     var cell = spriteCache && spriteCache.cell;
@@ -902,14 +1306,25 @@ PS.render.entities.drawOrganisms = function () {
     drawn += 1;
   }
 
+  perf.lastOrganismIndividualRenderCount = drawn;
   perf.lastEstimatedRenderObjectsPerSecond = perf.lastSpriteCacheMisses * 30;
   return drawn > 0 && PS.render.webgpuEntity.drawBatches(batches);
 };
 
 PS.render.entities.getSettlementDrawSize = function (settlement) {
-  var level = Math.max(1, Math.round(Number(settlement.level) || 1));
-  var growthScale = 2.1 + Math.min(level - 1, 5) * 0.35;
-  return CONFIG.ORGANISM_DRAW_SIZE * growthScale * PS.render.entities.getSettlementGroundDetailScale();
+  var level = Math.max(1, Math.round(Number(settlement && settlement.level) || 1));
+  var population = Math.max(0, Number(settlement && settlement.population) || 0);
+  var radius = Math.max(0, Number(settlement && settlement.radius) || 0);
+  var claimedTiles = Math.max(0, Number(settlement && settlement.claimedTiles) || 0);
+  var development = Math.max(0, Math.min(1, Number(settlement && settlement.development) || 0));
+  var growthScale = 1.7 +
+    Math.min(level, 8) * 0.28 +
+    Math.sqrt(population) * 0.18 +
+    Math.sqrt(claimedTiles) * 0.12 +
+    radius * 0.22 +
+    development * 1.2;
+
+  return Math.max(6, CONFIG.ORGANISM_DRAW_SIZE * growthScale * PS.render.entities.getSettlementGroundDetailScale());
 };
 
 PS.render.entities.getSettlementGroundDetailScale = function () {
@@ -960,6 +1375,64 @@ PS.render.entities.getSettlementRenderPosition = function (settlement) {
   return PS.render.entities.getRenderPosition(settlement, 1);
 };
 
+PS.render.entities.getSettlementVisualFootprint = function (settlements, options) {
+  var list = Array.isArray(settlements) ? settlements : (world && Array.isArray(world.settlements) ? world.settlements : []);
+  var settings = options || {};
+  var width = Math.max(1, Math.round(Number(settings.width) || Number(PS.gpu && PS.gpu.canvas && PS.gpu.canvas.width) || 1));
+  var height = Math.max(1, Math.round(Number(settings.height) || Number(PS.gpu && PS.gpu.canvas && PS.gpu.canvas.height) || 1));
+  var minX = width;
+  var minY = height;
+  var maxX = 0;
+  var maxY = 0;
+  var count = 0;
+
+  for (var i = 0; i < list.length; i += 1) {
+    var settlement = list[i];
+    var point = PS.render.entities.getSettlementRenderPosition(settlement);
+    var size = PS.render.entities.getSettlementDrawSize(settlement);
+    var extent = Math.max(size, size * 2.2);
+
+    if (!point || point.visible === false || settlement && settlement.isActive === false) {
+      continue;
+    }
+
+    minX = Math.min(minX, point.x - extent);
+    minY = Math.min(minY, point.y - extent);
+    maxX = Math.max(maxX, point.x + extent);
+    maxY = Math.max(maxY, point.y + extent);
+    count += 1;
+  }
+
+  if (count === 0) {
+    return {
+      count: 0,
+      width: 0,
+      height: 0,
+      widthCoverage: 0,
+      heightCoverage: 0,
+      areaCoverage: 0
+    };
+  }
+
+  minX = Math.max(0, Math.min(width, minX));
+  minY = Math.max(0, Math.min(height, minY));
+  maxX = Math.max(0, Math.min(width, maxX));
+  maxY = Math.max(0, Math.min(height, maxY));
+
+  return {
+    count: count,
+    minX: minX,
+    minY: minY,
+    maxX: maxX,
+    maxY: maxY,
+    width: Math.max(0, maxX - minX),
+    height: Math.max(0, maxY - minY),
+    widthCoverage: Math.max(0, maxX - minX) / width,
+    heightCoverage: Math.max(0, maxY - minY) / height,
+    areaCoverage: (Math.max(0, maxX - minX) * Math.max(0, maxY - minY)) / Math.max(1, width * height)
+  };
+};
+
 PS.render.entities.drawSettlementMapBadge = function (settlement, point, size) {
   var batches = PS.render.entities.createEntityBatches();
   var cell = PS.atlas && typeof PS.atlas.getSettlementWorldUiCell === "function"
@@ -979,7 +1452,7 @@ PS.render.entities.drawSettlements = function () {
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
     return false;
   }
 
@@ -1001,52 +1474,176 @@ PS.render.entities.drawSettlements = function () {
       continue;
     }
 
-    if (PS.render.entities.appendEntityCell(batches, cell, point, size, 1, "settlement")) {
+    var band = PS.render.entities.getCurrentEntityZoomBand();
+    var mapScale = band === "settlement" ? 0.72 : (band === "local" ? 0.82 : 1);
+    var offset = PS.render.entities.getSettlementDistrictOffset(settlement, "structure", size * mapScale, i);
+    var structureSize = (settlement && settlement.isOutpost ? size * 0.82 : size) * mapScale;
+    var structureAlpha = band === "settlement" ? 0.82 : (band === "local" ? 0.88 : 0.96);
+
+    if (PS.render.entities.appendEntityCell(batches, cell, point, structureSize, structureAlpha, "settlement", offset.x, offset.y)) {
       drawn += 1;
     }
   }
 
   return PS.render.entities.drawEntityBatches(batches, drawn);
+};
+
+PS.render.entities.getSettlementVisualSeed = function (settlement, fallbackIndex) {
+  var raw = settlement && settlement.id !== undefined ? String(settlement.id) : String(fallbackIndex || 0);
+  var hash = 2166136261;
+
+  for (var i = 0; i < raw.length; i += 1) {
+    hash ^= raw.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
+};
+
+PS.render.entities.getSettlementDistrictOffset = function (settlement, role, baseSize, index) {
+  var seed = PS.render.entities.getSettlementVisualSeed(settlement, index || 0);
+  var roleSeed = PS.render.entities.getSettlementVisualSeed({ id: role || "district" }, seed & 255);
+  var development = Math.max(0, Math.min(1, Number(settlement && settlement.development) || 0));
+  var radius = Math.max(0.35, Number(baseSize) || 1);
+  var ordinal = Math.max(0, Number(index) || 0);
+  var angle = Math.PI * 2 * ((((seed ^ roleSeed) >>> 0) % 997) / 997 + ordinal * 0.137);
+  var distance = radius * (0.44 + development * 0.18 + (ordinal % 3) * 0.11);
+
+  if (role === "structure") {
+    distance *= settlement && settlement.isOutpost ? 0.22 : 0.08;
+  } else if (role === "worldUi") {
+    angle = -Math.PI / 3 + ordinal * 0.34;
+    distance = radius * (0.88 + ordinal * 0.12);
+  } else if (role === "stockpile") {
+    angle += Math.PI * 0.18;
+    distance *= 0.72;
+  } else if (role === "citizen") {
+    distance *= 0.92;
+  } else if (role === "workStatus") {
+    angle -= Math.PI * 0.2;
+    distance *= 0.78;
+  }
+
+  PS.render.entities.settlementVisualStats.lastSettlementDistrictOffsets += 1;
+  return {
+    x: Math.cos(angle) * distance,
+    y: Math.sin(angle) * distance
+  };
+};
+
+PS.render.entities.getSettlementWorldUiMetrics = function (settlement) {
+  var level = Math.max(1, Math.round(Number(settlement && settlement.level) || 1));
+  var stock = Math.max(Number(settlement && settlement.foodStock) || 0, Number(settlement && settlement.storedFood) || 0);
+  var development = Math.max(0, Math.min(1, Number(settlement && settlement.development) || 0));
+  var metrics = [];
+
+  if (!settlement || settlement.isOutpost || level < 4) {
+    metrics.push(stock > 0 ? "food" : "development");
+    return metrics;
+  }
+
+  metrics.push("population");
+  metrics.push(stock > 0 || development < 0.35 ? "food" : "development");
+  return metrics;
 };
 
 PS.render.entities.drawSettlementInfluence = function () {
   var settlements = world && Array.isArray(world.settlements) ? world.settlements : [];
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
+  var maxAlpha = 0;
+  var stats = PS.render.entities.settlementVisualStats;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
+    stats.lastSettlementInfluenceCells = 0;
+    stats.lastSettlementInfluenceMaxAlpha = 0;
     return false;
   }
 
   if (!batches || !PS.atlas || typeof PS.atlas.getSettlementInfluenceCell !== "function") {
+    stats.lastSettlementInfluenceCells = 0;
+    stats.lastSettlementInfluenceMaxAlpha = 0;
     return false;
   }
 
   for (var i = 0; i < settlements.length; i += 1) {
     var settlement = settlements[i];
     var point = PS.render.entities.getSettlementRenderPosition(settlement);
-    var radiusScale = Math.max(1.2, Math.min(3, (Number(settlement && settlement.influenceRadius) || 1) * 0.35));
-    var size = PS.render.entities.getSettlementDrawSize(settlement) * radiusScale;
+    var drawSize = PS.render.entities.getSettlementDrawSize(settlement);
+    var development = Math.max(0, Math.min(1, Number(settlement && settlement.development) || 0));
+    var claimedTiles = Math.max(0, Number(settlement && settlement.claimedTiles) || 0);
+    var radiusScale = Math.max(1.05, Math.min(1.85, (Number(settlement && settlement.influenceRadius) || 1) * 0.22));
+    var size = drawSize * radiusScale;
     var cell = PS.atlas.getSettlementInfluenceCell(settlement);
+    var alpha = Math.min(0.32, 0.18 + development * 0.12);
+    var seed = PS.render.entities.getSettlementVisualSeed(settlement, i + 1);
+    var patchCount = Math.max(2, Math.min(7, Math.ceil(Math.sqrt(claimedTiles) / 7) + Math.round(development * 2)));
+    var patchIndex;
 
-    if (PS.render.entities.appendEntityCell(batches, cell, point, size, 0.55, "influence")) {
+    if (!point || point.visible === false || settlement && settlement.isActive === false) {
+      continue;
+    }
+
+    if (PS.render.entities.appendEntityCell(batches, cell, point, size, alpha, "influence")) {
       drawn += 1;
+      maxAlpha = Math.max(maxAlpha, alpha);
+    }
+
+    for (patchIndex = 0; patchIndex < patchCount; patchIndex += 1) {
+      var angleSeed = ((seed >>> ((patchIndex % 4) * 4)) & 15) / 16;
+      var angle = Math.PI * 2 * ((patchIndex / patchCount) + angleSeed * 0.18);
+      var distance = size * (0.18 + 0.1 * (patchIndex % 3));
+      var patchSize = drawSize * (0.42 + 0.08 * ((seed >>> (patchIndex % 12)) & 3));
+      var patchAlpha = Math.min(0.24, 0.12 + development * 0.08 + patchIndex * 0.006);
+
+      if (PS.render.entities.appendEntityCell(
+        batches,
+        cell,
+        point,
+        patchSize,
+        patchAlpha,
+        "influence",
+        Math.cos(angle) * distance,
+        Math.sin(angle) * distance
+      )) {
+        drawn += 1;
+        maxAlpha = Math.max(maxAlpha, patchAlpha);
+      }
     }
   }
+
+  stats.lastSettlementInfluenceCells = drawn;
+  stats.lastSettlementInfluenceMaxAlpha = maxAlpha;
 
   return PS.render.entities.drawEntityBatches(batches, drawn);
 };
 
+/**
+ * @description Converts settlement route paths and influence statistics into entity batches for roads, supply routes, trade paths, and route-bed accents.
+ * @returns {number} Number of settlement route entity segments drawn.
+ */
 PS.render.entities.drawSettlementRoutes = function () {
   var routes = world && Array.isArray(world.settlementRoutes) ? world.settlementRoutes : [];
   var batches = PS.render.entities.createEntityBatches();
   var drawn = 0;
+  var bedDrawn = 0;
+  var stats = PS.render.entities.settlementVisualStats;
 
-  if (!PS.render.entities.shouldDrawGlobeScaleEntities()) {
+  if (CONFIG.PLANET_DEBUG_DISABLE_SETTLEMENT_ROUTE_ENTITIES) {
+    stats.lastSettlementRouteSegments = 0;
+    stats.lastSettlementRouteBedSegments = 0;
+    return false;
+  }
+
+  if (!PS.render.entities.shouldDrawDetailedSettlementEntities()) {
+    stats.lastSettlementRouteSegments = 0;
+    stats.lastSettlementRouteBedSegments = 0;
     return false;
   }
 
   if (!batches || !PS.atlas || typeof PS.atlas.getRouteCell !== "function") {
+    stats.lastSettlementRouteSegments = 0;
+    stats.lastSettlementRouteBedSegments = 0;
     return false;
   }
 
@@ -1075,17 +1672,44 @@ PS.render.entities.drawSettlementRoutes = function () {
     } : null);
     var shape = Math.abs(dx) > Math.abs(dy) * 1.4 ? "horizontal" : (Math.abs(dy) > Math.abs(dx) * 1.4 ? "vertical" : "diag");
     var cell = PS.atlas.getRouteCell(route, shape);
-    var size = Math.max(6, Number(CONFIG.ORGANISM_DRAW_SIZE) || 4) * 2.1;
+    var size = Math.max(6, Number(CONFIG.ORGANISM_DRAW_SIZE) || 4) * 1.18;
+    var distance = Math.sqrt(dx * dx + dy * dy);
+    var segments = parentPoint && childPoint
+      ? Math.max(2, Math.min(18, Math.ceil(distance / Math.max(8, size * 0.72))))
+      : 1;
+    var segmentIndex;
+    var t;
+    var segmentPoint;
 
     if (route && route.isActive === false) {
       continue;
     }
 
-    if (PS.render.entities.appendEntityCell(batches, cell, point, size, 0.85, "route")) {
-      drawn += 1;
+    for (segmentIndex = 0; segmentIndex < segments; segmentIndex += 1) {
+      t = segments <= 1 ? 0.5 : (segmentIndex + 0.5) / segments;
+      segmentPoint = parentPoint && childPoint ? {
+        x: parentPoint.x + dx * t,
+        y: parentPoint.y + dy * t,
+        visible: parentPoint.visible !== false || childPoint.visible !== false,
+        visibility: Math.max(
+          Number.isFinite(Number(parentPoint.visibility)) ? Number(parentPoint.visibility) : 1,
+          Number.isFinite(Number(childPoint.visibility)) ? Number(childPoint.visibility) : 1
+        )
+      } : point;
+
+      if (PS.render.entities.appendEntityCell(batches, cell, segmentPoint, size * 1.16, 0.14, "route", 0, 0, [1.18, 0.78, 0.58, 1])) {
+        drawn += 1;
+        bedDrawn += 1;
+      }
+
+      if (PS.render.entities.appendEntityCell(batches, cell, segmentPoint, size * 0.62, 0.48, "route", 0, 0, [1.22, 0.72, 0.50, 1])) {
+        drawn += 1;
+      }
     }
   }
 
+  stats.lastSettlementRouteSegments = drawn;
+  stats.lastSettlementRouteBedSegments = bedDrawn;
   return PS.render.entities.drawEntityBatches(batches, drawn);
 };
 

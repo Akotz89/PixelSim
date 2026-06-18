@@ -1,4 +1,4 @@
-let wasm_bindgen = (function(exports) {
+export let wasm_bindgen = (function(exports) {
     let script_src;
     if (typeof document !== 'undefined' && document.currentScript !== null) {
         script_src = new URL(document.currentScript.src, location.href).toString();
@@ -270,7 +270,11 @@ let wasm_bindgen = (function(exports) {
         const imports = __wbg_get_imports();
 
         if (typeof module_or_path === 'string' || (typeof Request === 'function' && module_or_path instanceof Request) || (typeof URL === 'function' && module_or_path instanceof URL)) {
-            module_or_path = fetch(module_or_path);
+            const fetch_fn = typeof fetch === 'function' ? fetch : null;
+            if (!fetch_fn) {
+                throw new Error('fetch is unavailable for wasm module loading');
+            }
+            module_or_path = fetch_fn(module_or_path);
         }
 
         const { instance, module } = await __wbg_load(await module_or_path, imports);
@@ -280,3 +284,6 @@ let wasm_bindgen = (function(exports) {
 
     return Object.assign(__wbg_init, { initSync }, exports);
 })({ __proto__: null });
+
+// --- ES Module Migration: backward-compat globals ---
+window.wasm_bindgen = wasm_bindgen;

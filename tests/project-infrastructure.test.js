@@ -230,7 +230,7 @@ async function waitForServer(server) {
         manifestCount: PS.core.manifest.length,
         loadedCount: PS.core.loaderState.loaded.length,
         bootstrapScripts: scripts.filter(function(script) {
-          return script === "js/core/namespace.js" || script === "js/core/loader.js";
+          return script === "js/core/namespace.js" || script === "js/core/loader-esm.js";
         }),
         startupAssets: PS.assets.startupStatus,
         startupData: PS.assets.startupDataStatus,
@@ -289,8 +289,8 @@ async function waitForServer(server) {
     assert.strictEqual(bootEvidence.loadedCount, bootEvidence.manifestCount, "loader should load every manifest script");
     assert.deepStrictEqual(
       bootEvidence.bootstrapScripts,
-      ["js/core/namespace.js", "js/core/loader.js"],
-      "dev-server page should include namespace and loader bootstrap scripts"
+      ["js/core/namespace.js", "js/core/loader-esm.js"],
+      "dev-server page should include namespace and ESM loader bootstrap scripts"
     );
     assert.strictEqual(bootEvidence.startupAssets.loaded, true, "startup should load the asset manifest before game start");
     assert.strictEqual(bootEvidence.gpuContextDeferred, true, "boot evidence should retain deferred visible-canvas ownership");

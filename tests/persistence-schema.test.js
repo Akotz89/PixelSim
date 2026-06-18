@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 function runFile(context, file) {
   vm.runInContext(read(file), context, { filename: file });
@@ -46,6 +37,7 @@ assert.ok(
 
 const restoreEntitiesSource = read("js/systems/persistence-restore-entities.js");
 const saveDataSource = read("js/systems/persistence-save-data.js");
+const persistenceDbSource = read("js/systems/persistence-db.js");
 const stateSource = read("js/systems/state.js");
 const domRefsSource = read("js/ui/dom-refs.js");
 [
@@ -70,6 +62,7 @@ assert.strictEqual(
 assert.strictEqual(saveDataSource.indexOf("legacy" + "ConfigSchema"), -1, "new saves should not carry the old full config blob");
 assert.ok(saveDataSource.indexOf("config: createSaveConfigDelta()") >= 0, "new saves should store delta config");
 assert.ok(saveDataSource.indexOf("subsystems: createWorldSubsystemSaveData()") >= 0, "new saves should include grouped subsystem data");
+assert.ok(persistenceDbSource.indexOf("ArrayBuffer.isView") >= 0, "persistence clone should serialize typed array epoch fields as plain arrays");
 [
   "updateColonyNetworkState",
   "updateSpaceProgramReadiness",

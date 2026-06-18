@@ -96,7 +96,23 @@ For the WASM worker integration (AZR-855), the bridge uses **Transferable
 the result buffer to the main thread, which zero-copy uploads it to the GPU
 via `device.queue.writeBuffer()`. No SharedArrayBuffer required.
 
-### Current implementation plan
+### AZR-855 implementation
 
-See AZR-855 (WASM Web Worker bridge) for the blob URL worker architecture
-and zero-copy WASM-to-GPU data transfer design.
+`js/workers/sim-worker.js` now keeps the existing synthetic `tick` spike and
+adds `wasmInit` / `wasmTick` messages for the Rust WASM sidecar. The worker can
+be launched as a blob worker under `file://`, evaluates the wasm-bindgen glue,
+base64 sidecar, and `PS.sim.wasmBridge` as one inline no-fetch program, then
+runs tectonics, D8 rivers, and erosion on a worker-owned `SimBuffer`.
+
+`js/sim/sim-worker-client.js` owns the main-thread client contract:
+
+- create a blob worker from caller-provided source
+- request/response correlation by message id
+- `wasmInit` and `wasmTick` message builders
+- `uploadElevationResultToGpu()` for `device.queue.writeBuffer()`
+
+The worker returns elevation as a transferred `ArrayBuffer` snapshot. The main
+thread wraps that buffer in a `Float32Array` view and uploads that view directly
+to WebGPU. This avoids JSON/object serialization and avoids an additional
+main-thread CPU copy, but it is not `SharedArrayBuffer`; the worker still copies
+from WASM linear memory into the transferable result buffer before posting.

@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.pixelCa = PS.sim.pixelCa || {
@@ -46,15 +47,7 @@ PS.sim.pixelCa = PS.sim.pixelCa || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-    if (!manifest.some(function (entry) { return entry && entry.name === "pixel-ca"; })) {
-      manifest.push({ name: this.shaderName, path: this.shaderPath });
-    }
-    return manifest;
+    return PS.render.registerWgslShaderManifestEntries({ name: this.shaderName, path: this.shaderPath });
   },
 
   normalizeConfig: function (config) {
@@ -409,7 +402,7 @@ PS.sim.pixelCa = PS.sim.pixelCa || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "pixel-ca.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -420,7 +413,8 @@ PS.sim.pixelCa = PS.sim.pixelCa || {
             { binding: 4, resource: { buffer: owner.buffers["pixel-ca.heatSource"].buffer } },
             { binding: 5, resource: { buffer: owner.buffers["pixel-ca.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.stateId);

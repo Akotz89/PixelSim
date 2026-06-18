@@ -1,5 +1,12 @@
-"use strict";
-var planetDragState = {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTileFromCanvasPoint } from "../render/planet-grid.js";
+import { adjustPlanetZoom, adjustPlanetZoomAtCanvasPoint, getPlanetLatLonFromCanvasPoint, panPlanetViewBySamples, panPlanetViewByScreenDelta } from "../render/planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "./dom-refs.js";
+
+export var planetDragState = {
   active: false,
   moved: false,
   skipNextClick: false,
@@ -10,9 +17,9 @@ var planetDragState = {
   lastMoveTime: 0,
   inertiaHandle: null
 };
-var cameraInteractionTimer = null;
+export var cameraInteractionTimer = null;
 
-function markCameraInteracting() {
+export function markCameraInteracting() {
   world.isCameraInteracting = true;
 
   if (cameraInteractionTimer !== null && typeof window.clearTimeout === "function") {
@@ -31,17 +38,17 @@ function markCameraInteracting() {
   }
 }
 
-function getCanvasPointFromEvent(event) {
+export function getCanvasPointFromEvent(event) {
   return getCanvasPointFromClient(event.clientX, event.clientY);
 }
 
-function getCanvasPointFromClient(clientX, clientY) {
+export function getCanvasPointFromClient(clientX, clientY) {
   return PS.camera && PS.camera.unified
     ? PS.camera.unified.clientToScreen(clientX, clientY)
     : { canvasX: Number(clientX) || 0, canvasY: Number(clientY) || 0 };
 }
 
-function getTileFromCanvasEvent(event) {
+export function getTileFromCanvasEvent(event) {
   var point = getCanvasPointFromEvent(event);
   var planetTile = typeof getPlanetTileFromCanvasPoint === "function"
     ? getPlanetTileFromCanvasPoint(point.canvasX, point.canvasY)
@@ -57,7 +64,7 @@ function getTileFromCanvasEvent(event) {
   };
 }
 
-function getSurfacePositionFromCanvasEvent(event) {
+export function getSurfacePositionFromCanvasEvent(event) {
   if (typeof getPlanetLatLonFromCanvasPoint !== "function") {
     return null;
   }
@@ -66,7 +73,7 @@ function getSurfacePositionFromCanvasEvent(event) {
   return getPlanetLatLonFromCanvasPoint(point.canvasX, point.canvasY);
 }
 
-function zoomPlanetView(delta, anchorPoint) {
+export function zoomPlanetView(delta, anchorPoint) {
   markCameraInteracting();
 
   var didZoom = anchorPoint && typeof adjustPlanetZoomAtCanvasPoint === "function"
@@ -81,11 +88,11 @@ function zoomPlanetView(delta, anchorPoint) {
   return true;
 }
 
-function redrawPlanetView() {
+export function redrawPlanetView() {
   world.needsRender = true;
 }
 
-function beginPlanetDrag(event) {
+export function beginPlanetDrag(event) {
   if (typeof event.button === "number" && event.button !== 0) {
     return;
   }
@@ -117,7 +124,7 @@ function beginPlanetDrag(event) {
   }
 }
 
-function updatePlanetDrag(event) {
+export function updatePlanetDrag(event) {
   if (PS.ui.touch.update(event)) {
     return;
   }
@@ -132,6 +139,22 @@ function updatePlanetDrag(event) {
   var deltaX = clientX - planetDragState.lastClientX;
   var deltaY = clientY - planetDragState.lastClientY;
   var elapsed = Math.max(1, now - planetDragState.lastMoveTime);
+  var isTouchPointer = event && String(event.pointerType || "") === "touch";
+  var motion = PS.camera && typeof PS.camera.getMotionConfig === "function"
+    ? PS.camera.getMotionConfig()
+    : { panInputMaxDelta: 64, panMaxSpeed: 14 };
+  var inputMaxDelta = isTouchPointer && Number(motion.touchPanInputMaxDelta)
+    ? motion.touchPanInputMaxDelta
+    : motion.panInputMaxDelta;
+  var inputMultiplier = isTouchPointer && Number(motion.touchPanMultiplier)
+    ? motion.touchPanMultiplier
+    : 1;
+  var clampedDeltaX = PS.camera && typeof PS.camera.clampInputDelta === "function"
+    ? PS.camera.clampInputDelta(deltaX, inputMaxDelta) * inputMultiplier
+    : clamp(deltaX, -24, 24) * inputMultiplier;
+  var clampedDeltaY = PS.camera && typeof PS.camera.clampInputDelta === "function"
+    ? PS.camera.clampInputDelta(deltaY, inputMaxDelta) * inputMultiplier
+    : clamp(deltaY, -24, 24) * inputMultiplier;
 
   if (deltaX === 0 && deltaY === 0) {
     return;
@@ -140,8 +163,12 @@ function updatePlanetDrag(event) {
   planetDragState.lastClientX = clientX;
   planetDragState.lastClientY = clientY;
   planetDragState.lastMoveTime = now;
-  planetDragState.velocityX = deltaX / elapsed * 16;
-  planetDragState.velocityY = deltaY / elapsed * 16;
+  planetDragState.velocityX = PS.camera && typeof PS.camera.clampVelocity === "function"
+    ? PS.camera.clampVelocity(clampedDeltaX / elapsed * 16, motion.panMaxSpeed)
+    : clampedDeltaX / elapsed * 16;
+  planetDragState.velocityY = PS.camera && typeof PS.camera.clampVelocity === "function"
+    ? PS.camera.clampVelocity(clampedDeltaY / elapsed * 16, motion.panMaxSpeed)
+    : clampedDeltaY / elapsed * 16;
 
   if (Math.abs(deltaX) + Math.abs(deltaY) > 2) {
     planetDragState.moved = true;
@@ -149,7 +176,7 @@ function updatePlanetDrag(event) {
 
   if (typeof panPlanetViewByScreenDelta === "function") {
     markCameraInteracting();
-    panPlanetViewByScreenDelta(deltaX, deltaY);
+    panPlanetViewByScreenDelta(clampedDeltaX, clampedDeltaY);
     redrawPlanetView();
   }
 
@@ -158,7 +185,7 @@ function updatePlanetDrag(event) {
   }
 }
 
-function continuePlanetDragInertia() {
+export function continuePlanetDragInertia() {
   var velocityX = planetDragState.velocityX * 0.86;
   var velocityY = planetDragState.velocityY * 0.86;
 
@@ -183,7 +210,7 @@ function continuePlanetDragInertia() {
   }
 }
 
-function endPlanetDrag(event) {
+export function endPlanetDrag(event) {
   if (PS.ui.touch.end(event)) {
     if (!planetDragState.active) {
       return;
@@ -205,7 +232,7 @@ function endPlanetDrag(event) {
   planetDragState.inertiaHandle = null;
 }
 
-function panPlanetViewFromKeyboard(eastSamples, northSamples) {
+export function panPlanetViewFromKeyboard(eastSamples, northSamples) {
   if (typeof panPlanetViewBySamples !== "function") {
     return false;
   }
@@ -216,6 +243,7 @@ function panPlanetViewFromKeyboard(eastSamples, northSamples) {
   return true;
 }
 
-function prepareTouchInput() {
+export function prepareTouchInput() {
   PS.ui.touch.prepare();
 }
+

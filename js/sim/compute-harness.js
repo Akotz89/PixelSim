@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.computeHarness = PS.sim.computeHarness || {
@@ -7,6 +8,7 @@ PS.sim.computeHarness = PS.sim.computeHarness || {
   states: {},
   passes: {},
   dispatchLog: [],
+  bindGroupSerial: 0,
 
   usage: {
     storage: 128,
@@ -65,11 +67,13 @@ PS.sim.computeHarness = PS.sim.computeHarness || {
       mappedAtCreation: false
     });
 
+    this.bindGroupSerial += 1;
     this.buffers[bufferId] = {
       id: bufferId,
       byteLength: size,
       usage: gpuUsage,
       buffer: buffer,
+      bindGroupId: bufferId + "#" + this.bindGroupSerial,
       version: 0
     };
 
@@ -159,6 +163,7 @@ PS.sim.computeHarness = PS.sim.computeHarness || {
     record.writeIndex = record.readIndex;
     record.readIndex = nextRead;
     record.swaps += 1;
+
     return record;
   },
 
@@ -298,6 +303,44 @@ PS.sim.computeHarness = PS.sim.computeHarness || {
     }
 
     return encoder;
+  },
+
+  createCachedBindGroup: function (pass, device, groupIndex, descriptor) {
+    var cache = pass._bindGroupCache || {};
+    var key = String(groupIndex);
+    var groupCache = cache[key] || {};
+    var entries = descriptor.entries || [];
+    var identityKey = "";
+    var i;
+    var bufferId;
+    var record;
+
+    for (i = 0; i < entries.length; i += 1) {
+      if (entries[i] && entries[i].resource && entries[i].resource.buffer) {
+        bufferId = entries[i].resource.buffer.label || "";
+        record = this.buffers[bufferId];
+        identityKey += String(entries[i].binding) + ":" + (
+          record && record.buffer === entries[i].resource.buffer
+            ? record.bindGroupId
+            : bufferId
+        ) + ";";
+      }
+    }
+
+    if (groupCache[identityKey]) {
+      return groupCache[identityKey];
+    }
+
+    var targetDevice = device || this.getDevice();
+    if (!targetDevice || typeof targetDevice.createBindGroup !== "function") {
+      return null;
+    }
+
+    var bindGroup = targetDevice.createBindGroup(descriptor);
+    groupCache[identityKey] = bindGroup;
+    cache[key] = groupCache;
+    pass._bindGroupCache = cache;
+    return bindGroup;
   },
 
   getStats: function () {

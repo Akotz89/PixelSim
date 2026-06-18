@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { getPlanetTile } from "../render/planet-grid.js";
+
 PS.debug = PS.debug || {};
 
 PS.debug.inspector = {

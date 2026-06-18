@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.thermohaline = PS.sim.thermohaline || {
@@ -37,27 +38,10 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    var entries = [
+    return PS.render.registerWgslShaderManifestEntries([
       { name: this.salinityShaderName, path: this.salinityShaderPath },
       { name: this.densityShaderName, path: this.densityShaderPath }
-    ];
-
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-
-    entries.forEach(function (entry) {
-      var found = manifest.some(function (candidate) {
-        return candidate && candidate.name === entry.name;
-      });
-      if (!found) {
-        manifest.push(entry);
-      }
-    });
-
-    return manifest;
+    ]);
   },
 
   normalizeConfig: function (config) {
@@ -164,9 +148,19 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
 
   computeDensityValue: function (temperatureC, salinityPsu, config) {
     var settings = this.normalizeConfig(config || this.config || {});
+    var temperature = Number.isFinite(Number(temperatureC))
+      ? Number(temperatureC)
+      : Number(settings.density_reference_temperature_c);
+    var salinity = Number.isFinite(Number(salinityPsu))
+      ? Number(salinityPsu)
+      : Number(settings.density_reference_salinity);
     var density = Number(settings.density_base) +
-      Number(settings.density_salinity_coeff) * (Number(salinityPsu) - Number(settings.density_reference_salinity)) +
-      Number(settings.density_temperature_coeff) * (Number(temperatureC) - Number(settings.density_reference_temperature_c));
+      Number(settings.density_salinity_coeff) * (salinity - Number(settings.density_reference_salinity)) +
+      Number(settings.density_temperature_coeff) * (temperature - Number(settings.density_reference_temperature_c));
+
+    if (!Number.isFinite(density)) {
+      density = Number(settings.density_base);
+    }
 
     return Math.max(Number(settings.density_min), Math.min(Number(settings.density_max), density));
   },
@@ -176,7 +170,11 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
     var values = new Float32Array(cells);
 
     for (var i = 0; i < cells; i += 1) {
-      values[i] = this.computeDensityValue(temperature[i], salinity[i], config);
+      values[i] = this.computeDensityValue(
+        temperature && temperature[i],
+        salinity && salinity[i],
+        config
+      );
     }
 
     return values;
@@ -219,7 +217,8 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
           source -= Number(moisture[i]) * Number(config.ice_melt_psu_per_tick);
         }
 
-        next[i] = Math.max(0, Math.min(42, center + Number(config.haline_diffusivity) * laplacian + advection + source));
+        var result = center + Number(config.haline_diffusivity) * laplacian + advection + source;
+        next[i] = Number.isFinite(result) ? Math.max(0, Math.min(42, result)) : Math.max(0, Math.min(42, center));
       }
     }
 
@@ -420,7 +419,7 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "thermohaline.salinity.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -433,7 +432,8 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
             { binding: 6, resource: { buffer: owner.buffers["thermohaline.river"].buffer } },
             { binding: 7, resource: { buffer: owner.buffers["thermohaline.salinity.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.salinityStateId);
@@ -448,7 +448,7 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "thermohaline.density.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -458,7 +458,8 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
             { binding: 3, resource: { buffer: owner.buffers["thermohaline.buoyancy"].buffer } },
             { binding: 4, resource: { buffer: owner.buffers["thermohaline.density.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       }
     });
 

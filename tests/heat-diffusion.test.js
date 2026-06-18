@@ -1,17 +1,9 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
+const gpuSimRuntimeSource = read("js/sim/gpu-sim-runtime.js");
 const heatSource = read("js/sim/heat-diffusion.js");
 const shaderSource = read("shaders/heat-diffusion.wgsl");
 const shaderSidecar = read("shaders/heat-diffusion.wgsl.js");
@@ -202,6 +194,7 @@ context.window.window = context.window;
 vm.createContext(context);
 vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-manager.js" });
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
+vm.runInContext(gpuSimRuntimeSource, context, { filename: "js/sim/gpu-sim-runtime.js" });
 vm.runInContext(heatSource, context, { filename: "js/sim/heat-diffusion.js" });
 
 const heat = context.PS.sim.heatDiffusion;
@@ -256,6 +249,15 @@ assert.strictEqual(params.byteLength, 48, "params should be padded for WebGPU un
 assert.strictEqual(view.getUint32(0, true), 512, "params should encode width as u32");
 assert.strictEqual(view.getUint32(4, true), 512, "params should encode height as u32");
 assert.strictEqual(view.getFloat32(12, true), 3600, "params should encode timestep");
+const unstableResumeConfig = Object.assign({}, config, {
+  thermal_diffusivity: 1,
+  grid_spacing: 1,
+  time_step: 1000
+});
+const stableResumeParams = heat.makeParamsData(16, 16, unstableResumeConfig);
+const stableResumeView = new DataView(stableResumeParams.buffer);
+assert.strictEqual(heat.getStableTimeStep(unstableResumeConfig), 0.25, "CFL guard should cap dt to dx^2/(4*alpha)");
+assert.strictEqual(stableResumeView.getFloat32(12, true), 0.25, "WebGPU params should receive the CFL-safe timestep after a huge resume delta");
 
 context.PS.render.wgslShaders.register("heat-diffusion", shaderSource, { path: "shaders/heat-diffusion.wgsl" });
 const result = heat.init({

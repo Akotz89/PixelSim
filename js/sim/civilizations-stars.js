@@ -1,8 +1,15 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+// fallow-ignore-next-line circular-dependency
+import { getEmpireLegacyLevel, getEmpireSectorCount } from "./civilizations-empire.js";
+// fallow-ignore-next-line circular-dependency
+import { ensureStarMapState, getClaimedStarSystemCount, getCompletedProbeMissionCount, getDiscoveredStarSystemCount, getMappedStarSystemValue, makeStarSystem, normalizeStarSystems, rebuildStarSystemIndexes, registerStarSystemInIndex, updateStarMapEra, updateStarMapReadiness } from "./civilizations-probes.js";
+import { restoreSettlementGrowthNumber } from "./settlements-state.js";
+import { world } from "../systems/state.js";
+
 // SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
 // Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
-function updateStarMapState() {
+export function updateStarMapState() {
   if (!updateStarMapReadiness()) {
     return;
   }
@@ -33,7 +40,7 @@ function updateStarMapState() {
   updateStarMapReadiness();
 }
 
-function ensureGalacticInfluenceState() {
+export function ensureGalacticInfluenceState() {
   normalizeStarSystems();
 
   world.galacticInfluenceProgress = Math.max(0, restoreSettlementGrowthNumber(world.galacticInfluenceProgress, 0));
@@ -42,7 +49,7 @@ function ensureGalacticInfluenceState() {
   world.lastGalacticInfluenceTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.lastGalacticInfluenceTick, 0)));
 }
 
-function getNextClaimableStarSystem() {
+export function getNextClaimableStarSystem() {
   normalizeStarSystems();
 
   var claimableSystem = null;
@@ -66,7 +73,7 @@ function getNextClaimableStarSystem() {
   return claimableSystem;
 }
 
-function updateGalacticInfluenceEra() {
+export function updateGalacticInfluenceEra() {
   world.galacticClaimedSystems = getClaimedStarSystemCount();
 
   if (getEmpireLegacyLevel() >= CONFIG.ASCENDANT_EMPIRE_LEGACY_LEVEL) {
@@ -88,7 +95,7 @@ function updateGalacticInfluenceEra() {
   }
 }
 
-function updateGalacticInfluenceReadiness() {
+export function updateGalacticInfluenceReadiness() {
   ensureGalacticInfluenceState();
 
   world.galacticClaimedSystems = getClaimedStarSystemCount();
@@ -101,7 +108,7 @@ function updateGalacticInfluenceReadiness() {
   return world.galacticInfluenceReady;
 }
 
-function claimNextStarSystem() {
+export function claimNextStarSystem() {
   var system = getNextClaimableStarSystem();
 
   if (!system) {
@@ -114,7 +121,7 @@ function claimNextStarSystem() {
   return system;
 }
 
-function updateGalacticInfluenceState() {
+export function updateGalacticInfluenceState() {
   if (!updateGalacticInfluenceReadiness()) {
     return;
   }
@@ -141,7 +148,7 @@ function updateGalacticInfluenceState() {
   updateGalacticInfluenceReadiness();
 }
 
-function ensureInterstellarFleetState() {
+export function ensureInterstellarFleetState() {
   if (!Array.isArray(world.interstellarFleets)) {
     world.interstellarFleets = [];
   }
@@ -157,7 +164,7 @@ function ensureInterstellarFleetState() {
   world.lastInterstellarFleetTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.lastInterstellarFleetTick, 0)));
 }
 
-function allocateInterstellarFleetId() {
+export function allocateInterstellarFleetId() {
   ensureInterstellarFleetState();
 
   var fleetId = world.nextInterstellarFleetId;
@@ -165,7 +172,7 @@ function allocateInterstellarFleetId() {
   return fleetId;
 }
 
-function getClaimedStarSystems() {
+export function getClaimedStarSystems() {
   normalizeStarSystems();
 
   var claimedSystems = [];
@@ -183,7 +190,7 @@ function getClaimedStarSystems() {
   return claimedSystems;
 }
 
-function getStarSystemById(systemId) {
+export function getStarSystemById(systemId) {
   ensureStarMapState();
   var systemKey = String(systemId);
 
@@ -195,7 +202,7 @@ function getStarSystemById(systemId) {
   return world.starSystemsById[systemKey] || null;
 }
 
-function getInterstellarFleetEndpoints() {
+export function getInterstellarFleetEndpoints() {
   var claimedSystems = getClaimedStarSystems();
 
   if (claimedSystems.length < 2) {
@@ -215,7 +222,7 @@ function getInterstellarFleetEndpoints() {
   };
 }
 
-function normalizeInterstellarFleet(fleet) {
+export function normalizeInterstellarFleet(fleet) {
   fleet.id = Math.max(1, Math.round(restoreSettlementGrowthNumber(fleet.id, world.nextInterstellarFleetId)));
   fleet.sourceSystemId = Math.max(1, Math.round(restoreSettlementGrowthNumber(fleet.sourceSystemId, 1)));
   fleet.targetSystemId = Math.max(1, Math.round(restoreSettlementGrowthNumber(fleet.targetSystemId, fleet.sourceSystemId)));
@@ -229,7 +236,7 @@ function normalizeInterstellarFleet(fleet) {
   }
 }
 
-function makeInterstellarFleet() {
+export function makeInterstellarFleet() {
   var endpoints = getInterstellarFleetEndpoints();
 
   if (!endpoints) {
@@ -250,7 +257,7 @@ function makeInterstellarFleet() {
   };
 }
 
-function normalizeInterstellarFleets() {
+export function normalizeInterstellarFleets() {
   ensureInterstellarFleetState();
 
   for (var i = 0; i < world.interstellarFleets.length; i++) {
@@ -258,7 +265,7 @@ function normalizeInterstellarFleets() {
   }
 }
 
-function updateInterstellarFleetTravel() {
+export function updateInterstellarFleetTravel() {
   normalizeInterstellarFleets();
 
   var activeFleets = 0;
@@ -289,17 +296,17 @@ function updateInterstellarFleetTravel() {
   world.interstellarFleetCompleted = completedFleets;
 }
 
-function getInterstellarFleetCount() {
+export function getInterstellarFleetCount() {
   ensureInterstellarFleetState();
   return world.interstellarFleets.length;
 }
 
-function getCompletedInterstellarFleetCount() {
+export function getCompletedInterstellarFleetCount() {
   updateInterstellarFleetTravel();
   return world.interstellarFleetCompleted;
 }
 
-function updateInterstellarFleetEra() {
+export function updateInterstellarFleetEra() {
   updateInterstellarFleetTravel();
 
   if (getEmpireLegacyLevel() >= CONFIG.ASCENDANT_EMPIRE_LEGACY_LEVEL) {

@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const drawOrderSource = read("js/render/draw-order.js");
@@ -30,6 +21,8 @@ assert.ok(pipelineSource.indexOf("PS.render.entities.drawSettlementReadiness()")
 assert.ok(debugOverlaySource.indexOf("getDebugSnapshot") >= 0, "F4 overlay should expose draw-order layer stats");
 
 const events = [];
+let queuedLightOptions = null;
+let drainedQueuedLights = 0;
 const context = {
   PS: {
     render: {
@@ -107,6 +100,16 @@ const context = {
           events.push("vegetation");
         }
       },
+      webgpuPointLights: {
+        drawQueued(options) {
+          queuedLightOptions = options;
+          return true;
+        },
+        takeQueuedLights() {
+          drainedQueuedLights += 1;
+          return [];
+        }
+      },
       minimap: {
         draw(lodState, alpha) {
           assert.strictEqual(lodState.tierName, "region", "minimap should receive the active LOD state");
@@ -139,12 +142,32 @@ const context = {
             level: "WORLD",
             renderBudgetMs: 4,
             transitionAlpha: 0,
+            pointLightScale: 0.2,
+            normalLightingStrength: 0.3,
+            normalMappedLighting: "per-tile",
             waterUvScrollScale: 0,
             vegetationMode: "minimap"
+          };
+        },
+        getFrameContract(zoomLevel, options) {
+          assert.strictEqual(zoomLevel, 7, "pipeline should pass the active zoom level into the frame contract");
+          assert.strictEqual(options.lodState.tierName, "region", "frame contract should receive the active LOD state");
+          return {
+            contractVersion: 1,
+            sourceRule: "simulation-fields-first",
+            zoomBand: options.lodState.zoomBand,
+            tierName: options.lodState.tierName,
+            readiness: {
+              blankChunkPolicy: "never-present-uncovered-child-surface"
+            },
+            causalFields: ["terrain", "readyChunks", "populationClusters"]
           };
         }
       },
       renderer: {
+        active: {
+          stats: {}
+        },
         beginFrame(state) {
           events.push("begin:" + state.zoom);
         },
@@ -289,6 +312,8 @@ function layer(id) {
 assert.strictEqual(layer("terrain.base").drawLayer, context.PS.render.DrawLayer.TERRAIN_BASE, "terrain should map to base layer");
 assert.strictEqual(layer("environment.ice").order, 32.5, "ice overlay should register above water displacement and below snow");
 assert.strictEqual(layer("environment.ice").drawLayer, context.PS.render.DrawLayer.WATER_SURFACE, "ice overlay should draw on the water surface layer");
+assert.strictEqual(layer("environment.cloudShadows").order, 36, "cloud shadows should register after vegetation layer setup and before entity facades");
+assert.strictEqual(layer("environment.cloudShadows").drawLayer, context.PS.render.DrawLayer.SHADOW, "cloud shadows should use the soft shadow rect layer");
 assert.strictEqual(layer("vegetation.grass").order, 34, "grass density should register immediately before world vegetation");
 assert.strictEqual(layer("vegetation.grass").drawLayer, context.PS.render.DrawLayer.TERRAIN_DECORATION, "grass density should submit as terrain decoration");
 assert.strictEqual(layer("vegetation.world").order, 35, "world vegetation should register between terrain and entity layers");
@@ -336,6 +361,16 @@ assert.strictEqual(stats.transitionAlpha, 0.25, "pipeline stats should expose LO
 assert.strictEqual(stats.preloadSurfaceLodIndex, 4, "pipeline stats should expose preload LOD target");
 assert.strictEqual(stats.visualLevel, "WORLD", "pipeline stats should expose visual LOD level");
 assert.strictEqual(stats.visualBudgetMs, 4, "pipeline stats should expose visual LOD render budget");
+assert.strictEqual(queuedLightOptions.pointLightScale, 0.2, "pipeline should pass visual LOD pointLightScale into queued point lights");
+assert.strictEqual(queuedLightOptions.pointLightExposureScale, 0.2, "pipeline should scale queued point-light exposure by visual LOD");
+assert.strictEqual(queuedLightOptions.lodState.visualPolicy.normalLightingStrength, 0.3, "queued point-light draw should receive the active visual policy");
+assert.strictEqual(stats.zoomFrame.contractVersion, 1, "pipeline stats should expose the frame contract");
+assert.strictEqual(stats.zoomFrame.sourceRule, "simulation-fields-first", "frame contract should preserve the simulation-first rule");
+assert.strictEqual(stats.zoomFrame.zoomBand, "settlement", "frame contract should use the same zoom band published by the pipeline");
+assert.ok(stats.zoomFrame.causalFields.includes("readyChunks"), "frame contract should expose scale-appropriate causal fields");
+assert.strictEqual(stats.zoomFrame.readiness.blankChunkPolicy, "never-present-uncovered-child-surface", "frame contract should publish blank chunk policy");
+assert.ok(stats.zoomFrame.frameStats.submittedLayers > 0, "published frame contract should receive submitted layer stats after draw");
+assert.strictEqual(context.PS.render.renderer.active.stats.zoomFrame, stats.zoomFrame, "active renderer stats should receive the same frame contract object");
 assert.ok(stats.submittedLayers > 0, "pipeline stats should count submitted layers");
 assert.ok(stats.skippedLayers > 0, "pipeline stats should count skipped layers outside the active LOD");
 
@@ -348,6 +383,17 @@ const transitionAlpha = context.PS.render.pipeline.getLayerLodAlpha(
   context.PS.render.pipeline.getLodState()
 );
 assert.strictEqual(transitionAlpha, 0.25, "pipeline should keep previous-tier layers visible during LOD blend windows");
+assert.strictEqual(
+  context.PS.render.pipeline.getLodState().zoomFrame.readiness.blankChunkPolicy,
+  "never-present-uncovered-child-surface",
+  "pipeline should attach the zoom-frame contract before render layer submission"
+);
+
+queuedLightOptions = null;
+const lightingLayer = context.PS.render.pipeline.layers.find((entry) => entry.id === "lighting.ambient");
+lightingLayer.draw({ visualPolicy: { pointLightScale: 0 } });
+assert.strictEqual(queuedLightOptions, null, "pipeline should skip queued point-light draws when visual LOD disables point lights");
+assert.strictEqual(drainedQueuedLights, 1, "pipeline should drain queued point lights when visual LOD disables them");
 
 const debugSnapshot = context.PS.render.drawOrder.getDebugSnapshot();
 assert.strictEqual(debugSnapshot.length, 18, "debug snapshot should expose all formal layer boundaries for F4 overlay");

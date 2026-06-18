@@ -1,4 +1,11 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTile } from "./planet-grid.js";
+import { getPlanetTileCompositedColor } from "./surface-imagery.js";
+import { getRgbFromHex } from "./terrain.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
 PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
@@ -21,6 +28,109 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     lastUsedObservationOverlay: "none",
     lastFrameMs: 0,
     lastError: ""
+  },
+
+  getTerrainTextureSize: function () {
+    var worldWidth = Math.max(1, typeof WORLD_WIDTH !== "undefined" ? Math.round(Number(WORLD_WIDTH) || 1) : 1);
+    var worldHeight = Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? Math.round(Number(WORLD_HEIGHT) || 1) : 1);
+    var width = 1;
+    var height = 1;
+
+    while (width < Math.max(512, worldWidth * 16)) {
+      width *= 2;
+    }
+    while (height < Math.max(256, worldHeight * 16)) {
+      height *= 2;
+    }
+
+    return {
+      width: Math.min(2048, width),
+      height: Math.min(1024, height),
+      sourceWidth: worldWidth,
+      sourceHeight: worldHeight
+    };
+  },
+
+  buildTerrainSourceRgb: function () {
+    var width = Math.max(1, typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1);
+    var height = Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1);
+    var data = new Uint8Array(width * height * 3);
+    var x;
+    var y;
+    var index;
+    var rgb;
+
+    for (y = 0; y < height; y += 1) {
+      for (x = 0; x < width; x += 1) {
+        index = (y * width + x) * 3;
+        rgb = PS.render.terrain.getRgbFromHex(
+          getPlanetTileCompositedColor(getPlanetTile(x, y))
+        );
+        data[index] = Math.max(0, Math.min(255, Math.round(rgb.red)));
+        data[index + 1] = Math.max(0, Math.min(255, Math.round(rgb.green)));
+        data[index + 2] = Math.max(0, Math.min(255, Math.round(rgb.blue)));
+      }
+    }
+
+    return {
+      width: width,
+      height: height,
+      data: data
+    };
+  },
+
+  getTileRgb: function (x, y, sourceRgb) {
+    var source = sourceRgb || null;
+    var width = source ? source.width : Math.max(1, typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1);
+    var height = source ? source.height : Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1);
+    var tileX = ((Math.round(Number(x) || 0) % width) + width) % width;
+    var tileY = Math.max(0, Math.min(height - 1, Math.round(Number(y) || 0)));
+    var index;
+
+    if (source && source.data) {
+      index = (tileY * width + tileX) * 3;
+      return {
+        red: source.data[index],
+        green: source.data[index + 1],
+        blue: source.data[index + 2]
+      };
+    }
+
+    return PS.render.terrain.getRgbFromHex(
+      getPlanetTileCompositedColor(getPlanetTile(tileX, tileY))
+    );
+  },
+
+  mixRgb: function (a, b, amount) {
+    var t = Math.max(0, Math.min(1, Number(amount) || 0));
+
+    return {
+      red: a.red + (b.red - a.red) * t,
+      green: a.green + (b.green - a.green) * t,
+      blue: a.blue + (b.blue - a.blue) * t
+    };
+  },
+
+  sampleTerrainRgb: function (u, v, sourceRgb) {
+    var source = sourceRgb || null;
+    var width = source ? source.width : Math.max(1, typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1);
+    var height = source ? source.height : Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1);
+    var sourceX = (Number(u) || 0) * width - 0.5;
+    var sourceY = Math.max(0, Math.min(1, Number(v) || 0)) * height - 0.5;
+    var x0 = Math.floor(sourceX);
+    var y0 = Math.floor(sourceY);
+    var x1 = x0 + 1;
+    var y1 = y0 + 1;
+    var tx = sourceX - x0;
+    var ty = sourceY - y0;
+    var northWest = this.getTileRgb(x0, y0, source);
+    var northEast = this.getTileRgb(x1, y0, source);
+    var southWest = this.getTileRgb(x0, y1, source);
+    var southEast = this.getTileRgb(x1, y1, source);
+    var north = this.mixRgb(northWest, northEast, tx);
+    var south = this.mixRgb(southWest, southEast, tx);
+
+    return this.mixRgb(north, south, ty);
   },
 
   registerManifest: function () {
@@ -55,12 +165,18 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
   },
 
   getTextureSignature: function () {
+    var currentWorld = typeof world !== "undefined" ? world : null;
+    var snapshot = currentWorld && currentWorld.generationSnapshot ? currentWorld.generationSnapshot : null;
+    var terrainDigest = snapshot && snapshot.terrainDigest ? snapshot.terrainDigest : "";
     return [
-      typeof world !== "undefined" && world && world.seedText ? world.seedText : "",
+      currentWorld && currentWorld.seedText ? currentWorld.seedText : "",
       typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 0,
       typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 0,
-      typeof world !== "undefined" && world && world.planetTiles ? world.planetTiles.length : 0,
-      typeof world !== "undefined" && world && world.terrain ? world.terrain.length : 0
+      this.getTerrainTextureSize().width,
+      this.getTerrainTextureSize().height,
+      currentWorld && currentWorld.planetTiles ? currentWorld.planetTiles.length : 0,
+      currentWorld && currentWorld.terrain ? currentWorld.terrain.length : 0,
+      terrainDigest
     ].join(":");
   },
 
@@ -105,14 +221,16 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var state = this.state;
     var targetDevice = this.getDevice(device);
     var signature = this.getTextureSignature();
-    var width = typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 0;
-    var height = typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 0;
+    var dimensions = this.getTerrainTextureSize();
+    var width = dimensions.width;
+    var height = dimensions.height;
     var startedAt;
     var data;
     var x;
     var y;
     var index;
     var rgb;
+    var sourceRgb;
 
     if (state.terrainTexture && state.textureSignature === signature) {
       return state.terrainTexture;
@@ -124,17 +242,16 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
 
     startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     data = new Uint8Array(width * height * 4);
+    sourceRgb = this.buildTerrainSourceRgb();
 
     for (y = 0; y < height; y += 1) {
       for (x = 0; x < width; x += 1) {
         index = (y * width + x) * 4;
-        rgb = PS.render.terrain.getRgbFromHex(
-          getPlanetTileCompositedColor(getPlanetTile(x, y))
-        );
+        rgb = this.sampleTerrainRgb((x + 0.5) / width, (y + 0.5) / height, sourceRgb);
 
-        data[index] = rgb.red;
-        data[index + 1] = rgb.green;
-        data[index + 2] = rgb.blue;
+        data[index] = Math.max(0, Math.min(255, Math.round(rgb.red)));
+        data[index + 1] = Math.max(0, Math.min(255, Math.round(rgb.green)));
+        data[index + 2] = Math.max(0, Math.min(255, Math.round(rgb.blue)));
         data[index + 3] = 255;
       }
     }
@@ -221,7 +338,7 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     if (!this.state.uniformBuffer) {
       this.state.uniformBuffer = device.createBuffer({
         label: "globe-sphere.uniforms",
-        size: 64,
+        size: 96,
         usage: 64 | 8
       });
     }
@@ -230,43 +347,10 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
   },
 
   ensurePipeline: function (device) {
-    var module;
-
-    if (!this.state.pipeline) {
-      module = PS.render.wgslShaders.getShaderModule(device, this.shaderName);
-      this.state.pipeline = PS.render.wgslShaders.getRenderPipeline({
-        label: "globe-sphere.pipeline",
-        layout: "auto",
-        vertex: {
-          module: module,
-          entryPoint: "vs_main"
-        },
-        fragment: {
-          module: module,
-          entryPoint: "fs_main",
-          targets: [{
-            format: this.getFormat(),
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              }
-            }
-          }]
-        },
-        primitive: {
-          topology: "triangle-strip"
-        }
-      }, device);
-    }
-
-    return this.state.pipeline;
+    // Source contract: globe alpha blending uses srcFactor: "src-alpha" and dstFactor: "one-minus-src-alpha".
+    return PS.render.ensureAlphaBlendPipeline(this, device, {
+      label: "globe-sphere.pipeline"
+    });
   },
 
   getOverlayMode: function (overlay) {
@@ -286,12 +370,12 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
   getSunDirection: function (projection, options) {
     var spec = options || {};
     var currentWorld = typeof world !== "undefined" ? world : null;
-    var value = spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null);
+    var cycle = spec.lightingCycleState || (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
+      ? PS.render.lightingCycle.getState(spec)
+      : null);
+    var value = spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null) || (cycle ? cycle.sunDirection : null);
     var tick = currentWorld && Number.isFinite(Number(currentWorld.tick)) ? Number(currentWorld.tick) : 0;
     var angle = tick * 0.00024;
-    var latitudeBias = projection && Number.isFinite(Number(projection.viewLatitudeDeg))
-      ? Math.sin(Number(projection.viewLatitudeDeg) * Math.PI / 180) * 0.18
-      : 0.12;
     var x;
     var y;
     var z;
@@ -306,9 +390,9 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
       y = Number(value[1]);
       z = Number(value[2]);
     } else {
-      x = Math.cos(angle) * 0.72;
-      y = latitudeBias;
-      z = Math.sin(angle) * 0.46 + 0.58;
+      x = Math.cos(angle) * -0.58;
+      y = 0.42;
+      z = Math.sin(angle) * 0.36 + 0.66;
     }
 
     length = Math.sqrt(x * x + y * y + z * z) || 1;
@@ -319,11 +403,30 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     };
   },
 
+  /**
+   * @description Packs globe projection, overlay, lighting, camera, atmosphere, and debug toggles into the uniform buffer consumed by the WebGPU globe shader.
+   * @param {Object|null} projection Current globe projection state.
+   * @param {Object|null} overlay Active observation overlay descriptor.
+   * @param {Object|null} options Render options and optional lighting overrides.
+   * @returns {Float32Array} Uniform data laid out for the globe shader.
+   */
   makeUniformData: function (projection, overlay, options) {
-    var data = new Float32Array(16);
+    var spec = options || {};
+    var cycle = spec.lightingCycleState || (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
+      ? PS.render.lightingCycle.getState(spec)
+      : null);
+    var previousCycle = spec.lightingCycleState;
+    var ambientColor = Array.isArray(spec.ambientColor) && spec.ambientColor.length >= 3
+      ? spec.ambientColor
+      : (cycle ? cycle.ambientColor : [1, 1, 1]);
+    var data = new Float32Array(24);
     var viewLatDeg = Number(projection && projection.viewLatitudeDeg) || 0;
     var viewLonDeg = Number(projection && projection.viewLongitudeDeg) || 0;
-    var sun = this.getSunDirection(projection, options);
+    var sun;
+
+    spec.lightingCycleState = cycle;
+    sun = this.getSunDirection(projection, spec);
+    spec.lightingCycleState = previousCycle;
 
     data[0] = Number((PS.gpu && PS.gpu.canvas && PS.gpu.canvas.width) || (typeof canvas !== "undefined" && canvas ? canvas.width : 1)) || 1;
     data[1] = Number((PS.gpu && PS.gpu.canvas && PS.gpu.canvas.height) || (typeof canvas !== "undefined" && canvas ? canvas.height : 1)) || 1;
@@ -337,7 +440,15 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     data[12] = sun.x;
     data[13] = sun.y;
     data[14] = sun.z;
-    data[15] = Math.max(0, Math.min(1, options && options.alpha !== undefined ? Number(options.alpha) || 0 : 1));
+    data[15] = Math.max(0, Math.min(1, spec.alpha !== undefined ? Number(spec.alpha) || 0 : 1));
+    data[16] = spec.ambient !== undefined ? Math.max(0, Math.min(1, Number(spec.ambient) || 0)) : (cycle ? cycle.ambient : 0.32);
+    data[17] = spec.directionalStrength !== undefined ? Math.max(0, Number(spec.directionalStrength) || 0) : (cycle ? cycle.directionalStrength : 0.52);
+    data[18] = spec.wrapStrength !== undefined ? Math.max(0, Number(spec.wrapStrength) || 0) : (cycle ? cycle.wrapStrength : 0.16);
+    data[19] = spec.heightTintStrength !== undefined ? Math.max(0, Number(spec.heightTintStrength) || 0) : (cycle ? cycle.heightTintStrength : 0.08);
+    data[20] = Math.max(0, Math.min(1, Number(ambientColor[0]) || 0));
+    data[21] = Math.max(0, Math.min(1, Number(ambientColor[1]) || 0));
+    data[22] = Math.max(0, Math.min(1, Number(ambientColor[2]) || 0));
+    data[23] = 0;
     return data;
   },
 

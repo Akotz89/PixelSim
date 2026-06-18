@@ -34,6 +34,7 @@ assert.ok(terrainSource.indexOf("PS.render.webgpuGlobe.draw") >= 0, "terrain dra
   "sprite-batch",
   "entity-atlas",
   "particle",
+  "sprite-displace",
   "point-light",
   "shadow",
   "heat-diffusion"

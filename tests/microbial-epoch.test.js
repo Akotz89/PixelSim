@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -69,6 +60,9 @@ const state = context.world.microbial;
 const cell = context.PS.epochs.microbial.getCellForTile(160, 85);
 
 assert.strictEqual(state.model, "field-population-hybrid", "runtime should use selected hybrid model");
+assert.ok(ArrayBuffer.isView(state.fields.density), "density field should use typed arrays");
+assert.ok(ArrayBuffer.isView(state.fields.chemicalEnergy), "chemical energy field should use typed arrays");
+assert.ok(ArrayBuffer.isView(state.fields.oxygenProduction), "oxygen field should use typed arrays");
 assert.strictEqual(state.fields.density.length, state.fieldWidth * state.fieldHeight, "density field should cover grid");
 assert.strictEqual(state.fields.chemicalEnergy.length, state.fields.density.length, "chemical energy field should match density grid");
 assert.strictEqual(state.fields.oxygenProduction.length, state.fields.density.length, "oxygen field should match density grid");

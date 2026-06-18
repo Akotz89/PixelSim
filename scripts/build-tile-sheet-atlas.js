@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 const zlib = require("zlib");
+require("../tests/test-esm-helper.js");
 
 const root = path.resolve(__dirname, "..");
 
@@ -104,6 +105,7 @@ function loadSpriteSheetRuntime() {
     String: String,
     Error: Error
   };
+  context.window = context;
 
   vm.createContext(context);
   vm.runInContext(source, context, { filename: "js/assets/sprite-sheet.js" });

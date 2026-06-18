@@ -1,4 +1,14 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "./namespace.js";
+import { randomInt } from "./utils.js";
+import { clearWorld } from "../main-runtime.js";
+import { seedTerrain } from "../render/terrain-seeding.js";
+import { randomFoodPosition } from "../sim/food-growth.js";
+import { addFoodAt } from "../sim/food-runtime.js";
+import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
+import { makeOrganism } from "../sim/organisms-traits.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.core = PS.core || {};
 PS.core.worldGen = PS.core.worldGen || {};
 

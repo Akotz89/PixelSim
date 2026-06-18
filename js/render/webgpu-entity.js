@@ -1,4 +1,8 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
 PS.render.webgpuEntity = PS.render.webgpuEntity || {
@@ -10,29 +14,53 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
   particleShaderPath: "shaders/particle.wgsl",
   shadowShaderName: "shadow",
   shadowShaderPath: "shaders/shadow.wgsl",
-  strideFloats: 12,
+  displacementShaderName: "sprite-displace",
+  displacementShaderPath: "shaders/sprite-displace.wgsl",
+  strideFloats: 20,
   rectStrideFloats: 8,
+  displacementStrideFloats: 16,
   maxInstances: 8192,
   state: {
     pipeline: null,
     gbufferPipeline: null,
     particlePipeline: null,
     shadowPipeline: null,
+    displacementPipeline: null,
     sampler: null,
     uniformBuffer: null,
     particleUniformBuffer: null,
     shadowUniformBuffer: null,
+    displacementUniformBuffer: null,
     instanceBuffer: null,
     particleInstanceBuffer: null,
     shadowInstanceBuffer: null,
+    displacementInstanceBuffer: null,
+    bindGroups: {},
+    rectBindGroups: {},
+    textureViews: {},
+    uniformData: null,
+    rectUniformData: null,
+    displacementUniformData: null,
+    rectDataScratch: {},
     instanceCapacity: 0,
     particleInstanceCapacity: 0,
     shadowInstanceCapacity: 0,
+    displacementInstanceCapacity: 0,
+    instanceBufferVersion: 0,
+    particleInstanceBufferVersion: 0,
+    shadowInstanceBufferVersion: 0,
+    displacementInstanceBufferVersion: 0,
     textures: {},
     textureUploadCount: 0,
+    bindGroupCacheHits: 0,
+    bindGroupCacheMisses: 0,
+    rectBindGroupCacheHits: 0,
+    rectBindGroupCacheMisses: 0,
     drawCount: 0,
     gbufferDrawCount: 0,
     particleDrawCount: 0,
+    displacementDrawCount: 0,
+    displacementLastFrameMs: 0,
     frameInstanceDrawCount: 0,
     pageDrawCount: 0,
     foodDrawCount: 0,
@@ -63,7 +91,8 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
       { name: this.spriteShaderName, path: this.spriteShaderPath },
       { name: this.shaderName, path: this.shaderPath },
       { name: this.particleShaderName, path: this.particleShaderPath },
-      { name: this.shadowShaderName, path: this.shadowShaderPath }
+      { name: this.shadowShaderName, path: this.shadowShaderPath },
+      { name: this.displacementShaderName, path: this.displacementShaderPath }
     ];
 
     entries.forEach(function (entry) {
@@ -94,6 +123,8 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     this.state.frameInstanceDrawCount = 0;
     this.state.pageDrawCount = 0;
     this.state.particleDrawCount = 0;
+    this.state.displacementDrawCount = 0;
+    this.state.displacementLastFrameMs = 0;
     this.state.foodDrawCount = 0;
     this.state.organismDrawCount = 0;
     this.state.settlementDrawCount = 0;
@@ -145,12 +176,14 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
   },
 
   ensureRectUniformBuffer: function (device, kind) {
-    var field = kind === "shadow" ? "shadowUniformBuffer" : "particleUniformBuffer";
+    var field = kind === "shadow"
+      ? "shadowUniformBuffer"
+      : (kind === "displacement" ? "displacementUniformBuffer" : "particleUniformBuffer");
 
     if (!this.state[field]) {
       this.state[field] = device.createBuffer({
         label: kind + ".uniforms",
-        size: 16,
+        size: kind === "displacement" ? 32 : 16,
         usage: 64 | 8
       });
     }
@@ -171,6 +204,8 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
         usage: 128 | 8
       });
       this.state.instanceCapacity = capacity;
+      this.state.instanceBufferVersion = (this.state.instanceBufferVersion || 0) + 1;
+      this.state.bindGroups = {};
     }
 
     return this.state.instanceBuffer;
@@ -178,10 +213,18 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
 
   ensureRectInstanceBuffer: function (device, instanceCount, kind) {
     var needed = Math.max(1, Math.ceil(Number(instanceCount) || 1));
-    var bufferField = kind === "shadow" ? "shadowInstanceBuffer" : "particleInstanceBuffer";
-    var capacityField = kind === "shadow" ? "shadowInstanceCapacity" : "particleInstanceCapacity";
+    var bufferField = kind === "shadow"
+      ? "shadowInstanceBuffer"
+      : (kind === "displacement" ? "displacementInstanceBuffer" : "particleInstanceBuffer");
+    var capacityField = kind === "shadow"
+      ? "shadowInstanceCapacity"
+      : (kind === "displacement" ? "displacementInstanceCapacity" : "particleInstanceCapacity");
+    var versionField = kind === "shadow"
+      ? "shadowInstanceBufferVersion"
+      : (kind === "displacement" ? "displacementInstanceBufferVersion" : "particleInstanceBufferVersion");
     var capacity = this.state[capacityField] || 0;
-    var strideBytes = this.rectStrideFloats * Float32Array.BYTES_PER_ELEMENT;
+    var strideFloats = kind === "displacement" ? this.displacementStrideFloats : this.rectStrideFloats;
+    var strideBytes = strideFloats * Float32Array.BYTES_PER_ELEMENT;
 
     if (!this.state[bufferField] || capacity < needed) {
       capacity = Math.max(needed, this.maxInstances);
@@ -191,49 +234,17 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
         usage: 128 | 8
       });
       this.state[capacityField] = capacity;
+      this.state[versionField] = (this.state[versionField] || 0) + 1;
+      this.state.rectBindGroups = {};
     }
 
     return this.state[bufferField];
   },
 
   ensurePipeline: function (device) {
-    var module;
-
-    if (!this.state.pipeline) {
-      module = PS.render.wgslShaders.getShaderModule(device, this.shaderName);
-      this.state.pipeline = PS.render.wgslShaders.getRenderPipeline({
-        label: "entity-atlas.pipeline",
-        layout: "auto",
-        vertex: {
-          module: module,
-          entryPoint: "vs_main"
-        },
-        fragment: {
-          module: module,
-          entryPoint: "fs_main",
-          targets: [{
-            format: this.getFormat(),
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              }
-            }
-          }]
-        },
-        primitive: {
-          topology: "triangle-strip"
-        }
-      }, device);
-    }
-
-    return this.state.pipeline;
+    return PS.render.ensureAlphaBlendPipeline(this, device, {
+      label: "entity-atlas.pipeline"
+    });
   },
 
   ensureGbufferPipeline: function (device) {
@@ -282,71 +293,94 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
   },
 
   ensureRectPipeline: function (device, kind) {
-    var pipelineField = kind === "shadow" ? "shadowPipeline" : "particlePipeline";
-    var shaderName = kind === "shadow" ? this.shadowShaderName : this.particleShaderName;
-    var module;
+    var pipelineField = kind === "shadow"
+      ? "shadowPipeline"
+      : (kind === "displacement" ? "displacementPipeline" : "particlePipeline");
+    var shaderName = kind === "shadow"
+      ? this.shadowShaderName
+      : (kind === "displacement" ? this.displacementShaderName : this.particleShaderName);
 
-    if (!this.state[pipelineField]) {
-      module = PS.render.wgslShaders.getShaderModule(device, shaderName);
-      this.state[pipelineField] = PS.render.wgslShaders.getRenderPipeline({
-        label: kind + ".pipeline",
-        layout: "auto",
-        vertex: {
-          module: module,
-          entryPoint: "vs_main"
-        },
-        fragment: {
-          module: module,
-          entryPoint: "fs_main",
-          targets: [{
-            format: this.getFormat(),
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              }
-            }
-          }]
-        },
-        primitive: {
-          topology: "triangle-strip"
-        }
-      }, device);
-    }
-
-    return this.state[pipelineField];
+    return PS.render.ensureAlphaBlendPipeline(this, device, {
+      field: pipelineField,
+      label: kind + ".pipeline",
+      shaderName: shaderName
+    });
   },
 
   writeUniforms: function (device, width, height) {
+    var data = this.state.uniformData;
+
+    if (!data) {
+      data = new Float32Array(4);
+      this.state.uniformData = data;
+    }
+
+    data[0] = Math.max(1, Number(width) || 1);
+    data[1] = Math.max(1, Number(height) || 1);
+    data[2] = 0;
+    data[3] = 0;
+
     device.queue.writeBuffer(
       this.ensureUniformBuffer(device),
       0,
-      new Float32Array([
-        Math.max(1, Number(width) || 1),
-        Math.max(1, Number(height) || 1),
-        0,
-        0
-      ])
+      data
     );
   },
 
   writeRectUniforms: function (device, width, height, kind) {
-    device.queue.writeBuffer(
-      this.ensureRectUniformBuffer(device, kind),
-      0,
-      new Float32Array([
-        Math.max(1, Number(width) || 1),
-        Math.max(1, Number(height) || 1),
-        0,
-        0
-      ])
-    );
+    var data = kind === "displacement" ? this.state.displacementUniformData : this.state.rectUniformData;
+
+    if (!data) {
+      data = new Float32Array(kind === "displacement" ? 8 : 4);
+      if (kind === "displacement") {
+        this.state.displacementUniformData = data;
+      } else {
+        this.state.rectUniformData = data;
+      }
+    }
+
+    data[0] = Math.max(1, Number(width) || 1);
+    data[1] = Math.max(1, Number(height) || 1);
+    data[2] = kind === "displacement" ? this.getNowSeconds() : 0;
+    data[3] = 0;
+    if (kind === "displacement") {
+      data[4] = 0;
+      data[5] = 0;
+      data[6] = 0;
+      data[7] = 0;
+    }
+
+    device.queue.writeBuffer(this.ensureRectUniformBuffer(device, kind), 0, data);
+  },
+
+  getScratchFloatData: function (kind, values) {
+    var source = values || [];
+    var length = source.length || 0;
+    var scratch = this.state.rectDataScratch[kind];
+    var i;
+
+    if (source instanceof Float32Array) {
+      return source;
+    }
+
+    if (!scratch || scratch.length < length) {
+      scratch = new Float32Array(Math.max(length, 64));
+      this.state.rectDataScratch[kind] = scratch;
+    }
+
+    for (i = 0; i < length; i += 1) {
+      scratch[i] = Number(source[i]) || 0;
+    }
+
+    return scratch.subarray(0, length);
+  },
+
+  getNowSeconds: function () {
+    if (typeof world !== "undefined" && world && Number.isFinite(Number(world.timeMs))) {
+      return Number(world.timeMs) / 1000;
+    }
+
+    return (Date.now ? Date.now() : 0) / 1000;
   },
 
   getTexture: function (pageIndex, device) {
@@ -382,25 +416,76 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     }
 
     this.state.textures[cacheKey] = texture;
+    texture._pixeldariumEntityTextureCacheKey = cacheKey;
     this.state.textureUploadCount += 1;
     return texture;
   },
 
   createBindGroup: function (device, pipeline, texture, instanceBuffer) {
-    return device.createBindGroup({
+    var textureKey = texture && texture._pixeldariumEntityTextureCacheKey
+      ? texture._pixeldariumEntityTextureCacheKey
+      : String(texture && (texture.label || texture.id || texture.descriptor && texture.descriptor.label) || "texture");
+    var pipelineKey = pipeline && pipeline.descriptor && pipeline.descriptor.label
+      ? pipeline.descriptor.label
+      : "pipeline";
+    var cacheKey = pipelineKey + "|" + textureKey + "|" +
+      String(this.state.instanceCapacity || 0) + "|" +
+      String(this.state.instanceBufferVersion || 0);
+    var cached = this.state.bindGroups && this.state.bindGroups[cacheKey];
+    var textureView;
+    var bindGroup;
+
+    if (cached) {
+      this.state.bindGroupCacheHits += 1;
+      return cached;
+    }
+
+    this.state.bindGroups = this.state.bindGroups || {};
+    this.state.textureViews = this.state.textureViews || {};
+    textureView = this.state.textureViews[textureKey];
+    if (!textureView) {
+      textureView = texture.createView();
+      this.state.textureViews[textureKey] = textureView;
+    }
+
+    bindGroup = device.createBindGroup({
       label: "entity-atlas.bind-group",
       layout: pipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: texture.createView() },
+        { binding: 0, resource: textureView },
         { binding: 1, resource: this.ensureSampler(device) },
         { binding: 2, resource: { buffer: this.ensureUniformBuffer(device) } },
         { binding: 3, resource: { buffer: instanceBuffer } }
       ]
     });
+    this.state.bindGroups[cacheKey] = bindGroup;
+    this.state.bindGroupCacheMisses += 1;
+    return bindGroup;
   },
 
   createRectBindGroup: function (device, pipeline, instanceBuffer, kind) {
-    return device.createBindGroup({
+    var pipelineKey = pipeline && pipeline.descriptor && pipeline.descriptor.label
+      ? pipeline.descriptor.label
+      : "pipeline";
+    var capacityField = kind === "shadow"
+      ? "shadowInstanceCapacity"
+      : (kind === "displacement" ? "displacementInstanceCapacity" : "particleInstanceCapacity");
+    var versionField = kind === "shadow"
+      ? "shadowInstanceBufferVersion"
+      : (kind === "displacement" ? "displacementInstanceBufferVersion" : "particleInstanceBufferVersion");
+    var cacheKey = kind + "|" + pipelineKey + "|" +
+      String(this.state[capacityField] || 0) + "|" +
+      String(this.state[versionField] || 0);
+    var cached = this.state.rectBindGroups && this.state.rectBindGroups[cacheKey];
+    var bindGroup;
+
+    if (cached) {
+      this.state.rectBindGroupCacheHits += 1;
+      return cached;
+    }
+
+    this.state.rectBindGroups = this.state.rectBindGroups || {};
+    bindGroup = device.createBindGroup({
       label: kind + ".bind-group",
       layout: pipeline.getBindGroupLayout(0),
       entries: [
@@ -408,20 +493,28 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
         { binding: 1, resource: { buffer: instanceBuffer } }
       ]
     });
+    this.state.rectBindGroups[cacheKey] = bindGroup;
+    this.state.rectBindGroupCacheMisses += 1;
+    return bindGroup;
   },
 
   drawRectInstances: function (values, options) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
-    var kind = spec.kind === "shadow" ? "shadow" : "particle";
-    var counterName = kind === "shadow" ? "shadowDrawCount" : "particleDrawCount";
+    var kind = spec.kind === "shadow"
+      ? "shadow"
+      : (spec.kind === "displacement" ? "displacement" : "particle");
+    var counterName = kind === "shadow"
+      ? "shadowDrawCount"
+      : (kind === "displacement" ? "displacementDrawCount" : "particleDrawCount");
     var device = this.getDevice(spec.device);
     var context = spec.context || (PS.gpu && PS.gpu.context);
     var targetCanvas = PS.gpu && PS.gpu.canvas ? PS.gpu.canvas : (typeof canvas !== "undefined" ? canvas : null);
     var width = spec.width || (targetCanvas ? targetCanvas.width : 1);
     var height = spec.height || (targetCanvas ? targetCanvas.height : 1);
-    var data = values instanceof Float32Array ? values : new Float32Array(values || []);
-    var instanceCount = Math.floor(data.length / this.rectStrideFloats);
+    var data = this.getScratchFloatData(kind, values);
+    var strideFloats = kind === "displacement" ? this.displacementStrideFloats : this.rectStrideFloats;
+    var instanceCount = Math.floor(data.length / strideFloats);
     var pipeline;
     var instanceBuffer;
     var encoder;
@@ -442,7 +535,7 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     pipeline = this.ensureRectPipeline(device, kind);
     this.writeRectUniforms(device, width, height, kind);
     instanceBuffer = this.ensureRectInstanceBuffer(device, instanceCount, kind);
-    device.queue.writeBuffer(instanceBuffer, 0, data, 0, instanceCount * this.rectStrideFloats);
+    device.queue.writeBuffer(instanceBuffer, 0, data, 0, instanceCount * strideFloats);
 
     encoder = spec.commandEncoder || device.createCommandEncoder({ label: kind + ".encoder" });
     pass = encoder.beginRenderPass({
@@ -465,6 +558,9 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     this.state.drawCount += 1;
     this.state[counterName] += instanceCount;
     this.state.lastFrameMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
+    if (kind === "displacement") {
+      this.state.displacementLastFrameMs = this.state.lastFrameMs;
+    }
     this.state.lastError = "";
     return true;
   },
@@ -478,6 +574,12 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
   drawShadowRects: function (values, options) {
     var spec = options || {};
     spec.kind = "shadow";
+    return this.drawRectInstances(values, spec);
+  },
+
+  drawDisplacementRects: function (values, options) {
+    var spec = options || {};
+    spec.kind = "displacement";
     return this.drawRectInstances(values, spec);
   },
 
@@ -560,6 +662,65 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     target.kinds[counterName] = (target.kinds[counterName] || 0) + (Number(count) || 1);
   },
 
+  getCellUvRects: function (cell) {
+    var safeCell = cell || {};
+    var page = PS.atlas && PS.atlas.pages ? PS.atlas.pages[Number(safeCell.pageIndex) || 0] : null;
+    var pageWidth = page && Number(page.width) ? Number(page.width) : 1;
+    var pageHeight = page && Number(page.height) ? Number(page.height) : 1;
+    var hasNormalRect = Number.isFinite(Number(safeCell.normalX)) && Number.isFinite(Number(safeCell.normalY));
+    var split = !hasNormalRect && Number(safeCell.w) >= Math.max(2, Number(safeCell.h) || 1) * 2;
+    var diffuseX0 = Number(safeCell.x) || 0;
+    var diffuseY0 = Number(safeCell.y) || 0;
+    var diffuseX1 = diffuseX0 + Math.max(1, split ? Math.floor((Number(safeCell.w) || 1) / 2) : (Number(safeCell.w) || 1));
+    var diffuseY1 = diffuseY0 + Math.max(1, Number(safeCell.h) || 1);
+    var normalX0 = hasNormalRect ? Number(safeCell.normalX) || 0 : (split ? diffuseX1 : diffuseX0);
+    var normalY0 = hasNormalRect ? Number(safeCell.normalY) || 0 : diffuseY0;
+    var normalX1 = hasNormalRect
+      ? normalX0 + Math.max(1, Number(safeCell.normalW) || Number(safeCell.w) || 1)
+      : (split ? diffuseX0 + (Number(safeCell.w) || 1) : diffuseX1);
+    var normalY1 = hasNormalRect
+      ? normalY0 + Math.max(1, Number(safeCell.normalH) || Number(safeCell.h) || 1)
+      : diffuseY1;
+
+    return {
+      displayWidth: Math.max(1, diffuseX1 - diffuseX0),
+      diffuse: [
+        diffuseX0 / pageWidth,
+        diffuseY0 / pageHeight,
+        diffuseX1 / pageWidth,
+        diffuseY1 / pageHeight
+      ],
+      normal: [
+        normalX0 / pageWidth,
+        normalY0 / pageHeight,
+        normalX1 / pageWidth,
+        normalY1 / pageHeight
+      ]
+    };
+  },
+
+  getCellMaterialUvRect: function (cell) {
+    var safeCell = cell || {};
+    var page = PS.atlas && PS.atlas.pages ? PS.atlas.pages[Number(safeCell.pageIndex) || 0] : null;
+    var pageWidth = page && Number(page.width) ? Number(page.width) : 1;
+    var pageHeight = page && Number(page.height) ? Number(page.height) : 1;
+    var materialX = Number.isFinite(Number(safeCell.materialX))
+      ? Number(safeCell.materialX)
+      : (Number(safeCell.x) || 0) + (Number(safeCell.materialOffsetX) || 0);
+    var materialY = Number.isFinite(Number(safeCell.materialY))
+      ? Number(safeCell.materialY)
+      : (Number(safeCell.y) || 0) + (Number(safeCell.materialOffsetY) || 0);
+    var materialW = Math.max(1, Number(safeCell.materialW) || Number(safeCell.w) || 1);
+    var materialH = Math.max(1, Number(safeCell.materialH) || Number(safeCell.h) || 1);
+
+    return [
+      materialX / pageWidth,
+      materialY / pageHeight,
+      (materialX + materialW) / pageWidth,
+      (materialY + materialH) / pageHeight
+    ];
+  },
+
   appendCell: function (batches, cell, x, y, width, height, alpha, tint, kind) {
     var target = batches || this.beginBatches();
     var safeCell = cell || null;
@@ -568,25 +729,37 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     var list;
     var offset;
     var color = tint || [1, 1, 1, 1];
+    var uvRects;
+    var materialUvRect;
 
     if (!safeCell || !page || !page.data) {
       return target;
     }
 
+    uvRects = this.getCellUvRects(safeCell);
+    materialUvRect = this.getCellMaterialUvRect(safeCell);
     list = this.getPageBuffer(target, pageIndex);
     offset = list.length;
     list.data[offset] = Number(x) || 0;
     list.data[offset + 1] = Number(y) || 0;
-    list.data[offset + 2] = Math.max(1, Number(width) || safeCell.w || 1);
+    list.data[offset + 2] = Math.max(1, Number(width) || uvRects.displayWidth || safeCell.w || 1);
     list.data[offset + 3] = Math.max(1, Number(height) || safeCell.h || 1);
-    list.data[offset + 4] = safeCell.u0;
-    list.data[offset + 5] = safeCell.v0;
-    list.data[offset + 6] = safeCell.u1;
-    list.data[offset + 7] = safeCell.v1;
-    list.data[offset + 8] = Number(color[0]) || 1;
-    list.data[offset + 9] = Number(color[1]) || 1;
-    list.data[offset + 10] = Number(color[2]) || 1;
-    list.data[offset + 11] = Math.max(0, Math.min(1, Number(alpha === undefined ? color[3] : alpha) || 1));
+    list.data[offset + 4] = uvRects.diffuse[0];
+    list.data[offset + 5] = uvRects.diffuse[1];
+    list.data[offset + 6] = uvRects.diffuse[2];
+    list.data[offset + 7] = uvRects.diffuse[3];
+    list.data[offset + 8] = uvRects.normal[0];
+    list.data[offset + 9] = uvRects.normal[1];
+    list.data[offset + 10] = uvRects.normal[2];
+    list.data[offset + 11] = uvRects.normal[3];
+    list.data[offset + 12] = materialUvRect[0];
+    list.data[offset + 13] = materialUvRect[1];
+    list.data[offset + 14] = materialUvRect[2];
+    list.data[offset + 15] = materialUvRect[3];
+    list.data[offset + 16] = Number(color[0]) || 1;
+    list.data[offset + 17] = Number(color[1]) || 1;
+    list.data[offset + 18] = Number(color[2]) || 1;
+    list.data[offset + 19] = Math.max(0, Math.min(1, Number(alpha === undefined ? color[3] : alpha) || 1));
     list.length += this.strideFloats;
     target.count += 1;
 
@@ -602,6 +775,12 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     return this.drawBatches(batches, spec);
   },
 
+  /**
+   * @description Uploads entity sprite batches, atlas pages, lighting uniforms, and instance buffers to WebGPU before issuing entity draw calls.
+   * @param {Object|null} batches Entity batches grouped by atlas page and visual layer.
+   * @param {Object|null} options Render options including device, context, viewport, alpha, and lighting state.
+   * @returns {boolean} True when any entity batch is submitted to WebGPU.
+   */
   drawBatches: function (batches, options) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
@@ -747,6 +926,8 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
       drawCount: this.state.drawCount,
       gbufferDrawCount: this.state.gbufferDrawCount,
       particleDrawCount: this.state.particleDrawCount,
+      displacementDrawCount: this.state.displacementDrawCount,
+      displacementLastFrameMs: this.state.displacementLastFrameMs,
       frameInstanceDrawCount: this.state.frameInstanceDrawCount,
       pageDrawCount: this.state.pageDrawCount,
       foodDrawCount: this.state.foodDrawCount,
@@ -768,6 +949,11 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
       instanceCapacity: this.state.instanceCapacity,
       particleInstanceCapacity: this.state.particleInstanceCapacity,
       shadowInstanceCapacity: this.state.shadowInstanceCapacity,
+      displacementInstanceCapacity: this.state.displacementInstanceCapacity,
+      bindGroupCacheHits: this.state.bindGroupCacheHits,
+      bindGroupCacheMisses: this.state.bindGroupCacheMisses,
+      rectBindGroupCacheHits: this.state.rectBindGroupCacheHits,
+      rectBindGroupCacheMisses: this.state.rectBindGroupCacheMisses,
       lastBatchBufferReallocations: this.state.lastBatchBufferReallocations,
       lastFrameMs: this.state.lastFrameMs,
       lastError: this.state.lastError
@@ -779,6 +965,7 @@ PS.render.webgpuEntity = PS.render.webgpuEntity || {
     this.state.gbufferPipeline = null;
     this.state.particlePipeline = null;
     this.state.shadowPipeline = null;
+    this.state.displacementPipeline = null;
   },
 
   rebuildTextures: function () {

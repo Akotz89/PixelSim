@@ -1,4 +1,11 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
+import { world } from "../systems/state.js";
+import { timelineFilterButtons, timelineList } from "./dom-refs.js";
+import { setElementClass, setElementHtml } from "./foundation.js";
+import { inspectTile } from "./inspect.js";
+import { escapeSummaryText } from "./summary.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.timeline = (function() {

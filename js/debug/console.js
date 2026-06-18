@@ -1,4 +1,6 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+
 PS.debug = PS.debug || {};
 
 PS.debug.console = {

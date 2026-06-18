@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 function collectJavaScriptFiles(dir, files) {
   fs.readdirSync(path.join(root, dir), { withFileTypes: true }).forEach(function(entry) {
@@ -23,7 +14,7 @@ function collectJavaScriptFiles(dir, files) {
 
 const indexSource = read("index.html");
 const namespaceSource = read("js/core/namespace.js");
-const scriptSources = Array.from(indexSource.matchAll(/<script\s+src="([^"]+)"/g)).map(function(match) {
+const scriptSources = Array.from(indexSource.matchAll(/<script\s+(?:type="[^"]*"\s+)?src="([^"]+)"/g)).map(function(match) {
   return match[1];
 });
 const context = {
@@ -39,8 +30,8 @@ vm.runInContext(namespaceSource, context, { filename: "js/core/namespace.js" });
 
 assert.deepStrictEqual(
   scriptSources,
-  ["js/core/namespace.js", "js/core/loader.js"],
-  "index.html should bootstrap namespace and loader only"
+  ["js/core/namespace.js", "js/core/loader-esm.js"],
+  "index.html should bootstrap namespace and ESM loader only"
 );
 assert.ok(context.window.PS, "namespace should expose window.PS");
 assert.ok(context.window.PS.core, "namespace should expose PS.core");
@@ -84,8 +75,17 @@ manifest.forEach(function(scriptPath) {
 
 const strictModeFiles = [];
 collectJavaScriptFiles("js", strictModeFiles);
+// Manifest files are now ES modules (loaded via import()), which are strict by default.
+// Only check non-manifest files (workers, loader, namespace) for explicit "use strict".
+const manifestSet = new Set(manifest);
+manifestSet.add("js/core/loader-esm.js");
 strictModeFiles.forEach(function(file) {
-  assert.ok(read(file).startsWith("\"use strict\";"), file + " should start with strict mode");
+  var normalizedPath = file.replace(/\\/g, "/");
+  var isManifestFile = manifestSet.has(normalizedPath);
+  if (!isManifestFile) {
+    // Workers and other non-module files still need "use strict"
+    assert.ok(read(file).startsWith("\"use strict\";"), file + " should start with strict mode (non-module file)");
+  }
 });
 
 console.log("script manifest checks passed");

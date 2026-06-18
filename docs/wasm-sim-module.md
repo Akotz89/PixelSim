@@ -83,3 +83,16 @@ PS.sim.wasmBridge.uploadElevationToGpu({
 The queue upload still copies bytes into GPU memory, as WebGPU requires, but the
 CPU side uses a typed-array view over WASM memory instead of serializing through
 JSON or intermediate object graphs.
+
+## Worker Bridge
+
+`js/workers/sim-worker.js` supports `wasmInit` and `wasmTick` messages for
+running the same Rust `SimBuffer` off the main thread. Under `file://`, callers
+use `PS.sim.simWorkerClient.createBlobWorker()` with inline worker source; the
+worker then evaluates the wasm-bindgen glue, base64 sidecar, and bridge together
+so the no-modules `wasm_bindgen` binding remains in scope.
+
+Worker tick results use a transferable `ArrayBuffer` elevation snapshot. The
+main thread calls `PS.sim.simWorkerClient.uploadElevationResultToGpu()` to wrap
+that result in a `Float32Array` and pass it to `device.queue.writeBuffer()`.
+`SharedArrayBuffer` is not required for the file-protocol runtime path.

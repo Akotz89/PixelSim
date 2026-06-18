@@ -1,5 +1,13 @@
-"use strict";
-function restorePlanetaryBodies(bodies) {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { normalizeLongitude } from "../render/planet-view.js";
+import { ensureOrganismLineage, makeOrganism } from "../sim/organisms-traits.js";
+import { clonePersistencePlainValue } from "./persistence-db.js";
+import { getRestoredSurfacePosition, restoreNumber, restoreOrganismTraits, restorePlanetaryBody } from "./persistence-restore-core.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
+
+export function restorePlanetaryBodies(bodies) {
   if (!Array.isArray(bodies)) {
     return [];
   }
@@ -7,7 +15,7 @@ function restorePlanetaryBodies(bodies) {
   return bodies.map(restorePlanetaryBody);
 }
 
-function restoreProbeMission(mission) {
+export function restoreProbeMission(mission) {
   mission = mission || {};
 
   var restoredMission = {
@@ -30,7 +38,7 @@ function restoreProbeMission(mission) {
   return restoredMission;
 }
 
-function restoreProbeMissions(missions) {
+export function restoreProbeMissions(missions) {
   if (!Array.isArray(missions)) {
     return [];
   }
@@ -38,7 +46,7 @@ function restoreProbeMissions(missions) {
   return missions.map(restoreProbeMission);
 }
 
-function restoreStarSystem(system) {
+export function restoreStarSystem(system) {
   system = system || {};
 
   var id = Math.max(1, Math.round(restoreNumber(system.id, world.nextStarSystemId)));
@@ -62,7 +70,7 @@ function restoreStarSystem(system) {
   return restoredSystem;
 }
 
-function restoreStarSystems(systems) {
+export function restoreStarSystems(systems) {
   if (!Array.isArray(systems)) {
     return [];
   }
@@ -70,7 +78,7 @@ function restoreStarSystems(systems) {
   return systems.map(restoreStarSystem);
 }
 
-function restoreInterstellarFleet(fleet) {
+export function restoreInterstellarFleet(fleet) {
   fleet = fleet || {};
 
   var restoredFleet = {
@@ -94,7 +102,7 @@ function restoreInterstellarFleet(fleet) {
   return restoredFleet;
 }
 
-function restoreInterstellarFleets(fleets) {
+export function restoreInterstellarFleets(fleets) {
   if (!Array.isArray(fleets)) {
     return [];
   }
@@ -102,7 +110,7 @@ function restoreInterstellarFleets(fleets) {
   return fleets.map(restoreInterstellarFleet);
 }
 
-function restoreEmpireSector(sector) {
+export function restoreEmpireSector(sector) {
   sector = sector || {};
 
   var restoredSector = {
@@ -121,7 +129,7 @@ function restoreEmpireSector(sector) {
   return restoredSector;
 }
 
-function restoreEmpireSectors(sectors) {
+export function restoreEmpireSectors(sectors) {
   if (!Array.isArray(sectors)) {
     return [];
   }
@@ -129,7 +137,7 @@ function restoreEmpireSectors(sectors) {
   return sectors.map(restoreEmpireSector);
 }
 
-function restoreBiologyAggregateState(saveData) {
+export function restoreBiologyAggregateState(saveData) {
   world.biologyPopulations = Array.isArray(saveData.biologyPopulations)
     ? clonePersistencePlainValue(saveData.biologyPopulations)
     : [];
@@ -164,7 +172,7 @@ function restoreBiologyAggregateState(saveData) {
   }
 }
 
-function restoreOrganism(organism) {
+export function restoreOrganism(organism) {
   var tileX = clamp(Math.round(restoreNumber(organism.x, 0)), 0, WORLD_WIDTH - 1);
   var tileY = clamp(Math.round(restoreNumber(organism.y, 0)), 0, WORLD_HEIGHT - 1);
   var previousTileX = clamp(Math.round(restoreNumber(organism.prevX, tileX)), 0, WORLD_WIDTH - 1);
@@ -207,12 +215,15 @@ function restoreOrganism(organism) {
     1,
     Math.round(restoreNumber(organism.representativeId, restoredOrganism.representativeId || 1))
   );
+  restoredOrganism.ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.restore === "function"
+    ? PS.sim.organismAi.restore(organism.ai)
+    : clonePersistencePlainValue(organism.ai || null);
 
   ensureOrganismLineage(restoredOrganism);
   return restoredOrganism;
 }
 
-function restoreTraitHistorySample(sample) {
+export function restoreTraitHistorySample(sample) {
   sample = sample || {};
   var traits = restoreOrganismTraits(sample);
   traits.tick = Math.max(0, Math.round(restoreNumber(sample.tick, 0)));
@@ -220,7 +231,7 @@ function restoreTraitHistorySample(sample) {
   return traits;
 }
 
-function restoreTraitHistory(traitHistory) {
+export function restoreTraitHistory(traitHistory) {
   if (!Array.isArray(traitHistory)) {
     return [];
   }
@@ -230,7 +241,7 @@ function restoreTraitHistory(traitHistory) {
     .map(restoreTraitHistorySample);
 }
 
-function restoreSimulationEvent(event) {
+export function restoreSimulationEvent(event) {
   event = event || {};
 
   return {
@@ -273,7 +284,7 @@ function restoreSimulationEvent(event) {
   };
 }
 
-function restoreSimulationEvents(eventLog, limit) {
+export function restoreSimulationEvents(eventLog, limit) {
   if (!Array.isArray(eventLog)) {
     return [];
   }
@@ -286,7 +297,7 @@ function restoreSimulationEvents(eventLog, limit) {
   return source.map(restoreSimulationEvent);
 }
 
-function restoreEcosystemHistorySample(sample) {
+export function restoreEcosystemHistorySample(sample) {
   sample = sample || {};
 
   return {
@@ -304,7 +315,7 @@ function restoreEcosystemHistorySample(sample) {
   };
 }
 
-function restoreEcosystemHistory(ecosystemHistory) {
+export function restoreEcosystemHistory(ecosystemHistory) {
   if (!Array.isArray(ecosystemHistory)) {
     return [];
   }
@@ -314,7 +325,7 @@ function restoreEcosystemHistory(ecosystemHistory) {
     .map(restoreEcosystemHistorySample);
 }
 
-function countFertileTiles() {
+export function countFertileTiles() {
   var fertileTiles = 0;
 
   for (var i = 0; i < world.terrain.length; i++) {
@@ -326,6 +337,7 @@ function countFertileTiles() {
   return fertileTiles;
 }
 
-function applySaveConfig(saveConfig) {
+export function applySaveConfig(saveConfig) {
   PS.systems.persistenceConfig.apply(saveConfig);
 }
+

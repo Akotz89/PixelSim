@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "./namespace.js";
+import { clamp, hashSeedText } from "./utils.js";
+
 PS.core = PS.core || {};
 
 PS.core.createNoisePrng = function (seedValue) {
@@ -175,7 +177,7 @@ PS.core.Noise2D.prototype.worley = function (x, y) {
   return PS.math.clamp(best / Math.SQRT2, 0, 1);
 };
 
-PS.core.Noise2D.prototype.fbm = function (x, y, octaves, lacunarity, gain) {
+PS.core.Noise2D.prototype.fractalSum = function (sampleFn, x, y, octaves, lacunarity, gain, fallback) {
   var total = 0;
   var amplitude = 1;
   var frequency = 1;
@@ -185,13 +187,17 @@ PS.core.Noise2D.prototype.fbm = function (x, y, octaves, lacunarity, gain) {
   var normalizedGain = PS.math.clamp(Number(gain) || 0.5, 0.05, 0.95);
 
   for (var i = 0; i < count; i++) {
-    total += this.perlin(x * frequency, y * frequency) * amplitude;
+    total += sampleFn.call(this, x * frequency, y * frequency) * amplitude;
     amplitudeTotal += amplitude;
     amplitude *= normalizedGain;
     frequency *= lac;
   }
 
-  return amplitudeTotal > 0 ? total / amplitudeTotal : 0;
+  return amplitudeTotal > 0 ? total / amplitudeTotal : fallback;
+};
+
+PS.core.Noise2D.prototype.fbm = function (x, y, octaves, lacunarity, gain) {
+  return this.fractalSum(this.perlin, x, y, octaves, lacunarity, gain, 0);
 };
 
 PS.core.Noise2D.prototype.ridged = function (x, y, octaves) {
@@ -239,22 +245,7 @@ PS.core.Noise2D.prototype.value = function (x, y) {
 };
 
 PS.core.Noise2D.prototype.valueFbm = function (x, y, octaves, lacunarity, gain) {
-  var total = 0;
-  var amplitude = 1;
-  var frequency = 1;
-  var amplitudeTotal = 0;
-  var count = Math.max(1, Math.round(Number(octaves) || 1));
-  var lac = Math.max(1.01, Number(lacunarity) || 2);
-  var normalizedGain = PS.math.clamp(Number(gain) || 0.5, 0.05, 0.95);
-
-  for (var i = 0; i < count; i++) {
-    total += this.value(x * frequency, y * frequency) * amplitude;
-    amplitudeTotal += amplitude;
-    amplitude *= normalizedGain;
-    frequency *= lac;
-  }
-
-  return amplitudeTotal > 0 ? total / amplitudeTotal : 0.5;
+  return this.fractalSum(this.value, x, y, octaves, lacunarity, gain, 0.5);
 };
 
 PS.core.Noise2D.prototype.continents = function (x, y) {

@@ -36,9 +36,11 @@ pattern. Never tie sim updates to `requestAnimationFrame` rate.
 Organisms, food, particles use `Float32Array`/`Uint16Array` struct-of-arrays.
 Complex entities (settlements, star systems) use classes.
 
-### D4: PS.* Namespace + Script Tags
-All code under `var PS = {};` namespace. Load via `<script>` tags. No ES
-modules, no bundler, no import/export. Pattern: `PS.subsystem.method()`.
+### D4: PS.* Namespace + ES Module Loader
+All runtime code shares the `PS.*` namespace, but source files are loaded as ES
+modules through `js/core/loader-esm.js`. Use real `import` / `export`
+statements for cross-module dependencies. Do not reintroduce legacy
+`var X = window.X` preambles or new `window.*` migration globals.
 
 ### D5: Centralized State + Event Bus
 Single `PS.world` state object. All cross-system communication via
@@ -81,12 +83,19 @@ js/
 
 ## Coding Conventions
 
-- All files < 500 lines
-- All functions in `PS.*` namespace
-- Use `var` (not `let`/`const`) for broadest browser compat
+- Follow `CODING_STANDARDS.md`; the global `code-quality` Gemini plugin also
+  enforces these rules from
+  `C:\Users\Aaron\.gemini\config\plugins\code-quality\`.
+- Keep new files focused and below 500 lines where practical.
+- Keep new functions under 200 LOC and below cognitive complexity 30.
+- Export public APIs with ES module exports and attach behavior under `PS.*`
+  when the runtime namespace needs it.
+- Use `const`/`let` for new code. Do not introduce new `var` declarations.
 - Seeded deterministic RNG via `PS.math.random()`
 - Errors must hard crash: `PS.assert(condition, message)` pauses sim and throws
 - No silent fails, no try/catch swallowing errors
+- No `innerHTML` assignment, no `eval()` / `new Function()`, no hardcoded
+  secrets, and no TODO/FIXME without a Linear issue key.
 
 ## Error Philosophy
 
@@ -99,6 +108,9 @@ degradation. The debug panel (`#debug-output`) must show the full error.
 - Run with `node --check` for syntax validation
 - Browser-based smoke tests for runtime verification
 - Tests must verify deterministic behavior for same seed
+- For milestone work, run `npx fallow health` and
+  `node scripts/run-all-tests.js`; report known baseline failures separately
+  from new regressions.
 
 ## Antigravity Command Safety
 

@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const computeSource = read("js/sim/compute-harness.js");
@@ -27,11 +18,17 @@ const queueWrites = [];
 const queueSubmits = [];
 const fakeDevice = {
   buffers: [],
+  bindGroups: [],
   encoders: [],
   createBuffer(descriptor) {
-    const buffer = { descriptor };
+    const buffer = { descriptor, label: descriptor.label };
     this.buffers.push(buffer);
     return buffer;
+  },
+  createBindGroup(descriptor) {
+    const bindGroup = { descriptor, index: this.bindGroups.length };
+    this.bindGroups.push(bindGroup);
+    return bindGroup;
   },
   createComputePipeline(descriptor) {
     return { descriptor, kind: "compute-pipeline" };
@@ -163,5 +160,31 @@ assert.strictEqual(stats.pingPongs, 2, "compute harness stats should count ping-
 assert.strictEqual(stats.states, 1, "compute harness stats should count simulation states");
 assert.strictEqual(stats.passes, 1, "compute harness stats should count compute passes");
 assert.strictEqual(stats.dispatches, 1, "compute harness stats should count dispatches");
+
+const cachedPass = harness.registerPass("cached-ping-pong", {
+  pipelineDescriptor: { label: "cached.pipeline", layout: "auto" },
+  workgroups: [1, 1, 1],
+  beforeDispatch(passRecord, owner) {
+    const descriptor = {
+      label: "cached.bind-group",
+      layout: passRecord.pipeline.getBindGroupLayout ? passRecord.pipeline.getBindGroupLayout(0) : { index: 0 },
+      entries: [
+        { binding: 0, resource: { buffer: owner.getReadBuffer("temperature").buffer } },
+        { binding: 1, resource: { buffer: owner.getWriteBuffer("temperature").buffer } }
+      ]
+    };
+    passRecord.bindGroups = [owner.createCachedBindGroup(passRecord, fakeDevice, 0, descriptor)];
+  },
+  afterDispatch(passRecord, owner) {
+    owner.swap("temperature");
+  }
+});
+
+harness.dispatch("cached-ping-pong");
+harness.dispatch("cached-ping-pong");
+harness.dispatch("cached-ping-pong");
+harness.dispatch("cached-ping-pong");
+assert.strictEqual(cachedPass.dispatches, 4, "cached ping-pong pass should dispatch repeatedly");
+assert.strictEqual(fakeDevice.bindGroups.length, 2, "ping-pong bind group cache should allocate only the two read/write variants");
 
 console.log("compute harness checks passed");

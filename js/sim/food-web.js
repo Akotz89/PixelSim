@@ -1,4 +1,12 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getTileManhattanDistance } from "../render/planet-grid.js";
+import { findNearestPrey, getTerrainMismatchForTraits } from "./organisms-behavior.js";
+import { collectOrganismsInRadius } from "./organisms-indexes.js";
+import { ensureOrganismTraits } from "./organisms-traits.js";
+import { world } from "../systems/state.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.foodWeb = (function() {

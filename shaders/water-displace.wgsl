@@ -55,18 +55,18 @@ fn vs_main(
 
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
-  let pass = passes[input.pass_index];
+  let water_pass = passes[input.pass_index];
   let wind_scroll = water.wind.xy * water.wind.z * water.time_seconds;
-  let displacement_uv_a = input.uv * pass.frequency.x + wind_scroll * pass.displacement_scroll;
-  let displacement_uv_b = input.uv * pass.frequency.y - wind_scroll.yx * pass.displacement_scroll.yx;
-  let displacement_a = wave_texture(displacement_uv_a, pass.frequency, pass.tint.w);
-  let displacement_b = wave_texture(displacement_uv_b, pass.frequency.yx, pass.tint.w + 0.37);
-  let displacement = (vec2<f32>(displacement_a, displacement_b) - vec2<f32>(0.5, 0.5)) * pass.alpha_amount.y;
-  let surface_uv_a = input.uv * pass.frequency + displacement + wind_scroll * pass.surface_scroll;
-  let surface_uv_b = input.uv * pass.frequency.yx - displacement + wind_scroll.yx * pass.surface_scroll.yx;
-  let surface_a = wave_texture(surface_uv_a, pass.frequency + vec2<f32>(0.31, 0.17), pass.tint.w + 0.71);
-  let surface_b = wave_texture(surface_uv_b, pass.frequency.yx + vec2<f32>(0.19, 0.43), pass.tint.w + 1.13);
+  let displacement_uv_a = input.uv * water_pass.frequency.x + wind_scroll * water_pass.displacement_scroll;
+  let displacement_uv_b = input.uv * water_pass.frequency.y - wind_scroll.yx * water_pass.displacement_scroll.yx;
+  let displacement_a = wave_texture(displacement_uv_a, water_pass.frequency, water_pass.tint.w);
+  let displacement_b = wave_texture(displacement_uv_b, water_pass.frequency.yx, water_pass.tint.w + 0.37);
+  let displacement = (vec2<f32>(displacement_a, displacement_b) - vec2<f32>(0.5, 0.5)) * water_pass.alpha_amount.y;
+  let surface_uv_a = input.uv * water_pass.frequency + displacement + wind_scroll * water_pass.surface_scroll;
+  let surface_uv_b = input.uv * water_pass.frequency.yx - displacement + wind_scroll.yx * water_pass.surface_scroll.yx;
+  let surface_a = wave_texture(surface_uv_a, water_pass.frequency + vec2<f32>(0.31, 0.17), water_pass.tint.w + 0.71);
+  let surface_b = wave_texture(surface_uv_b, water_pass.frequency.yx + vec2<f32>(0.19, 0.43), water_pass.tint.w + 1.13);
   let foam = smoothstep(0.62, 0.92, surface_a * 0.62 + surface_b * 0.38);
-  let color = pass.tint.rgb + foam * vec3<f32>(0.20, 0.28, 0.32);
-  return vec4<f32>(color, pass.alpha_amount.x * foam);
+  let color = water_pass.tint.rgb + foam * vec3<f32>(0.20, 0.28, 0.32);
+  return vec4<f32>(color, water_pass.alpha_amount.x * foam);
 }

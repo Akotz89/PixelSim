@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.render = PS.render || {};
 
 PS.render.webgpuGbuffer = PS.render.webgpuGbuffer || {
@@ -28,6 +29,19 @@ PS.render.webgpuGbuffer = PS.render.webgpuGbuffer || {
     return 16 | 4 | 2;
   },
 
+  needsResize: function (target, width, height, format) {
+    return !target || target.width !== width || target.height !== height || target.format !== format;
+  },
+
+  destroyAttachments: function () {
+    if (PS.render.webgpuTargets) {
+      PS.render.webgpuTargets.destroy(this.attachments.albedo);
+      PS.render.webgpuTargets.destroy(this.attachments.normalHeight);
+      PS.render.webgpuTargets.destroy(this.attachments.depth);
+    }
+    this.state.ready = false;
+  },
+
   ensure: function (width, height, device) {
     var targetDevice = this.getDevice(device);
     var targetWidth = Math.max(1, Math.round(Number(width) || 1));
@@ -50,17 +64,28 @@ PS.render.webgpuGbuffer = PS.render.webgpuGbuffer || {
     normalHeight = targets.get(this.attachments.normalHeight);
     depth = targets.get(this.attachments.depth);
 
-    if (!albedo || albedo.width !== targetWidth || albedo.height !== targetHeight || albedo.format !== format) {
+    if (
+      this.needsResize(albedo, targetWidth, targetHeight, format) ||
+      this.needsResize(normalHeight, targetWidth, targetHeight, "rgba16float") ||
+      this.needsResize(depth, targetWidth, targetHeight, "depth24plus")
+    ) {
+      this.destroyAttachments();
+      albedo = null;
+      normalHeight = null;
+      depth = null;
+    }
+
+    if (!albedo) {
       albedo = targets.create(this.attachments.albedo, targetWidth, targetHeight, format, this.getUsage(), targetDevice);
       this.state.resizeCount += 1;
     }
 
-    if (!normalHeight || normalHeight.width !== targetWidth || normalHeight.height !== targetHeight || normalHeight.format !== "rgba16float") {
+    if (!normalHeight) {
       normalHeight = targets.create(this.attachments.normalHeight, targetWidth, targetHeight, "rgba16float", this.getUsage(), targetDevice);
       this.state.resizeCount += 1;
     }
 
-    if (!depth || depth.width !== targetWidth || depth.height !== targetHeight || depth.format !== "depth24plus") {
+    if (!depth) {
       depth = targets.create(this.attachments.depth, targetWidth, targetHeight, "depth24plus", 16, targetDevice);
       this.state.resizeCount += 1;
     }
@@ -101,7 +126,7 @@ PS.render.webgpuGbuffer = PS.render.webgpuGbuffer || {
       colorAttachments: [
         {
           view: views.albedo,
-          clearValue: { r: 0, g: 0, b: 0, a: 0 },
+          clearValue: spec.clearColor || { r: 0, g: 0, b: 0, a: 0 },
           loadOp: spec.loadOp || "clear",
           storeOp: "store"
         },
@@ -131,11 +156,6 @@ PS.render.webgpuGbuffer = PS.render.webgpuGbuffer || {
   },
 
   rebuildTextures: function () {
-    if (PS.render.webgpuTargets) {
-      PS.render.webgpuTargets.destroy(this.attachments.albedo);
-      PS.render.webgpuTargets.destroy(this.attachments.normalHeight);
-      PS.render.webgpuTargets.destroy(this.attachments.depth);
-    }
-    this.state.ready = false;
+    this.destroyAttachments();
   }
 };

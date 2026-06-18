@@ -16,7 +16,8 @@
 | [Coding Conventions](CODING_CONVENTIONS.md) | `docs/CODING_CONVENTIONS.md` | Phase 0 source conventions for script-tag JS, WebGPU runtime boundaries, data sidecars, config, simulation, rendering, tests, and comments |
 | [Pixeldarium Art Bible](pixeldarium-art-bible.md) | `docs/pixeldarium-art-bible.md` | AZR-420 original pixel-art dimensions, sheet layouts, animation specs, naming, palette rules, and WebGPU-only asset contract |
 | [Visual Quality Gate](visual-quality-gate.md) | `docs/visual-quality-gate.md` | AZR-364 Google-Earth smoothness and Songs-of-Syx-style simulation readability checklist |
-| [Proof Scene Acceptance](proof-scene-acceptance.md) | `docs/proof-scene-acceptance.md` | AZR-1037/AZR-1038 local proof-scene fields and actor-scale readability gates |
+| [Google Earth x Snake2D Visual Experience](google-earth-snake2d-visual-experience.md) | `docs/google-earth-snake2d-visual-experience.md` | BMAD planning spec and audit for continuous planetary zoom, causal LOD, dense WebGPU top-down rendering, and runtime/Agent Studio boundaries |
+| [Proof Scene Acceptance](proof-scene-acceptance.md) | `docs/proof-scene-acceptance.md` | AZR-1037/AZR-1038 local proof-scene fields, actor-scale readability gates, and AZR-1074 canonical dense proof-scene suite |
 | [Biological Model Decision](biological-model-decision.md) | `docs/biological-model-decision.md` | AZR-361 aggregate population and representative organism model gate |
 | [Optimization Operating Model](optimization-operating-model.md) | `docs/optimization-operating-model.md` | Scale-first rendering/simulation rules derived from the YouTube deep-dive analysis |
 | [Optimization Implementation Gate](optimization-implementation-gate.md) | `docs/optimization-implementation-gate.md` | AZR-637 implementation handoff gate for rendering, streaming, performance, mass-simulation, and observation work |

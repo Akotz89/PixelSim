@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 
 PS.render.shadows = PS.render.shadows || (function () {

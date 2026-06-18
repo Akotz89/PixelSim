@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const bitsmapSource = read("js/core/bitsmap.js");
@@ -18,8 +9,10 @@ assert.ok(namespaceSource.indexOf("js/render/environment-overlays.js") > namespa
 assert.ok(namespaceSource.indexOf("js/render/environment-overlays.js") < namespaceSource.indexOf("js/render/pipeline.js"), "environment overlays should load before pipeline registration");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.snow"') >= 0, "pipeline should register snow environment overlay");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.ice"') >= 0, "pipeline should register ice environment overlay");
+assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.cloudShadows"') >= 0, "pipeline should register cloud shadow environment overlay");
 assert.ok(pipelineSource.indexOf("order: 33") >= 0, "snow overlay should render before grass and world vegetation overlays");
 assert.ok(pipelineSource.indexOf("order: 32.5") >= 0, "ice overlay should render on top of the water layer before snow");
+assert.ok(pipelineSource.indexOf("drawCloudShadowOverlay") >= 0, "pipeline should draw cloud shadows through the environment overlay system");
 assert.strictEqual(overlaySource.toLowerCase().indexOf("webgl"), -1, "environment overlays must not add legacy WebGL hooks");
 
 const drawCalls = [];
@@ -34,6 +27,10 @@ const context = {
       },
       webgpuEntity: {
         drawParticleRects(values) {
+          drawCalls.push(Array.from(values));
+          return values.length > 0;
+        },
+        drawShadowRects(values) {
           drawCalls.push(Array.from(values));
           return values.length > 0;
         }
@@ -61,6 +58,7 @@ const context = {
   WORLD_HEIGHT: 3,
   world: {
     globalSnow: 0.92,
+    tick: 120,
     planetTiles: []
   },
   Uint32Array,
@@ -102,6 +100,9 @@ assert.strictEqual(overlays.getSnowBase(3, 0), 3, "snow base fourth two-bit fiel
 const firstBase = Array.from(overlays.populateSnowBase(4, 3));
 const secondBase = Array.from(overlays.populateSnowBase(4, 3));
 assert.deepStrictEqual(secondBase, firstBase, "heightmap-style snow base generation should be deterministic");
+assert.strictEqual(overlays.initCloudShadowMap(256).length, 256 * 256, "cloud shadows should generate a 256x256 noise texture");
+assert.strictEqual(overlays.ensureCloudShadowMap(), overlays.cloudShadowMap, "cloud shadow map should be cached after generation");
+assert.notStrictEqual(overlays.sampleCloudShadowMap(1, 1), overlays.sampleCloudShadowMap(257.5, 1), "cloud shadow texture sampling should support wrapped bilinear offsets");
 
 overlays.setSnowBase(0, 0, 0);
 overlays.setSnowBase(1, 0, 0);
@@ -157,5 +158,27 @@ assert.ok(iceInfo.variant >= iceInfo.mask * 16 && iceInfo.variant < iceInfo.mask
 assert.strictEqual(overlays.drawIceOverlay(), true, "ice overlay should submit WebGPU rects");
 assert.ok(drawCalls[1].length > 0 && drawCalls[1].length % 8 === 0, "ice overlay rect payload should use rect/color stride");
 assert.strictEqual(overlays.getStats().iceOverlayCount, drawCalls[1].length / 8, "ice overlay stats should count submitted rects");
+
+let cloudProbe = null;
+for (let y = 0; y < 32 && !cloudProbe; y += 1) {
+  for (let x = 0; x < 32 && !cloudProbe; x += 1) {
+    if (overlays.getCloudShadowInfo(x, y, 0) || overlays.getCloudShadowInfo(x, y, 40)) {
+      cloudProbe = { x, y };
+    }
+  }
+}
+assert.ok(cloudProbe, "cloud shadow field should produce visible patches in a 32x32 viewport");
+const firstCloudInfo = overlays.getCloudShadowInfo(cloudProbe.x, cloudProbe.y, 0);
+const secondCloudInfo = overlays.getCloudShadowInfo(cloudProbe.x, cloudProbe.y, 40);
+assert.notDeepStrictEqual(secondCloudInfo, firstCloudInfo, "cloud shadow noise should scroll over time");
+context.WORLD_WIDTH = 32;
+context.WORLD_HEIGHT = 32;
+context.PS.camera.unified.getVisibleTileRect = function () {
+  return { minX: 0, minY: 0, maxX: 31, maxY: 31 };
+};
+assert.strictEqual(overlays.drawCloudShadowOverlay({ visualPolicy: { level: "SURFACE" } }), true, "cloud shadow overlay should submit WebGPU shadow rects");
+assert.ok(drawCalls[2].length > 0 && drawCalls[2].length % 8 === 0, "cloud shadow payload should use rect/color stride");
+assert.strictEqual(overlays.getStats().cloudShadowCount, drawCalls[2].length / 8, "cloud shadow stats should count submitted rects");
+assert.ok(drawCalls[2].some((value, index) => index % 8 === 7 && value >= 0.1 && value <= 0.2), "cloud shadow alpha should stay in the 10-20 percent range");
 
 console.log("environment overlay checks passed");

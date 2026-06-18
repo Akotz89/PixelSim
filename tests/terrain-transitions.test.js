@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -184,9 +185,22 @@ assert.strictEqual(Autotile.createMatchFn(presetGrid, "floor", { tileRegistry: p
 assert.strictEqual(Autotile.createMatchFn(presetGrid, "same-terrain", { tileRegistry: presetRegistry })(4, 0, "N", 4, 0), true, "same-terrain preset should match identical tile IDs");
 
 assert.ok(transitionsData.pairs.length >= 5, "transitions data should define required transition pairs");
+assert.strictEqual(transitionsData.layout.canonicalJoinPatternCount, 46, "transition atlas contract should declare the Snake2D-style 46 canonical join patterns");
 assert.strictEqual(resolver.lookup.size, transitionsData.pairs.length * 2, "lookup should include forward and reverse pairs");
 assert.ok(resolver.getPair("grass_lush", "sand"), "lookup should include grass to sand pair");
 assert.ok(resolver.getPair("sand", "grass_lush"), "lookup should include reverse sand to grass pair");
+
+const joinPatterns = Resolver.getCanonicalJoinPatterns();
+assert.strictEqual(joinPatterns.length, 46, "resolver should build the canonical 46-pattern join table");
+assert.strictEqual(joinPatterns[0].index, 0, "join pattern zero should use index zero");
+assert.strictEqual(joinPatterns[0].mask, 0, "join pattern zero should use mask zero");
+assert.strictEqual(joinPatterns[0].name, "solid", "join pattern zero should be solid/no-overlay");
+assert.strictEqual(joinPatterns[0].spriteIndex, -1, "join pattern zero should not target an overlay sprite");
+assert.strictEqual(joinPatterns[0].edges.length, 0, "join pattern zero should have no edges");
+assert.strictEqual(resolver.getJoinPattern(bits.N).name, "N", "north edge should map to a canonical join pattern");
+assert.strictEqual(resolver.getJoinPattern(bits.N | bits.E).name, "N+E+innerNE", "N/E elbow should map to the inner-corner canonical pattern");
+assert.strictEqual(resolver.getJoinPattern(bits.NE).name, "NE", "diagonal-only neighbor should map to an outer-corner canonical pattern");
+assert.strictEqual(resolver.getJoinPattern(bits.N | bits.E | bits.S | bits.W).index >= 0, true, "four-way join should receive a stable canonical pattern index");
 
 const edgeGrid = createGrid(3, 3, "sand");
 edgeGrid.setTileId(1, 1, "sand");
@@ -198,7 +212,9 @@ assert.strictEqual(context.PS.autotile.getTransitionIndex(1, 1, edgeGrid), 0, "p
 assert.strictEqual(context.PS.autotile.getTransitionIndex(1, 1, "E"), 1, "public autotile facade should map explicit neighbor direction to sprite index");
 assert.strictEqual(resolver.maskToSpriteIndex(bits.N), 0, "N mask should map to north edge sprite");
 assert.strictEqual(resolved.baseTile, "sand", "resolved base tile should match grid tile");
+assert.strictEqual(resolved.joinPattern.name, "N", "resolved tile should carry canonical join-pattern metadata");
 assert.ok(resolved.overlays.some((overlay) => overlay.spriteId === "transitions.grass_sand.0" && overlay.edge === "N"), "grass-sand north edge should produce transition overlay");
+assert.ok(resolved.overlays.every((overlay) => Number.isInteger(overlay.joinPatternIndex)), "transition overlays should carry join-pattern indices for atlas lookup");
 
 const cornerGrid = createGrid(3, 3, "sand");
 cornerGrid.setTileId(1, 1, "sand");

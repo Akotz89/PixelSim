@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.render = PS.render || {};
 PS.atlas = PS.atlas || {};
 

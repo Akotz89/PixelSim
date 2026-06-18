@@ -1,4 +1,11 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getClampedWorldY, getWrappedWorldX } from "./planet-grid.js";
+import { getLatitudeDistanceKmPerDegree, getLongitudeDistanceKmPerDegree, isGlobeRenderMode, normalizeLongitude } from "./planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.camera = PS.camera || {};
 
 PS.camera.unified = PS.camera.unified || {

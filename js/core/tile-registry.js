@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "./namespace.js";
+
 PS.core = PS.core || {};
 
 PS.core.TerrainType = PS.core.TerrainType || function (definition) {
@@ -18,6 +19,47 @@ PS.core.TerrainType.BITS = {
   S: 32,
   SW: 64,
   W: 128
+};
+
+PS.core.getTileIdFromGrid = PS.core.getTileIdFromGrid || function (grid, tileX, tileY) {
+  var width;
+  var height;
+  var tile;
+
+  if (!grid) {
+    return null;
+  }
+
+  if (typeof grid.getTileId === "function") {
+    return grid.getTileId(tileX, tileY);
+  }
+
+  if (typeof grid.get === "function") {
+    tile = grid.get(tileX, tileY);
+    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
+  }
+
+  width = Number(grid.width) || 0;
+  height = Number(grid.height) || Infinity;
+  if (Array.isArray(grid.tiles) && width > 0 && tileX >= 0 && tileY >= 0 && tileX < width && tileY < height) {
+    tile = grid.tiles[tileY * width + tileX];
+    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
+  }
+
+  return null;
+};
+
+PS.core.getTerrainNeighborOffsets = PS.core.getTerrainNeighborOffsets || function (bits) {
+  return [
+    { dx: -1, dy: -1, bit: bits.NW },
+    { dx: 0, dy: -1, bit: bits.N },
+    { dx: 1, dy: -1, bit: bits.NE },
+    { dx: 1, dy: 0, bit: bits.E },
+    { dx: 1, dy: 1, bit: bits.SE },
+    { dx: 0, dy: 1, bit: bits.S },
+    { dx: -1, dy: 1, bit: bits.SW },
+    { dx: -1, dy: 0, bit: bits.W }
+  ];
 };
 
 PS.core.TerrainType.prototype.inferKind = function (definition) {
@@ -81,31 +123,7 @@ PS.core.TerrainType.prototype.renderAbove = function (context) {
 };
 
 PS.core.TerrainType.prototype.getTileId = function (tileX, tileY, grid) {
-  var width;
-  var tile;
-  var index;
-
-  if (!grid) {
-    return null;
-  }
-
-  if (typeof grid.getTileId === "function") {
-    return grid.getTileId(tileX, tileY);
-  }
-
-  if (typeof grid.get === "function") {
-    tile = grid.get(tileX, tileY);
-    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
-  }
-
-  width = Number(grid.width) || 0;
-  if (Array.isArray(grid.tiles) && width > 0 && tileX >= 0 && tileY >= 0 && tileX < width) {
-    index = tileY * width + tileX;
-    tile = grid.tiles[index];
-    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
-  }
-
-  return null;
+  return PS.core.getTileIdFromGrid(grid, tileX, tileY);
 };
 
 PS.core.TerrainType.prototype.matchesAutotileNeighbor = function (neighborId, registry) {
@@ -139,17 +157,7 @@ PS.core.TerrainType.prototype.matchesAutotileNeighbor = function (neighborId, re
 };
 
 PS.core.TerrainType.prototype.computeAutotileMask = function (tileX, tileY, grid, registry) {
-  var bits = PS.core.TerrainType.BITS;
-  var offsets = [
-    { dx: -1, dy: -1, bit: bits.NW },
-    { dx: 0, dy: -1, bit: bits.N },
-    { dx: 1, dy: -1, bit: bits.NE },
-    { dx: 1, dy: 0, bit: bits.E },
-    { dx: 1, dy: 1, bit: bits.SE },
-    { dx: 0, dy: 1, bit: bits.S },
-    { dx: -1, dy: 1, bit: bits.SW },
-    { dx: -1, dy: 0, bit: bits.W }
-  ];
+  var offsets = PS.core.getTerrainNeighborOffsets(PS.core.TerrainType.BITS);
   var mask = 0;
   var i;
 

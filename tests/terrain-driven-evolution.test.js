@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -159,6 +150,7 @@ setTile(14, 8, { biome: "temperate grassland", fertilityScore: 0.95, riverStreng
 setTile(17, 9, { biome: "coastal archipelago", coastFactor: 0.92, shallowWater: 0.35, shelfStrength: 0.5, fertilityScore: 0.65 });
 
 var aquatic = PS.sim.terrainPressure.getSample(2, 2);
+var aquaticAgain = PS.sim.terrainPressure.getSample(2, 2);
 var desert = PS.sim.terrainPressure.getSample(5, 5);
 var mountain = PS.sim.terrainPressure.getSample(8, 6);
 var forest = PS.sim.terrainPressure.getSample(11, 7);
@@ -166,6 +158,7 @@ var lush = PS.sim.terrainPressure.getSample(14, 8);
 var archipelago = PS.sim.terrainPressure.getSample(17, 9);
 
 assert.strictEqual(aquatic.terrainDriver, "aquatic", "water tiles should favor aquatic adaptation");
+assert.strictEqual(aquaticAgain, aquatic, "terrain pressure should cache base samples per tile coordinate");
 assert.ok(aquatic.target.waterDependency > 0.8, "aquatic pressure should favor water dependency");
 assert.strictEqual(desert.terrainDriver, "desert", "desert tiles should expose desert pressure");
 assert.ok(desert.target.thermalTolerance > lush.target.thermalTolerance, "desert should favor heat tolerance over lush terrain");
@@ -209,6 +202,10 @@ assert.ok(
   PS.sim.terrainPressure.getReproductionMultiplier(matchedDesertTraits, 5, 5) < 1,
   "matched difficult-terrain traits should favor faster reproduction"
 );
+var matchedDesertSample = PS.sim.terrainPressure.getMismatchSample(matchedDesertTraits, 5, 5);
+var mismatchedDesertSample = PS.sim.terrainPressure.getMismatchSample(mismatchedDesertTraits, 5, 5);
+assert.notStrictEqual(matchedDesertSample, desert, "terrain mismatch should not mutate cached base sample");
+assert.ok(mismatchedDesertSample.mismatch > matchedDesertSample.mismatch, "cached terrain samples should still compute trait-specific mismatch");
 
 PS.config.pools.maxOrganisms = 8;
 PS.config.pools.maxFoodParticles = 8;

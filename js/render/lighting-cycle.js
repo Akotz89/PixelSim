@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 
 PS.render.lightingCycle = PS.render.lightingCycle || (function () {
@@ -140,10 +143,10 @@ PS.render.lightingCycle = PS.render.lightingCycle || (function () {
     var night = timeOfDay >= 0.72 || timeOfDay < 0.04;
 
     if (night) {
-      return 0.16;
+      return 0.45;
     }
 
-    return clamp(0.22 + tilt * 0.34, 0.18, 0.58);
+    return clamp(0.45 + tilt * 0.20, 0.45, 0.65);
   }
 
   function getState(options) {
@@ -183,7 +186,7 @@ PS.render.lightingCycle = PS.render.lightingCycle || (function () {
       heightTintStrength: spec.heightTintStrength !== undefined ? Math.max(0, Number(spec.heightTintStrength) || 0) : clamp(0.05 + (1 - tilt) * 0.06, 0.05, 0.12),
       shadowLength: shadowLength,
       shadowStepScale: shadowLength / 1.4,
-      shadowAlphaScale: clamp(0.58 + (1 - tilt) * 0.48, 0.58, 1.06),
+      shadowAlphaScale: clamp(0.58 + (1 - tilt) * 0.42, 0.58, 1.0),
       nightFactor: nightFactor,
       indoorAmbient: [
         INDOOR_NIGHT[0] * (0.34 + nightFactor * 0.66),

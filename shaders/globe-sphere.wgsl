@@ -8,6 +8,8 @@ struct GlobeUniforms {
   center_radius: vec4<f32>,
   view_overlay: vec4<f32>,
   sun_direction: vec4<f32>,
+  lighting: vec4<f32>,
+  ambient_color: vec4<f32>,
 };
 
 @group(0) @binding(0) var terrain_texture: texture_2d<f32>;
@@ -49,6 +51,10 @@ fn ocean_mask(color: vec3<f32>) -> f32 {
   return smoothstep(0.04, 0.30, blue_bias);
 }
 
+fn hash2(value: vec2<f32>) -> f32 {
+  return fract(sin(dot(value, vec2<f32>(127.1, 311.7))) * 43758.5453123);
+}
+
 @fragment
 fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
   let screen = input.uv * globe.canvas_size;
@@ -77,6 +83,12 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
   // textureSample MUST be in uniform control flow — sample before any branch.
   var color = textureSample(terrain_texture, terrain_sampler, terrain_uv).rgb;
   let overlay = textureSample(overlay_texture, terrain_sampler, terrain_uv);
+  let terrain_cell = floor(terrain_uv * vec2<f32>(2048.0, 1024.0));
+  let broad_cell = floor(terrain_uv * vec2<f32>(384.0, 192.0));
+  let terrain_grain = hash2(terrain_cell);
+  let broad_grain = hash2(broad_cell);
+  let grain_shade = mix(0.86, 1.18, terrain_grain) + (broad_grain - 0.5) * 0.16;
+  color = color * grain_shade + vec3<f32>(broad_grain * 0.045, terrain_grain * 0.034, (1.0 - broad_grain) * 0.045);
 
   if (r2 > 1.0) {
     let halo = smoothstep(1.15, 1.0, sqrt(r2));
@@ -96,13 +108,17 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
   }
 
   let diffuse = max(dot(normal, sun_dir), 0.0);
+  let wrap = clamp(dot(normal, sun_dir) * 0.5 + 0.5, 0.0, 1.0);
+  let lit = clamp(globe.lighting.x, 0.0, 1.0) + diffuse * globe.lighting.y + wrap * globe.lighting.z;
+  let ambient_tint_luma = max(dot(globe.ambient_color.rgb, vec3<f32>(0.2126, 0.7152, 0.0722)), 0.01);
+  let ambient_hue_tint = clamp(globe.ambient_color.rgb / ambient_tint_luma, vec3<f32>(0.72), vec3<f32>(1.24));
+  let surface_exposure = max(clamp(lit, 0.20, 1.22), 0.68);
   let half_dir = normalize(sun_dir + view_dir);
   let specular = pow(max(dot(normal, half_dir), 0.0), 72.0) * water * smoothstep(0.04, 0.28, diffuse);
   let terminator = smoothstep(-0.16, 0.10, dot(normal, sun_dir)) * (1.0 - smoothstep(0.10, 0.34, dot(normal, sun_dir)));
-  let daylight = clamp(0.18 + diffuse * 0.84 + z * 0.08, 0.16, 1.10);
   let limb = clamp(pow(1.0 - z, 1.7), 0.0, 1.0);
   let rayleigh = pow(limb, 1.25) * (0.34 + diffuse * 0.28);
-  color *= daylight;
+  color *= ambient_hue_tint * surface_exposure;
   color = mix(color, TERMINATOR_WARM, terminator * limb * 0.18);
   color = mix(color, ATMOSPHERE_BLUE, rayleigh * 0.30);
   color += vec3<f32>(1.0, 0.95, 0.78) * specular * 0.42;

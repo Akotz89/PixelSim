@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.gpu = PS.gpu || {};
 
 PS.gpu.required = true;
@@ -118,6 +121,10 @@ PS.gpu.handleDeviceLost = function (info) {
     PS.world.isPaused = true;
   }
 
+  if (PS.render && PS.render.surfaceWorker && typeof PS.render.surfaceWorker.terminate === "function") {
+    PS.render.surfaceWorker.terminate("device-lost:" + reason);
+  }
+
   if (PS.events && typeof PS.events.emit === "function") {
     PS.events.emit(PS.events.types.RENDER_CONTEXT_LOST, { reason: reason });
   }
@@ -177,6 +184,10 @@ PS.gpu.initialize = function (canvas) {
 
     if (PS.events && typeof PS.events.emit === "function") {
       PS.events.emit(PS.events.types.RENDER_BACKEND_READY, { backend: "webgpu" });
+    }
+
+    if (PS.render && PS.render.canvasResize && typeof PS.render.canvasResize.start === "function") {
+      PS.render.canvasResize.start();
     }
 
     if (device.lost && typeof device.lost.then === "function") {

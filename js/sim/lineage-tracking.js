@@ -1,9 +1,14 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getTileManhattanDistance } from "../render/planet-grid.js";
+import { collectOrganismsInRadius } from "./organisms-indexes.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.sim = PS.sim || {};
 
-var LINEAGE_TRACK_HISTORY_LIMIT = 24;
-var LINEAGE_TRACK_EVENT_LIMIT = 12;
-var LINEAGE_TRACK_TRAIT_KEYS = [
+export var LINEAGE_TRACK_HISTORY_LIMIT = 24;
+export var LINEAGE_TRACK_EVENT_LIMIT = 12;
+export var LINEAGE_TRACK_TRAIT_KEYS = [
   "bodySize",
   "limbCount",
   "carnivory",
@@ -14,7 +19,7 @@ var LINEAGE_TRACK_TRAIT_KEYS = [
   "sociality"
 ];
 
-function ensureLineageTrackingState() {
+export function ensureLineageTrackingState() {
   if (!world.trackedLineage) {
     world.trackedLineage = null;
   }
@@ -22,11 +27,11 @@ function ensureLineageTrackingState() {
   return world.trackedLineage;
 }
 
-function normalizeTrackedLineageId(value) {
+export function normalizeTrackedLineageId(value) {
   return Math.max(1, Math.round(Number(value) || 1));
 }
 
-function getTrackedSpecies(speciesId) {
+export function getTrackedSpecies(speciesId) {
   if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function") {
     return PS.sim.speciation.getSpecies(speciesId);
   }
@@ -34,7 +39,7 @@ function getTrackedSpecies(speciesId) {
   return world.speciesById ? world.speciesById[String(normalizeTrackedLineageId(speciesId))] || null : null;
 }
 
-function getTrackedPopulation(populationId) {
+export function getTrackedPopulation(populationId) {
   if (PS.sim && PS.sim.representatives && typeof PS.sim.representatives.getPopulation === "function") {
     return PS.sim.representatives.getPopulation(populationId);
   }
@@ -42,7 +47,7 @@ function getTrackedPopulation(populationId) {
   return world.biologyPopulationById ? world.biologyPopulationById[String(normalizeTrackedLineageId(populationId))] || null : null;
 }
 
-function getTrackedRepresentative(representativeId) {
+export function getTrackedRepresentative(representativeId) {
   if (PS.sim && PS.sim.representatives && typeof PS.sim.representatives.getRepresentative === "function") {
     return PS.sim.representatives.getRepresentative(representativeId);
   }
@@ -50,12 +55,12 @@ function getTrackedRepresentative(representativeId) {
   return world.biologyRepresentativeById ? world.biologyRepresentativeById[String(normalizeTrackedLineageId(representativeId))] || null : null;
 }
 
-function getTrackedLineageRecord(lineageId) {
+export function getTrackedLineageRecord(lineageId) {
   var lineages = world.lineages || {};
   return lineages[String(normalizeTrackedLineageId(lineageId))] || null;
 }
 
-function copyTrackedTraits(traits) {
+export function copyTrackedTraits(traits) {
   var copy = {};
 
   for (var i = 0; i < LINEAGE_TRACK_TRAIT_KEYS.length; i++) {
@@ -66,7 +71,7 @@ function copyTrackedTraits(traits) {
   return copy;
 }
 
-function getDominantTraitLabels(traits) {
+export function getDominantTraitLabels(traits) {
   var scored = [];
 
   for (var i = 0; i < LINEAGE_TRACK_TRAIT_KEYS.length; i++) {
@@ -86,7 +91,7 @@ function getDominantTraitLabels(traits) {
   });
 }
 
-function getRangeFromTarget(species, population, representative) {
+export function getRangeFromTarget(species, population, representative) {
   if (species && species.range) {
     return species.range;
   }
@@ -126,7 +131,7 @@ function getRangeFromTarget(species, population, representative) {
   return null;
 }
 
-function getBiomeLabelForRange(range) {
+export function getBiomeLabelForRange(range) {
   if (!range || !Array.isArray(world.terrain) || world.terrain.length === 0) {
     return "-";
   }
@@ -142,7 +147,7 @@ function getBiomeLabelForRange(range) {
   return world.terrain[y * WORLD_WIDTH + x] === 1 ? "fertile" : "barren";
 }
 
-function firstFiniteNumber(values, fallback) {
+export function firstFiniteNumber(values, fallback) {
   for (var i = 0; i < values.length; i++) {
     var value = Number(values[i]);
 
@@ -154,7 +159,7 @@ function firstFiniteNumber(values, fallback) {
   return fallback;
 }
 
-function getTargetFromInput(target) {
+export function getTargetFromInput(target) {
   if (!target) {
     return null;
   }
@@ -206,7 +211,7 @@ function getTargetFromInput(target) {
   return null;
 }
 
-function makeTrackedLineage(target, options) {
+export function makeTrackedLineage(target, options) {
   var resolved = getTargetFromInput(target);
 
   if (!resolved) {
@@ -240,7 +245,7 @@ function makeTrackedLineage(target, options) {
   return world.trackedLineage;
 }
 
-function pinTrackedLineage(pinned) {
+export function pinTrackedLineage(pinned) {
   var tracked = ensureLineageTrackingState();
 
   if (!tracked) {
@@ -252,7 +257,7 @@ function pinTrackedLineage(pinned) {
   return tracked;
 }
 
-function eventMatchesTrackedLineage(event, tracked) {
+export function eventMatchesTrackedLineage(event, tracked) {
   var active = tracked || world.trackedLineage;
 
   if (!event || !active) {
@@ -288,7 +293,7 @@ function eventMatchesTrackedLineage(event, tracked) {
   return false;
 }
 
-function getTrackedEvents(tracked) {
+export function getTrackedEvents(tracked) {
   var active = tracked || world.trackedLineage;
   var events = Array.isArray(world.timelineEvents) ? world.timelineEvents : [];
   var matches = [];
@@ -309,7 +314,7 @@ function getTrackedEvents(tracked) {
   return matches.reverse();
 }
 
-function appendTrackedHistory(tracked, sample, force) {
+export function appendTrackedHistory(tracked, sample, force) {
   var last = tracked.history.length > 0 ? tracked.history[tracked.history.length - 1] : null;
 
   if (!force && last && last.tick === sample.tick) {
@@ -324,7 +329,7 @@ function appendTrackedHistory(tracked, sample, force) {
   }
 }
 
-function updateTrackedLineage(force) {
+export function updateTrackedLineage(force) {
   var tracked = ensureLineageTrackingState();
 
   if (!tracked) {
@@ -380,7 +385,7 @@ function updateTrackedLineage(force) {
   return tracked;
 }
 
-function getTrackedLineageSummary() {
+export function getTrackedLineageSummary() {
   var tracked = updateTrackedLineage(false);
 
   if (!tracked) {
@@ -403,7 +408,7 @@ function getTrackedLineageSummary() {
   };
 }
 
-function getTrackedPopulationTrend(tracked) {
+export function getTrackedPopulationTrend(tracked) {
   var history = tracked && tracked.history ? tracked.history : [];
 
   if (history.length < 2) {
@@ -425,7 +430,7 @@ function getTrackedPopulationTrend(tracked) {
   return "steady";
 }
 
-function getTrackedHighlightAt(tileX, tileY) {
+export function getTrackedHighlightAt(tileX, tileY) {
   var tracked = world.trackedLineage;
 
   if (!tracked) {
@@ -484,3 +489,4 @@ PS.sim.lineageTracking = {
   getEvents: getTrackedEvents,
   getHighlightAt: getTrackedHighlightAt
 };
+

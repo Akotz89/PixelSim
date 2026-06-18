@@ -1,4 +1,12 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, randomUnit } from "../core/utils.js";
+import { getClampedWorldY, getWrappedWorldX } from "./planet-grid.js";
+import { getPlanetProjection, getSurfaceMeterCoordinate, wrapPlanetLongitudeDelta } from "./planet-surface.js";
+import { ensureEntitySurfacePosition, getEntitySurfacePosition, getLatitudeDistanceKmPerDegree, getLatLonFromLocalOffset, getLongitudeDistanceKmPerDegree, getPlanetCircumferenceKm, getPlanetLatitudeForTile, getPlanetLatitudeScale, getPlanetLongitudeForTile, getPlanetPoleToPoleKm, getPlanetTileLatitudeStepDeg, getPlanetTileLongitudeStepDeg, getPlanetView, getPlanetViewScale, getRandomLatLonInTile, getTileFromLatLon, invalidatePlanetRenderCache, isGlobeRenderMode, isPlanetLocalView, normalizeLongitude, setEntitySurfacePosition, syncEntityTileFromSurfacePosition } from "./planet-view.js";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 PS.render.globe = PS.render.globe || {};
 

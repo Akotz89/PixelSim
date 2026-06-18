@@ -1,11 +1,12 @@
 "use strict";
-var PS = window.PS || {};
+const globalScope = typeof window !== "undefined" ? window : globalThis;
+export var PS = globalScope.PS || {};
 
 PS.meta = PS.meta || {};
 PS.meta.name = "Pixeldarium";
 PS.meta.version = PS.meta.version || "0.1.0";
 
-window.PS = PS;
+globalScope.PS = PS;
 
 PS.core = PS.core || {};
 PS.core.bootstrapScript = "js/core/namespace.js";
@@ -69,14 +70,15 @@ PS.core.manifest = [
   "js/render/planet-grid.js",
   "js/render/terrain-hydrology.js",
   "js/render/terrain-seeding.js",
-  "js/render/pipeline-compat.js",
   "js/render/renderer.js",
   "js/render/gpu.js",
+  "js/render/canvas-resize.js",
   "js/render/wgsl-shader-manager.js",
   "js/render/webgpu-targets.js",
   "js/render/webgpu-gbuffer.js",
   "js/render/lighting-cycle.js",
   "js/render/webgpu-compositor.js",
+  "js/render/webgpu-tile-lights.js",
   "js/render/webgpu-point-lights.js",
   "js/render/webgpu-water-displacement.js",
   "js/render/webgpu-entity.js",
@@ -88,8 +90,10 @@ PS.core.manifest = [
   "js/render/surface-tile-batcher.js",
   "js/render/webgpu-surface-tile.js",
   "js/render/webgpu-renderer.js",
+  "js/render/webgpu-pipeline.js",
   "js/sim/compute-harness.js",
   "js/sim/parameter-registry.js",
+  "js/sim/gpu-sim-runtime.js",
   "js/sim/heat-diffusion.js",
   "js/sim/lbm-ocean.js",
   "js/sim/thermohaline.js",
@@ -104,6 +108,7 @@ PS.core.manifest = [
   "wasm/pixeldarium-sim.js",
   "wasm/pixeldarium-sim.wasm.js",
   "js/sim/wasm-bridge.js",
+  "js/sim/sim-worker-client.js",
   "js/sim/coupling.js",
   "js/render/surface-worker-client.js",
   "js/render/surface-ecology.js",
@@ -111,6 +116,7 @@ PS.core.manifest = [
   "js/render/draw-order.js",
   "js/render/camera.js",
   "js/render/lod.js",
+  "js/render/proof-scenes.js",
   "js/render/projection.js",
   "js/render/surface-address.js",
   "js/render/surface-cache.js",
@@ -121,6 +127,7 @@ PS.core.manifest = [
   "js/render/surface-streaming.js",
   "js/render/surface-render-cache.js",
   "js/render/terrain.js",
+  "js/render/surface-base.js",
   "js/render/surface-landform.js",
   "js/render/surface-imagery.js",
   "js/render/surface-color.js",
@@ -148,10 +155,12 @@ PS.core.manifest = [
   "js/sim/tile-worker.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/sim/resource-registry.js",
   "js/sim/modifiers.js",
   "js/sim/trait-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
+  "js/sim/organism-ai.js",
   "js/sim/terrain-pressure.js",
   "js/sim/speciation.js",
   "js/sim/food-web.js",
@@ -222,8 +231,7 @@ PS.core.manifest = [
 PS.runtime = PS.runtime || {};
 PS.runtime.errors = PS.runtime.errors || [];
 PS.runtime.requiredFunctions = PS.runtime.requiredFunctions || [
-  "startGame",
-  "drawWorld",
+  "PS.init",
   "PS.gpu.initialize",
   "PS.sim.organisms.make",
   "PS.sim.settlements.update",

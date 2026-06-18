@@ -1,5 +1,14 @@
-"use strict";
-function saveWorldToIndexedDB() {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTileCenterLatLon, normalizeLongitude } from "../render/planet-view.js";
+import { makeFood } from "../sim/food-runtime.js";
+import { countSettlementClaimedTiles, getSettlementInfluenceRadius } from "../sim/settlements-state.js";
+import { openPixeldariumDatabase, PIXELDARIUM_SAVE_STORE } from "./persistence-db.js";
+import { createWorldSaveData } from "./persistence-save-data.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
+
+export function saveWorldToIndexedDB() {
   return openPixeldariumDatabase().then(function(db) {
     return new Promise(function(resolve, reject) {
       var saveData = createWorldSaveData();
@@ -21,11 +30,11 @@ function saveWorldToIndexedDB() {
   });
 }
 
-function validateWorldSaveData(saveData) {
+export function validateWorldSaveData(saveData) {
   return PS.systems.saveMigration.validate(saveData);
 }
 
-function restoreFood(food) {
+export function restoreFood(food) {
   var tileX = clamp(Math.round(restoreNumber(food.x, 0)), 0, WORLD_WIDTH - 1);
   var tileY = clamp(Math.round(restoreNumber(food.y, 0)), 0, WORLD_HEIGHT - 1);
   var restoredFood = makeFood(tileX, tileY);
@@ -36,12 +45,12 @@ function restoreFood(food) {
   return restoredFood;
 }
 
-function restoreNumber(value, fallback) {
+export function restoreNumber(value, fallback) {
   var numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
-function getRestoredSurfacePosition(source, tileX, tileY) {
+export function getRestoredSurfacePosition(source, tileX, tileY) {
   var latitude = Number(source && source.latitude);
   var longitude = Number(source && source.longitude);
 
@@ -55,15 +64,15 @@ function getRestoredSurfacePosition(source, tileX, tileY) {
   return getPlanetTileCenterLatLon(tileX, tileY);
 }
 
-function restoreClampedNumber(value, fallback, minValue, maxValue) {
+export function restoreClampedNumber(value, fallback, minValue, maxValue) {
   return clamp(restoreNumber(value, fallback), minValue, maxValue);
 }
 
-function restoreOrganismTraits(traits) {
+export function restoreOrganismTraits(traits) {
   return PS.core.traitSchema.restore(traits);
 }
 
-function restoreLineageRecord(lineage) {
+export function restoreLineageRecord(lineage) {
   lineage = lineage || {};
 
   var id = Math.max(1, Math.round(restoreNumber(lineage.id, 1)));
@@ -90,7 +99,7 @@ function restoreLineageRecord(lineage) {
   return record;
 }
 
-function restoreLineages(lineages) {
+export function restoreLineages(lineages) {
   var restoredLineages = {};
 
   if (!Array.isArray(lineages)) {
@@ -109,7 +118,7 @@ function restoreLineages(lineages) {
   return restoredLineages;
 }
 
-function restoreSettlement(settlement) {
+export function restoreSettlement(settlement) {
   settlement = settlement || {};
 
   var restoredSettlement = {
@@ -165,7 +174,7 @@ function restoreSettlement(settlement) {
   return restoredSettlement;
 }
 
-function restoreSettlements(settlements) {
+export function restoreSettlements(settlements) {
   if (!Array.isArray(settlements)) {
     return [];
   }
@@ -173,7 +182,7 @@ function restoreSettlements(settlements) {
   return settlements.map(restoreSettlement);
 }
 
-function restoreSettlementRoute(route) {
+export function restoreSettlementRoute(route) {
   route = route || {};
 
   var restoredRoute = {
@@ -195,7 +204,7 @@ function restoreSettlementRoute(route) {
   return restoredRoute;
 }
 
-function restoreSettlementRoutes(routes) {
+export function restoreSettlementRoutes(routes) {
   if (!Array.isArray(routes)) {
     return [];
   }
@@ -203,7 +212,7 @@ function restoreSettlementRoutes(routes) {
   return routes.map(restoreSettlementRoute);
 }
 
-function restoreOrbitalAsset(asset) {
+export function restoreOrbitalAsset(asset) {
   asset = asset || {};
 
   var restoredAsset = {
@@ -223,7 +232,7 @@ function restoreOrbitalAsset(asset) {
   return restoredAsset;
 }
 
-function restoreOrbitalAssets(assets) {
+export function restoreOrbitalAssets(assets) {
   if (!Array.isArray(assets)) {
     return [];
   }
@@ -231,7 +240,7 @@ function restoreOrbitalAssets(assets) {
   return assets.map(restoreOrbitalAsset);
 }
 
-function restorePlanetaryBody(body) {
+export function restorePlanetaryBody(body) {
   body = body || {};
 
   var id = Math.max(1, Math.round(restoreNumber(body.id, world.nextPlanetaryBodyId)));
@@ -251,3 +260,4 @@ function restorePlanetaryBody(body) {
 
   return restoredBody;
 }
+

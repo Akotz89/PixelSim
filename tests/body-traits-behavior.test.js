@@ -1,13 +1,28 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
+const configData = JSON.parse(fs.readFileSync(path.join(root, "data/config.json"), "utf8"));
 
 function read(file) {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
+
+[
+  "TRAIT_BODY_SIZE_MUTATION_STEP",
+  "TRAIT_LIMB_COUNT_MUTATION_STEP",
+  "TRAIT_BODY_SHAPE_MUTATION_STEP",
+  "TRAIT_APPENDAGE_TYPE_MUTATION_STEP",
+  "TRAIT_CAMOUFLAGE_MUTATION_STEP",
+  "TRAIT_THERMAL_TOLERANCE_MUTATION_STEP",
+  "TRAIT_WATER_DEPENDENCY_MUTATION_STEP"
+].forEach(function(key) {
+  assert.ok(Number.isFinite(configData.values[key]), "data/config.json should include " + key);
+  assert.ok(configData.values[key] > 0, key + " should allow body/visual trait mutation");
+});
 
 function makeElement() {
   return {
@@ -63,6 +78,7 @@ const source = [
   "js/sim/food.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
+  "js/sim/organism-ai.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -212,6 +228,61 @@ PS.sim.organisms.update(slowMover);
 PS.sim.organisms.update(fastMover);
 assert.strictEqual(slowMover.x, 30, "limbCount=0 organism should not cross a 100km tile in one tick");
 assert.strictEqual(fastMover.x, 41, "limbCount=12 organism should move faster and cross a 100km tile in one tick");
+
+var originalMutationChance = CONFIG.TRAIT_MUTATION_CHANCE;
+CONFIG.TRAIT_MUTATION_CHANCE = 0;
+var inheritedFromCorruptParent = PS.sim.evolution.inheritTraits({
+  vision: NaN,
+  metabolism: Infinity,
+  reproductionEnergy: -Infinity,
+  movementTendency: "bad",
+  terrainAffinity: undefined,
+  intelligence: null,
+  sociality: 0.5,
+  carnivory: 0.25,
+  bodySize: NaN,
+  limbCount: Infinity,
+  bodyShape: -Infinity,
+  appendageType: "bad",
+  camouflage: undefined,
+  thermalTolerance: null,
+  waterDependency: 0.75
+});
+CONFIG.TRAIT_MUTATION_CHANCE = originalMutationChance;
+PS.core.traitSchema.getKeys().forEach(function(key) {
+  assert.ok(Number.isFinite(inheritedFromCorruptParent[key]), "evolution inheritance should sanitize " + key);
+});
+assert.strictEqual(inheritedFromCorruptParent.vision, CONFIG.TRAIT_VISION_DEFAULT, "NaN parent vision should fall back to default before mutation");
+assert.strictEqual(inheritedFromCorruptParent.metabolism, CONFIG.TRAIT_METABOLISM_DEFAULT, "Infinity parent metabolism should fall back to default before mutation");
+assert.strictEqual(inheritedFromCorruptParent.reproductionEnergy, CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT, "negative Infinity parent reproduction energy should fall back to default before mutation");
+
+var divergenceParent = normalizeOrganismTraits({});
+var divergenceChild = Object.assign({}, divergenceParent, {
+  bodySize: divergenceParent.bodySize + CONFIG.TRAIT_BODY_SIZE_MUTATION_STEP,
+  limbCount: divergenceParent.limbCount + CONFIG.TRAIT_LIMB_COUNT_MUTATION_STEP,
+  bodyShape: divergenceParent.bodyShape + CONFIG.TRAIT_BODY_SHAPE_MUTATION_STEP,
+  appendageType: divergenceParent.appendageType + CONFIG.TRAIT_APPENDAGE_TYPE_MUTATION_STEP,
+  camouflage: divergenceParent.camouflage + CONFIG.TRAIT_CAMOUFLAGE_MUTATION_STEP,
+  thermalTolerance: divergenceParent.thermalTolerance + CONFIG.TRAIT_THERMAL_TOLERANCE_MUTATION_STEP,
+  waterDependency: divergenceParent.waterDependency + CONFIG.TRAIT_WATER_DEPENDENCY_MUTATION_STEP
+});
+assert.ok(
+  PS.sim.evolution.divergenceScore(divergenceParent, divergenceChild) >= 7,
+  "trait divergence should include body and visual traits"
+);
+
+var originalNormalizeOrganismTraits = normalizeOrganismTraits;
+var normalizeCallCount = 0;
+normalizeOrganismTraits = function(traits) {
+  normalizeCallCount++;
+  return originalNormalizeOrganismTraits(traits);
+};
+var cachedOrganism = { traits: { vision: NaN } };
+ensureOrganismTraits(cachedOrganism);
+ensureOrganismTraits(cachedOrganism);
+normalizeOrganismTraits = originalNormalizeOrganismTraits;
+assert.strictEqual(normalizeCallCount, 1, "ensureOrganismTraits should normalize once for an unchanged organism");
+assert.strictEqual(cachedOrganism.traitsNormalized, true, "ensureOrganismTraits should mark normalized trait objects");
 
 console.log("body trait behavior checks passed");
 `, context);

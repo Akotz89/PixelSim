@@ -1,7 +1,9 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+
 PS.systems = PS.systems || {};
 
-function definePooledNumber(target, name, arrays, key, index) {
+export function definePooledNumber(target, name, arrays, key, index) {
   Object.defineProperty(target, name, {
     enumerable: true,
     configurable: false,
@@ -14,7 +16,7 @@ function definePooledNumber(target, name, arrays, key, index) {
   });
 }
 
-function definePooledTrait(target, name, arrays, key, index) {
+export function definePooledTrait(target, name, arrays, key, index) {
   var offset = PS.core.traitSchema.getOffset(key);
   var stride = PS.core.traitSchema.getStride();
 
@@ -33,7 +35,7 @@ function definePooledTrait(target, name, arrays, key, index) {
   });
 }
 
-function makeOrganismArrays(capacity) {
+export function makeOrganismArrays(capacity) {
   var arrays = {
     active: new Uint8Array(capacity),
     traitBuffer: new Float32Array(capacity * PS.core.traitSchema.getStride()),
@@ -85,7 +87,7 @@ function makeOrganismArrays(capacity) {
   return arrays;
 }
 
-function createOrganismFacade(index, arrays) {
+export function createOrganismFacade(index, arrays) {
   var traits = {};
   var organism = {
     poolIndex: index,
@@ -143,7 +145,7 @@ function createOrganismFacade(index, arrays) {
   return organism;
 }
 
-function createFoodParticle(index) {
+export function createFoodParticle(index) {
   return {
     poolIndex: index,
     active: false,
@@ -154,7 +156,7 @@ function createFoodParticle(index) {
   };
 }
 
-function createFreeList(capacity) {
+export function createFreeList(capacity) {
   var freeList = new Int32Array(capacity);
 
   for (var i = 0; i < capacity; i++) {
@@ -164,7 +166,7 @@ function createFreeList(capacity) {
   return freeList;
 }
 
-function createOrganismPool(capacity) {
+export function createOrganismPool(capacity) {
   var arrays = makeOrganismArrays(capacity);
   var facades = [];
 
@@ -213,7 +215,7 @@ function createOrganismPool(capacity) {
   };
 }
 
-function estimateOrganismPoolBytes(pool) {
+export function estimateOrganismPoolBytes(pool) {
   var arrays = pool && pool.arrays ? pool.arrays : {};
   var keys = Object.keys(arrays);
   var bytes = 0;
@@ -227,7 +229,7 @@ function estimateOrganismPoolBytes(pool) {
   return bytes;
 }
 
-function createFoodPool(capacity) {
+export function createFoodPool(capacity) {
   var particles = [];
   var freeList = createFreeList(capacity);
 
@@ -322,3 +324,4 @@ PS.pools = {
 };
 
 PS.systems.pools = PS.pools;
+

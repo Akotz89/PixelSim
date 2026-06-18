@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -96,7 +97,6 @@ const source = [
   "js/render/planet-grid.js",
   "js/render/terrain-hydrology.js",
   "js/render/terrain-seeding.js",
-  "js/render/pipeline-compat.js",
   "js/render/wgsl-shader-manager.js",
   "js/render/gpu.js",
   "js/render/webgpu-targets.js",
@@ -122,6 +122,7 @@ const source = [
   "js/render/surface-streaming.js",
   "js/render/surface-render-cache.js",
   "js/render/terrain.js",
+  "js/render/surface-base.js",
   "js/render/surface-landform.js",
   "js/render/surface-imagery.js",
   "js/render/surface-color.js",
@@ -238,6 +239,19 @@ assertNear(zoomTransitionStats.lastZoomFrom, initialZoom, 1e-12, "anchored zoom 
 assert.strictEqual(zoomTransitionStats.lastZoomTo, initialZoom + 1, "anchored zoom should record integer target zoom");
 assert.ok(zoomTransitionStats.lastZoomAnchorErrorDeg <= 1e-8, "anchored zoom should record negligible cursor drift");
 assert.ok(zoomTransitionStats.lastZoomPreloadSurfaceLodIndex >= getPlanetSurfaceLodZoomIndex(initialZoom), "anchored zoom should record a forward preload LOD target");
+
+world.planetView = {
+  zoomLevel: 0,
+  latitude: 12.5,
+  longitude: -44.25,
+  panEastMeters: 0,
+  panNorthMeters: 0
+};
+PS.camera.stopInertia();
+assert.ok(PS.camera.setZoomAtCanvasPoint(1, cursorX, cursorY), "globe wheel-style zoom should accept off-center cursor input");
+assertNear(getPlanetView().latitude, 12.5, 1e-12, "globe zoom should not rotate latitude toward cursor");
+assertNear(getPlanetView().longitude, -44.25, 1e-12, "globe zoom should not rotate longitude toward cursor");
+assert.strictEqual(PS.camera.getZoomTransitionStats().lastZoomAnchorErrorDeg, 0, "globe zoom should report center-dolly mode, not cursor-anchor drift");
 
 world.planetView = {
   zoomLevel: initialZoom,
@@ -381,17 +395,21 @@ PS.render.renderer.drawTilemap = function (payload) {
   drawnTilemapPayload = payload;
   return true;
 };
-assert.strictEqual(PS.render.terrain.drawLocalSurface(1), true, "progressive local surface draw should submit ready chunks");
+assert.strictEqual(PS.render.terrain.drawLocalSurface(1), false, "progressive local surface draw should hold partial child chunks behind the stable underlay");
 var progressiveRenderStats = PS.render.surfaceRender.getCacheStats();
-assert.ok(drawnTilemapPayload && Array.isArray(drawnTilemapPayload.chunks), "local terrain draw should submit chunk batches to the renderer");
+assert.strictEqual(drawnTilemapPayload, null, "local terrain draw should not submit isolated child patches when visible coverage is incomplete");
 assert.ok(progressiveRenderStats.lastVisibleChunks > 1, "progressive draw should enumerate multiple visible chunks");
 assert.ok(progressiveRenderStats.lastGeneratedThisPass <= 1, "progressive draw should honor the per-pass generation budget");
 assert.ok(
   progressiveRenderStats.lastPendingChunks > 0,
   "progressive draw should track pending visible chunks " + JSON.stringify(progressiveRenderStats)
 );
-assert.ok(progressiveRenderStats.lastFallbackChunks > 0, "pending chunks should draw coarser parent fallback chunks");
-assert.ok(progressiveRenderStats.lastFallbackGeneratedThisPass <= 2, "parent fallback generation should honor its budget");
+assert.ok(progressiveRenderStats.lastReadyChunks > 0, "progressive draw should detect ready visible child chunks");
+assert.ok(progressiveRenderStats.lastHiddenReadyChunks > 0, "progressive draw should hide ready children until visible coverage is complete");
+assert.strictEqual(progressiveRenderStats.lastDrawnReadyChunks, 0, "partial child detail should not draw as an isolated square patch");
+assert.strictEqual(progressiveRenderStats.lastVisibleCoverageComplete, false, "incomplete visible child coverage should be explicit");
+assert.ok(progressiveRenderStats.lastCoveredByUnderlayChunks > 0, "stable underlay should cover hidden or pending child chunks");
+assert.strictEqual(progressiveRenderStats.lastFallbackGeneratedThisPass, 0, "local tilemap draw should leave continuity to the stable underlay");
 assert.strictEqual(world.needsRender, true, "pending chunks should schedule another render pass");
 CONFIG.PLANET_SURFACE_RENDER_CHUNKS_PER_PASS = originalChunksPerPass;
 CONFIG.PLANET_SURFACE_RENDER_IDLE_CHUNKS_PER_PASS = originalIdleChunksPerPass;

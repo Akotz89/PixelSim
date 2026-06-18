@@ -6,6 +6,8 @@ struct EntityUniforms {
 struct EntityInstance {
   rect: vec4<f32>,
   uv_rect: vec4<f32>,
+  normal_uv_rect: vec4<f32>,
+  material_uv_rect: vec4<f32>,
   tint: vec4<f32>,
 };
 
@@ -13,6 +15,8 @@ struct VertexOut {
   @builtin(position) position: vec4<f32>,
   @location(0) uv: vec2<f32>,
   @location(1) tint: vec4<f32>,
+  @location(2) normal_uv: vec2<f32>,
+  @location(3) material_uv: vec2<f32>,
 };
 
 struct GBufferEntityOut {
@@ -48,6 +52,8 @@ fn vs_main(
   var out: VertexOut;
   out.position = vec4<f32>(clip, 0.0, 1.0);
   out.uv = mix(inst.uv_rect.xy, inst.uv_rect.zw, corner);
+  out.normal_uv = mix(inst.normal_uv_rect.xy, inst.normal_uv_rect.zw, corner);
+  out.material_uv = mix(inst.material_uv_rect.xy, inst.material_uv_rect.zw, corner);
   out.tint = inst.tint;
   return out;
 }
@@ -62,11 +68,15 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
 fn fs_gbuffer(input: VertexOut) -> GBufferEntityOut {
   let color = textureSample(atlas_texture, atlas_sampler, input.uv);
   let alpha = color.a * input.tint.a;
-  let normal_sample = textureSample(atlas_texture, atlas_sampler, vec2<f32>(fract(input.uv.x + 0.5), input.uv.y));
-  let slope = clamp((normal_sample.rg - vec2<f32>(0.5, 0.5)) * 0.36, vec2<f32>(-0.38, -0.38), vec2<f32>(0.38, 0.38));
+  let normal_sample = textureSample(atlas_texture, atlas_sampler, input.normal_uv);
+  let material_sample = textureSample(atlas_texture, atlas_sampler, input.material_uv);
+  let packed_height = clamp(material_sample.r, 0.0, 1.0);
+  let material_coverage = clamp(material_sample.a, 0.0, 1.0);
+  let height_relief = (packed_height - 0.5) * 0.10;
+  let slope = clamp((normal_sample.rg - vec2<f32>(0.5, 0.5)) * (0.36 + height_relief), vec2<f32>(-0.38, -0.38), vec2<f32>(0.38, 0.38));
   let normal = normalize(vec3<f32>(slope.x, slope.y, 1.0));
   var out: GBufferEntityOut;
-  out.albedo = vec4<f32>(color.rgb * input.tint.rgb, alpha);
-  out.normal_height = vec4<f32>(normal.xy * 0.5 + vec2<f32>(0.5, 0.5), normal.z * 0.5 + 0.5, alpha);
+  out.albedo = vec4<f32>(color.rgb * input.tint.rgb, alpha * material_coverage);
+  out.normal_height = vec4<f32>(normal.xy * 0.5 + vec2<f32>(0.5, 0.5), normal.z * 0.5 + 0.5, alpha * material_coverage);
   return out;
 }

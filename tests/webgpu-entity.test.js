@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 function nearly(actual, expected) {
   return Math.abs(Number(actual) - Number(expected)) < 0.00001;
@@ -62,7 +53,7 @@ assert.ok(
   "organism render energy buckets should use CONFIG thresholds"
 );
 
-["sprite-batch", "entity-atlas", "particle", "shadow"].forEach(function (name) {
+["sprite-batch", "entity-atlas", "particle", "shadow", "sprite-displace"].forEach(function (name) {
   const shaderPath = path.join(root, "shaders", name + ".wgsl");
   const sidecarPath = shaderPath + ".js";
   const shader = fs.readFileSync(shaderPath, "utf8");
@@ -74,6 +65,18 @@ assert.ok(
   if (name === "entity-atlas") {
     assert.ok(shader.indexOf("fn fs_gbuffer") >= 0, "entity atlas shader should expose a G-buffer fragment entry");
     assert.ok(shader.indexOf("@location(1) normal_height") >= 0, "entity atlas G-buffer entry should write normal/height MRT output");
+    assert.ok(shader.indexOf("normal_uv_rect: vec4<f32>") >= 0, "entity atlas instances should carry an explicit normal UV rect");
+    assert.ok(shader.indexOf("material_uv_rect: vec4<f32>") >= 0, "entity atlas instances should carry an explicit material UV rect");
+    assert.ok(shader.indexOf("input.normal_uv") >= 0, "entity atlas G-buffer should sample normals from explicit normal UVs");
+    assert.ok(shader.indexOf("input.material_uv") >= 0, "entity atlas G-buffer should sample packed material channels from explicit material UVs");
+    assert.ok(shader.indexOf("packed_height") >= 0, "entity atlas G-buffer should consume packed material height");
+    assert.ok(shader.indexOf("material_coverage") >= 0, "entity atlas G-buffer should consume packed material coverage");
+    assert.strictEqual(shader.indexOf("fract(input.uv.x + 0.5)"), -1, "entity atlas normals must not wrap UVs across atlas midpoint");
+  } else if (name === "sprite-displace") {
+    assert.ok(shader.indexOf("struct DisplacementInstance") >= 0, "sprite displacement shader should define displacement instances");
+    assert.ok(shader.indexOf("source_radius") >= 0, "sprite displacement shader should carry a source and radius");
+    assert.ok(shader.indexOf("distance_to_source") >= 0, "sprite displacement shader should scale by distance from source");
+    assert.ok(shader.indexOf("displacement_texture") >= 0, "sprite displacement shader should use a displacement texture function");
   }
   assert.ok(sidecar.indexOf(globalName) >= 0, name + " sidecar should expose the expected global");
   assert.ok(sidecar.indexOf(JSON.stringify(shader)) >= 0, name + " sidecar should embed raw WGSL");
@@ -176,6 +179,10 @@ const atlasPage = {
 };
 const foodCell = { name: "entity.food.test", pageIndex: 0, x: 0, y: 0, w: 16, h: 16, u0: 0, v0: 0, u1: 0.25, v1: 0.25 };
 const organismCell = { name: "entity.organism.test", pageIndex: 0, x: 16, y: 0, w: 16, h: 16, u0: 0.25, v0: 0, u1: 0.5, v1: 0.25 };
+const rabbitSouthCell = { name: "equivalence.creature.rabbit.s", sourceCellName: "rabbit.s", pageIndex: 0, x: 0, y: 0, w: 16, h: 16, u0: 0, v0: 0, u1: 0.25, v1: 0.25 };
+const rabbitEastCell = { name: "equivalence.creature.rabbit.e", sourceCellName: "rabbit.e", pageIndex: 0, x: 16, y: 0, w: 16, h: 16, u0: 0.25, v0: 0, u1: 0.5, v1: 0.25 };
+const rabbitWestCell = { name: "equivalence.creature.rabbit.w", sourceCellName: "rabbit.w", pageIndex: 0, x: 32, y: 0, w: 16, h: 16, u0: 0.5, v0: 0, u1: 0.75, v1: 0.25 };
+const rabbitNorthCell = { name: "equivalence.creature.rabbit.n", sourceCellName: "rabbit.n", pageIndex: 0, x: 48, y: 0, w: 16, h: 16, u0: 0.75, v0: 0, u1: 1, v1: 0.25 };
 const settlementCell = { name: "entity.settlement.test", pageIndex: 0, x: 32, y: 0, w: 16, h: 16, u0: 0.5, v0: 0, u1: 0.75, v1: 0.25 };
 const routeCell = { name: "entity.route.test", pageIndex: 0, x: 48, y: 0, w: 16, h: 16, u0: 0.75, v0: 0, u1: 1, v1: 0.25 };
 const influenceCell = { name: "entity.influence.test", pageIndex: 0, x: 0, y: 16, w: 16, h: 16, u0: 0, v0: 0.25, u1: 0.25, v1: 0.5 };
@@ -183,12 +190,14 @@ const readinessCell = { name: "entity.readiness.test", pageIndex: 0, x: 16, y: 1
 const intentCell = { name: "entity.intent.test", pageIndex: 0, x: 32, y: 16, w: 16, h: 16, u0: 0.5, v0: 0.25, u1: 0.75, v1: 0.5 };
 const eventCell = { name: "entity.event.test", pageIndex: 0, x: 48, y: 16, w: 16, h: 16, u0: 0.75, v0: 0.25, u1: 1, v1: 0.5 };
 const worldUiCell = { name: "entity.world-ui.test", pageIndex: 0, x: 0, y: 32, w: 16, h: 16, u0: 0, v0: 0.5, u1: 0.25, v1: 0.75 };
+const populationClusterCell = { name: "entity.population.test", pageIndex: 0, x: 32, y: 16, w: 16, h: 16, u0: 0.5, v0: 0.25, u1: 0.75, v1: 0.5 };
 const stockpileCell = { name: "equivalence.stockpile.test", pageIndex: 0, x: 16, y: 32, w: 16, h: 16, u0: 0.25, v0: 0.5, u1: 0.5, v1: 0.75 };
 const vegetationCell = { name: "equivalence.vegetation.test", pageIndex: 0, x: 32, y: 32, w: 16, h: 16, u0: 0.5, v0: 0.5, u1: 0.75, v1: 0.75 };
 const citizenCell = { name: "equivalence.citizen.test", pageIndex: 0, x: 48, y: 32, w: 16, h: 16, u0: 0.75, v0: 0.5, u1: 1, v1: 0.75 };
 const workStatusCell = { name: "equivalence.work-status.test", pageIndex: 0, x: 0, y: 48, w: 16, h: 16, u0: 0, v0: 0.75, u1: 0.25, v1: 1 };
 const effectCell = { name: "equivalence.effect.test", pageIndex: 0, x: 16, y: 48, w: 16, h: 16, u0: 0.25, v0: 0.75, u1: 0.5, v1: 1 };
 let traitOrganismCellCalls = 0;
+let creatureCellCalls = 0;
 
 const context = {
   PS: {
@@ -232,6 +241,21 @@ const context = {
           this.stats.byUse[use] = (this.stats.byUse[use] || 0) + 1;
           return cell ? { renderCell: cell } : null;
         },
+        selectCell(family, cellName) {
+          const creatureCells = {
+            "rabbit.s": rabbitSouthCell,
+            "rabbit.e": rabbitEastCell,
+            "rabbit.w": rabbitWestCell,
+            "rabbit.n": rabbitNorthCell
+          };
+          const cell = family === "creatures" ? creatureCells[cellName] || null : null;
+
+          if (family === "creatures") {
+            creatureCellCalls += 1;
+          }
+
+          return cell ? { renderCell: cell } : null;
+        },
         getStats() {
           return {
             selected: this.stats.selected,
@@ -256,6 +280,7 @@ const context = {
         "entity.intent.test": intentCell,
         "entity.event.test": eventCell,
         "entity.world-ui.test": worldUiCell,
+        "entity.population.test": populationClusterCell,
         "equivalence.stockpile.test": stockpileCell,
         "equivalence.vegetation.test": vegetationCell,
         "equivalence.citizen.test": citizenCell,
@@ -305,6 +330,9 @@ const context = {
       },
       getRepresentativeIntentCell() {
         return intentCell;
+      },
+      getPopulationClusterCell() {
+        return populationClusterCell;
       },
       getOrbitEventMarkerCell() {
         return eventCell;
@@ -382,13 +410,13 @@ vm.runInContext(entitySource, context, { filename: "js/render/webgpu-entity.js" 
 vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js" });
 vm.runInContext(entitiesSource, context, { filename: "js/render/entities.js" });
 
-["sprite-batch", "entity-atlas", "particle", "shadow"].forEach(function (name) {
+["sprite-batch", "entity-atlas", "particle", "shadow", "sprite-displace"].forEach(function (name) {
   context.PS.render.wgslShaders.register(name, read("shaders/" + name + ".wgsl"), { path: "shaders/" + name + ".wgsl" });
 });
 context.PS.render.wgslShaders.register("gbuffer-compose", gbufferComposeWgsl, { path: "shaders/gbuffer-compose.wgsl" });
 
 context.PS.render.webgpuEntity.registerManifest();
-["sprite-batch", "entity-atlas", "particle", "shadow"].forEach(function (name) {
+["sprite-batch", "entity-atlas", "particle", "shadow", "sprite-displace"].forEach(function (name) {
   assert.ok(
     context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === name; }),
     name + " should be registered in the WGSL startup manifest"
@@ -398,6 +426,67 @@ context.PS.render.webgpuEntity.registerManifest();
 const batches = context.PS.render.webgpuEntity.beginBatches();
 context.PS.render.webgpuEntity.appendCell(batches, foodCell, 10, 20, 6, 6, 0.75, null, "food");
 context.PS.render.webgpuEntity.appendCell(batches, organismCell, 40, 50, 8, 8, 1, null, "organism");
+const splitUvRects = context.PS.render.webgpuEntity.getCellUvRects({
+  name: "entity.cross-midpoint.test",
+  pageIndex: 0,
+  x: 24,
+  y: 0,
+  w: 32,
+  h: 16,
+  u0: 0.375,
+  v0: 0,
+  u1: 0.5,
+  v1: 0.0625
+});
+assert.deepStrictEqual(
+  Array.from(splitUvRects.diffuse),
+  [0.375, 0, 0.625, 0.25],
+  "split entity diffuse UVs should stay in the sprite's left half"
+);
+assert.deepStrictEqual(
+  Array.from(splitUvRects.normal),
+  [0.625, 0, 0.875, 0.25],
+  "split entity normal UVs should stay in the sprite's right half without wrapping"
+);
+const explicitNormalUvRects = context.PS.render.webgpuEntity.getCellUvRects({
+  name: "entity.explicit-normal-rect.test",
+  pageIndex: 0,
+  x: 8,
+  y: 16,
+  w: 16,
+  h: 16,
+  normalX: 40,
+  normalY: 32,
+  normalW: 16,
+  normalH: 16
+});
+assert.deepStrictEqual(
+  Array.from(explicitNormalUvRects.diffuse),
+  [0.125, 0.25, 0.375, 0.5],
+  "entity diffuse UVs should use the authored albedo rect"
+);
+assert.deepStrictEqual(
+  Array.from(explicitNormalUvRects.normal),
+  [0.625, 0.5, 0.875, 0.75],
+  "entity normal UVs should use the explicit atlas normal rect"
+);
+const explicitMaterialUvRect = context.PS.render.webgpuEntity.getCellMaterialUvRect({
+  name: "entity.explicit-material-rect.test",
+  pageIndex: 0,
+  x: 8,
+  y: 16,
+  w: 16,
+  h: 16,
+  materialX: 48,
+  materialY: 16,
+  materialW: 16,
+  materialH: 16
+});
+assert.deepStrictEqual(
+  Array.from(explicitMaterialUvRect),
+  [0.75, 0.25, 1, 0.5],
+  "entity material UVs should use the explicit packed material rect"
+);
 assert.strictEqual(context.PS.render.webgpuEntity.drawBatches(batches), true, "WebGPU entity renderer should draw atlas batches");
 
 const instanceBuffer = fakeDevice.buffers.find(function (buffer) {
@@ -406,6 +495,13 @@ const instanceBuffer = fakeDevice.buffers.find(function (buffer) {
 assert.ok(instanceBuffer, "entity renderer should allocate a storage instance buffer");
 assert.strictEqual(instanceBuffer.descriptor.usage, 128 | 8, "entity instance buffer should be storage plus copy-dst");
 assert.ok(fakeDevice.writes.some(function (write) { return write.buffer === instanceBuffer; }), "entity renderer should upload instance data with queue.writeBuffer");
+const entityInstanceWrite = fakeDevice.writes.find(function (write) { return write.buffer === instanceBuffer; });
+assert.strictEqual(entityInstanceWrite.data.length % 20, 0, "entity instance uploads should use the 20-float diffuse+normal+material stride");
+assert.deepStrictEqual(
+  Array.from(entityInstanceWrite.data.slice(12, 16)),
+  [0, 0, 0.25, 0.25],
+  "entity instance upload should include material UV rects before tint"
+);
 assert.deepStrictEqual(fakePasses[0].draws[0], [4, 2, 0, 0], "entity renderer should draw a fullscreen quad per instance");
 assert.strictEqual(fakeDevice.bindGroups[0].descriptor.entries[3].resource.buffer, instanceBuffer, "entity bind group should expose instance storage at binding 3");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().frameInstanceDrawCount, 2, "entity stats should count frame instances");
@@ -452,7 +548,9 @@ let organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
 assert.strictEqual(organismPerfStats.lastOrganismRenderCount, 1, "organism render perf should count rendered candidates");
 assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 1, "first organism render should populate the sprite cache");
 assert.strictEqual(organismPerfStats.lastAnimationSeedComputes, 1, "first organism render should precompute a stable animation seed");
-assert.strictEqual(traitOrganismCellCalls, 1, "first organism render should resolve one atlas cell");
+assert.strictEqual(traitOrganismCellCalls, 0, "authored organism render should not fall through to procedural morphology cells");
+assert.strictEqual(creatureCellCalls, 3, "first organism render should resolve the authored directional creature cell");
+assert.strictEqual(context.world.organisms[0]._renderSpriteCache.cell.name, "equivalence.creature.rabbit.s", "idle organism render should use the south-facing authored idle cell");
 
 context.PS.render.webgpuEntity.resetFrameStats();
 assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "cached organism facade should still render through WebGPU entity batches");
@@ -461,7 +559,8 @@ assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1, "unchanged organism
 assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "unchanged organism render should not recompute sprite variant");
 assert.strictEqual(organismPerfStats.lastAnimationSeedComputes, 0, "unchanged organism render should reuse precomputed animation seed");
 assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "steady-state organism render GC pressure should stay below 10,000 objects/sec");
-assert.strictEqual(traitOrganismCellCalls, 1, "unchanged organism render should not call atlas variant resolution again");
+assert.strictEqual(traitOrganismCellCalls, 0, "unchanged authored organism render should not call procedural atlas variant resolution");
+assert.strictEqual(creatureCellCalls, 3, "unchanged authored organism render should reuse the cached directional cell");
 
 context.world.organisms[0].energy = 250;
 context.PS.render.webgpuEntity.resetFrameStats();
@@ -469,8 +568,39 @@ assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "non-visual
 organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
 assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1, "organism energy bucket change should not invalidate non-visual morphology");
 assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "organism energy bucket change should not regenerate sprite variant");
-assert.strictEqual(traitOrganismCellCalls, 1, "non-visual state-changed organism render should not refresh atlas variant resolution");
+assert.strictEqual(traitOrganismCellCalls, 0, "non-visual authored organism render should not call procedural atlas variant resolution");
+assert.strictEqual(creatureCellCalls, 3, "non-visual state change should not refresh the authored creature cell");
 assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "non-visual state changes should not estimate sprite cache GC pressure");
+
+context.world.organisms[0].directionX = 1;
+context.world.organisms[0].directionY = 0;
+context.world.organisms[0].facing = 2;
+context.world.organisms[0].animFrame = 1;
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "facing-changed organism facade should render through WebGPU entity batches");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 1, "visual facing change should invalidate the organism sprite cache");
+assert.strictEqual(context.world.organisms[0]._renderSpriteCache.cell.name, "equivalence.creature.rabbit.e", "east-moving organism should use the east authored creature cell");
+const eastVisualState = context.PS.render.entities.getOrganismVisualState(context.world.organisms[0], 0);
+assert.strictEqual(eastVisualState.family, "organism", "organism visual projection should expose render family");
+assert.strictEqual(eastVisualState.state, "move", "organism visual projection should expose movement state");
+assert.strictEqual(eastVisualState.direction, 2, "organism visual projection should expose numeric facing");
+assert.strictEqual(eastVisualState.directionSuffix, "e", "organism visual projection should expose authored asset facing suffix");
+assert.strictEqual(eastVisualState.frameCount, 4, "organism visual projection should expose frame count");
+assert.strictEqual(eastVisualState.frameRate, 8, "organism visual projection should expose frame cadence");
+assert.strictEqual(eastVisualState.frameVariant, 1, "organism visual projection should expose selected frame");
+assert.strictEqual(
+  eastVisualState.phaseOffset,
+  context.PS.render.entities.getOrganismVisualSeed(context.world.organisms[0], 0) & 1023,
+  "organism visual projection should expose deterministic phase"
+);
+assert.strictEqual(eastVisualState.tint, "#72d7ff", "organism visual projection should expose lineage tint");
+assert.strictEqual(eastVisualState.statusPixel, "", "organism visual projection should expose status marker");
+assert.strictEqual(creatureCellCalls, 6, "facing change should resolve a new authored direction once");
+context.world.organisms[0].directionX = 0;
+context.world.organisms[0].directionY = 0;
+context.world.organisms[0].facing = 0;
+context.world.organisms[0].animFrame = 0;
 
 const singleOrganismFixture = context.world.organisms;
 const perfOrganisms = [];
@@ -496,6 +626,7 @@ for (let i = 0; i < 1400; i += 1) {
 }
 context.world.organisms = perfOrganisms;
 traitOrganismCellCalls = 0;
+creatureCellCalls = 0;
 context.PS.render.webgpuEntity.resetFrameStats();
 assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "large organism fixture should render through WebGPU entity batches");
 context.PS.render.webgpuEntity.resetFrameStats();
@@ -506,7 +637,8 @@ assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1400, "large steady-st
 assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "large steady-state render should not allocate variant cache objects");
 assert.strictEqual(organismPerfStats.lastAnimationSeedComputes, 0, "large steady-state render should not compute animation seeds");
 assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "large steady-state render GC pressure should stay below 10,000 objects/sec");
-assert.strictEqual(traitOrganismCellCalls, 1400, "large steady-state render should not repeat atlas variant resolution");
+assert.strictEqual(traitOrganismCellCalls, 0, "large authored fixture should not fall back to procedural organism sprite cells");
+assert.strictEqual(creatureCellCalls, 4200, "large steady-state render should not repeat authored creature cell resolution after warm cache");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().lastBatchBufferReallocations, 0, "large steady-state render should reuse entity batch page buffers");
 context.world.organisms.reverse();
 context.PS.render.webgpuEntity.resetFrameStats();
@@ -519,8 +651,32 @@ perfOrganisms[1].traits.waterDependency = 1;
 context.PS.render.webgpuEntity.resetFrameStats();
 assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "thermal/water trait mutation should render through WebGPU entity batches");
 organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
-assert.ok(organismPerfStats.lastSpriteCacheMisses >= 1 && organismPerfStats.lastSpriteCacheMisses <= 2, "thermal and water trait bucket changes should invalidate only changed organism sprites");
-assert.ok(organismPerfStats.lastEstimatedRenderObjectsPerSecond < 10000, "bounded thermal/water changes should stay below 10,000 estimated objects/sec");
+assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 1400, "thermal/water trait mutations should keep authored directional organism cells cached");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "thermal/water trait mutations should not regenerate authored organism sprites");
+assert.strictEqual(organismPerfStats.lastEstimatedRenderObjectsPerSecond, 0, "authored organism trait mutations should not add sprite cache GC pressure");
+
+context.world.biologyPopulations = [
+  { id: 1, x: 22, y: 16, prevX: 22, prevY: 16, lineageId: 1, count: 900, energyReserve: 120, isActive: true },
+  { id: 2, x: 68, y: 34, prevX: 68, prevY: 34, lineageId: 2, count: 500, energyReserve: 80, isActive: true }
+];
+context.world.planetView.zoomLevel = 12;
+context.PS.render.pipeline = { getZoomBand() { return "region"; } };
+traitOrganismCellCalls = 0;
+creatureCellCalls = 0;
+context.PS.render.webgpuEntity.resetFrameStats();
+assert.strictEqual(context.PS.render.entities.drawOrganisms(), true, "region zoom should collapse organisms into aggregate biology markers");
+organismPerfStats = context.PS.render.entities.getOrganismRenderPerfStats();
+assert.strictEqual(organismPerfStats.lastOrganismRenderCount, 1400, "aggregate mode should still report the source organism population");
+assert.strictEqual(organismPerfStats.lastOrganismVisualMode, "aggregate", "region zoom should select aggregate organism visuals");
+assert.strictEqual(organismPerfStats.lastOrganismClusterRenderCount, 2, "region zoom should draw bounded population clusters");
+assert.strictEqual(organismPerfStats.lastOrganismIndividualRenderCount, 0, "region zoom should not draw individual organism sprites");
+assert.strictEqual(organismPerfStats.lastSpriteCacheHits, 0, "aggregate mode should not touch per-organism sprite caches");
+assert.strictEqual(organismPerfStats.lastSpriteCacheMisses, 0, "aggregate mode should not regenerate per-organism sprites");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().organismDrawCount, 2, "aggregate organism stats should count cluster instances");
+assert.strictEqual(traitOrganismCellCalls, 0, "aggregate mode should not request procedural organism cells");
+assert.strictEqual(creatureCellCalls, 0, "aggregate mode should not resolve individual creature cells");
+context.PS.render.pipeline = { getZoomBand() { return "local"; } };
+context.world.planetView.zoomLevel = 16;
 context.world.organisms = singleOrganismFixture;
 
 context.PS.render.webgpuEntity.resetFrameStats();
@@ -530,6 +686,48 @@ assert.ok(
   context.PS.render.webgpuEntity.getStats().shadowDrawCount > context.world.settlements.length,
   "shadow stats should document physical stamped rect instances rather than logical settlement casters"
 );
+assert.strictEqual(context.PS.render.entities.settlementVisualStats.lastSettlementShadowCasters, 2, "settlement shadow diagnostics should count logical casters");
+assert.ok(
+  context.PS.render.entities.settlementVisualStats.lastSettlementShadowRects <= context.world.settlements.length * 3,
+  "settlement shadows should keep stamped rect count bounded for readability"
+);
+assert.ok(
+  context.PS.render.entities.settlementVisualStats.lastSettlementShadowMaxAlpha <= 0.18,
+  "settlement shadows should stay soft enough not to dominate terrain readability"
+);
+const parentSettlementSize = context.PS.render.entities.getSettlementDrawSize(context.world.settlements[0]);
+const childSettlementSize = context.PS.render.entities.getSettlementDrawSize(context.world.settlements[1]);
+assert.ok(
+  parentSettlementSize > childSettlementSize,
+  "settlement draw footprint should scale from causal simulated population/development/radius state"
+);
+const settlementFootprint = context.PS.render.entities.getSettlementVisualFootprint(context.world.settlements, { width: 800, height: 450 });
+assert.strictEqual(settlementFootprint.count, 2, "settlement footprint should count active visible settlements");
+assert.ok(settlementFootprint.widthCoverage > 0, "settlement footprint should report nonzero screen width coverage");
+assert.ok(settlementFootprint.areaCoverage > 0, "settlement footprint should report nonzero screen area coverage");
+context.PS.render.webgpuEntity.resetFrameStats();
+fakePasses.length = 0;
+assert.strictEqual(
+  context.PS.render.webgpuEntity.drawDisplacementRects(new Float32Array([
+    10, 12, 64, 64,
+    42, 44, 48, 9,
+    0.65, 1.15, 5.5, 1.1,
+    1, 0.44, 0.16, 0.22
+  ])),
+  true,
+  "sprite displacement should render through the WebGPU entity rect path"
+);
+const displacementBuffer = fakeDevice.buffers.find(function (buffer) {
+  return buffer.descriptor.label === "displacement.instances.storage";
+});
+assert.ok(displacementBuffer, "sprite displacement should allocate a storage instance buffer");
+const displacementWrite = fakeDevice.writes.find(function (write) { return write.buffer === displacementBuffer; });
+assert.ok(displacementWrite, "sprite displacement should upload instance data");
+assert.strictEqual(displacementWrite.data.length % 16, 0, "sprite displacement uploads should use the 16-float source/radius/tint stride");
+assert.strictEqual(fakePasses[fakePasses.length - 1].pipeline.descriptor.label, "displacement.pipeline", "sprite displacement should use its own WGSL pipeline");
+assert.deepStrictEqual(fakePasses[fakePasses.length - 1].draws[0], [4, 1, 0, 0], "sprite displacement should draw one quad per heat-haze instance");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().displacementDrawCount, 1, "entity stats should count displacement instances");
+assert.ok(context.PS.render.webgpuEntity.getStats().displacementLastFrameMs >= 0, "entity stats should expose displacement frame time");
 context.PS.render.webgpuEntity.resetFrameStats();
 assert.strictEqual(context.PS.render.entities.drawSettlements(), true, "settlement facade should render through WebGPU entity batches");
 assert.strictEqual(context.PS.render.entities.drawSettlementRoutes(), true, "settlement route facade should render through WebGPU entity batches");
@@ -544,11 +742,39 @@ assert.strictEqual(context.PS.render.entities.drawSettlementCitizens(), true, "s
 assert.strictEqual(context.PS.render.entities.drawSettlementWorkStatus(), true, "settlement work status facade should render through WebGPU entity batches");
 assert.strictEqual(context.PS.render.entities.drawSettlementEffects(), true, "settlement effect facade should render through WebGPU entity batches");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().settlementDrawCount, 2, "settlement facade should update entity stats");
-assert.strictEqual(context.PS.render.webgpuEntity.getStats().routeDrawCount, 1, "route facade should update entity stats");
-assert.strictEqual(context.PS.render.webgpuEntity.getStats().influenceDrawCount, 2, "influence facade should update entity stats");
+assert.ok(context.PS.render.webgpuEntity.getStats().routeDrawCount > 1, "route facade should stamp readable path segments, not one midpoint marker");
+assert.strictEqual(
+  context.PS.render.entities.settlementVisualStats.lastSettlementRouteSegments,
+  context.PS.render.webgpuEntity.getStats().routeDrawCount,
+  "route diagnostics should report stamped path segment count"
+);
+assert.ok(context.PS.render.entities.settlementVisualStats.lastSettlementRouteBedSegments > 0, "routes should include a low-alpha grounding bed under crisp path marks");
+assert.ok(context.PS.render.webgpuEntity.getStats().influenceDrawCount > 2, "influence facade should draw clustered district grounding cells");
+assert.strictEqual(
+  context.PS.render.entities.settlementVisualStats.lastSettlementInfluenceCells,
+  context.PS.render.webgpuEntity.getStats().influenceDrawCount,
+  "influence diagnostics should report clustered district grounding count"
+);
+assert.ok(
+  context.PS.render.entities.settlementVisualStats.lastSettlementInfluenceMaxAlpha <= 0.32,
+  "influence grounding should stay low-alpha enough not to become a square slab"
+);
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().readinessDrawCount, 1, "readiness facade should update entity stats");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().intentDrawCount, 1, "intent facade should update entity stats");
-assert.strictEqual(context.PS.render.webgpuEntity.getStats().worldUiDrawCount, 6, "world UI facade should update entity stats");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().worldUiDrawCount, 2, "world UI facade should keep status marks visible without stamping every metric over every settlement");
+assert.strictEqual(
+  context.PS.render.entities.settlementVisualStats.lastSettlementWorldUiMarks,
+  context.PS.render.webgpuEntity.getStats().worldUiDrawCount,
+  "world UI diagnostics should report visible map-scale status mark count"
+);
+assert.ok(
+  context.PS.render.entities.settlementVisualStats.lastSettlementWorldUiMaxAlpha <= 0.76,
+  "world UI marks should stay below full-opacity icon dominance"
+);
+assert.ok(
+  context.PS.render.entities.settlementVisualStats.lastSettlementDistrictOffsets > 0,
+  "settlement entity facades should use deterministic district offsets"
+);
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().eventMarkerDrawCount, 1, "orbit event facade should update entity stats");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().stockpileDrawCount, 2, "stockpile facade should update entity stats");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().vegetationDrawCount, 4, "vegetation facade should update entity stats");

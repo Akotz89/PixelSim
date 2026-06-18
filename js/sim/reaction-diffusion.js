@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
@@ -35,15 +36,7 @@ PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-    if (!manifest.some(function (entry) { return entry && entry.name === "reaction-diffusion"; })) {
-      manifest.push({ name: this.shaderName, path: this.shaderPath });
-    }
-    return manifest;
+    return PS.render.registerWgslShaderManifestEntries({ name: this.shaderName, path: this.shaderPath });
   },
 
   normalizeConfig: function (config) {
@@ -371,7 +364,7 @@ PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "reaction-diffusion.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -381,7 +374,8 @@ PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
             { binding: 3, resource: { buffer: owner.buffers["reaction-diffusion.temperature"].buffer } },
             { binding: 4, resource: { buffer: owner.buffers["reaction-diffusion.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.stateId);

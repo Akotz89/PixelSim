@@ -1,5 +1,24 @@
-"use strict";
-function applySubsystemSaveFallbacks(saveData) {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, hashSeedText, normalizeSeedText } from "../core/utils.js";
+import { refreshEcosystemSummary } from "../main-ecosystem-summary.js";
+import { drawWorld } from "../render/pipeline.js";
+import { getPlanetZoomLevels, normalizeLongitude } from "../render/planet-view.js";
+import { rebuildEmpireSectorIndexes } from "../sim/civilizations-empire.js";
+import { rebuildPlanetaryBodyIndexes } from "../sim/civilizations-orbital.js";
+import { rebuildStarSystemIndexes } from "../sim/civilizations-probes.js";
+import { rebuildFoodPositions } from "../sim/food-runtime.js";
+import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
+import { ensureOutpostRoutes } from "../sim/settlements-routes.js";
+import { rebuildSettlementIndexes } from "../sim/settlements-state.js";
+import { clonePersistencePlainValue, openPixeldariumDatabase, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_STORE } from "./persistence-db.js";
+import { restoreFood, restoreLineages, restoreNumber, restoreOrbitalAssets, restoreSettlementRoutes, restoreSettlements, validateWorldSaveData } from "./persistence-restore-core.js";
+import { applySaveConfig, countFertileTiles, restoreBiologyAggregateState, restoreEcosystemHistory, restoreEmpireSectors, restoreInterstellarFleets, restoreOrganism, restorePlanetaryBodies, restoreProbeMissions, restoreSimulationEvents, restoreStarSystems, restoreTraitHistory } from "./persistence-restore-entities.js";
+import { createWorldSaveData } from "./persistence-save-data.js";
+import { world } from "./state.js";
+import { updateHud } from "../ui/foundation.js";
+
+export function applySubsystemSaveFallbacks(saveData) {
   var source = saveData || {};
   var subsystems = source.subsystems || {};
   var meta = subsystems.meta || {};
@@ -73,7 +92,7 @@ function applySubsystemSaveFallbacks(saveData) {
   return source;
 }
 
-function applyWorldSaveData(saveData) {
+export function applyWorldSaveData(saveData) {
   var readySaveData = applySubsystemSaveFallbacks(PS.systems.saveMigration.migrate(saveData));
 
   validateWorldSaveData(readySaveData);
@@ -90,6 +109,7 @@ function applyWorldSaveData(saveData) {
   if (PS.epochs) {
     PS.epochs.activeId = world.era;
   }
+  world.epochScaling = saveData.epochScaling ? clonePersistencePlainValue(saveData.epochScaling) : null;
   world.isExtinct = Boolean(saveData.isExtinct);
   world.extinctionTick = Math.max(0, Math.round(restoreNumber(saveData.extinctionTick, 0)));
   world.birthsThisTick = 0;
@@ -248,7 +268,7 @@ function applyWorldSaveData(saveData) {
   return saveData;
 }
 
-function restoreCameraState(cameraState) {
+export function restoreCameraState(cameraState) {
   var maxZoom = typeof getPlanetZoomLevels === "function" ? getPlanetZoomLevels().length - 1 : 0;
   var camera = cameraState || {};
 
@@ -261,7 +281,7 @@ function restoreCameraState(cameraState) {
   };
 }
 
-function loadWorldFromIndexedDB() {
+export function loadWorldFromIndexedDB() {
   return openPixeldariumDatabase().then(function(db) {
     return new Promise(function(resolve, reject) {
       var transaction = db.transaction(PIXELDARIUM_SAVE_STORE, "readonly");
@@ -288,7 +308,7 @@ function loadWorldFromIndexedDB() {
   });
 }
 
-function exportWorldToJsonFile() {
+export function exportWorldToJsonFile() {
   var saveData = createWorldSaveData();
   var json = JSON.stringify(saveData, null, 2);
   var blob = new Blob([json], { type: "application/json" });
@@ -308,7 +328,7 @@ function exportWorldToJsonFile() {
   return saveData;
 }
 
-function importWorldFromJsonFile(file) {
+export function importWorldFromJsonFile(file) {
   return new Promise(function(resolve, reject) {
     if (!file) {
       reject(new Error("No JSON file selected"));

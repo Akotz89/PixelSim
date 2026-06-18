@@ -1,4 +1,6 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "./namespace.js";
+
 PS.config = PS.config || {};
 
 PS.config.defaults = PS.config.defaults || {};

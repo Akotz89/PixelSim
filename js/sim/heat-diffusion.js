@@ -1,4 +1,11 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import {
+  getRuntimeDimensions,
+  loadWgslRuntimeAssets,
+  mergeRuntimeConfig,
+  registerWgslManifest
+} from "./gpu-sim-runtime.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
@@ -30,86 +37,23 @@ PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    var found = false;
-
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-
-    for (var i = 0; i < manifest.length; i += 1) {
-      if (manifest[i] && manifest[i].name === this.shaderName) {
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      manifest.push({
-        name: this.shaderName,
-        path: this.shaderPath
-      });
-    }
-
-    return manifest;
+    return registerWgslManifest(this);
   },
 
   loadAssets: function (loader) {
-    var self = this;
-    var assetLoader = loader || (PS.assets && PS.assets.startupLoader) || (PS.assets && PS.assets.AssetLoader ? new PS.assets.AssetLoader() : null);
-    var configPromise;
-    var shaderPromise;
-
-    this.registerManifest();
-
-    configPromise = assetLoader && typeof assetLoader.loadJSON === "function"
-      ? assetLoader.loadJSON(this.configPath)
-      : Promise.resolve(this.defaults);
-
-    if (!PS.render || !PS.render.wgslShaders || typeof PS.render.wgslShaders.loadFromFile !== "function") {
-      shaderPromise = Promise.reject(new Error("WGSL shader manager is required for heat diffusion"));
-    } else {
-      shaderPromise = PS.render.wgslShaders.loadFromFile(this.shaderName, this.shaderPath, assetLoader);
-    }
-
-    return Promise.all([configPromise, shaderPromise]).then(function (results) {
-      self.config = self.normalizeConfig(results[0]);
-      return {
-        config: self.config,
-        shader: results[1]
-      };
-    });
+    return loadWgslRuntimeAssets(this, loader, "WGSL shader manager is required for heat diffusion");
   },
 
   normalizeConfig: function (config) {
     var source = config || {};
-    var merged = {};
-    var key;
-
-    for (key in this.defaults) {
-      if (Object.prototype.hasOwnProperty.call(this.defaults, key)) {
-        merged[key] = this.defaults[key];
-      }
-    }
-
-    for (key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        merged[key] = source[key];
-      }
-    }
+    var merged = mergeRuntimeConfig(this, source);
 
     merged.albedo = source.albedo || this.defaults.albedo;
     return merged;
   },
 
   getDimensions: function (options) {
-    var spec = options || {};
-    var config = this.normalizeConfig(spec.config || this.config || {});
-    return {
-      width: Math.max(1, Math.round(Number(spec.width || config.width || this.defaults.width))),
-      height: Math.max(1, Math.round(Number(spec.height || config.height || this.defaults.height)))
-    };
+    return getRuntimeDimensions(this, options);
   },
 
   getCellCount: function (width, height) {
@@ -298,6 +242,18 @@ PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
     };
   },
 
+  getStableTimeStep: function (config) {
+    var settings = this.normalizeConfig(config || this.config || {});
+    var requested = Number.isFinite(Number(settings.time_step)) ? Math.max(0, Number(settings.time_step)) : this.defaults.time_step;
+    var diffusivity = Number.isFinite(Number(settings.thermal_diffusivity))
+      ? Math.max(0, Number(settings.thermal_diffusivity))
+      : this.defaults.thermal_diffusivity;
+    var spacing = Number.isFinite(Number(settings.grid_spacing)) ? Math.max(1e-9, Number(settings.grid_spacing)) : this.defaults.grid_spacing;
+    var cflLimit = diffusivity > 0 ? (spacing * spacing) / (4 * diffusivity) : requested;
+
+    return Math.min(requested, cflLimit);
+  },
+
   runTicks: function (ticks, options) {
     var spec = options || {};
     var count = Math.max(0, Math.round(Number(ticks) || 0));
@@ -323,7 +279,7 @@ PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
     view.setUint32(0, Math.max(1, Math.round(Number(width) || 1)), true);
     view.setUint32(4, Math.max(1, Math.round(Number(height) || 1)), true);
     view.setFloat32(8, Number(settings.thermal_diffusivity) || this.defaults.thermal_diffusivity, true);
-    view.setFloat32(12, Number(settings.time_step) || this.defaults.time_step, true);
+    view.setFloat32(12, this.getStableTimeStep(settings), true);
     view.setFloat32(16, Number(settings.grid_spacing) || this.defaults.grid_spacing, true);
     view.setFloat32(20, Number(settings.solar_constant) || this.defaults.solar_constant, true);
     view.setFloat32(24, Number(settings.lapse_rate) || this.defaults.lapse_rate, true);
@@ -434,7 +390,20 @@ PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
         ];
       },
       beforeDispatch: function (pass, owner) {
-        pass.bindGroups = [self.createBindGroup(pass, owner, device)];
+        var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
+        var descriptor = {
+          label: "heat-diffusion.bind-group",
+          layout: pipeline.getBindGroupLayout(0),
+          entries: [
+            { binding: 0, resource: { buffer: owner.getReadBuffer(self.temperatureStateId).buffer } },
+            { binding: 1, resource: { buffer: owner.getWriteBuffer(self.temperatureStateId).buffer } },
+            { binding: 2, resource: { buffer: owner.buffers["heat.elevation"].buffer } },
+            { binding: 3, resource: { buffer: owner.buffers["heat.albedo"].buffer } },
+            { binding: 4, resource: { buffer: owner.buffers["heat.greenhouse"].buffer } },
+            { binding: 5, resource: { buffer: owner.buffers["heat.params"].buffer } }
+          ]
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.temperatureStateId);

@@ -1,7 +1,10 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
-var webgpuPointLightsState = PS.render.webgpuPointLights && PS.render.webgpuPointLights.state
+export var webgpuPointLightsState = PS.render.webgpuPointLights && PS.render.webgpuPointLights.state
   ? PS.render.webgpuPointLights.state
   : null;
 
@@ -220,15 +223,56 @@ PS.render.webgpuPointLights = Object.assign(PS.render.webgpuPointLights || {}, {
     };
   },
 
-  writeUniforms: function (device, width, height) {
+  getLightingState: function (options) {
+    var spec = options || {};
+
+    if (spec.lightingCycleState) {
+      return spec.lightingCycleState;
+    }
+
+    if (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function") {
+      return PS.render.lightingCycle.getState(spec);
+    }
+
+    return null;
+  },
+
+  getSceneExposure: function (options) {
+    var spec = options || {};
+    var cycle = this.getLightingState(spec);
+    var ambient = spec.ambient !== undefined
+      ? Number(spec.ambient)
+      : (cycle && cycle.ambient !== undefined ? Number(cycle.ambient) : 1);
+    var scale = spec.pointLightExposureScale !== undefined
+      ? Number(spec.pointLightExposureScale)
+      : ambient;
+
+    if (!Number.isFinite(scale)) {
+      scale = 1;
+    }
+
+    return Math.max(0, Math.min(1, scale));
+  },
+
+  writeUniforms: function (device, width, height, options) {
+    var exposure = this.getSceneExposure(options);
+    var cycle = this.getLightingState(options);
+    var ambient = options && options.ambient !== undefined
+      ? Number(options.ambient)
+      : (cycle && cycle.ambient !== undefined ? Number(cycle.ambient) : exposure);
+
+    if (!Number.isFinite(ambient)) {
+      ambient = exposure;
+    }
+
     device.queue.writeBuffer(
       this.ensureUniformBuffer(device),
       0,
       new Float32Array([
         Math.max(1, Number(width) || 1),
         Math.max(1, Number(height) || 1),
-        0,
-        0
+        exposure,
+        Math.max(0, Math.min(1, ambient))
       ])
     );
   },
@@ -311,7 +355,7 @@ PS.render.webgpuPointLights = Object.assign(PS.render.webgpuPointLights || {}, {
     }
 
     pipeline = this.ensurePipeline(device);
-    this.writeUniforms(device, width, height);
+    this.writeUniforms(device, width, height, spec);
     lightBuffer = this.writeLights(device, lights);
     encoder = spec.commandEncoder || device.createCommandEncoder({ label: "point-light.encoder" });
     outputView = spec.textureView || context.getCurrentTexture().createView();
@@ -339,10 +383,44 @@ PS.render.webgpuPointLights = Object.assign(PS.render.webgpuPointLights || {}, {
     return true;
   },
 
-  drawQueued: function (options) {
-    var lights = this.takeQueuedLights();
+  scaleLights: function (lights, scale) {
+    var value = Number(scale);
+    var list = Array.isArray(lights) ? lights : [];
 
-    return this.draw(Object.assign({}, options || {}, { lights: lights }));
+    if (!Number.isFinite(value)) {
+      value = 1;
+    }
+
+    value = Math.max(0, Math.min(1, value));
+
+    if (value <= 0 || list.length <= 0) {
+      return [];
+    }
+
+    if (value >= 0.999) {
+      return list;
+    }
+
+    return list.map(function (light) {
+      return Object.assign({}, light, {
+        radius: Math.max(1, Number(light.radius) || 1) * value,
+        intensity: Math.max(0, Number(light.intensity) || 0) * value
+      });
+    });
+  },
+
+  drawQueued: function (options) {
+    var spec = options || {};
+    var scale = spec.pointLightScale !== undefined ? spec.pointLightScale : 1;
+    var lights = this.scaleLights(this.takeQueuedLights(), scale);
+
+    if (lights.length <= 0) {
+      this.state.submittedLights = 0;
+      this.state.lastError = "";
+      return false;
+    }
+
+    return this.draw(Object.assign({}, spec, { lights: lights }));
   },
 
   getStats: function () {
@@ -360,3 +438,4 @@ PS.render.webgpuPointLights = Object.assign(PS.render.webgpuPointLights || {}, {
     this.state.pipeline = null;
   }
 });
+

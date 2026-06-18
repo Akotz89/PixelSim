@@ -1,0 +1,18 @@
+{
+  "name": "hud-visible",
+  "source": "webgpu-readback",
+  "band": "continent",
+  "scene": {
+    "width": 1016,
+    "height": 540,
+    "opaqueCoverage": 1,
+    "nonblankCoverage": 1,
+    "coarseColorCount": 44,
+    "luminanceMin": 26.09,
+    "luminanceMax": 115.84,
+    "luminanceMean": 49.68,
+    "contrastRange": 89.75
+  },
+  "screenshot": null,
+  "screenshotDiffSkipped": "webgpu-readback-gate"
+}

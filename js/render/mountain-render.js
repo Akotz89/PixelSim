@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 PS.render = PS.render || {};
 
 PS.render.mountains = PS.render.mountains || (function () {

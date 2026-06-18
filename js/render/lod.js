@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.lod = PS.render.lod || {};
 
@@ -325,6 +328,171 @@ PS.render.lod.getLayerAlphas = function (zoomLevel) {
     underlay: clamp(underlay, 0, 1),
     tiles: clamp(tiles, 0, 1),
     sprites: clamp(tiles, 0, 1)
+  };
+};
+
+PS.render.lod.causalFieldsByBand = {
+  orbit: [
+    "terrain",
+    "ocean",
+    "atmosphere",
+    "climate",
+    "biomeAggregate",
+    "epoch",
+    "eventMarkers"
+  ],
+  planet: [
+    "terrain",
+    "ocean",
+    "coast",
+    "biome",
+    "atmosphere",
+    "elevation",
+    "waterLand"
+  ],
+  continent: [
+    "terrain",
+    "biome",
+    "watersheds",
+    "basins",
+    "coasts",
+    "resourceGradient",
+    "routePressure",
+    "settlementPressure"
+  ],
+  region: [
+    "terrain",
+    "readyChunks",
+    "resourcePressure",
+    "territoryPressure",
+    "populationClusters",
+    "routePressure",
+    "selectedRepresentatives"
+  ],
+  local: [
+    "terrainMaterials",
+    "ecologyMicrostructure",
+    "organisms",
+    "food",
+    "hazards",
+    "settlements",
+    "routes",
+    "intent"
+  ],
+  settlement: [
+    "terrainMaterials",
+    "buildings",
+    "citizens",
+    "stockpiles",
+    "workStatus",
+    "vegetation",
+    "shadows",
+    "particles",
+    "lights",
+    "worldUi"
+  ]
+};
+
+PS.render.lod.getCausalFieldsForBand = function (band) {
+  var normalized = String(band || "orbit");
+  var fields = PS.render.lod.causalFieldsByBand[normalized] || PS.render.lod.causalFieldsByBand.orbit;
+
+  return fields.slice();
+};
+
+PS.render.lod.getActiveLayerAlphas = function (layerAlphas) {
+  var alphas = layerAlphas || {};
+  var active = [];
+
+  Object.keys(alphas).forEach(function (name) {
+    var alpha = clamp(Number(alphas[name]) || 0, 0, 1);
+    if (alpha > 0.001) {
+      active.push({
+        name: name,
+        alpha: alpha
+      });
+    }
+  });
+
+  return active;
+};
+
+PS.render.lod.getCameraFrameInfo = function () {
+  var info = PS.camera && typeof PS.camera.getInfo === "function"
+    ? PS.camera.getInfo()
+    : {};
+
+  return {
+    latitude: Number(info.latitude) || 0,
+    longitude: Number(info.longitude) || 0,
+    metersPerSample: Number(info.metersPerSample) || 0,
+    metersPerCanvasPixel: Number(info.metersPerCanvasPixel) || 0,
+    footprintWidthKm: Number(info.footprintWidthKm) || 0,
+    footprintHeightKm: Number(info.footprintHeightKm) || 0,
+    approximateAltitudeKm: Number(info.approximateAltitudeKm) || 0,
+    surfaceLodLevel: Number.isFinite(Number(info.surfaceLodLevel)) ? Number(info.surfaceLodLevel) : 0,
+    surfaceLodName: String(info.surfaceLodName || ""),
+    zoomOutShift: Number(info.zoomOutShift) || 0,
+    powerOfTwoScale: Number(info.powerOfTwoScale) || 1
+  };
+};
+
+PS.render.lod.getFrameContract = function (zoomLevel, options) {
+  var opts = options || {};
+  var zoom = Number.isFinite(Number(zoomLevel))
+    ? Number(zoomLevel)
+    : typeof world !== "undefined" && world && world.planetView
+      ? Number(world.planetView.zoomLevel) || 0
+      : 0;
+  var tier = opts.lodState && opts.lodState.tier ? opts.lodState.tier : PS.render.lod.getTier(zoom);
+  var architectureZoom = Number.isFinite(Number(tier.architectureZoom))
+    ? Number(tier.architectureZoom)
+    : PS.render.lod.getArchitectureZoom(zoom);
+  var zoomBand = opts.lodState && opts.lodState.zoomBand
+    ? String(opts.lodState.zoomBand)
+    : architectureZoom < 3
+      ? "orbit"
+      : architectureZoom < 6
+        ? "planet"
+        : architectureZoom < 10
+          ? "continent"
+          : architectureZoom < 15
+            ? "region"
+            : architectureZoom < 19
+              ? "local"
+              : "settlement";
+  var layerAlphas = PS.render.lod.getLayerAlphas(zoom);
+  var visualPolicy = opts.lodState && opts.lodState.visualPolicy
+    ? opts.lodState.visualPolicy
+    : PS.render.lod.getVisualPolicy(zoom);
+  var preloadIndex = opts.lodState && Number.isFinite(Number(opts.lodState.preloadSurfaceLodIndex))
+    ? Number(opts.lodState.preloadSurfaceLodIndex)
+    : PS.render.lod.getPreloadSurfaceLodIndex();
+
+  return {
+    contractVersion: 1,
+    sourceRule: "simulation-fields-first",
+    zoomLevel: zoom,
+    architectureZoom: architectureZoom,
+    zoomBand: zoomBand,
+    tierName: String(tier.name || "galaxy"),
+    tierIndex: Number(tier.index) || 0,
+    previousTierName: String(tier.previousName || tier.name || "galaxy"),
+    nextTierName: String(tier.nextName || tier.name || "galaxy"),
+    transitionAlpha: Number(tier.transitionAlpha) || 0,
+    blendFromPrevious: Number(tier.blendFromPrevious) || 0,
+    blendToNext: Number(tier.blendToNext) || 0,
+    layerAlphas: layerAlphas,
+    activeLayers: PS.render.lod.getActiveLayerAlphas(layerAlphas),
+    causalFields: PS.render.lod.getCausalFieldsForBand(zoomBand),
+    visualPolicy: Object.assign({}, visualPolicy),
+    camera: PS.render.lod.getCameraFrameInfo(),
+    readiness: {
+      preloadSurfaceLodIndex: preloadIndex,
+      parentFallbackPolicy: "draw-ready-parent-lineage-while-child-pending",
+      blankChunkPolicy: "never-present-uncovered-child-surface",
+      streamHandoff: "stable-parent-underlay-before-detail-tile"
+    }
   };
 };
 

@@ -5355,12 +5355,3676 @@ PS.assets.registerJSON("assets/manifest.json", {
           ]
         }
       ]
+    },
+    "equivalence_terrain_transition_grass_sand_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/grass-sand.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-sand.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/grass-sand.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_sand_v1.grass-sand.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_grass_water_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/grass-water.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-water.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/grass-water.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_water_v1.grass-water.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_grass_rock_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/grass-rock.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-rock.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/grass-rock.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_rock_v1.grass-rock.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_sand_water_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/sand-water.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/sand-water.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/sand-water.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_sand_water_v1.sand-water.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_rock_snow_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/rock-snow.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/rock-snow.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/rock-snow.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_rock_snow_v1.rock-snow.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_grass_forest_floor_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/grass-forest-floor.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-forest-floor.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/grass-forest-floor.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_grass_forest_floor_v1.grass-forest-floor.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_mud_water_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/mud-water.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/mud-water.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/mud-water.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_mud_water_v1.mud-water.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
+    },
+    "equivalence_terrain_transition_volcanic_rock_v1": {
+      "path": "assets/pixeldarium-equivalence/transitions/volcanic-rock.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/volcanic-rock.json",
+      "pixelData": "assets/pixeldarium-equivalence/transitions/volcanic-rock.rgba.json",
+      "tileSize": 32,
+      "authored": true,
+      "sourceIssue": "AZR-1141",
+      "splitAtlas": {
+        "albedoRect": [
+          0,
+          0,
+          256,
+          192
+        ],
+        "normalRect": [
+          256,
+          0,
+          256,
+          192
+        ],
+        "materialRect": [
+          512,
+          0,
+          256,
+          192
+        ],
+        "normalOffset": [
+          256,
+          0
+        ],
+        "materialOffset": [
+          512,
+          0
+        ]
+      },
+      "materialChannels": {
+        "r": "height",
+        "g": "roughness",
+        "b": "emissive",
+        "a": "coverage"
+      },
+      "sprites": [
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-00",
+          "rect": [
+            0,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-01",
+          "rect": [
+            32,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-02",
+          "rect": [
+            64,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-03",
+          "rect": [
+            96,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-04",
+          "rect": [
+            128,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-05",
+          "rect": [
+            160,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-06",
+          "rect": [
+            192,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-07",
+          "rect": [
+            224,
+            0,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-08",
+          "rect": [
+            0,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-09",
+          "rect": [
+            32,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-10",
+          "rect": [
+            64,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-11",
+          "rect": [
+            96,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-12",
+          "rect": [
+            128,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-13",
+          "rect": [
+            160,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-14",
+          "rect": [
+            192,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-15",
+          "rect": [
+            224,
+            32,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-16",
+          "rect": [
+            0,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-17",
+          "rect": [
+            32,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-18",
+          "rect": [
+            64,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-19",
+          "rect": [
+            96,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-20",
+          "rect": [
+            128,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-21",
+          "rect": [
+            160,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-22",
+          "rect": [
+            192,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-23",
+          "rect": [
+            224,
+            64,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-24",
+          "rect": [
+            0,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-25",
+          "rect": [
+            32,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-26",
+          "rect": [
+            64,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-27",
+          "rect": [
+            96,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-28",
+          "rect": [
+            128,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-29",
+          "rect": [
+            160,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-30",
+          "rect": [
+            192,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-31",
+          "rect": [
+            224,
+            96,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-32",
+          "rect": [
+            0,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-33",
+          "rect": [
+            32,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-34",
+          "rect": [
+            64,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-35",
+          "rect": [
+            96,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-36",
+          "rect": [
+            128,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-37",
+          "rect": [
+            160,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-38",
+          "rect": [
+            192,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-39",
+          "rect": [
+            224,
+            128,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-40",
+          "rect": [
+            0,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-41",
+          "rect": [
+            32,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-42",
+          "rect": [
+            64,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-43",
+          "rect": [
+            96,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-44",
+          "rect": [
+            128,
+            160,
+            32,
+            32
+          ]
+        },
+        {
+          "id": "equivalence.terrain_transition_volcanic_rock_v1.volcanic-rock.pattern-45",
+          "rect": [
+            160,
+            160,
+            32,
+            32
+          ]
+        }
+      ]
     }
   },
   "handoffs": {
     "azr797": {
       "path": "assets/pixeldarium-equivalence/handoff-manifest.json",
-      "acceptedSheetCount": 15,
+      "acceptedSheetCount": 23,
       "reviewIssue": "AZR-795"
     }
   }

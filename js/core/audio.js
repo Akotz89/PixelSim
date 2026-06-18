@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "./namespace.js";
+
 PS.audio = PS.audio || {
   manifest: { music: {}, ambient: {}, sfx: {}, events: {}, biomes: {} },
   context: null,
@@ -77,6 +78,26 @@ PS.audio = PS.audio || {
       this.recordError(error && error.message ? error.message : String(error));
       return false;
     }
+  },
+
+  stopSource: function(source) {
+    if (!source) {
+      return;
+    }
+
+    try {
+      source.stop();
+    } catch (error) {
+      this.recordError(error && error.message ? error.message : String(error));
+    }
+  },
+
+  createRoutedGain: function(busName, targetVolume, fadeMs) {
+    var gain = this.context.createGain();
+
+    gain.connect(this.gains[busName]);
+    this.fadeGain(gain, 0, targetVolume, fadeMs);
+    return gain;
   },
 
   installUnlockHandlers: function() {
@@ -180,13 +201,34 @@ PS.audio = PS.audio || {
   },
 
   fetchArrayBuffer: function(url) {
-    if (typeof fetch === "function" && !(typeof window !== "undefined" && window.location && window.location.protocol === "file:")) {
-      return fetch(url).then(function(response) {
+    var fetchFn = typeof fetch === "function" ? fetch : null;
+
+    if (fetchFn && !(typeof window !== "undefined" && window.location && window.location.protocol === "file:")) {
+      return fetchFn(url).then(function(response) {
         if (!response.ok) {
           throw new Error("Failed to load audio: " + url + " " + response.status);
         }
 
         return response.arrayBuffer();
+      });
+    }
+
+    if (typeof XMLHttpRequest === "function" && !(typeof window !== "undefined" && window.location && window.location.protocol === "file:")) {
+      return new Promise(function(resolve, reject) {
+        var request = new XMLHttpRequest();
+        request.open("GET", url, true);
+        request.responseType = "arraybuffer";
+        request.onload = function() {
+          if (request.status !== 0 && (request.status < 200 || request.status >= 300)) {
+            reject(new Error("Failed to load audio: " + url + " " + request.status));
+            return;
+          }
+          resolve(request.response);
+        };
+        request.onerror = function() {
+          reject(new Error("Failed to load audio: " + url));
+        };
+        request.send();
       });
     }
 
@@ -438,17 +480,8 @@ PS.audio = PS.audio || {
         return self.playMediaElement("music", trackId, track);
       }
 
-      if (self.currentMusic && self.currentMusic.source) {
-        try {
-          self.currentMusic.source.stop();
-        } catch (error) {
-          self.recordError(error && error.message ? error.message : String(error));
-        }
-      }
-
-      gain = self.context.createGain();
-      gain.connect(self.gains.music);
-      self.fadeGain(gain, 0, 1, fadeMs);
+      self.stopSource(self.currentMusic && self.currentMusic.source);
+      gain = self.createRoutedGain("music", 1, fadeMs);
       source = self.makeSource(buffer, gain, track);
 
       if (!source) {
@@ -492,17 +525,8 @@ PS.audio = PS.audio || {
         return self.playMediaElement("ambient", ambientId, ambient);
       }
 
-      if (self.currentAmbient && self.currentAmbient.source) {
-        try {
-          self.currentAmbient.source.stop();
-        } catch (error) {
-          self.recordError(error && error.message ? error.message : String(error));
-        }
-      }
-
-      gain = self.context.createGain();
-      gain.connect(self.gains.ambient);
-      self.fadeGain(gain, 0, Math.max(0, Math.min(1, Number(ambient.volume) || 1)), 900);
+      self.stopSource(self.currentAmbient && self.currentAmbient.source);
+      gain = self.createRoutedGain("ambient", Math.max(0, Math.min(1, Number(ambient.volume) || 1)), 900);
       source = self.makeSource(buffer, gain, ambient);
 
       if (!source) {

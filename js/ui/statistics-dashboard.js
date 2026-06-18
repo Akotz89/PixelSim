@@ -1,6 +1,9 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
-function getDashboardDeepTimeLabel() {
+export function getDashboardDeepTimeLabel() {
   var years = Math.max(0, Number(world.deepTimeYears) || 0);
 
   if (PS.deepTime && typeof PS.deepTime.formatYears === "function") {
@@ -10,7 +13,7 @@ function getDashboardDeepTimeLabel() {
   return Math.round(years).toLocaleString() + " years";
 }
 
-function getDashboardTimeScaleLabel() {
+export function getDashboardTimeScaleLabel() {
   if (PS.time && typeof PS.time.getTimeScaleLabel === "function") {
     return PS.time.getTimeScaleLabel();
   }
@@ -18,7 +21,7 @@ function getDashboardTimeScaleLabel() {
   return "speed " + Math.max(0, Number(world.speed) || 0).toFixed(1) + "x";
 }
 
-function getDashboardOverlayLabel() {
+export function getDashboardOverlayLabel() {
   var overlayId = world.activeObservationOverlay || "none";
   var overlays = PS.render && PS.render.overlays;
   var overlay = overlays && typeof overlays.get === "function" ? overlays.get(overlayId) : null;
@@ -30,7 +33,7 @@ function getDashboardOverlayLabel() {
   return overlayId === "none" ? "None" : overlayId;
 }
 
-function getDashboardSpeciesCounts(speciesSummary) {
+export function getDashboardSpeciesCounts(speciesSummary) {
   speciesSummary = speciesSummary || {};
 
   return {
@@ -41,7 +44,7 @@ function getDashboardSpeciesCounts(speciesSummary) {
   };
 }
 
-function getDashboardBiodiversity(populations, speciesSummary) {
+export function getDashboardBiodiversity(populations, speciesSummary) {
   var counts = [];
   var total = 0;
 
@@ -93,7 +96,7 @@ function getDashboardBiodiversity(populations, speciesSummary) {
   };
 }
 
-function getDashboardBiomeMix(populations) {
+export function getDashboardBiomeMix(populations) {
   var counts = {};
   var topBiome = "-";
   var topCount = 0;
@@ -133,7 +136,7 @@ function getDashboardBiomeMix(populations) {
   };
 }
 
-function getDashboardTraitDistribution(traitSummary) {
+export function getDashboardTraitDistribution(traitSummary) {
   var keys = ["bodySize", "carnivory", "intelligence", "sociality", "thermalTolerance", "waterDependency"];
   var values = [];
 
@@ -153,7 +156,7 @@ function getDashboardTraitDistribution(traitSummary) {
   return values;
 }
 
-function getDashboardEnvironmentSummary() {
+export function getDashboardEnvironmentSummary() {
   var atmosphere = world.atmosphere || {};
   var geology = world.geology || {};
 
@@ -168,7 +171,7 @@ function getDashboardEnvironmentSummary() {
   };
 }
 
-function getDashboardMicrobialStatus() {
+export function getDashboardMicrobialStatus() {
   var microbial = world.microbial || {};
   var abiogenesis = world.abiogenesis || {};
   var density = Math.max(0, Number(microbial.totalDensity) || 0);
@@ -185,7 +188,7 @@ function getDashboardMicrobialStatus() {
   return "prebiotic";
 }
 
-function getStatisticsDashboardSnapshot(summary) {
+export function getStatisticsDashboardSnapshot(summary) {
   var populations = Array.isArray(world.biologyPopulations) ? world.biologyPopulations : [];
   var speciesSummary = world.speciesSummary || {};
   var speciesCounts = getDashboardSpeciesCounts(speciesSummary);
@@ -220,3 +223,4 @@ function getStatisticsDashboardSnapshot(summary) {
 
   return world.statisticsDashboard;
 }
+

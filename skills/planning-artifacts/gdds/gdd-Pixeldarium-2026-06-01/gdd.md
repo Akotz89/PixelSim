@@ -601,7 +601,7 @@ See `epics.md` for detailed breakdown. Summary table:
 
 ### Assumptions
 
-- [RESOLVED: A-1: WebGPU (navigator.gpu) is the rendering API. It is a native browser built-in — not an external library. WebGL2 is the fallback. Both satisfy the zero-external-dependencies constraint.]
+- [RESOLVED: A-1: WebGPU (navigator.gpu) is the required rendering API. It is a native browser built-in — not an external library. WebGL2 is legacy migration debt only, not a runtime fallback.]
 - [ASSUMPTION: A-2: IndexedDB storage is sufficient for world-state snapshots needed for timeline scrubbing. If snapshot sizes exceed browser storage limits (~50-100 MB per snapshot), compression or selective checkpointing will be needed.]
 - [ASSUMPTION: A-3: Spatial-partitioning gravity approximation for the cosmological epoch is achievable at 60 FPS with up to 10,000 particles in the browser. WASM compute (Rust) handles N-body if JS proves insufficient.]
 - [ASSUMPTION: A-4: A single browser tab can maintain <500 MB memory footprint while tracking 10,000+ agents across a full planetary simulation. Memory pooling and object reuse will be critical.]
@@ -610,7 +610,7 @@ See `epics.md` for detailed breakdown. Summary table:
 ### Dependencies
 
 - Modern web browser with WebGPU support (Chrome 113+, Edge 113+, Safari 18+)
-- WebGL2 fallback for older browsers
+- WebGPU-required startup failure for browsers without `navigator.gpu`
 - IndexedDB for persistence
 - No server, no build tools, no runtime dependencies
 - wasm-pack (development tool only, not a browser dependency)

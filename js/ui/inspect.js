@@ -1,5 +1,12 @@
-"use strict";
-function getInspectSurfacePosition(tileX, tileY) {
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { focusPlanetViewOnTile, getTileFromLatLon, isPlanetLocalView, normalizeLongitude } from "../render/planet-view.js";
+import { foodExistsAt } from "../sim/food-growth.js";
+import { ensureOrganismLineage } from "../sim/organisms-traits.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { getNearestOrganismToTile, getNearestSettlementToTile, updateHud } from "./foundation.js";
+
+export function getInspectSurfacePosition(tileX, tileY) {
   var surfacePosition = world.inspectedSurface;
 
   if (
@@ -20,7 +27,7 @@ function getInspectSurfacePosition(tileX, tileY) {
   return null;
 }
 
-function getInspectSurfacePositionLabel(tileX, tileY) {
+export function getInspectSurfacePositionLabel(tileX, tileY) {
   var surfacePosition = getInspectSurfacePosition(tileX, tileY);
 
   if (!surfacePosition) {
@@ -30,7 +37,7 @@ function getInspectSurfacePositionLabel(tileX, tileY) {
   return surfacePosition.latitude.toFixed(5) + " / " + surfacePosition.longitude.toFixed(5);
 }
 
-function getInspectableEntityFromTile(tileX, tileY) {
+export function getInspectableEntityFromTile(tileX, tileY) {
   var settlement = getNearestSettlementToTile(tileX, tileY);
   var organism = getNearestOrganismToTile(tileX, tileY);
 
@@ -75,7 +82,7 @@ function getInspectableEntityFromTile(tileX, tileY) {
   return null;
 }
 
-function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspectedEntity) {
+export function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspectedEntity) {
   world.inspectedTile = {
     x: clamp(tileX, 0, WORLD_WIDTH - 1),
     y: clamp(tileY, 0, WORLD_HEIGHT - 1)
@@ -103,3 +110,4 @@ function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspectedEntity
   world.needsRender = true;
   updateHud();
 }
+

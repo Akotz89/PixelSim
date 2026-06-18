@@ -1,5 +1,12 @@
-"use strict";
-function getLimbMovementMultiplierFromValue(limbCount) {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getClampedBucketIndexes, getClampedWorldY, getTileManhattanDistance, getWrappedBucketIndexes, getWrappedWorldX } from "../render/planet-grid.js";
+import { ensureLineageRegistry, ensureOrganismLineage, ensureOrganismTraits, registerLineage } from "./organisms-traits.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { lineageSummaryText } from "../ui/dom-refs.js";
+
+export function getLimbMovementMultiplierFromValue(limbCount) {
   return 0.5 + clamp(
     Number(limbCount) / Math.max(1, Number(CONFIG.TRAIT_LIMB_COUNT_MAX) || 1),
     0,
@@ -7,7 +14,7 @@ function getLimbMovementMultiplierFromValue(limbCount) {
   ) * 0.5;
 }
 
-function getLimbMovementMultiplier(traits) {
+export function getLimbMovementMultiplier(traits) {
   var limbCount = traits && Number.isFinite(Number(traits.limbCount))
     ? Number(traits.limbCount)
     : CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
@@ -15,22 +22,22 @@ function getLimbMovementMultiplier(traits) {
   return getLimbMovementMultiplierFromValue(limbCount);
 }
 
-function getOrganismTravelKmPerTick(traits) {
+export function getOrganismTravelKmPerTick(traits) {
   return Math.max(0, Number(CONFIG.ORGANISM_TRAVEL_KM_PER_DAY) || 0) *
     Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0) *
     (traits ? getLimbMovementMultiplier(traits) : 1);
 }
 
-function getOrganismBucketSize() {
+export function getOrganismBucketSize() {
   return Math.max(1, Math.round(Number(CONFIG.ORGANISM_SPATIAL_BUCKET_SIZE) || 16));
 }
 
-function getOrganismBucketKey(x, y) {
+export function getOrganismBucketKey(x, y) {
   var bucketSize = getOrganismBucketSize();
   return Math.floor(getWrappedWorldX(x) / bucketSize) + ":" + Math.floor(getClampedWorldY(y) / bucketSize);
 }
 
-function ensureOrganismIndexState() {
+export function ensureOrganismIndexState() {
   if (!world.organismBuckets) {
     world.organismBuckets = {};
   }
@@ -40,7 +47,7 @@ function ensureOrganismIndexState() {
   }
 }
 
-function registerOrganismInIndexes(organism) {
+export function registerOrganismInIndexes(organism) {
   ensureOrganismIndexState();
 
   var lineageId = ensureOrganismLineage(organism);
@@ -59,7 +66,7 @@ function registerOrganismInIndexes(organism) {
   world.organismsByLineage[lineageKey].push(organism);
 }
 
-function rebuildOrganismIndexes() {
+export function rebuildOrganismIndexes() {
   world.organismBuckets = {};
   world.organismsByLineage = {};
 
@@ -73,18 +80,18 @@ function rebuildOrganismIndexes() {
   }
 }
 
-function ensureOrganismIndexes() {
+export function ensureOrganismIndexes() {
   if (!world.organismBuckets || !world.organismsByLineage) {
     rebuildOrganismIndexes();
   }
 }
 
-function getIndexedOrganismsForLineage(lineageId) {
+export function getIndexedOrganismsForLineage(lineageId) {
   ensureOrganismIndexes();
   return world.organismsByLineage[String(lineageId)] || [];
 }
 
-function collectOrganismsInRadius(x, y, radius, lineageId, limit) {
+export function collectOrganismsInRadius(x, y, radius, lineageId, limit) {
   // Use tile grid fast path when available (AZR-491)
   if (PS.tileGrid && PS.tileGrid.grid && typeof PS.tileGrid.collectInRadius === "function") {
     return PS.tileGrid.collectInRadius(x, y, radius, lineageId, limit);
@@ -135,7 +142,7 @@ function collectOrganismsInRadius(x, y, radius, lineageId, limit) {
   return organisms;
 }
 
-function countOrganismsInRadiusForLineage(x, y, radius, lineageId) {
+export function countOrganismsInRadiusForLineage(x, y, radius, lineageId) {
   // Use tile grid fast path when available (AZR-491)
   if (PS.tileGrid && PS.tileGrid.grid && typeof PS.tileGrid.countInRadius === "function") {
     return PS.tileGrid.countInRadius(x, y, radius, lineageId);
@@ -177,7 +184,7 @@ function countOrganismsInRadiusForLineage(x, y, radius, lineageId) {
   return count;
 }
 
-function getNearestOrganismInRadius(x, y, radius) {
+export function getNearestOrganismInRadius(x, y, radius) {
   // Use tile grid fast path when available (AZR-491)
   if (PS.tileGrid && PS.tileGrid.grid && typeof PS.tileGrid.nearestInRadius === "function") {
     return PS.tileGrid.nearestInRadius(x, y, radius);
@@ -218,7 +225,7 @@ function getNearestOrganismInRadius(x, y, radius) {
   return nearestOrganism;
 }
 
-function updateLineageSummaryCache() {
+export function updateLineageSummaryCache() {
   var lineages = [];
   var activeCount = 0;
   var extinctCount = 0;
@@ -307,7 +314,7 @@ function updateLineageSummaryCache() {
   return world.lineageSummaryText;
 }
 
-function refreshLineageRegistry() {
+export function refreshLineageRegistry() {
   var lineages = ensureLineageRegistry();
   var lineageKey;
   var traitTotals = {
@@ -412,3 +419,4 @@ function refreshLineageRegistry() {
 
   updateLineageSummaryCache();
 }
+

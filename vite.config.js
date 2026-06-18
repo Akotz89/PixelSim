@@ -3,7 +3,10 @@ module.exports = {
   publicDir: false,
   server: {
     port: 3000,
-    strictPort: false
+    strictPort: false,
+    allowedHosts: [
+      "homepc.tail437cf6.ts.net"
+    ]
   },
   preview: {
     port: 4173,

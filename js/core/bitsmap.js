@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "./namespace.js";
+
 PS.core = PS.core || {};
 
 PS.core.Bitsmap = function Bitsmap(bits, length, data) {

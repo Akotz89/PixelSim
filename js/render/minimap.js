@@ -1,4 +1,11 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, getTileIndex } from "../core/utils.js";
+import { getPlanetTile } from "./planet-grid.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { markCameraInteracting } from "../ui/camera-input.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
 PS.render.minimap = PS.render.minimap || {

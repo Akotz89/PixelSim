@@ -1,6 +1,8 @@
-"use strict";
-var PS = window.PS || {};
-window.PS = PS;
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { adjustPlanetTouchPinchZoomAtCanvasPoint, panPlanetViewByScreenDelta, setPlanetTouchPinchZoomTargetAtCanvasPoint } from "../render/planet-view.js";
+import { getCanvasPointFromClient, markCameraInteracting, planetDragState, redrawPlanetView, zoomPlanetView } from "./camera-input.js";
+import { canvas } from "./dom-refs.js";
 
 PS.ui = PS.ui || {};
 
@@ -9,6 +11,13 @@ PS.ui.touch = (function() {
     pointers: {},
     activePinch: false,
     lastDistance: 0,
+    startDistance: 0,
+    smoothedDistance: 0,
+    startZoomLevel: 0,
+    smoothedAnchorCanvasX: 0,
+    smoothedAnchorCanvasY: 0,
+    hasSmoothedAnchor: false,
+    pinchUpdateCount: 0,
     lastAngle: 0
   };
 
@@ -57,6 +66,38 @@ PS.ui.touch = (function() {
     );
   }
 
+  function getSmoothedMidpoint(first, second, motion) {
+    var raw = getMidpoint(first, second);
+    var smoothing = clamp(Number(motion && motion.touchPinchAnchorSmoothing) || 0.22, 0.05, 1);
+    var deadzone = Math.max(0, Number(motion && motion.touchPinchAnchorDeadzonePx) || 0);
+
+    if (!state.hasSmoothedAnchor) {
+      state.smoothedAnchorCanvasX = Number(raw.canvasX) || 0;
+      state.smoothedAnchorCanvasY = Number(raw.canvasY) || 0;
+      state.hasSmoothedAnchor = true;
+      return {
+        canvasX: state.smoothedAnchorCanvasX,
+        canvasY: state.smoothedAnchorCanvasY
+      };
+    }
+
+    var rawX = Number(raw.canvasX) || 0;
+    var rawY = Number(raw.canvasY) || 0;
+    var deltaX = rawX - state.smoothedAnchorCanvasX;
+    var deltaY = rawY - state.smoothedAnchorCanvasY;
+    var distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+    if (distance > deadzone) {
+      state.smoothedAnchorCanvasX += deltaX * smoothing;
+      state.smoothedAnchorCanvasY += deltaY * smoothing;
+    }
+
+    return {
+      canvasX: state.smoothedAnchorCanvasX,
+      canvasY: state.smoothedAnchorCanvasY
+    };
+  }
+
   function stopDragForGesture() {
     if (planetDragState.inertiaHandle !== null && typeof window.cancelAnimationFrame === "function") {
       window.cancelAnimationFrame(planetDragState.inertiaHandle);
@@ -92,6 +133,16 @@ PS.ui.touch = (function() {
 
     state.activePinch = true;
     state.lastDistance = Math.max(1, getDistance(touches[0], touches[1]));
+    state.startDistance = state.lastDistance;
+    state.smoothedDistance = state.lastDistance;
+    state.startZoomLevel = PS.camera && typeof PS.camera.getView === "function"
+      ? Number(PS.camera.getView().zoomLevel) || 0
+      : 0;
+    var midpoint = getMidpoint(touches[0], touches[1]);
+    state.smoothedAnchorCanvasX = Number(midpoint.canvasX) || 0;
+    state.smoothedAnchorCanvasY = Number(midpoint.canvasY) || 0;
+    state.hasSmoothedAnchor = true;
+    state.pinchUpdateCount = 0;
     state.lastAngle = getAngle(touches[0], touches[1]);
     stopDragForGesture();
     markCameraInteracting();
@@ -99,14 +150,52 @@ PS.ui.touch = (function() {
   }
 
   function rotateByAngleDelta(delta) {
-    if (Math.abs(delta) <= 0.001 || typeof panPlanetViewByScreenDelta !== "function") {
+    var motion = PS.camera && typeof PS.camera.getMotionConfig === "function"
+      ? PS.camera.getMotionConfig()
+      : { touchRotatePanMultiplier: 10, touchPanInputMaxDelta: 24 };
+    var rotateMultiplier = Math.max(0, Number(motion.touchRotatePanMultiplier) || 0);
+    var panDelta = clamp(delta * rotateMultiplier, -motion.touchPanInputMaxDelta, motion.touchPanInputMaxDelta);
+
+    if (rotateMultiplier <= 0 || Math.abs(panDelta) <= 0.001 || typeof panPlanetViewByScreenDelta !== "function") {
       return false;
     }
 
     markCameraInteracting();
-    panPlanetViewByScreenDelta(delta * 180, 0);
+    panPlanetViewByScreenDelta(panDelta, 0);
     redrawPlanetView();
     return true;
+  }
+
+  function zoomByPinchDelta(delta, midpoint) {
+    if (!midpoint) {
+      return false;
+    }
+
+    if (typeof adjustPlanetTouchPinchZoomAtCanvasPoint === "function") {
+      markCameraInteracting();
+      return adjustPlanetTouchPinchZoomAtCanvasPoint(delta, midpoint.canvasX, midpoint.canvasY);
+    }
+
+    return typeof zoomPlanetView === "function"
+      ? zoomPlanetView(delta, midpoint)
+      : false;
+  }
+
+  function zoomByPinchTarget(targetZoomLevel, midpoint) {
+    if (!midpoint) {
+      return false;
+    }
+
+    if (typeof setPlanetTouchPinchZoomTargetAtCanvasPoint === "function") {
+      markCameraInteracting();
+      return setPlanetTouchPinchZoomTargetAtCanvasPoint(targetZoomLevel, midpoint.canvasX, midpoint.canvasY);
+    }
+
+    var currentZoomLevel = PS.camera && typeof PS.camera.getView === "function"
+      ? Number(PS.camera.getView().zoomLevel) || 0
+      : state.startZoomLevel;
+
+    return zoomByPinchDelta(targetZoomLevel - currentZoomLevel, midpoint);
   }
 
   function update(event) {
@@ -122,17 +211,63 @@ PS.ui.touch = (function() {
 
     var distance = Math.max(1, getDistance(touches[0], touches[1]));
     var previousDistance = Math.max(1, state.lastDistance || distance);
-    var ratio = distance / previousDistance;
-    var zoomDelta = clamp(Math.log(ratio) * 1.4, -0.35, 0.35);
+    var startDistance = Math.max(1, state.startDistance || previousDistance);
+    var motion = PS.camera && typeof PS.camera.getMotionConfig === "function"
+      ? PS.camera.getMotionConfig()
+      : {
+        touchPinchZoomMultiplier: 0.45,
+        touchPinchZoomMaxDelta: 0.08,
+        touchPinchDistanceDeadzonePx: 1.5,
+        touchPinchDistanceSmoothing: 0.32
+      };
+    var rawDistanceDelta = distance - previousDistance;
+    var distanceDeadzone = Math.max(0, Number(motion.touchPinchDistanceDeadzonePx) || 0);
+    var smoothing = clamp(Number(motion.touchPinchDistanceSmoothing) || 0.32, 0.05, 1);
+
+    if (Math.abs(rawDistanceDelta) < distanceDeadzone) {
+      state.lastDistance = distance;
+      planetDragState.skipNextClick = true;
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      return true;
+    }
+
     var angle = getAngle(touches[0], touches[1]);
     var angleDelta = normalizeAngleDelta(angle - state.lastAngle);
 
+    if (state.pinchUpdateCount <= 0) {
+      state.lastDistance = distance;
+      state.lastAngle = angle;
+      state.pinchUpdateCount += 1;
+      planetDragState.skipNextClick = true;
+      if (typeof event.preventDefault === "function") {
+        event.preventDefault();
+      }
+      return true;
+    }
+
+    state.smoothedDistance = Math.max(
+      1,
+      (Number(state.smoothedDistance) || previousDistance) + (distance - (Number(state.smoothedDistance) || previousDistance)) * smoothing
+    );
+
+    var ratio = state.smoothedDistance / previousDistance;
+    var gestureRatio = state.smoothedDistance / startDistance;
+    var zoomDelta = clamp(
+      Math.log(ratio) * motion.touchPinchZoomMultiplier,
+      -motion.touchPinchZoomMaxDelta,
+      motion.touchPinchZoomMaxDelta
+    );
+    var targetZoomLevel = state.startZoomLevel + Math.log(gestureRatio) * motion.touchPinchZoomMultiplier;
+
     state.lastDistance = distance;
     state.lastAngle = angle;
+    state.pinchUpdateCount += 1;
     planetDragState.skipNextClick = true;
 
     if (Math.abs(zoomDelta) > 0.001) {
-      zoomPlanetView(zoomDelta, getMidpoint(touches[0], touches[1]));
+      zoomByPinchTarget(targetZoomLevel, getSmoothedMidpoint(touches[0], touches[1], motion));
     }
 
     rotateByAngleDelta(angleDelta);
@@ -158,7 +293,17 @@ PS.ui.touch = (function() {
     if (getActivePointers().length < 2) {
       state.activePinch = false;
       state.lastDistance = 0;
+      state.startDistance = 0;
+      state.smoothedDistance = 0;
+      state.startZoomLevel = 0;
+      state.smoothedAnchorCanvasX = 0;
+      state.smoothedAnchorCanvasY = 0;
+      state.hasSmoothedAnchor = false;
+      state.pinchUpdateCount = 0;
       state.lastAngle = 0;
+      if (PS.camera && typeof PS.camera.stopTouchPinchZoom === "function") {
+        PS.camera.stopTouchPinchZoom();
+      }
     }
 
     return true;
@@ -178,3 +323,4 @@ PS.ui.touch = (function() {
     update: update
   };
 })();
+

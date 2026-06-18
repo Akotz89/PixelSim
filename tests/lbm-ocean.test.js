@@ -1,17 +1,9 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
+const gpuSimRuntimeSource = read("js/sim/gpu-sim-runtime.js");
 const oceanSource = read("js/sim/lbm-ocean.js");
 const shaderSource = read("shaders/lbm-ocean.wgsl");
 const shaderSidecar = read("shaders/lbm-ocean.wgsl.js");
@@ -206,6 +198,7 @@ context.window.window = context.window;
 vm.createContext(context);
 vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-manager.js" });
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
+vm.runInContext(gpuSimRuntimeSource, context, { filename: "js/sim/gpu-sim-runtime.js" });
 vm.runInContext(oceanSource, context, { filename: "js/sim/lbm-ocean.js" });
 
 const ocean = context.PS.sim.lbmOcean;
@@ -245,6 +238,30 @@ const after = ocean.stepCpu(before, 8, 8, {
 const conservation = ocean.validateMassConservation(before, after, config.mass_tolerance);
 assert.strictEqual(conservation.valid, true, "CPU LBM validation step should conserve mass within 0.01%");
 assert.strictEqual(ocean.validateNoNaN(after), true, "CPU LBM validation step should not create NaN distributions");
+const corrupt = ocean.makeInitialDistributions(8, 8);
+corrupt[(4 * 8 + 4) * 9 + 1] = NaN;
+const repaired = ocean.stepCpu(corrupt, 8, 8, {
+  oceanMask: mask,
+  wind: wind,
+  tau: 0.8,
+  windCoupling: 0.1
+});
+assert.strictEqual(ocean.validateNoNaN(repaired), true, "single corrupt LBM distribution should be repaired before propagation");
+for (let cell = 0; cell < 8 * 8; cell += 1) {
+  for (let direction = 0; direction < 9; direction += 1) {
+    assert.ok(Number.isFinite(repaired[cell * 9 + direction]), "repaired LBM field should leave no adjacent NaN contamination");
+  }
+}
+let longRun = ocean.makeInitialDistributions(8, 8);
+for (let tick = 0; tick < 10000; tick += 1) {
+  longRun = ocean.stepCpu(longRun, 8, 8, {
+    oceanMask: mask,
+    wind: wind,
+    tau: 0.8,
+    windCoupling: 0.1
+  });
+}
+assert.strictEqual(ocean.validateNoNaN(longRun), true, "LBM ocean field should remain finite after 10,000 CPU validation ticks");
 const macro = ocean.computeMacroscopic(after, 8, 8, mask);
 assert.strictEqual(ocean.validateCoastlineBounce(macro, mask).valid, true, "land cells should have no through-coast velocity");
 

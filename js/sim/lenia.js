@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.lenia = PS.sim.lenia || {
@@ -36,15 +38,7 @@ PS.sim.lenia = PS.sim.lenia || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-    if (!manifest.some(function (entry) { return entry && entry.name === "lenia"; })) {
-      manifest.push({ name: this.shaderName, path: this.shaderPath });
-    }
-    return manifest;
+    return PS.render.registerWgslShaderManifestEntries({ name: this.shaderName, path: this.shaderPath });
   },
 
   normalizeConfig: function (config) {
@@ -516,7 +510,7 @@ PS.sim.lenia = PS.sim.lenia || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "lenia.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -529,7 +523,8 @@ PS.sim.lenia = PS.sim.lenia || {
             { binding: 6, resource: { buffer: owner.buffers["lenia.volcanic"].buffer } },
             { binding: 7, resource: { buffer: owner.buffers["lenia.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.stateId);

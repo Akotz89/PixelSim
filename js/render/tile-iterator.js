@@ -1,4 +1,7 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 // Zero-allocation visible-tile cursor for render passes. begin()/onScreenTiles()
 // configure bounds once; next() only mutates scalar fields on the same object.
 

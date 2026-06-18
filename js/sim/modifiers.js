@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 // ── Modifier Engine (AZR-493) ──────────────────────────────────────
 // Composable additive/multiplicative stat modifier system.
 //

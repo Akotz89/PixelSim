@@ -1,5 +1,5 @@
-"use strict";
-var PS = window.PS || {};
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.wasmBridge = {
@@ -130,4 +130,4 @@ PS.sim.wasmBridge = {
   }
 };
 
-window.PS = PS;
+

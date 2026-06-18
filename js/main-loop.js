@@ -1,9 +1,19 @@
-"use strict";
-function toggleSimulationPaused() {
+import { CONFIG } from "../config.js";
+import { PS } from "./core/namespace.js";
+import { clamp } from "./core/utils.js";
+import { reportRuntimeError } from "./main-runtime.js";
+import { drawWorld } from "./render/pipeline.js";
+import { seedWorld, setSimulationPaused, updateWorld } from "./main-simulation.js";
+import { world } from "./systems/state.js";
+import { syncControlStates, updateHud } from "./ui/foundation.js";
+// fallow-ignore-next-line circular-dependency
+import { setupControls } from "./ui/setup.js";
+
+export function toggleSimulationPaused() {
   return setSimulationPaused(!world.isPaused);
 }
 
-function setSimulationSpeed(speed) {
+export function setSimulationSpeed(speed) {
   var nextSpeed = clamp(Math.round(Number(speed) || world.speed), 1, 10);
 
   if (world.speed === nextSpeed) {
@@ -14,11 +24,11 @@ function setSimulationSpeed(speed) {
   return true;
 }
 
-function adjustSimulationSpeed(delta) {
+export function adjustSimulationSpeed(delta) {
   return setSimulationSpeed(world.speed + Math.round(Number(delta) || 0));
 }
 
-function stepSimulationOnce() {
+export function stepSimulationOnce() {
   if (!world.isPaused || world.isExtinct) {
     return false;
   }
@@ -39,24 +49,24 @@ function stepSimulationOnce() {
   return true;
 }
 
-var lastFrameTime = performance.now();
-var statsTimer = performance.now();
-var hudTimer = performance.now();
-var framesSinceStatsUpdate = 0;
-var simTicksSinceStatsUpdate = 0;
-var updateMsSinceStatsUpdate = 0;
-var drawMsSinceStatsUpdate = 0;
-var measuredUpdateFrames = 0;
-var measuredDrawFrames = 0;
-var maxUpdateMsSinceStatsUpdate = 0;
-var maxDrawMsSinceStatsUpdate = 0;
-var gameLoopStarted = false;
+export var lastFrameTime = performance.now();
+export var statsTimer = performance.now();
+export var hudTimer = performance.now();
+export var framesSinceStatsUpdate = 0;
+export var simTicksSinceStatsUpdate = 0;
+export var updateMsSinceStatsUpdate = 0;
+export var drawMsSinceStatsUpdate = 0;
+export var measuredUpdateFrames = 0;
+export var measuredDrawFrames = 0;
+export var maxUpdateMsSinceStatsUpdate = 0;
+export var maxDrawMsSinceStatsUpdate = 0;
+export var gameLoopStarted = false;
 
-function getLoadingScreen() {
+export function getLoadingScreen() {
   return document.getElementById("loading-screen");
 }
 
-function updateLoadingScreen(progress, message) {
+export function updateLoadingScreen(progress, message) {
   var screen = getLoadingScreen();
   var fill = document.getElementById("loading-progress-fill");
   var text = document.getElementById("loading-progress-text");
@@ -78,7 +88,7 @@ function updateLoadingScreen(progress, message) {
   }
 }
 
-function hideLoadingScreen() {
+export function hideLoadingScreen() {
   var screen = getLoadingScreen();
 
   if (screen) {
@@ -86,7 +96,7 @@ function hideLoadingScreen() {
   }
 }
 
-function loadStartupAssets() {
+export function loadStartupAssets() {
   var startedAt = performance.now();
 
   if (!PS.assets || typeof PS.assets.AssetLoader !== "function") {
@@ -140,7 +150,7 @@ function loadStartupAssets() {
   });
 }
 
-function loadStartupData() {
+export function loadStartupData() {
   if (!PS.assets || typeof PS.assets.AssetLoader !== "function") {
     return Promise.resolve({ loaded: false, reason: "AssetLoader unavailable" });
   }
@@ -244,7 +254,7 @@ function loadStartupData() {
   });
 }
 
-function loadStartupShaders() {
+export function loadStartupShaders() {
   var loader = PS.assets && PS.assets.startupLoader ? PS.assets.startupLoader : null;
 
   function registerWgslManifests() {
@@ -253,6 +263,7 @@ function loadStartupShaders() {
       PS.render.webgpuSurfaceUnderlay,
       PS.render.webgpuSurfaceTile,
       PS.render.webgpuCompositor,
+      PS.render.webgpuTileLights,
       PS.render.webgpuPointLights,
       PS.render.webgpuWaterDisplacement,
       PS.render.webgpuEntity,
@@ -326,7 +337,7 @@ function loadStartupShaders() {
   });
 }
 
-function gameLoop() {
+export function gameLoop() {
   try {
     var frameStart = performance.now();
     var now = frameStart;
@@ -433,7 +444,7 @@ function gameLoop() {
   }
 }
 
-function startGame() {
+export function startGame() {
   updateLoadingScreen({ total: 0, loaded: 0, failed: 0, percent: 0 }, "Loading...");
 
   return PS.gpu.initialize().then(function () {
@@ -465,5 +476,3 @@ function startGame() {
     reportRuntimeError(error);
   });
 }
-
-window.startGame = startGame;

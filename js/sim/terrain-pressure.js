@@ -1,7 +1,15 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, getTileIndex } from "../core/utils.js";
+import { getClampedWorldY, getPlanetTile, getWrappedWorldX } from "../render/planet-grid.js";
+import { getPlanetLatitudeForTile, getPlanetLongitudeForTile } from "../render/planet-view.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { ensureOrganismTraits } from "./organisms-traits.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.sim = PS.sim || {};
 
-var TERRAIN_PRESSURE_TRAITS = [
+export var TERRAIN_PRESSURE_TRAITS = [
   "terrainAffinity",
   "waterDependency",
   "thermalTolerance",
@@ -10,9 +18,61 @@ var TERRAIN_PRESSURE_TRAITS = [
   "reproductionEnergy",
   "carnivory"
 ];
-var TERRAIN_PRESSURE_EVENT_INTERVAL = 240;
+export var TERRAIN_PRESSURE_EVENT_INTERVAL = 240;
+export var terrainPressureSampleCache = {
+  signature: "",
+  samples: {}
+};
 
-function getTerrainPressureTile(x, y) {
+export function getTerrainPressureCacheSignature() {
+  var atmosphere = world && world.atmosphere ? world.atmosphere : {};
+  var geology = world && world.geology ? world.geology : {};
+
+  return [
+    Math.max(0, Math.round(Number(world && world.tick) || 0)),
+    Array.isArray(world && world.planetTiles) ? world.planetTiles.length : 0,
+    Math.round(Number(world && world.fertileTiles) || 0),
+    Math.round((Number(atmosphere.temperatureC) || 0) * 10),
+    Math.round(Number(geology.ageTicks) || 0)
+  ].join(":");
+}
+
+export function getTerrainPressureTileCacheKey(tileX, tileY, tile) {
+  return [
+    tileX,
+    tileY,
+    String(tile && tile.biome || ""),
+    Math.round((Number(tile && tile.elevation) || 0) * 1000),
+    Math.round((Number(tile && tile.coastFactor) || 0) * 1000),
+    Math.round((Number(tile && tile.shallowWater) || 0) * 1000),
+    Math.round((Number(tile && tile.shelfStrength) || 0) * 1000),
+    Math.round((Number(tile && tile.riverStrength) || 0) * 1000),
+    Math.round((Number(tile && tile.waterFlow) || 0) * 1000),
+    Math.round((Number(tile && tile.slope) || 0) * 1000),
+    Math.round((Number(tile && tile.volcanicActivity) || 0) * 1000),
+    Math.round((Number(tile && tile.tectonicStress) || 0) * 1000),
+    Math.round((Number(tile && tile.latitude) || 0) * 1000),
+    Number(tile && tile.plateId) || -1
+  ].join(":");
+}
+
+export function getCachedTerrainPressureSample(cacheKey) {
+  var signature = getTerrainPressureCacheSignature();
+
+  if (terrainPressureSampleCache.signature !== signature) {
+    terrainPressureSampleCache.signature = signature;
+    terrainPressureSampleCache.samples = {};
+  }
+
+  return terrainPressureSampleCache.samples[cacheKey] || null;
+}
+
+export function setCachedTerrainPressureSample(cacheKey, sample) {
+  terrainPressureSampleCache.samples[cacheKey] = sample;
+  return sample;
+}
+
+export function getTerrainPressureTile(x, y) {
   if (typeof getPlanetTile === "function") {
     return getPlanetTile(x, y) || null;
   }
@@ -24,7 +84,7 @@ function getTerrainPressureTile(x, y) {
   return null;
 }
 
-function getTerrainPressureBiome(tile, x, y) {
+export function getTerrainPressureBiome(tile, x, y) {
   var biome = String(tile && tile.biome || "").toLowerCase();
 
   if (!biome && typeof isFertile === "function") {
@@ -34,11 +94,11 @@ function getTerrainPressureBiome(tile, x, y) {
   return biome;
 }
 
-function getTerrainPressureElevation(tile) {
+export function getTerrainPressureElevation(tile) {
   return clamp(Number(tile && tile.elevation) || 0, 0, 1);
 }
 
-function getTerrainPressureLatitude(tile, y) {
+export function getTerrainPressureLatitude(tile, y) {
   if (tile && Number.isFinite(Number(tile.latitude))) {
     return Number(tile.latitude);
   }
@@ -46,7 +106,7 @@ function getTerrainPressureLatitude(tile, y) {
   return typeof getPlanetLatitudeForTile === "function" ? getPlanetLatitudeForTile(y) : 0;
 }
 
-function getTerrainPressureRegionId(driver, x, y, tile) {
+export function getTerrainPressureRegionId(driver, x, y, tile) {
   var bandX = Math.floor(getWrappedWorldX(x) / Math.max(1, Math.ceil(WORLD_WIDTH / 12)));
   var bandY = Math.floor(getClampedWorldY(y) / Math.max(1, Math.ceil(WORLD_HEIGHT / 8)));
   var plateId = tile && Number.isFinite(Number(tile.plateId)) ? Number(tile.plateId) : -1;
@@ -60,7 +120,7 @@ function getTerrainPressureRegionId(driver, x, y, tile) {
   ].join(".");
 }
 
-function hasTerrainPressureBiome(biome, names) {
+export function hasTerrainPressureBiome(biome, names) {
   for (var i = 0; i < names.length; i++) {
     if (biome.indexOf(names[i]) >= 0) {
       return true;
@@ -70,10 +130,23 @@ function hasTerrainPressureBiome(biome, names) {
   return false;
 }
 
-function getTerrainPressureSample(x, y) {
+/**
+ * @description Aggregates terrain, biome, hydrology, settlement, and hazard signals into a cached pressure sample for organism and population decisions.
+ * @param {number} x World tile x coordinate to wrap into the planet grid.
+ * @param {number} y World tile y coordinate to clamp into the planet grid.
+ * @returns {Object} Terrain pressure sample with movement, fertility, hazard, and affinity signals.
+ */
+export function getTerrainPressureSample(x, y) {
   var tileX = typeof getWrappedWorldX === "function" ? getWrappedWorldX(x) : x;
   var tileY = typeof getClampedWorldY === "function" ? getClampedWorldY(y) : y;
   var tile = getTerrainPressureTile(tileX, tileY);
+  var cacheKey = getTerrainPressureTileCacheKey(tileX, tileY, tile);
+  var cached = getCachedTerrainPressureSample(cacheKey);
+
+  if (cached) {
+    return cached;
+  }
+
   var biome = getTerrainPressureBiome(tile, tileX, tileY);
   var elevation = getTerrainPressureElevation(tile);
   var latitude = getTerrainPressureLatitude(tile, tileY);
@@ -150,7 +223,7 @@ function getTerrainPressureSample(x, y) {
     affectedTraits.push("movementTendency", "reproductionEnergy", "carnivory");
   }
 
-  return {
+  return setCachedTerrainPressureSample(cacheKey, {
     x: tileX,
     y: tileY,
     biome: biome || "unknown",
@@ -172,11 +245,17 @@ function getTerrainPressureSample(x, y) {
       latitude: latitude,
       longitude: typeof getPlanetLongitudeForTile === "function" ? getPlanetLongitudeForTile(tileX) : 0
     }
-  };
+  });
 }
 
-function getTerrainPressureMismatchForTraits(traits, x, y) {
-  var sample = getTerrainPressureSample(x, y);
+export function getTerrainPressureMismatchForTraits(traits, x, y) {
+  var baseSample = getTerrainPressureSample(x, y);
+  var sample = Object.assign({}, baseSample, {
+    target: baseSample.target,
+    affectedTraits: baseSample.affectedTraits,
+    effects: baseSample.effects,
+    location: baseSample.location
+  });
   var traitCount = 0;
   var mismatch = 0;
 
@@ -206,13 +285,13 @@ function getTerrainPressureMismatchForTraits(traits, x, y) {
   return sample;
 }
 
-function getTerrainPressureEnergyCost(traits, x, y) {
+export function getTerrainPressureEnergyCost(traits, x, y) {
   var sample = getTerrainPressureMismatchForTraits(traits, x, y);
 
   return sample.mismatch * sample.pressure * CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
 }
 
-function getTerrainPressureReproductionMultiplier(traits, x, y) {
+export function getTerrainPressureReproductionMultiplier(traits, x, y) {
   var sample = getTerrainPressureMismatchForTraits(traits, x, y);
   var mismatchPenalty = sample.mismatch * sample.pressure * 0.9;
   var terrainMultiplier = sample.effects.reproductionMultiplier;
@@ -220,7 +299,7 @@ function getTerrainPressureReproductionMultiplier(traits, x, y) {
   return clamp(terrainMultiplier + mismatchPenalty, 0.65, 1.9);
 }
 
-function summarizeTerrainPressureForPopulation(organisms, traitsList) {
+export function summarizeTerrainPressureForPopulation(organisms, traitsList) {
   var driverCounts = {};
   var traitCounts = {};
   var totalPressure = 0;
@@ -278,7 +357,7 @@ function summarizeTerrainPressureForPopulation(organisms, traitsList) {
   };
 }
 
-function refreshTerrainPressureSummary(populations) {
+export function refreshTerrainPressureSummary(populations) {
   var active = Array.isArray(populations) ? populations : [];
   var summary = {
     populationCount: 0,
@@ -349,7 +428,7 @@ function refreshTerrainPressureSummary(populations) {
   return summary;
 }
 
-function emitTerrainPressureMilestones(summary) {
+export function emitTerrainPressureMilestones(summary) {
   if (!summary || !PS.events || typeof PS.events.emitMilestone !== "function") {
     return null;
   }

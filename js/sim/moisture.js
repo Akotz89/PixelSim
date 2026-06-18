@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.moisture = PS.sim.moisture || {
@@ -36,15 +37,7 @@ PS.sim.moisture = PS.sim.moisture || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-    if (!manifest.some(function (entry) { return entry && entry.name === "moisture"; })) {
-      manifest.push({ name: this.shaderName, path: this.shaderPath });
-    }
-    return manifest;
+    return PS.render.registerWgslShaderManifestEntries({ name: this.shaderName, path: this.shaderPath });
   },
 
   normalizeConfig: function (config) {
@@ -478,7 +471,7 @@ PS.sim.moisture = PS.sim.moisture || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "moisture.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -491,7 +484,8 @@ PS.sim.moisture = PS.sim.moisture || {
             { binding: 6, resource: { buffer: owner.buffers["moisture.oceanVelocity"].buffer } },
             { binding: 7, resource: { buffer: owner.buffers["moisture.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.stateId);

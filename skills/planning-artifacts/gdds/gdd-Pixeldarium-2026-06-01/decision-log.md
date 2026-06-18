@@ -66,7 +66,17 @@
 - **Decision:** Fully simulated. Particle physics, gravity, accretion disk dynamics, orbital mechanics from the start.
 - **Player sees:** Dust condense, stars ignite, accretion disk form, planets accrete, orbital mechanics stabilize.
 - **Duration:** Could take 10+ minutes of sim time (adjustable with time acceleration).
-- **Technical note:** This is a GPU-hostile workload in vanilla JS. Will need clever optimizations (spatial hashing, Barnes-Hut tree, WebGL2 if the no-library constraint allows raw API).
+- **Technical note:** This is a GPU-hostile workload in vanilla JS. Use WebGPU compute where parallelism fits, WASM for serial CPU-heavy kernels, and chunked spatial approximations such as spatial hashing or Barnes-Hut style aggregation.
+
+### D1v2 — WebGPU Required Runtime
+- **Decision:** WebGPU (`navigator.gpu`) is the required render and GPU-compute API.
+- **Rationale:** The visual target depends on WGSL render passes, G-buffer composition, point lights, and simulation data passes. Maintaining WebGL2 as a second runtime would split acceptance and block the WebGPU/WASM architecture.
+- **Constraint:** Browsers without WebGPU show a WebGPU-required failure state and stop startup. WebGL2 is legacy migration debt only, not a runtime fallback.
+
+### D1-WASM — Sidecar WASM For Serial Simulation Kernels
+- **Decision:** Rust/WASM sidecars handle CPU-heavy serial simulation kernels that do not map cleanly to GPU compute.
+- **Rationale:** River networks, erosion, tectonics, and similar algorithms need deterministic serial or graph-heavy work without blocking the render thread.
+- **Constraint:** WASM is built offline, committed as base64 sidecars, and initialized through a worker-safe no-fetch path for `file://` compatibility.
 
 ### D013 — Epoch 1: Primordial Planet
 - **Decision:** Dual-layer simulation — geology AND chemistry simultaneously.
@@ -195,7 +205,6 @@ All core design dimensions walked:
 - `gdd.md` — finalized, validation passed
 - `epics.md` — finalized, 13 epics across 5 phases
 - `decision-log.md` — 22 design decisions + finalization record
-
 
 
 

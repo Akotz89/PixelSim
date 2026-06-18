@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 function nearly(actual, expected) {
   return Math.abs(Number(actual) - Number(expected)) < 0.00001;
@@ -30,6 +21,7 @@ const gbufferTerrainWgsl = read("shaders/gbuffer-terrain.wgsl");
 const gbufferComposeWgsl = read("shaders/gbuffer-compose.wgsl");
 const particleWgsl = read("shaders/particle.wgsl");
 const shadowWgsl = read("shaders/shadow.wgsl");
+const spriteDisplaceWgsl = read("shaders/sprite-displace.wgsl");
 
 assert.ok(
   namespaceSource.indexOf("js/render/webgpu-surface-tile.js") > namespaceSource.indexOf("js/render/webgpu-surface-underlay.js"),
@@ -43,8 +35,15 @@ assert.ok(
 assert.strictEqual(namespaceSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
 assert.ok(
-  surfaceTileSource.indexOf("surfaceTileBatcher.appendBatches(batches, address, cellCache, alpha, lodState)") >= 0,
+  surfaceTileSource.indexOf("return PS.render.surfaceTileBatcher.appendBatches(batches, address, cellCache, alpha, lodState)") >= 0 &&
+    surfaceTileSource.indexOf("item.lodState || lodState") >= 0,
   "WebGPU surface tile renderer should forward LOD state into CPU-side terrain batching"
+);
+assert.ok(
+  surfaceTileSource.indexOf("canUseBatchCache") >= 0 &&
+    surfaceTileSource.indexOf("getBatchCacheKey") >= 0 &&
+    surfaceTileSource.indexOf("batchCacheHits") >= 0,
+  "WebGPU surface tile renderer should expose the paused terrain batch cache"
 );
 assert.ok(
   surfaceTileSource.indexOf("this.makeBatches(address, cellCache, alpha, options && options.lodState)") >= 0,
@@ -177,9 +176,17 @@ assert.ok(
 );
 assert.ok(
   batcherSource.indexOf("appendWaterDecoration") >= 0 &&
+    waterRenderingSource.indexOf("getWaterFrameIndex") >= 0 &&
+    waterRenderingSource.indexOf("getAnimatedVariant") >= 0 &&
     surfaceTileSource.indexOf("drawShadowRects") >= 0 &&
-    surfaceTileSource.indexOf("drawParticleRects") >= 0,
+    surfaceTileSource.indexOf("drawParticleRects") >= 0 &&
+    surfaceTileSource.indexOf("drawDisplacementRects") >= 0,
   "surface tile renderer should batch floating water decorations and their shadows through rect renderers"
+);
+assert.ok(
+  batcherSource.indexOf("appendSampleDisplacement") >= 0 &&
+    batcherSource.indexOf("getSampleHeatDisplacement") >= 0,
+  "surface tile batcher should derive heat haze displacement from terrain material signals"
 );
 
 const queueWrites = [];
@@ -359,6 +366,7 @@ context.PS.render.wgslShaders.register("gbuffer-terrain", gbufferTerrainWgsl, { 
 context.PS.render.wgslShaders.register("gbuffer-compose", gbufferComposeWgsl, { path: "shaders/gbuffer-compose.wgsl" });
 context.PS.render.wgslShaders.register("particle", particleWgsl, { path: "shaders/particle.wgsl" });
 context.PS.render.wgslShaders.register("shadow", shadowWgsl, { path: "shaders/shadow.wgsl" });
+context.PS.render.wgslShaders.register("sprite-displace", spriteDisplaceWgsl, { path: "shaders/sprite-displace.wgsl" });
 
 surfaceTile.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some(function (entry) { return entry.name === "terrain"; }), "terrain shader should be in WGSL manifest");
@@ -409,14 +417,7 @@ context.PS.assets.equivalence.selectCell = function (family, cellName, use, fall
   };
 };
 
-const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
-  sampleEast: 0,
-  sampleNorth: 0,
-  renderScreenX: 0,
-  renderScreenY: 0,
-  renderSamplePixelSize: 16,
-  chunkSamples: 1
-}, [{
+const acceptedTerrainCache = [{
   sample: {
     biome: "grassland",
     acceptedTerrainCellName: "rock-mountain.0",
@@ -426,12 +427,24 @@ const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches(
   },
   screenX: 0,
   screenY: 0
-}], 1);
+}];
+const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 0,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, acceptedTerrainCache, 1);
 
 assert.strictEqual(acceptedTerrainBatches.equivalenceTerrain, 1, "explicit accepted terrain cells should count as equivalence terrain draws");
 assert.strictEqual(acceptedTerrainSelection.family, "terrain", "explicit accepted terrain cell should use the terrain equivalence family");
 assert.strictEqual(acceptedTerrainSelection.cellName, "rock-mountain.0", "explicit accepted terrain cell name should be passed to the selector");
 assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit accepted non-water terrain should use terrainGround stats");
+assert.strictEqual(typeof acceptedTerrainCache[0].terrainAtlasKeyId, "number", "surface tile cache should store numeric atlas material key ids");
+assert.strictEqual(typeof acceptedTerrainCache[0].terrainEquivalenceKeyId, "number", "surface tile cache should store numeric accepted-terrain key ids");
+assert.strictEqual(acceptedTerrainCache[0].terrainAtlasEcologyKey, undefined, "surface tile cache should not rebuild composite atlas key strings");
+assert.strictEqual(acceptedTerrainCache[0].terrainEquivalenceKey, undefined, "surface tile cache should not rebuild composite equivalence key strings");
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
 Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
   var page = acceptedTerrainBatches.pages[pageIndex];
@@ -494,14 +507,14 @@ const automaticTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatc
   screenY: 0
 }], 1);
 
-assert.strictEqual(automaticTransitionBatches.count, 1, "legacy accepted transition overrides should replace the sparse proof tile");
-assert.strictEqual(automaticTransitionBatches.equivalenceTransitions, 1, "eligible sparse transition tiles should select accepted transition cells");
+assert.strictEqual(automaticTransitionBatches.count, 1, "legacy accepted transition overrides should replace the proof tile");
+assert.strictEqual(automaticTransitionBatches.equivalenceTransitions, 1, "explicit accepted transition samples should select accepted transition cells");
 assert.strictEqual(acceptedTransitionSelection.family, "transitions", "automatic transition cell should use the transitions equivalence family");
 assert.strictEqual(acceptedTransitionSelection.cellName, "grass-water.edge.e", "coast mask should select the correct accepted shoreline edge");
 assert.strictEqual(acceptedTransitionSelection.use, "terrainTransition", "automatic transition cells should record terrainTransition usage");
 assert.ok(
   automaticTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.grass-water.edge.e"] > 0,
-  "accepted transition cell should replace fallback material at deterministic sparse proof positions"
+  "accepted transition cell should replace fallback material when the sample carries an explicit accepted transition"
 );
 
 delete context.PS.atlas.getTerrainTransitionInfo;
@@ -513,8 +526,8 @@ context.PS.render.terrainTransitions = {
     return {
       baseTile: "sand",
       overlays: [
-        { sheet: "transitions/grass_sand", spriteIndex: 0 },
-        { sheet: "transitions/snow_rock", spriteIndex: 8 }
+        { sheet: "transitions/grass_sand", spriteIndex: 0, joinPatternIndex: 2 },
+        { sheet: "transitions/snow_rock", spriteIndex: 8, joinPatternIndex: 7 }
       ]
     };
   }
@@ -543,8 +556,8 @@ const resolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatch
 }], 1);
 assert.strictEqual(resolverTransitionBatches.count, 3, "resolver transitions should draw base terrain plus every accepted overlay");
 assert.strictEqual(resolverTransitionBatches.equivalenceTransitions, 2, "resolver overlays should count as accepted transition draws");
-assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.grass-sand.edge.n"] > 0, "resolver grass-sand edge should map to accepted transition cell");
-assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.rock-snow.inner-corner.ne"] > 0, "resolver snow-rock inner corner should map to accepted rock-snow cell");
+assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.grass-sand.pattern-02"] > 0, "resolver grass-sand edge should map to accepted 46-pattern transition cell");
+assert.ok(resolverTransitionBatches.materialCounts["equivalence.terrain_transitions_v0.rock-snow.pattern-07"] > 0, "resolver snow-rock inner corner should map to accepted 46-pattern transition cell");
 const regionVisualLod = {
   visualPolicy: {
     level: "REGION",
@@ -611,7 +624,7 @@ for (let i = 0; i < splitPageData.length; i += 4) {
   splitPageData[i + 3] = 180;
 }
 const sheetCells = {};
-["grass", "stone", "sand"].forEach(function (material) {
+["grass", "stone", "sand", "water"].forEach(function (material) {
   for (let index = 0; index < 8; index += 1) {
     sheetCells["terrain." + material + "." + index] = {
       name: "terrain." + material + "." + index,
@@ -639,6 +652,12 @@ context.PS.assets.loadedSheets = {
   },
   terrain_sand: {
     id: "terrain_sand",
+    splitAtlas: { normalOffset: [256, 0] },
+    pixelData: { type: "rgba-base64", width: 512, height: 32, byteLength: splitPageData.length, buffer: splitPageData },
+    sheet: { getCell(name) { return sheetCells[name] || null; } }
+  },
+  terrain_water: {
+    id: "terrain_water",
     splitAtlas: { normalOffset: [256, 0] },
     pixelData: { type: "rgba-base64", width: 512, height: 32, byteLength: splitPageData.length, buffer: splitPageData },
     sheet: { getCell(name) { return sheetCells[name] || null; } }
@@ -675,6 +694,43 @@ Object.keys(automaticTerrainBatches.pages).forEach(function (pageIndex) {
     assert.strictEqual(page.data[offset], 1, "split-atlas material instances should set the normal sampling flag");
   }
 });
+
+assert.strictEqual(context.PS.render.waterRendering.getWaterFrameIndex(0), 0, "water material animation should start on frame zero");
+assert.strictEqual(context.PS.render.waterRendering.getWaterFrameIndex(500), 1, "water material animation should advance at 2 FPS");
+assert.strictEqual(context.PS.render.waterRendering.getWaterFrameIndex(1500), 3, "water material animation should expose four frame phases");
+context.world.timeMs = 500;
+assert.strictEqual(context.PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName("ocean", {
+  detail: { surface: "deep water", materialSignals: { waterDepth: 0.9 } }
+}, 4, 6), "water-deep.1", "accepted deep water material selection should use the current animated frame phase");
+
+context.world.timeMs = 0;
+const waterMaterialStart = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 6,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: { biome: "ocean", detail: { surface: "open water", materialSignals: { waterDepth: 0.65 } } },
+  screenX: 0,
+  screenY: 0
+}], 1);
+context.world.timeMs = 500;
+const waterMaterialNext = context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 4,
+  sampleNorth: 6,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [{
+  sample: { biome: "ocean", detail: { surface: "open water", materialSignals: { waterDepth: 0.65 } } },
+  screenX: 0,
+  screenY: 0
+}], 1);
+assert.ok(waterMaterialStart.materialCounts["terrain.water.2"], "water material batching should include the phased start water cell");
+assert.ok(waterMaterialNext.materialCounts["terrain.water.3"], "water material batching should advance to the next phased water cell");
 
 context.world.timeMs = 1600;
 const waterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
@@ -819,6 +875,10 @@ const regionLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
 }], 1, regionVisualLod);
 assert.strictEqual(regionLightBatches.pointLights.length, 1, "region LOD should keep a reduced point-light signal");
 assert.ok(nearly(regionLightBatches.pointLights[0].intensity, 1.05 * 0.2), "region LOD should scale point-light intensity by policy");
+assert.strictEqual(regionLightBatches.displacementRects.length, 16, "region LOD should emit one heat-haze displacement instance for lava vents");
+assert.ok(regionLightBatches.displacementRects[7] > 0, "heat-haze displacement should carry a positive source-scaled intensity");
+assert.ok(regionLightBatches.displacementRects[7] < 16 * 0.58, "region LOD should reduce heat-haze displacement intensity");
+assert.ok(regionLightBatches.displacementRects[6] > 16, "heat-haze displacement should carry a source radius for distance falloff");
 const worldLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
   sampleEast: 2,
   sampleNorth: 3,
@@ -838,6 +898,7 @@ const worldLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
   screenY: 0
 }], 1, worldVisualLod);
 assert.strictEqual(worldLightBatches.pointLights.length, 0, "world LOD should skip point-light submissions");
+assert.strictEqual(worldLightBatches.displacementRects.length, 0, "world LOD should skip heat-haze displacement submissions");
 
 context.PS.atlas.getTerrainTransitionKey = function (sample) {
   const neighbor = sample && sample.tileBlend && sample.tileBlend.tiles && sample.tileBlend.tiles[0];
@@ -883,7 +944,7 @@ context.PS.render.surfaceTileBatcher.makeBatches({
   renderSamplePixelSize: 16,
   chunkSamples: 1
 }, [reusableTransitionCellData], 1);
-const firstReuseKey = reusableTransitionCellData.terrainAtlasEcologyKey;
+const firstReuseKey = reusableTransitionCellData.terrainAtlasKeyId;
 const firstReuseCellName = reusableTransitionCellData.terrainAtlasCell.name;
 reusableTransitionCellData.sample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
 reusableTransitionCellData.sample.tileBlend.tiles[0].tile.moisture = 2.2;
@@ -895,8 +956,121 @@ context.PS.render.surfaceTileBatcher.makeBatches({
   renderSamplePixelSize: 16,
   chunkSamples: 1
 }, [reusableTransitionCellData], 1);
-assert.notStrictEqual(reusableTransitionCellData.terrainAtlasEcologyKey, firstReuseKey, "batcher terrain cache key should include transition neighbor ground identity");
+assert.notStrictEqual(reusableTransitionCellData.terrainAtlasKeyId, firstReuseKey, "batcher terrain cache key should include transition neighbor ground identity");
 assert.notStrictEqual(reusableTransitionCellData.terrainAtlasCell.name, firstReuseCellName, "batcher should regenerate terrain cells when transition neighbor ground identity changes");
+
+const originalTerrainCellForParcelCache = context.PS.atlas.getTerrainCell;
+const originalCivilizationKeyForParcelCache = context.PS.atlas.getTerrainCivilizationKey;
+const originalCivilizationInfoForParcelCache = context.PS.atlas.getTerrainCivilizationInfo;
+let parcelFillResolutions = 0;
+let baseTerrainResolutions = 0;
+context.PS.atlas.getTerrainCivilizationKey = function () {
+  return "civ0";
+};
+context.PS.atlas.getTerrainCivilizationInfo = function (sample) {
+  return sample && sample.civilization && sample.civilization.type === "settlement"
+    ? { type: "settlement", family: "yard", pressure: 0.65, bucket: 1, lineageId: 1 }
+    : null;
+};
+context.PS.atlas.getTerrainCell = function (biome, tileX, tileY, sample) {
+  if (sample && sample.renderSettlementParcelFillOnly) {
+    parcelFillResolutions += 1;
+    return {
+      name: "parcel.fill." + String(sample.civilization && sample.civilization.family || "yard"),
+      pageIndex: 0,
+      u0: 0.5,
+      v0: 0,
+      u1: 1,
+      v1: 0.5
+    };
+  }
+  baseTerrainResolutions += 1;
+  return {
+    name: "base." + String(biome || "terrain"),
+    pageIndex: 0,
+    u0: 0,
+    v0: 0,
+    u1: 0.5,
+    v1: 0.5
+  };
+};
+const settlementParcelCacheCell = {
+  sample: {
+    biome: "grassland",
+    detail: { surface: "grass", materialSignals: { settlementDensity: 0.55 } },
+    civilization: { type: "settlement", family: "yard", pressure: 0.65 }
+  },
+  screenX: 0,
+  screenY: 0
+};
+context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 2,
+  sampleNorth: 2,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [settlementParcelCacheCell], 1, { zoomBand: "settlement", visualPolicy: { level: "LOCAL", transitionAlphaScale: 1 } });
+context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 2,
+  sampleNorth: 2,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [settlementParcelCacheCell], 1, { zoomBand: "settlement", visualPolicy: { level: "LOCAL", transitionAlphaScale: 1 } });
+assert.strictEqual(baseTerrainResolutions, 1, "unchanged settlement cells should reuse the cached base terrain cell");
+assert.strictEqual(parcelFillResolutions, 1, "unchanged settlement parcel fill should reuse its cached terrain cell");
+assert.strictEqual(typeof settlementParcelCacheCell.settlementParcelKeyId, "number", "settlement parcel fill cache should use a numeric key");
+context.PS.atlas.getTerrainCell = originalTerrainCellForParcelCache;
+context.PS.atlas.getTerrainCivilizationKey = originalCivilizationKeyForParcelCache;
+context.PS.atlas.getTerrainCivilizationInfo = originalCivilizationInfoForParcelCache;
+
+const originalAppendBatches = surfaceTile.appendBatches;
+const originalDrawBatches = surfaceTile.drawBatches;
+let terrainAppendCalls = 0;
+let terrainDrawCalls = 0;
+surfaceTile.appendBatches = function () {
+  terrainAppendCalls += 1;
+  return originalAppendBatches.apply(this, arguments);
+};
+surfaceTile.drawBatches = function (batches) {
+  terrainDrawCalls += 1;
+  assert.ok(batches && batches.count > 0, "cached terrain batches should preserve instance data");
+  return true;
+};
+surfaceTile.clearBatchCache();
+context.world.isPaused = true;
+context.world.isCameraInteracting = false;
+const cacheChunk = {
+  address: {
+    chunkKey: "paused-cache-test",
+    sampleEast: 12,
+    sampleNorth: 13,
+    renderScreenX: 4,
+    renderScreenY: 8,
+    renderSamplePixelSize: 16,
+    chunkSamples: 1
+  },
+  cellCache: [{
+    sample: { biome: "grassland", detail: { surface: "grass" } },
+    screenX: 4,
+    screenY: 8
+  }],
+  alpha: 1,
+  lodState: regionVisualLod
+};
+assert.strictEqual(surfaceTile.drawTerrainAtlasBatch([cacheChunk], 1, { lodState: regionVisualLod, loadOp: "clear" }), true, "first paused terrain draw should build batches");
+assert.strictEqual(surfaceTile.drawTerrainAtlasBatch([cacheChunk], 1, { lodState: regionVisualLod, loadOp: "clear" }), true, "second stable paused terrain draw should reuse cached batches");
+assert.strictEqual(terrainAppendCalls, 1, "paused stable terrain batch cache should avoid rebuilding CPU batches");
+assert.strictEqual(terrainDrawCalls, 2, "paused cache should still draw every frame");
+assert.ok(surfaceTile.getStats().batchCacheHits >= 1, "paused terrain cache should report a cache hit");
+context.world.isPaused = false;
+assert.strictEqual(surfaceTile.drawTerrainAtlasBatch([cacheChunk], 1, { lodState: regionVisualLod, loadOp: "clear" }), true, "active simulation terrain draw should rebuild batches");
+assert.strictEqual(terrainAppendCalls, 2, "active simulation terrain draws should not reuse paused batches");
+surfaceTile.appendBatches = originalAppendBatches;
+surfaceTile.drawBatches = originalDrawBatches;
+context.world.isPaused = true;
 
 const drew = surfaceTile.drawBatches({
   pages: {
@@ -912,7 +1086,8 @@ const drew = surfaceTile.drawBatches({
   equivalenceTerrain: 1,
   equivalenceTransitions: 1,
   shadowRects: decorationBatches.shadowRects,
-  waterDecorationRects: decorationBatches.waterDecorationRects
+  waterDecorationRects: decorationBatches.waterDecorationRects,
+  displacementRects: regionLightBatches.displacementRects
 }, {
   sunDirection: [0, 3, 4],
   ambient: 0.41,
@@ -936,7 +1111,10 @@ assert.strictEqual(fakeDevice.passes[0].drawArgs[1], 1, "surface tile draw shoul
 assert.deepStrictEqual(fakeDevice.passes[1].drawArgs, [4, 1, 0, 0], "surface tile compositor should draw one fullscreen quad");
 assert.deepStrictEqual(fakeDevice.passes[2].drawArgs, [4, 1, 0, 0], "water decoration shadows should draw one rect instance");
 assert.deepStrictEqual(fakeDevice.passes[3].drawArgs, [4, 1, 0, 0], "water decorations should draw one particle rect instance");
-assert.strictEqual(textureWrites.length, 1, "atlas page should upload through GPUQueue.writeTexture");
+assert.strictEqual(textureWrites.length, 2, "atlas page and compositor cloud shadow texture should upload through GPUQueue.writeTexture");
+assert.ok(textureWrites.some(function (write) {
+  return write.destination.texture.descriptor.label === "gbuffer-compose.cloud-shadow";
+}), "surface tile compositor should upload the cloud-shadow texture before composition");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.instances"; }), "instance data should upload to the WebGPU instance buffer");
 assert.ok(queueWrites.some(function (write) { return write.buffer.descriptor.label === "terrain-tile.uniforms"; }), "canvas uniforms should upload to WebGPU");
 assert.ok(queueWrites.some(function (write) {
@@ -959,6 +1137,9 @@ assert.ok(queueWrites.some(function (write) {
 assert.ok(queueWrites.some(function (write) {
   return write.buffer.descriptor.label === "particle.instances.storage" && write.size === 8;
 }), "surface tile draw should upload floating water decorations through the real particle storage buffer");
+assert.ok(queueWrites.some(function (write) {
+  return write.buffer.descriptor.label === "displacement.instances.storage" && write.size === 16;
+}), "surface tile draw should upload heat-haze displacement through the real displacement storage buffer");
 assert.strictEqual(submissions.length, 1, "surface tile draw should submit a command buffer");
 
 const stats = surfaceTile.getStats();
@@ -971,6 +1152,56 @@ assert.strictEqual(stats.equivalenceTransitionDrawCount, 1, "stats should preser
 assert.strictEqual(stats.lastError, "", "successful draw should clear lastError");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().shadowDrawCount, 1, "real shadow renderer should count water decoration shadows");
 assert.strictEqual(context.PS.render.webgpuEntity.getStats().particleDrawCount, 1, "real particle renderer should count floating water decorations");
+assert.strictEqual(context.PS.render.webgpuEntity.getStats().displacementDrawCount, 1, "real displacement renderer should count heat-haze instances");
+assert.ok(context.PS.render.webgpuEntity.getStats().displacementLastFrameMs >= 0, "displacement renderer should expose the pass time for the 0.3ms runtime budget gate");
+
+context.PS.assets.equivalence = {
+  getStats: function () {
+    return {
+      byUse: {
+        terrainMaterial: 7,
+        terrainTransition: 3
+      },
+      bySheet: {
+        terrain_grass: 7,
+        equivalence_terrain_transitions_v0: 3
+      }
+    };
+  }
+};
+surfaceTile.state.equivalenceTerrainDrawCount = 0;
+surfaceTile.state.equivalenceTransitionDrawCount = 0;
+assert.strictEqual(surfaceTile.drawBatches({
+  pages: {
+    0: new Float32Array([
+      8, 12, 16, 16,
+      0, 0, 0.5, 0.5,
+      1, 0.25, 1, 2, 33, 4, 0.75
+    ])
+  },
+  count: 1,
+  culled: 0,
+  materialCounts: {},
+  equivalenceTerrain: 0,
+  equivalenceTransitions: 0,
+  pointLights: [],
+  shadowRects: [],
+  waterDecorationRects: [],
+  displacementRects: []
+}, {
+  sunDirection: [0, 3, 4],
+  ambient: 0.41
+}), true, "terrain material equivalence stats should still count as accepted terrain WebGPU evidence");
+assert.strictEqual(
+  surfaceTile.state.equivalenceTerrainDrawCount,
+  7,
+  "surface tile stats should promote terrainMaterial selections into accepted terrain draw evidence"
+);
+assert.strictEqual(
+  surfaceTile.state.equivalenceTransitionDrawCount,
+  3,
+  "surface tile stats should promote terrainTransition selections into accepted transition draw evidence"
+);
 
 assert.strictEqual(surfaceTile.drawBatches({
   pages: {
@@ -985,7 +1216,8 @@ assert.strictEqual(surfaceTile.drawBatches({
   materialCounts: {},
   pointLights: [{ x: 8, y: 8, radius: 12, color: [1, 0.4, 0.1], intensity: 1, kind: "test" }],
   shadowRects: [],
-  waterDecorationRects: []
+  waterDecorationRects: [],
+  displacementRects: []
 }, {
   sunDirection: [0, 3, 4],
   ambient: 0.41,
@@ -998,7 +1230,8 @@ assert.ok(queueWrites.some(function (write) {
   return write.buffer.descriptor.label === "gbuffer-compose.uniforms" &&
     nearly(write.data[5], 0.62 * 0.3) &&
     nearly(write.data[6], 0.18 * 0.3) &&
-    nearly(write.data[7], 0.07 * 0.3);
+    nearly(write.data[7], 0.07 * 0.3) &&
+    nearly(write.data[12], 0.3);
 }), "region LOD should scale normal-mapped compositor lighting strengths");
 
 const tilemapLayer = surfaceTile.createTilemapLayer(400, 250);

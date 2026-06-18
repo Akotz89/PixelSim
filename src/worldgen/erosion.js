@@ -91,6 +91,5 @@ function runErosion(elevation, width, height, options) {
 }
 
 module.exports = {
-  runErosion: runErosion,
-  smoothPeaks: smoothPeaks
+  runErosion: runErosion
 };

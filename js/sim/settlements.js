@@ -1,4 +1,10 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { canFoundSettlement, foundSettlementForLineage, makeSettlement, makeSettlementAt } from "./settlements-founding.js";
+import { updateSettlementMetrics } from "./settlements-growth.js";
+import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./settlements-routes.js";
+import { updateSettlements } from "./settlements-runtime.js";
+import { countSettlementClaimedTiles, ensureSettlementState, getSettlementInfluenceRadius, rebuildSettlementIndexes } from "./settlements-state.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.settlements = {

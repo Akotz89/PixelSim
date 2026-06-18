@@ -1,5 +1,21 @@
-"use strict";
-function updateEventLog() {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTile } from "../render/planet-grid.js";
+import { getPlanetChunkKeyForTile, getPlanetGroundFeatureDimensionLabel, getPlanetGroundFeatureSummary, getPlanetSurfaceChunkLineage, getPlanetSurfaceChunkLineageLabel, getPlanetSurfaceDetail } from "../render/planet-surface.js";
+import { getEntitySurfacePosition, getPlanetCameraScaleInfo, getPlanetDistanceLabel, getPlanetLatitudeForTile, getPlanetLocalSurfaceAddress, getPlanetLongitudeForTile, getPlanetScaleLabel, getPlanetSurfaceCacheStats, isPlanetLocalView } from "../render/planet-view.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
+import { foodExistsAt } from "../sim/food-growth.js";
+import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { world } from "../systems/state.js";
+import { eventLogText, inspectDetailsText, inspectSummaryText, traitHistoryCanvas } from "./dom-refs.js";
+import { getNearestOrganismToTile, getNearestSettlementToTile, setElementClass, setElementHtml, setElementText } from "./foundation.js";
+import { makeEventChip } from "./history-summary.js";
+import { getInspectSurfacePosition, getInspectSurfacePositionLabel } from "./inspect.js";
+import { formatOrganismTraits, getDistanceLabel, getLocalInspectContext, getPopulationTraitSummary, getRouteSummaryForSettlement, getSettlementSummary, makeInspectChip } from "./summary.js";
+
+export function updateEventLog() {
   var events = Array.isArray(world.eventLog) ? world.eventLog : [];
 
   if (events.length === 0) {
@@ -20,7 +36,7 @@ function updateEventLog() {
   setElementHtml(eventLogText, chips.join(""));
 }
 
-function makeTraitHistorySample(summary) {
+export function makeTraitHistorySample(summary) {
   return {
     tick: world.tick,
     population: world.organisms.length,
@@ -42,12 +58,12 @@ function makeTraitHistorySample(summary) {
   };
 }
 
-function resetTraitHistory() {
+export function resetTraitHistory() {
   world.traitHistory = [];
   drawTraitHistory();
 }
 
-function recordTraitHistorySample(force) {
+export function recordTraitHistorySample(force) {
   var summary = getPopulationTraitSummary();
 
   if (!summary) {
@@ -73,7 +89,7 @@ function recordTraitHistorySample(force) {
   drawTraitHistory();
 }
 
-function scaleTraitValue(value, minValue, maxValue, height) {
+export function scaleTraitValue(value, minValue, maxValue, height) {
   if (maxValue <= minValue) {
     return height / 2;
   }
@@ -83,11 +99,11 @@ function scaleTraitValue(value, minValue, maxValue, height) {
   return height - normalized * height;
 }
 
-function drawTraitHistoryLine(samples, getValue, minValue, maxValue, color, chart) {
+export function drawTraitHistoryLine(samples, getValue, minValue, maxValue, color, chart) {
   return null;
 }
 
-function drawTraitHistory() {
+export function drawTraitHistory() {
   var samples = Array.isArray(world.traitHistory) ? world.traitHistory : [];
   var latest = samples.length ? samples[samples.length - 1] : null;
 
@@ -105,7 +121,11 @@ function drawTraitHistory() {
     : "TRAIT HISTORY: Waiting for samples";
 }
 
-function updateInspectPanel() {
+/**
+ * @description Rebuilds the inspect side panel from the currently selected tile, including terrain, organism, lineage, settlement, and trait-history details.
+ * @returns {void} Updates cached DOM text and classes in place.
+ */
+export function updateInspectPanel() {
   if (!world.inspectedTile) {
     setElementClass(inspectDetailsText, "");
     setElementText(inspectSummaryText, "INSPECT: None");
@@ -232,6 +252,12 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Population", settlement.population));
     detailChips.push(makeInspectChip("Nearby Food", settlement.foodStock));
     detailChips.push(makeInspectChip("Stored", settlement.storedFood));
+    if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
+      var resourceSummary = PS.sim.resources.getSettlementSummary(settlement);
+      detailChips.push(makeInspectChip("Resources", resourceSummary.entries.map(function(entry) {
+        return entry.id + " " + Math.round(entry.stock);
+      }).slice(0, 5).join(" / ")));
+    }
     detailChips.push(makeInspectChip("Dev", settlement.development.toFixed(1)));
     detailChips.push(makeInspectChip("Growth", "last " + settlement.lastGrowthTick + " supply " + settlement.lastSupplyGrowthTick));
     detailChips.push(makeInspectChip("Outpost", "last " + settlement.lastOutpostTick));
@@ -264,7 +290,7 @@ function updateInspectPanel() {
   setElementHtml(inspectDetailsText, detailChips.join(""));
 }
 
-function getInspectSurfaceLabel(tileX, tileY) {
+export function getInspectSurfaceLabel(tileX, tileY) {
   if (!isPlanetLocalView()) {
     return "global";
   }
@@ -284,7 +310,7 @@ function getInspectSurfaceLabel(tileX, tileY) {
     " @ " + detail.sampleMeters + "m";
 }
 
-function getInspectGroundFeatureLabel(tileX, tileY) {
+export function getInspectGroundFeatureLabel(tileX, tileY) {
   if (!isPlanetLocalView() || typeof getPlanetGroundFeatureSummary !== "function") {
     return "-";
   }

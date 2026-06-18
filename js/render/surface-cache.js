@@ -1,4 +1,11 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getClampedWorldY, getPlanetTile, getWrappedWorldX } from "./planet-grid.js";
+import { getPlanetSurfaceDetail, getSurfaceMeterCoordinate, smoothSurfaceNoiseAmount } from "./planet-surface.js";
+import { getLatLonFromSurfaceMeterCoordinate, getPlanetSurfaceLodZoomIndex, getPlanetSurfaceTileBlend, getPlanetView, getPlanetZoomLevel, getPositiveModulo, getTileFromLatLon, normalizeLongitude, planetSurfaceChunkCache } from "./planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.surface = PS.render.surface || {};
 
@@ -32,17 +39,15 @@ PS.render.surface.getVisibleChunkLimit = function () {
 };
 
 PS.render.surface.resetChunkCache = function () {
-  planetSurfaceChunkCache = {
-    chunks: {},
-    order: [],
-    stats: {
-      hits: 0,
-      misses: 0,
-      generatedChunks: 0,
-      evictions: 0,
-      lastChunkKey: "-",
-      lastSampleKey: "-"
-    }
+  planetSurfaceChunkCache.chunks = {};
+  planetSurfaceChunkCache.order = [];
+  planetSurfaceChunkCache.stats = {
+    hits: 0,
+    misses: 0,
+    generatedChunks: 0,
+    evictions: 0,
+    lastChunkKey: "-",
+    lastSampleKey: "-"
   };
 };
 
@@ -176,6 +181,29 @@ PS.render.surface.getTileBlend = function (latitude, longitude) {
   };
 };
 
+PS.render.surface.getAcceptedTransitionCellName = function (resolvedTile, tileBlend) {
+  if (resolvedTile && resolvedTile.acceptedTransitionCellName) {
+    return String(resolvedTile.acceptedTransitionCellName);
+  }
+
+  var tiles = tileBlend && Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var bestName = "";
+  var bestWeight = 0;
+
+  for (var i = 0; i < tiles.length; i += 1) {
+    var item = tiles[i];
+    var tile = item && item.tile ? item.tile : null;
+    var weight = Math.max(0, Number(item && item.weight) || 0);
+
+    if (tile && tile.acceptedTransitionCellName && weight > bestWeight) {
+      bestName = String(tile.acceptedTransitionCellName);
+      bestWeight = weight;
+    }
+  }
+
+  return bestName;
+};
+
 PS.render.surface.getLocalSample = function (gridX, gridY) {
   var localAddress = PS.render.surface.getLocalAddress(gridX, gridY);
   var tilePosition = getTileFromLatLon(localAddress.latitude, localAddress.longitude);
@@ -277,6 +305,7 @@ PS.render.surface.getChunkSample = function (latitude, longitude, tile, zoomLeve
     tile: resolvedTile,
     biome: resolvedTile ? resolvedTile.biome : "unknown",
     tileBlend: tileBlend,
+    acceptedTransitionCellName: PS.render.surface.getAcceptedTransitionCellName(resolvedTile, tileBlend),
     detail: getPlanetSurfaceDetail(latitude, longitude, resolvedTile, address.sampleMeters),
     surfaceChunkKey: address.chunkKey,
     surfaceSampleKey: address.sampleKey,

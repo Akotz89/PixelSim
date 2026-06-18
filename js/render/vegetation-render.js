@@ -1,4 +1,8 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { isGlobeRenderMode } from "./planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.vegetation = PS.render.vegetation || {};
 

@@ -1,5 +1,12 @@
-"use strict";
-function reportRuntimeError(error) {
+import { CONFIG } from "../config.js";
+import { PS } from "./core/namespace.js";
+import { clamp, setWorldSeed } from "./core/utils.js";
+import { formatEcosystemStabilityFactor, formatEcosystemStabilityFactorScore } from "./main-ecosystem-stability.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./systems/state.js";
+import { canvas, lineageSummaryText } from "./ui/dom-refs.js";
+import { resetTraitHistory } from "./ui/inspect-history.js";
+
+export function reportRuntimeError(error) {
   var box = document.getElementById("debug-output");
   var message = error && error.stack ? error.stack : String(error);
 
@@ -12,7 +19,7 @@ function reportRuntimeError(error) {
   box.textContent += message + String.fromCharCode(10) + String.fromCharCode(10);
 }
 
-function clearWorld() {
+export function clearWorld() {
   if (PS.pools && typeof PS.pools.reset === "function") {
     PS.pools.reset();
   }
@@ -37,6 +44,7 @@ function clearWorld() {
   }
 
   world.tick = 0;
+  world.timeOfDay = 0.25; // Start at morning — 0.0 is midnight (0.16 ambient = near-black)
   world.deepTimeYears = 0;
   world.era = "Organisms";
   if (PS.epochs) {
@@ -213,13 +221,13 @@ function clearWorld() {
   }
 }
 
-function ensureEventLog() {
+export function ensureEventLog() {
   if (!Array.isArray(world.eventLog)) {
     world.eventLog = [];
   }
 }
 
-function countItems(array, predicate) {
+export function countItems(array, predicate) {
   var count = 0;
 
   if (!Array.isArray(array)) {
@@ -235,7 +243,7 @@ function countItems(array, predicate) {
   return count;
 }
 
-function getSimulationMilestoneSnapshot() {
+export function getSimulationMilestoneSnapshot() {
   var ecosystemSummary = world.ecosystemSummary || null;
   var stabilityProfile = ecosystemSummary ? ecosystemSummary.stabilityProfile : null;
   var foodNetThisTick = ecosystemSummary
@@ -279,7 +287,7 @@ function getSimulationMilestoneSnapshot() {
   };
 }
 
-function recordSimulationEvent(type, label, detail) {
+export function recordSimulationEvent(type, label, detail) {
   ensureEventLog();
 
   var lastEvent = world.eventLog[world.eventLog.length - 1];
@@ -306,13 +314,13 @@ function recordSimulationEvent(type, label, detail) {
   }
 }
 
-function recordCountMilestone(previous, current, key, type, label, detailPrefix) {
+export function recordCountMilestone(previous, current, key, type, label, detailPrefix) {
   if (current[key] > previous[key]) {
     recordSimulationEvent(type, label, detailPrefix + " " + current[key]);
   }
 }
 
-function formatMilestoneSignedNumber(value) {
+export function formatMilestoneSignedNumber(value) {
   var numberValue = Math.round(Number(value) || 0);
 
   if (numberValue > 0) {
@@ -322,11 +330,11 @@ function formatMilestoneSignedNumber(value) {
   return String(numberValue);
 }
 
-function getEcosystemStabilityBand(stabilityScore) {
+export function getEcosystemStabilityBand(stabilityScore) {
   return clamp(Math.floor(Math.max(0, Math.round(Number(stabilityScore) || 0)) / 20), 0, 5);
 }
 
-function getEcosystemStabilityBandLabel(stabilityBand) {
+export function getEcosystemStabilityBandLabel(stabilityBand) {
   if (stabilityBand <= 0) {
     return "critical";
   }
@@ -350,7 +358,7 @@ function getEcosystemStabilityBandLabel(stabilityBand) {
   return "thriving";
 }
 
-function recordEcosystemMilestones(previousSnapshot, currentSnapshot) {
+export function recordEcosystemMilestones(previousSnapshot, currentSnapshot) {
   if (
     previousSnapshot.ecosystemPressure !== "unknown" &&
     currentSnapshot.ecosystemPressure !== previousSnapshot.ecosystemPressure
@@ -417,3 +425,4 @@ function recordEcosystemMilestones(previousSnapshot, currentSnapshot) {
     );
   }
 }
+

@@ -1,4 +1,11 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTile } from "./planet-grid.js";
+import { getPlanetTileCompositedColor } from "./surface-imagery.js";
+import { getPlanetLandformTerrainBand } from "./surface-landform.js";
+import { blendHexColors, blendHexColorWithRgb, clampRgb, getRgbFromHex, shadeHexColor } from "./terrain.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceColor = PS.render.surfaceColor || {};
 
@@ -47,6 +54,54 @@ PS.render.surfaceColor.getTileBlendRgb = function (tileBlend) {
     green: green / totalWeight,
     blue: blue / totalWeight
   });
+};
+
+PS.render.surfaceColor.getTileBlendPacked = function (tileBlend) {
+  var tiles = tileBlend && Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var red = 0;
+  var green = 0;
+  var blue = 0;
+  var totalWeight = 0;
+  var terrain = PS.render.terrain;
+
+  for (var i = 0; i < tiles.length; i++) {
+    var item = tiles[i];
+    var weight = clamp(Number(item.weight) || 0, 0, 1);
+    var tile = item.tile || getPlanetTile(item.x, item.y);
+
+    if (!tile || weight <= 0) {
+      continue;
+    }
+
+    var packed = terrain.getBiomePackedColorTinted(tile.biome);
+    var gradientPacked = PS.render.surfaceColor.getGroundMoisturePackedColor({
+      biome: item.biome || tile.biome,
+      detail: item.detail || { surface: item.surface || "" },
+      tile: tile,
+      x: item.x,
+      y: item.y,
+      ran: item.ran
+    });
+
+    if (gradientPacked !== null) {
+      packed = gradientPacked;
+    }
+
+    red += terrain.unpackR(packed) * weight;
+    green += terrain.unpackG(packed) * weight;
+    blue += terrain.unpackB(packed) * weight;
+    totalWeight += weight;
+  }
+
+  if (totalWeight <= 0) {
+    return null;
+  }
+
+  return terrain.packRgb(
+    clamp(Math.round(red / totalWeight), 0, 255),
+    clamp(Math.round(green / totalWeight), 0, 255),
+    clamp(Math.round(blue / totalWeight), 0, 255)
+  );
 };
 
 PS.render.surfaceColor.groundGradientSurfaceKeys = {
@@ -169,6 +224,16 @@ PS.render.surfaceColor.loadEraPaletteConfig = function (data) {
 
 PS.render.surfaceColor.getGroundMoisturePalette = function () {
   return PS.render.surfaceColor.groundMoistureGradients || null;
+};
+
+PS.render.surfaceColor.getGroundMoistureBlendAmount = function (sample) {
+  var moisture = PS.render.surfaceColor.getSampleMoisture(sample);
+
+  if (moisture === null || !PS.render.surfaceColor.hasGroundMoistureSignal(sample)) {
+    return 0;
+  }
+
+  return clamp(0.14 + Math.abs(moisture - 0.5) * 0.32, 0.14, 0.30);
 };
 
 PS.render.surfaceColor.getEraSeasonPosition = function (sample) {
@@ -459,13 +524,26 @@ PS.render.surfaceColor.blendWithTileBlend = function (sample, localColor) {
     strongSurfaceScale = 0.62;
   }
 
-  return PS.render.surfaceColor.protectMaterialIdentityHex(
-    sample,
-    blendHexColorWithRgb(localColor, targetRgb, clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.25))
-  );
+  return blendHexColorWithRgb(localColor, targetRgb, clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.25));
 };
 
-PS.render.surfaceColor.getLocalTerrainBandTint = function (sample) {
+PS.render.surfaceColor.applyGroundMoistureTint = function (sample, localColor) {
+  var moistureColor = PS.render.surfaceColor.getGroundMoistureColor(sample);
+  var amount = PS.render.surfaceColor.getGroundMoistureBlendAmount(sample);
+
+  if (!moistureColor || amount <= 0) {
+    return localColor;
+  }
+
+  return blendHexColors(localColor, moistureColor, amount);
+};
+
+/**
+ * @description Derives the local terrain-band tint context for a surface sample from biome, material signals, moisture, elevation, slope, feature, and civilization inputs.
+ * @param {Object|null} sample Surface sample containing tile, biome, detail, and optional civilization data.
+ * @returns {Object} Terrain tint context with selected band, modifiers, blend amounts, and source signal metadata.
+ */
+PS.render.surfaceColor.getLocalTerrainBandTintContext = function (sample) {
   var detail = sample && sample.detail ? sample.detail : {};
   var materialSignals = detail.materialSignals || {};
   var tile = sample && sample.tile ? sample.tile : {};
@@ -522,11 +600,23 @@ PS.render.surfaceColor.getLocalTerrainBandTint = function (sample) {
   }
 
   return {
-    color: band.color,
+    band: band,
     amount: clamp(band.amount * scaleAmount * strongSurfaceScale, 0, 0.18),
     relief: band.relief,
     bandNoise: band.bandNoise,
     surfaceScale: strongSurfaceScale
+  };
+};
+
+PS.render.surfaceColor.getLocalTerrainBandTint = function (sample) {
+  var context = PS.render.surfaceColor.getLocalTerrainBandTintContext(sample);
+
+  return {
+    color: context.band.color,
+    amount: context.amount,
+    relief: context.relief,
+    bandNoise: context.bandNoise,
+    surfaceScale: context.surfaceScale
   };
 };
 
@@ -642,10 +732,7 @@ PS.render.surfaceColor.getSurfaceColor = function (sample) {
 
   color = blendHexColors(color, "#56544c", slope * 0.26);
   color = blendHexColors(color, "#f1f6f4", snowLine * 0.48);
-  var moistureColor = PS.render.surfaceColor.getGroundMoistureColor(sample);
-  if (moistureColor) {
-    color = moistureColor;
-  }
+  color = PS.render.surfaceColor.applyGroundMoistureTint(sample, color);
   var terrainBandTint = PS.render.surfaceColor.getLocalTerrainBandTint(sample);
   color = blendHexColors(color, terrainBandTint.color, terrainBandTint.amount);
   var strataTint = PS.render.surfaceColor.getMaterialStrataTint(sample);
@@ -770,6 +857,22 @@ PS.render.surfaceColor.getGroundMoisturePackedColor = function (sample) {
   return gradient[index];
 };
 
+PS.render.surfaceColor.applyGroundMoisturePackedTint = function (sample, localPacked) {
+  var moisturePacked = PS.render.surfaceColor.getGroundMoisturePackedColor(sample);
+  var amount = PS.render.surfaceColor.getGroundMoistureBlendAmount(sample);
+
+  if (moisturePacked === null || amount <= 0) {
+    return localPacked;
+  }
+
+  return PS.render.terrain.blendPacked(localPacked, moisturePacked, amount);
+};
+
+/**
+ * @description Computes the packed RGBA surface color for a sample by blending palette, terrain-band, water, snow, vegetation, transition, and civilization effects.
+ * @param {Object|null} sample Surface sample containing biome, tile, detail, and transition metadata.
+ * @returns {number} Packed RGBA color value for fast surface rendering.
+ */
 PS.render.surfaceColor.getSurfaceColorPacked = function (sample) {
   PS.render.surfaceColor.refreshSurfacePaletteCache();
 
@@ -847,10 +950,7 @@ PS.render.surfaceColor.getSurfaceColorPacked = function (sample) {
   color = blend(color, pc.slopeGray, slope * 0.26);
   color = blend(color, pc.snowWhite, snowLine * 0.48);
 
-  var moisturePacked = PS.render.surfaceColor.getGroundMoisturePackedColor(sample);
-  if (moisturePacked !== null) {
-    color = moisturePacked;
-  }
+  color = PS.render.surfaceColor.applyGroundMoisturePackedTint(sample, color);
 
   // Terrain band tint (packed path)
   var terrainBand = PS.render.surfaceColor.getLocalTerrainBandTintPacked(sample);
@@ -911,62 +1011,10 @@ PS.render.surfaceColor.getMaterialStrataTintPacked = function (sample) {
 };
 
 PS.render.surfaceColor.getLocalTerrainBandTintPacked = function (sample) {
-  var detail = sample && sample.detail ? sample.detail : {};
-  var materialSignals = detail.materialSignals || {};
-  var tile = sample && sample.tile ? sample.tile : {};
-  var biome = sample && sample.biome ? sample.biome : "unknown";
-  var surface = detail.surface || "ground";
-  var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
-  var elevationSignal = tile && Number.isFinite(Number(tile.elevation))
-    ? Number(tile.elevation)
-    : ((Number.isFinite(Number(detail.elevation)) ? Number(detail.elevation) : 0.5) - 0.5) * 2;
-  var signals = {
-    elevation: elevationSignal,
-    moisture: tile && Number.isFinite(Number(tile.moisture))
-      ? Number(tile.moisture)
-      : clamp(Number.isFinite(Number(materialSignals.moisture)) ? Number(materialSignals.moisture) : 0.35, 0, 1) * 1.8,
-    ridgeStrength: Number.isFinite(Number(materialSignals.ridge))
-      ? Number(materialSignals.ridge)
-      : (tile && Number.isFinite(Number(tile.ridgeStrength)) ? Number(tile.ridgeStrength) : 0),
-    roughness: Number.isFinite(Number(materialSignals.surfaceRoughness))
-      ? Number(materialSignals.surfaceRoughness)
-      : (Number.isFinite(Number(detail.roughness)) ? Number(detail.roughness) : 0),
-    terrainSlope: Number.isFinite(Number(detail.slope)) ? Number(detail.slope) : 0,
-    terrainHillshade: Number.isFinite(Number(detail.hillshade)) ? Number(detail.hillshade) : 0.55,
-    coastFactor: Number.isFinite(Number(materialSignals.coast))
-      ? Number(materialSignals.coast)
-      : (tile && Number.isFinite(Number(tile.coastFactor)) ? Number(tile.coastFactor) : 0),
-    shallowWater: Number.isFinite(Number(materialSignals.shallowWater))
-      ? Number(materialSignals.shallowWater)
-      : (tile && Number.isFinite(Number(tile.shallowWater)) ? Number(tile.shallowWater) : 0),
-    shelfStrength: Number.isFinite(Number(materialSignals.shelfStrength))
-      ? Number(materialSignals.shelfStrength)
-      : (tile && Number.isFinite(Number(tile.shelfStrength)) ? Number(tile.shelfStrength) : 0),
-    riverStrength: Number.isFinite(Number(materialSignals.river))
-      ? Number(materialSignals.river)
-      : (tile && Number.isFinite(Number(tile.riverStrength)) ? Number(tile.riverStrength) : 0)
-  };
-  var noise = {
-    regional: Number.isFinite(Number(detail.meterNoise))
-      ? Number(detail.meterNoise)
-      : (Number.isFinite(Number(detail.elevation)) ? Number(detail.elevation) : 0.5),
-    fine: Number.isFinite(Number(detail.microNoise))
-      ? Number(detail.microNoise)
-      : (Number.isFinite(Number(detail.roughness)) ? Number(detail.roughness) : 0.5)
-  };
-  var band = getPlanetLandformTerrainBand(biome, signals, noise, Number(sample && sample.latitude) || Number(tile.latitude) || 0);
-  var strongSurfaceScale = 1;
-  var scaleAmount = sampleMeters <= 1 ? 0.68 : (sampleMeters <= 5 ? 0.54 : 0.38);
-
-  if (surface === "whitecap" || surface === "deep water" || surface === "ridge ice" || surface === "snow") {
-    strongSurfaceScale = 0.18;
-  } else if (surface === "open water" || surface === "rock" || surface === "stone" || surface === "ice") {
-    strongSurfaceScale = 0.46;
-  } else if (surface === "sand" || surface === "dune") {
-    strongSurfaceScale = 0.78;
-  }
-
+  var context = PS.render.surfaceColor.getLocalTerrainBandTintContext(sample);
+  var band = context.band;
   var bandColorPacked = band._colorPacked;
+
   if (typeof bandColorPacked !== "number") {
     bandColorPacked = PS.render.terrain.hexToPacked(band.color);
     band._colorPacked = bandColorPacked;
@@ -974,10 +1022,10 @@ PS.render.surfaceColor.getLocalTerrainBandTintPacked = function (sample) {
 
   return {
     color: bandColorPacked,
-    amount: clamp(band.amount * scaleAmount * strongSurfaceScale, 0, 0.18),
-    relief: band.relief,
-    bandNoise: band.bandNoise,
-    surfaceScale: strongSurfaceScale
+    amount: context.amount,
+    relief: context.relief,
+    bandNoise: context.bandNoise,
+    surfaceScale: context.surfaceScale
   };
 };
 
@@ -991,8 +1039,8 @@ PS.render.surfaceColor.blendWithTileBlendPacked = function (sample, packedColor)
     return packedColor;
   }
 
-  var targetRgb = PS.render.surfaceColor.getTileBlendRgb(sample.tileBlend);
-  if (!targetRgb) {
+  var targetPacked = PS.render.surfaceColor.getTileBlendPacked(sample.tileBlend);
+  if (targetPacked === null) {
     return packedColor;
   }
 
@@ -1002,16 +1050,10 @@ PS.render.surfaceColor.blendWithTileBlendPacked = function (sample, packedColor)
     strongSurfaceScale = 0.62;
   }
 
-  var targetPacked = PS.render.terrain.packRgb(
-    clamp(Math.round(targetRgb.red), 0, 255),
-    clamp(Math.round(targetRgb.green), 0, 255),
-    clamp(Math.round(targetRgb.blue), 0, 255)
-  );
-
-  return PS.render.surfaceColor.protectMaterialIdentityPacked(sample, PS.render.terrain.blendPacked(
+  return PS.render.terrain.blendPacked(
     packedColor, targetPacked,
     clamp(transitionStrength * 0.34 * strongSurfaceScale, 0, 0.25)
-  ));
+  );
 };
 
 PS.render.surfaceColor.protectMaterialIdentityPacked = function (sample, packedColor) {

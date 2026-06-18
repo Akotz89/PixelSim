@@ -1,4 +1,7 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceReadyFeather = PS.render.surfaceReadyFeather || {};
 

@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
 PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
@@ -162,7 +165,8 @@ PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
       label: "surface-underlay.render-pass",
       colorAttachments: [{
         view: textureView,
-        loadOp: "load",
+        loadOp: spec.loadOp || "load",
+        clearValue: spec.clearColor || { r: 0, g: 0, b: 0, a: 1 },
         storeOp: "store"
       }]
     });

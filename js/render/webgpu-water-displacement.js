@@ -1,7 +1,10 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
-var webgpuWaterDisplacementState = PS.render.webgpuWaterDisplacement && PS.render.webgpuWaterDisplacement.state
+export var webgpuWaterDisplacementState = PS.render.webgpuWaterDisplacement && PS.render.webgpuWaterDisplacement.state
   ? PS.render.webgpuWaterDisplacement.state
   : null;
 
@@ -75,43 +78,9 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
   },
 
   ensurePipeline: function (device) {
-    var module;
-
-    if (!this.state.pipeline) {
-      module = PS.render.wgslShaders.getShaderModule(device, this.shaderName);
-      this.state.pipeline = PS.render.wgslShaders.getRenderPipeline({
-        label: "water-displace.pipeline",
-        layout: "auto",
-        vertex: {
-          module: module,
-          entryPoint: "vs_main"
-        },
-        fragment: {
-          module: module,
-          entryPoint: "fs_main",
-          targets: [{
-            format: this.getFormat(),
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              }
-            }
-          }]
-        },
-        primitive: {
-          topology: "triangle-strip"
-        }
-      }, device);
-    }
-
-    return this.state.pipeline;
+    return PS.render.ensureAlphaBlendPipeline(this, device, {
+      label: "water-displace.pipeline"
+    });
   },
 
   getNowSeconds: function () {
@@ -286,3 +255,4 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
     this.state.pipeline = null;
   }
 });
+

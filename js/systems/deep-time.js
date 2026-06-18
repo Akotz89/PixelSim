@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "./state.js";
+
 PS.systems = PS.systems || {};
 
 PS.deepTime = (function() {

@@ -1,4 +1,11 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import {
+  getRuntimeDimensions,
+  loadWgslRuntimeAssets,
+  mergeRuntimeConfig,
+  registerWgslManifest
+} from "./gpu-sim-runtime.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.lbmOcean = PS.sim.lbmOcean || {
@@ -51,84 +58,19 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    var found = false;
-
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-
-    for (var i = 0; i < manifest.length; i += 1) {
-      if (manifest[i] && manifest[i].name === this.shaderName) {
-        found = true;
-        break;
-      }
-    }
-
-    if (!found) {
-      manifest.push({
-        name: this.shaderName,
-        path: this.shaderPath
-      });
-    }
-
-    return manifest;
+    return registerWgslManifest(this);
   },
 
   loadAssets: function (loader) {
-    var self = this;
-    var assetLoader = loader || (PS.assets && PS.assets.startupLoader) || (PS.assets && PS.assets.AssetLoader ? new PS.assets.AssetLoader() : null);
-    var configPromise = assetLoader && typeof assetLoader.loadJSON === "function"
-      ? assetLoader.loadJSON(this.configPath)
-      : Promise.resolve(this.defaults);
-    var shaderPromise;
-
-    this.registerManifest();
-
-    if (!PS.render || !PS.render.wgslShaders || typeof PS.render.wgslShaders.loadFromFile !== "function") {
-      shaderPromise = Promise.reject(new Error("WGSL shader manager is required for LBM ocean"));
-    } else {
-      shaderPromise = PS.render.wgslShaders.loadFromFile(this.shaderName, this.shaderPath, assetLoader);
-    }
-
-    return Promise.all([configPromise, shaderPromise]).then(function (results) {
-      self.config = self.normalizeConfig(results[0]);
-      return {
-        config: self.config,
-        shader: results[1]
-      };
-    });
+    return loadWgslRuntimeAssets(this, loader, "WGSL shader manager is required for LBM ocean");
   },
 
   normalizeConfig: function (config) {
-    var source = config || {};
-    var merged = {};
-    var key;
-
-    for (key in this.defaults) {
-      if (Object.prototype.hasOwnProperty.call(this.defaults, key)) {
-        merged[key] = this.defaults[key];
-      }
-    }
-
-    for (key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        merged[key] = source[key];
-      }
-    }
-
-    merged.layers = Array.isArray(source.layers) && source.layers.length > 0 ? source.layers : this.defaults.layers;
-    return merged;
+    return mergeRuntimeConfig(this, config, ["layers"]);
   },
 
   getDimensions: function (options) {
-    var spec = options || {};
-    var config = this.normalizeConfig(spec.config || this.config || {});
-    return {
-      width: Math.max(1, Math.round(Number(spec.width || config.width || this.defaults.width))),
-      height: Math.max(1, Math.round(Number(spec.height || config.height || this.defaults.height)))
-    };
+    return getRuntimeDimensions(this, options);
   },
 
   getCellCount: function (width, height) {
@@ -160,7 +102,8 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
     var e = this.velocities[i];
     var eu = e[0] * vx + e[1] * vy;
     var uu = vx * vx + vy * vy;
-    return this.weights[i] * density * (1 + 3 * eu + 4.5 * eu * eu - 1.5 * uu);
+    var feq = this.weights[i] * density * (1 + 3 * eu + 4.5 * eu * eu - 1.5 * uu);
+    return Number.isFinite(feq) ? Math.max(0, feq) : this.weights[i] * density;
   },
 
   makeInitialDistributions: function (width, height, options) {
@@ -292,6 +235,14 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
     return !!distributions;
   },
 
+  sanitizeDistributionValue: function (value, fallback) {
+    var number = Number(value);
+    if (Number.isFinite(number) && number >= 0) {
+      return number;
+    }
+    return Number.isFinite(Number(fallback)) ? Math.max(0, Number(fallback)) : 0;
+  },
+
   validateMassConservation: function (before, after, tolerance) {
     var start = this.sumMass(before);
     var end = this.sumMass(after);
@@ -391,7 +342,7 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
 
         if (mask[cell] <= 0.5) {
           for (var blocked = 0; blocked < 9; blocked += 1) {
-            next[cell * 9 + blocked] = distributions[cell * 9 + this.opposite[blocked]];
+            next[cell * 9 + blocked] = this.sanitizeDistributionValue(distributions[cell * 9 + this.opposite[blocked]], 0);
           }
           continue;
         }
@@ -409,14 +360,21 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
             ? distributions[source * 9 + i]
             : distributions[cell * 9 + this.opposite[i]];
 
+          value = this.sanitizeDistributionValue(value, this.weights[i]);
           fValues[i] = value;
           rho += value;
           ux += e[0] * value;
           uy += e[1] * value;
         }
 
-        ux = rho > 1e-9 ? ux / rho : 0;
-        uy = rho > 1e-9 ? uy / rho : 0;
+        if (!Number.isFinite(rho) || rho <= 1e-9 || !Number.isFinite(ux) || !Number.isFinite(uy)) {
+          rho = 1;
+          ux = 0;
+          uy = 0;
+        } else {
+          ux = ux / rho;
+          uy = uy / rho;
+        }
 
         var windOffset = cell * 2;
         var deflection = this.coriolisDeflection((y / Math.max(1, h - 1)) * 180 - 90, ux, -uy);
@@ -431,7 +389,8 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
 
         for (var out = 0; out < 9; out += 1) {
           var feq = this.equilibrium(out, rho, ux, uy);
-          next[cell * 9 + out] = fValues[out] - (fValues[out] - feq) / tau;
+          var result = fValues[out] - (fValues[out] - feq) / tau;
+          next[cell * 9 + out] = Number.isFinite(result) ? Math.max(0, result) : feq;
         }
       }
     }
@@ -646,7 +605,21 @@ PS.sim.lbmOcean = PS.sim.lbmOcean || {
         ];
       },
       beforeDispatch: function (pass, owner) {
-        pass.bindGroups = [self.createBindGroup(pass, owner, device)];
+        var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
+        var descriptor = {
+          label: "lbm-ocean.bind-group",
+          layout: pipeline.getBindGroupLayout(0),
+          entries: [
+            { binding: 0, resource: { buffer: owner.getReadBuffer(self.distributionStateId).buffer } },
+            { binding: 1, resource: { buffer: owner.getWriteBuffer(self.distributionStateId).buffer } },
+            { binding: 2, resource: { buffer: owner.buffers["ocean.mask"].buffer } },
+            { binding: 3, resource: { buffer: owner.buffers["ocean.bathymetry"].buffer } },
+            { binding: 4, resource: { buffer: owner.buffers["ocean.wind"].buffer } },
+            { binding: 5, resource: { buffer: owner.buffers["ocean.velocity"].buffer } },
+            { binding: 6, resource: { buffer: owner.buffers["ocean.params"].buffer } }
+          ]
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.distributionStateId);

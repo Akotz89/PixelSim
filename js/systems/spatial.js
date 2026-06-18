@@ -1,14 +1,21 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getClampedBucketIndexes, getTileManhattanDistance, getWrappedBucketIndexes } from "../render/planet-grid.js";
+import { rebuildFoodPositions } from "../sim/food-runtime.js";
+import { rebuildOrganismIndexes } from "../sim/organisms-indexes.js";
+import { rebuildSettlementIndexes } from "../sim/settlements-state.js";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
+
 PS.systems = PS.systems || {};
 
-function createSpatialChunk() {
+export function createSpatialChunk() {
   return {
     ids: {},
     order: []
   };
 }
 
-function getSpatialChunkSize() {
+export function getSpatialChunkSize() {
   var configuredSize = PS.config && PS.config.spatial ? PS.config.spatial.chunkSize : 0;
   var fallbackSize = typeof CONFIG !== "undefined" ?
     CONFIG.SPATIAL_CHUNK_SIZE || CONFIG.ORGANISM_SPATIAL_BUCKET_SIZE || 16 :
@@ -17,43 +24,43 @@ function getSpatialChunkSize() {
   return Math.max(1, Math.round(Number(configuredSize || fallbackSize) || 16));
 }
 
-function getSpatialChunkCountX(chunkSize) {
+export function getSpatialChunkCountX(chunkSize) {
   return Math.max(1, Math.ceil(Math.max(1, WORLD_WIDTH) / chunkSize));
 }
 
-function getSpatialChunkCountY(chunkSize) {
+export function getSpatialChunkCountY(chunkSize) {
   return Math.max(1, Math.ceil(Math.max(1, WORLD_HEIGHT) / chunkSize));
 }
 
-function normalizeSpatialEntityId(entityId) {
+export function normalizeSpatialEntityId(entityId) {
   return String(entityId == null ? "" : entityId);
 }
 
-function getSpatialWrappedX(x) {
+export function getSpatialWrappedX(x) {
   return PS.worldGrid.getWrappedX(x);
 }
 
-function getSpatialClampedY(y) {
+export function getSpatialClampedY(y) {
   return PS.worldGrid.getClampedY(y);
 }
 
-function getSpatialDistance(leftX, leftY, rightX, rightY) {
+export function getSpatialDistance(leftX, leftY, rightX, rightY) {
   return PS.worldGrid.getTileManhattanDistance(leftX, leftY, rightX, rightY);
 }
 
-function getSpatialWrappedChunkIndexes(centerX, radius, chunkSize) {
+export function getSpatialWrappedChunkIndexes(centerX, radius, chunkSize) {
   return PS.worldGrid.getWrappedBucketIndexes(centerX, radius, chunkSize, WORLD_WIDTH);
 }
 
-function getSpatialClampedChunkIndexes(centerY, radius, chunkSize) {
+export function getSpatialClampedChunkIndexes(centerY, radius, chunkSize) {
   return PS.worldGrid.getClampedBucketIndexes(centerY, radius, chunkSize, WORLD_HEIGHT);
 }
 
-function getSpatialChunkKey(chunkX, chunkY) {
+export function getSpatialChunkKey(chunkX, chunkY) {
   return chunkX + ":" + chunkY;
 }
 
-function removeSpatialChunkId(chunk, entityId) {
+export function removeSpatialChunkId(chunk, entityId) {
   if (!chunk || !chunk.ids[entityId]) {
     return;
   }
@@ -248,3 +255,4 @@ PS.spatial = {
 };
 
 PS.systems.spatial = PS.spatial;
+

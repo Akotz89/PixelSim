@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
@@ -193,6 +184,13 @@ assert.ok(validation.densityMin >= 1025, "density should stay inside expected lo
 assert.ok(validation.densityMax <= 1028.5, "density should stay inside expected upper range");
 assert.ok(validation.deepWaterCells > 0, "polar dense water should create downwelling cells");
 assert.ok(Math.abs(thermo.computeDensityValue(10, 35, config) - 1025) < 1e-6, "EOS reference point should match 1025 kg/m3");
+assert.strictEqual(Number.isFinite(thermo.computeDensityValue(undefined, 35, config)), true, "density should stay finite when atmosphere temperature is not initialized");
+assert.strictEqual(Number.isFinite(thermo.computeDensityValue(10, undefined, config)), true, "density should stay finite when salinity is temporarily unavailable");
+const fallbackDensity = thermo.computeDensityField(null, null, 4, 4, config);
+assert.strictEqual(fallbackDensity.length, 16, "density fallback field should preserve requested cell count");
+for (let i = 0; i < fallbackDensity.length; i += 1) {
+  assert.strictEqual(Number.isFinite(fallbackDensity[i]), true, "density fallback field should never contain NaN");
+}
 
 const salinityMap = thermo.makeSalinityMapRgba(riverPlume, 16, 16);
 assert.strictEqual(salinityMap.data.length, 16 * 16 * 4, "salinity visual map should export RGBA bytes");

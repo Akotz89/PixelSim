@@ -495,14 +495,9 @@ function writeSimulationExport(outputPath, spec, field) {
 }
 
 module.exports = {
-  createPrng,
-  encodePng,
   loadPlanetSpec,
   parseArgs,
-  parseSimpleYaml,
   simulateField,
-  summarizeBiome,
   summarizeValues,
-  validatePlanetSpec,
   writeSimulationExport
 };

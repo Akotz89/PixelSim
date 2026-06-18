@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.vegetation = PS.vegetation || {
   TYPES: {
     NONE: 0,

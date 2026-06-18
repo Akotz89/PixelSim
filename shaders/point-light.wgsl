@@ -7,7 +7,8 @@ struct VertexOut {
 
 struct PointLightUniforms {
   canvas_size: vec2<f32>,
-  _pad: vec2<f32>,
+  scene_exposure: f32,
+  ambient: f32,
 };
 
 struct PointLight {
@@ -65,7 +66,8 @@ fn fs_main(input: VertexOut) -> @location(0) vec4<f32> {
   let n_dot_l = max(dot(normal, light_dir), 0.0);
   let radial = clamp(1.0 - dist / radius, 0.0, 1.0);
   let attenuation = radial * radial;
-  let color = light.color_intensity.rgb * light.color_intensity.a * albedo * n_dot_l * attenuation;
+  let exposure = clamp(point_uniforms.scene_exposure, 0.0, 1.0);
+  let color = light.color_intensity.rgb * light.color_intensity.a * albedo * n_dot_l * attenuation * exposure;
 
   return vec4<f32>(color, 0.0);
 }

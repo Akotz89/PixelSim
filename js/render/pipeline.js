@@ -1,4 +1,7 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+import "./draw-order.js";
+
 PS.render = PS.render || {};
 PS.render.pipeline = PS.render.pipeline || {};
 PS.render.pipeline.layers = PS.render.pipeline.layers || [];
@@ -15,7 +18,8 @@ PS.render.pipeline.stats = PS.render.pipeline.stats || {
   submittedLayers: 0,
   skippedLayers: 0,
   blendedLayers: 0,
-  lastFrameMs: 0
+  lastFrameMs: 0,
+  zoomFrame: null
 };
 
 PS.render.pipeline.bandOrder = {
@@ -146,8 +150,9 @@ PS.render.pipeline.getLodState = function () {
   var visualPolicy = PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
     ? PS.render.lod.getVisualPolicy(zoomLevel)
     : { level: "SURFACE", renderBudgetMs: 16, transitionAlpha: 0 };
+  var lodState;
 
-  return {
+  lodState = {
     zoomLevel: zoomLevel,
     zoomBand: PS.render.pipeline.getZoomBand(zoomLevel),
     tier: tier,
@@ -165,6 +170,12 @@ PS.render.pipeline.getLodState = function () {
     visualLevel: visualPolicy.level,
     visualBudgetMs: visualPolicy.renderBudgetMs
   };
+
+  lodState.zoomFrame = PS.render.lod && typeof PS.render.lod.getFrameContract === "function"
+    ? PS.render.lod.getFrameContract(zoomLevel, { lodState: lodState })
+    : null;
+
+  return lodState;
 };
 
 PS.render.pipeline.isLayerInBand = function (layer, band) {
@@ -226,6 +237,26 @@ PS.render.pipeline.publishFrameStats = function (lodState, frameStats, elapsed) 
   stats.skippedLayers = frameStats.skippedLayers;
   stats.blendedLayers = frameStats.blendedLayers;
   stats.lastFrameMs = elapsed;
+  stats.zoomFrame = lodState.zoomFrame || (PS.render.lod && typeof PS.render.lod.getFrameContract === "function"
+    ? PS.render.lod.getFrameContract(lodState.zoomLevel, {
+      lodState: lodState,
+      frameStats: frameStats,
+      elapsed: elapsed
+    })
+    : null);
+  if (stats.zoomFrame) {
+    stats.zoomFrame.frameStats = {
+      submittedLayers: frameStats.submittedLayers,
+      skippedLayers: frameStats.skippedLayers,
+      blendedLayers: frameStats.blendedLayers,
+      elapsedMs: elapsed
+    };
+    if (PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function") {
+      stats.zoomFrame.readiness = Object.assign({}, stats.zoomFrame.readiness || {}, {
+        coverage: PS.render.surfaceRender.getCacheStats()
+      });
+    }
+  }
 
   if (PS.render.renderer && PS.render.renderer.active && PS.render.renderer.active.stats) {
     PS.render.renderer.active.stats.lodTier = stats.lodTier;
@@ -234,6 +265,7 @@ PS.render.pipeline.publishFrameStats = function (lodState, frameStats, elapsed) 
     PS.render.renderer.active.stats.preloadSurfaceLodIndex = stats.preloadSurfaceLodIndex;
     PS.render.renderer.active.stats.visualLodLevel = stats.visualLevel;
     PS.render.renderer.active.stats.visualLodBudgetMs = stats.visualBudgetMs;
+    PS.render.renderer.active.stats.zoomFrame = stats.zoomFrame;
   }
 
   return stats;
@@ -289,6 +321,9 @@ PS.render.pipeline.drawWorld = function () {
   };
 
   if (PS.render.renderer && typeof PS.render.renderer.beginFrame === "function") {
+    if (PS.render.renderer.active && PS.render.renderer.active.stats) {
+      PS.render.renderer.active.stats.zoomFrame = lodState.zoomFrame;
+    }
     PS.render.renderer.beginFrame(PS.camera && PS.camera.unified ? PS.camera.unified.getState() : null);
   }
 
@@ -310,6 +345,14 @@ PS.render.pipeline.drawWorld = function () {
     (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt
   );
 };
+
+if (typeof globalThis !== "undefined") {
+  globalThis.drawWorld = drawWorld;
+}
+
+export function drawWorld() {
+  PS.render.pipeline.drawWorld();
+}
 
 PS.render.pipeline.rebuildShaders = function () {};
 
@@ -361,7 +404,7 @@ PS.render.pipeline.registerLayer("terrain.base", {
   semantic: "base terrain, biome, elevation, water, and local surface materials",
   minTier: "galaxy",
   maxTier: "local",
-  draw: function () { PS.render.terrain.draw(); }
+  draw: function (lodState) { PS.render.terrain.draw(lodState); }
 });
 
 PS.render.pipeline.registerLayer("overlays.reference", {
@@ -436,6 +479,20 @@ PS.render.pipeline.registerLayer("environment.ice", {
   draw: function () {
     if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawIceOverlay === "function") {
       PS.render.environmentOverlays.drawIceOverlay();
+    }
+  }
+});
+
+PS.render.pipeline.registerLayer("environment.cloudShadows", {
+  order: 36,
+  drawLayer: PS.render.DrawLayer.SHADOW,
+  family: "environment",
+  semantic: "G-buffer compose cloud-shadow source preparation",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.ensureCloudShadowMap === "function") {
+      PS.render.environmentOverlays.ensureCloudShadowMap();
     }
   }
 });
@@ -587,6 +644,7 @@ PS.render.pipeline.registerLayer("weather.particles", {
   maxTier: "local",
   draw: function () {
     if (PS.render.particles) {
+      PS.render.particles.emitFallingLeaves(PS.render.pipeline.getLodState());
       PS.render.particles.update(1 / 60);
       PS.render.particles.render(PS.camera && PS.camera.unified ? PS.camera.unified.getState() : null);
     }
@@ -622,9 +680,24 @@ PS.render.pipeline.registerLayer("lighting.ambient", {
   semantic: "additive point lights over the deferred WebGPU terrain composite",
   minTier: "galaxy",
   maxTier: "local",
-  draw: function () {
+  draw: function (lodState) {
     if (PS.render.webgpuPointLights && typeof PS.render.webgpuPointLights.drawQueued === "function") {
-      PS.render.webgpuPointLights.drawQueued({ loadOp: "load" });
+      var policy = lodState && lodState.visualPolicy ? lodState.visualPolicy : {};
+      var pointLightScale = policy.pointLightScale !== undefined ? policy.pointLightScale : 1;
+
+      if (Math.max(0, Number(pointLightScale) || 0) <= 0) {
+        if (typeof PS.render.webgpuPointLights.takeQueuedLights === "function") {
+          PS.render.webgpuPointLights.takeQueuedLights();
+        }
+        return;
+      }
+
+      PS.render.webgpuPointLights.drawQueued({
+        loadOp: "load",
+        pointLightScale: pointLightScale,
+        pointLightExposureScale: pointLightScale,
+        lodState: lodState
+      });
     }
   }
 });

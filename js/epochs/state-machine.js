@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.epochs = PS.epochs || {};
 
 PS.epochs.StateMachine = function (options) {
@@ -37,6 +39,7 @@ PS.epochs.epochConfigPath = "sim/configs/epoch-configs.json";
 PS.epochs.epochDefaults = PS.epochs.epochDefaults || { epochs: [] };
 PS.epochs.epochConfig = PS.epochs.epochConfig || null;
 PS.epochs.machine = PS.epochs.machine || null;
+PS.epochs.pendingAtmosphereState = PS.epochs.pendingAtmosphereState || null;
 
 PS.epochs.normalizeEpochConfig = function (config) {
   var source = config || {};
@@ -156,8 +159,42 @@ PS.epochs.applyEpochToPipeline = function (pipeline, state) {
   return state;
 };
 
-PS.epochs.applyEpochAtmosphere = function (state) {
+PS.epochs.isAtmosphereUpdateActive = function () {
+  return typeof world !== "undefined" &&
+    world &&
+    (
+      world.epochAtmospherePhase === "updating" ||
+      world.isAtmosphereUpdating === true
+    );
+};
+
+PS.epochs.queueEpochAtmosphere = function (state) {
+  var snapshot = this.cloneEpochState(state);
+  this.pendingAtmosphereState = snapshot;
+  if (typeof world !== "undefined" && world) {
+    world.pendingEpochAtmosphere = snapshot;
+  }
+  return state;
+};
+
+PS.epochs.flushPendingEpochAtmosphere = function () {
+  var pending = this.pendingAtmosphereState ||
+    (typeof world !== "undefined" && world ? world.pendingEpochAtmosphere : null);
+
+  if (!pending) { return null; }
+  this.pendingAtmosphereState = null;
+  if (typeof world !== "undefined" && world) {
+    world.pendingEpochAtmosphere = null;
+  }
+  return this.applyEpochAtmosphere(pending, { force: true });
+};
+
+PS.epochs.applyEpochAtmosphere = function (state, options) {
+  var spec = options || {};
   if (typeof world === "undefined" || !world || !state) { return state; }
+  if (spec.force !== true && this.isAtmosphereUpdateActive()) {
+    return this.queueEpochAtmosphere(state);
+  }
   world.epochScaling = this.cloneEpochState(state);
   world.era = state.name;
   world.atmosphere = world.atmosphere || {};

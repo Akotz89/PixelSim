@@ -1,4 +1,8 @@
-"use strict";
+import { PS } from "./namespace.js";
+import { clamp } from "./utils.js";
+import { updateOrganism } from "../sim/organisms-behavior.js";
+import { world } from "../systems/state.js";
+
 PS.animation = PS.animation || {};
 
 PS.animation.AnimationDefinition = {
@@ -458,6 +462,14 @@ PS.animation.getVisibleOrganismFrame = function (organism, dt) {
   return PS.animation.updateVisibleOrganismFrame(organism, dt);
 };
 
+/**
+ * @description Updates visible organism animation frames in budgeted batches, choosing idle/walk frames and preserving frame output for renderer consumption.
+ * @param {Array<Object>} organisms Visible organism records to update.
+ * @param {number} count Maximum number of organisms to process this frame.
+ * @param {number} dt Elapsed simulation time in seconds.
+ * @param {Array<Object>|null} outputFrames Optional reusable output frame array.
+ * @returns {Array<Object>} Frame descriptors for the visible organisms processed.
+ */
 PS.animation.updateVisibleOrganismFrames = function (organisms, count, dt, outputFrames) {
   var total = Math.min(Math.max(0, Math.floor(Number(count) || 0)), organisms ? organisms.length : 0);
   var startedAt = performance.now();

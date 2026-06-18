@@ -1,4 +1,8 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { chance, clamp, randomInt } from "../core/utils.js";
+import { world } from "../systems/state.js";
+
 // ── Trait Registry (AZR-493) ───────────────────────────────────────
 // Data-driven trait definitions replacing the 48 CONFIG.TRAIT_* entries.
 // Each trait is declared once; the registry provides defaults, ranges,
@@ -8,7 +12,7 @@
 
 PS.sim = PS.sim || {};
 
-var TRAIT_DEFINITIONS = [
+export var TRAIT_DEFINITIONS = [
   // ── Core evolvable traits ──
   {
     id: "vision",
@@ -377,3 +381,4 @@ PS.traitRegistry = {
 PS.traitRegistry.init();
 
 PS.sim.traitRegistry = PS.traitRegistry;
+

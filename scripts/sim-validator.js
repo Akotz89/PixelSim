@@ -137,8 +137,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  buildReport,
-  evaluateCheck,
-  main,
-  normalizeChecks
+  buildReport
 };

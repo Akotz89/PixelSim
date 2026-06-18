@@ -1,0 +1,18 @@
+{
+  "name": "surface-desert",
+  "source": "webgpu-readback",
+  "band": "region",
+  "scene": {
+    "width": 1016,
+    "height": 540,
+    "opaqueCoverage": 1,
+    "nonblankCoverage": 1,
+    "coarseColorCount": 66,
+    "luminanceMin": 14.95,
+    "luminanceMax": 255,
+    "luminanceMean": 33.44,
+    "contrastRange": 240.05
+  },
+  "screenshot": null,
+  "screenshotDiffSkipped": "webgpu-readback-gate"
+}

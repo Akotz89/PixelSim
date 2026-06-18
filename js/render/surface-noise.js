@@ -1,4 +1,9 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp, hashSeedText } from "../core/utils.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { getLatitudeDistanceKmPerDegree, getLongitudeDistanceKmPerDegree } from "./planet-view.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceNoise = PS.render.surfaceNoise || {};
 

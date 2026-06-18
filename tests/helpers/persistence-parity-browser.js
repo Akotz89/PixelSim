@@ -1,0 +1,634 @@
+// Browser-side fixture and evidence helpers for tests/persistence-parity.test.js.
+(function() {
+var makeOrganism = typeof makeOrganism !== "undefined" ? makeOrganism : window.makeOrganism;
+var normalizeOrganismTraits = typeof normalizeOrganismTraits !== "undefined" ? normalizeOrganismTraits : window.normalizeOrganismTraits;
+
+function makeParityOrganism() {
+  return {
+    x: 12,
+    y: 9,
+    prevX: 12,
+    prevY: 9,
+    latitude: 21.2,
+    longitude: -73.4,
+    prevLatitude: 21.2,
+    prevLongitude: -73.4,
+    energy: 150,
+    age: 12,
+    directionX: 1,
+    directionY: 0,
+    facing: 2,
+    animFrame: 0,
+    velocityX: 0,
+    velocityY: 0,
+    travelKm: 0,
+    typeId: "herbivore_basic",
+    entityType: "herbivore_basic",
+    spriteSheet: "",
+    diet: "herbivore",
+    maxAge: CONFIG.ORGANISM_MAX_AGE,
+    traits: normalizeOrganismTraits({ bodySize: 1.5, limbCount: 6, camouflage: 0.75, carnivory: 0.6 }),
+    traitsNormalized: true,
+    lineageId: 7,
+    lineageParentId: 0,
+    generation: 0,
+    speciesId: 13,
+    populationId: 17,
+    representativeId: 19
+  };
+}
+
+function resetTestDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase("pixeldarium");
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error || new Error("Could not delete test database"));
+    request.onblocked = () => resolve();
+  });
+}
+
+function installRepresentativeWorldMetadata() {
+  world.isPaused = true;
+  world.tick = 4242;
+  world.deepTimeYears = 123456789;
+  world.speed = 4;
+  world.era = "Empire";
+  world.seedText = "AZR-355-PARITY";
+  world.rngState = 987654321;
+  world.terrain = Array.from({ length: WORLD_WIDTH * WORLD_HEIGHT }, (_, index) => {
+    return index % 7 === 0 ? CONFIG.TERRAIN_FERTILE : CONFIG.TERRAIN_BARREN;
+  });
+  world.planetView = {
+    zoomLevel: 3.5,
+    latitude: 21.25,
+    longitude: -73.5,
+    panEastMeters: 420,
+    panNorthMeters: -155
+  };
+  world.nextLineageId = 12;
+  world.nextSpeciesId = 18;
+  world.nextBiologyPopulationId = 19;
+  world.nextBiologyRepresentativeId = 20;
+  world.nextSettlementId = 22;
+  world.nextSettlementRouteId = 32;
+  world.nextOrbitalAssetId = 42;
+  world.nextPlanetaryBodyId = 52;
+  world.nextProbeMissionId = 62;
+  world.nextStarSystemId = 72;
+  world.nextInterstellarFleetId = 82;
+  world.nextEmpireSectorId = 92;
+  world.totalBirths = 101;
+  world.totalDeaths = 33;
+  world.totalFoodSpawned = 700;
+  world.totalFoodConsumed = 320;
+  world.totalFoodHarvested = 95;
+  world.colonyNetworkScore = 88;
+  world.colonyNetworkColonies = 2;
+  world.colonyNetworkActiveRoutes = 1;
+  world.colonyNetworkClaimedTiles = 34;
+  world.spaceProgramProgress = 0.82;
+  world.orbitalLaunches = 3;
+  world.lastSpaceProgramTick = 4000;
+  world.spaceProgramReady = true;
+  world.orbitalInfrastructureScore = 67;
+  world.orbitalPlatformReady = true;
+  world.planetarySurveyProgress = 0.74;
+  world.planetarySurveyReady = true;
+  world.lastPlanetarySurveyTick = 4050;
+  world.probeMissionProgress = 0.66;
+  world.probeMissionReady = true;
+  world.lastProbeMissionTick = 4100;
+  world.starMapProgress = 0.58;
+  world.starMapReady = true;
+  world.lastStarMapTick = 4150;
+  world.galacticInfluenceProgress = 0.49;
+  world.galacticInfluenceReady = true;
+  world.galacticClaimedSystems = 4;
+  world.lastGalacticInfluenceTick = 4180;
+  world.interstellarFleetProgress = 0.35;
+  world.interstellarFleetReady = true;
+  world.interstellarFleetActive = 1;
+  world.interstellarFleetCompleted = 2;
+  world.lastInterstellarFleetTick = 4200;
+  world.empireSectorProgress = 0.27;
+  world.empireSectorReady = true;
+  world.empireSectorCount = 2;
+  world.lastEmpireSectorTick = 4210;
+  world.empireLegacyProgress = 0.19;
+  world.empireLegacyLevel = 1;
+  world.empireLegacyReady = true;
+  world.empireLegacyComplete = false;
+  world.lastEmpireLegacyTick = 4220;
+}
+
+function installEvolutionWorldState() {
+  world.lineages = {
+    "7": {
+      id: 7,
+      parentId: 0,
+      createdTick: 100,
+      founderGeneration: 2,
+      founderTraits: normalizeOrganismTraits({}),
+      activeCount: 14,
+      lastSeenTick: 4200,
+      peakPopulation: 30,
+      isExtinct: false
+    }
+  };
+  world.species = [{
+    id: 13,
+    parentId: 5,
+    lineageId: 7,
+    parentPopulationId: 17,
+    createdTick: 3500,
+    lastSeenTick: 4240,
+    founderTraits: normalizeOrganismTraits({ bodySize: 1.2, camouflage: 0.4 }),
+    traitMean: normalizeOrganismTraits({ bodySize: 1.5, camouflage: 0.75 }),
+    divergence: 0.68,
+    cause: "geographic-isolation",
+    location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 },
+    range: { minX: 12, maxX: 14, minY: 9, maxY: 10, cells: 2 },
+    population: 44,
+    activePopulation: 44,
+    isActive: true,
+    isExtinct: false
+  }];
+  world.speciesById = { "13": world.species[0] };
+  world.speciationEvents = [{
+    tick: 3500,
+    id: 13,
+    parentId: 5,
+    lineageId: 7,
+    populationId: 17,
+    cause: "geographic-isolation",
+    divergence: 0.68,
+    location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 }
+  }];
+  world.massExtinction = {
+    activeEvent: null,
+    recoveryWindow: {
+      id: 2,
+      cause: "volcanic-winter",
+      startTick: 4200,
+      endTick: 5100,
+      durationTicks: 900,
+      survivorPopulationIds: [17],
+      radiationCandidateIds: [17],
+      reproductionMultiplier: 0.72
+    },
+    lastEventTick: 4200,
+    pressureSummary: {
+      eventType: "volcanic-winter",
+      pressure: 0.91
+    }
+  };
+  world.extinctionEvents = [{
+    id: 2,
+    type: "extinction.event",
+    eventType: "volcanic-winter",
+    cause: "volcanic-winter",
+    pressure: 0.91,
+    severityScore: 0.62,
+    killRate: 0.55,
+    prePopulation: 99,
+    postPopulation: 44,
+    affectedSpecies: [{ id: 13, losses: 55, survivors: 44 }],
+    affectedPopulations: [{ id: 17, losses: 55, survivors: 44 }],
+    survivors: { total: 44, bySpecies: { "13": 44 }, byPopulation: { "17": 44 } },
+    losses: { total: 55, bySpecies: { "13": 55 }, byPopulation: { "17": 55 } },
+    recoveryWindow: world.massExtinction.recoveryWindow,
+    location: { x: 12, y: 9, latitude: 21.2, longitude: -73.4 },
+    tick: 4200
+  }];
+  world.biologyPopulations = [{
+    id: 17,
+    speciesId: 13,
+    lineageId: 7,
+    parentSpeciesId: 5,
+    parentPopulationId: 0,
+    count: 44,
+    biomass: 120,
+    energyReserve: 88,
+    territoryCells: [{ x: 12, y: 9, density: 0.8 }],
+    traitMean: { vision: 22, bodySize: 1.4 },
+    traitVariance: { vision: 2, bodySize: 0.1 },
+    pressure: { food: 0.3, terrain: 0.2 },
+    representativeIds: [19],
+    createdTick: 250,
+    lastUpdatedTick: 4240
+  }];
+  world.biologyPopulationById = { "17": world.biologyPopulations[0] };
+  world.biologyRepresentatives = [{
+    id: 19,
+    populationId: 17,
+    speciesId: 13,
+    lineageId: 7,
+    x: 12,
+    y: 9,
+    latitude: 21.2,
+    longitude: -73.4,
+    energy: 150,
+    age: 12,
+    behavior: "forage",
+    target: { type: "food", x: 13, y: 9 },
+    traits: { vision: 22, bodySize: 1.4 },
+    history: [{ tick: 4238, label: "sampled" }],
+    pinned: true,
+    createdTick: 4200,
+    lastSeenTick: 4240
+  }];
+  world.biologyRepresentativeById = { "19": world.biologyRepresentatives[0] };
+  world.trackedLineage = {
+    type: "representative",
+    lineageId: 7,
+    speciesId: 13,
+    parentSpeciesId: 5,
+    populationId: 17,
+    representativeId: 19,
+    label: "S13 / L7",
+    selectedTick: 4210,
+    lastUpdatedTick: 4240,
+    pinned: true,
+    stale: false,
+    extinct: false,
+    history: [{
+      tick: 4238,
+      population: 44,
+      traits: { bodySize: 1.4 },
+      rangeCells: 1,
+      status: "active"
+    }],
+    recentEvents: []
+      };
+      if (!Array.isArray(world.organisms) || world.organisms.length === 0) {
+        world.organisms = [makeParityOrganism()];
+      }
+  if (world.organisms[0]) {
+    world.organisms[0].speciesId = 13;
+    world.organisms[0].populationId = 17;
+    world.organisms[0].representativeId = 19;
+    world.organisms[0].traits.bodySize = 1.5;
+    world.organisms[0].traits.limbCount = 6;
+    world.organisms[0].traits.camouflage = 0.75;
+    world.organisms[0].traits.carnivory = 0.6;
+  }
+}
+
+function installCivilizationWorldState() {
+  world.settlements = [{
+    id: 21,
+    lineageId: 7,
+    x: 12,
+    y: 9,
+    foundedTick: 300,
+    radius: CONFIG.SETTLEMENT_RADIUS,
+    population: 44,
+    foodStock: 80,
+    storedFood: 95,
+    development: 120,
+    level: CONFIG.SETTLEMENT_COLONY_LEVEL,
+    lastGrowthTick: 3900,
+    influenceRadius: CONFIG.SETTLEMENT_INFLUENCE_BASE_RADIUS,
+    claimedTiles: 10,
+    claimedFood: 5,
+    parentSettlementId: 0,
+    isOutpost: true,
+    isColony: true,
+    lastOutpostTick: 3500,
+    lastSupplyGrowthTick: 3700,
+    isActive: true,
+    lastActiveTick: 4240
+  }];
+  world.settlementRoutes = [{
+    id: 31,
+    parentSettlementId: 21,
+    childSettlementId: 21,
+    lineageId: 7,
+    foundedTick: 3600,
+    distance: 12,
+    foodTransferred: 18,
+    lastTransferTick: 4230,
+    isActive: true
+  }];
+  world.orbitalAssets = [{
+    id: 41,
+    launchNumber: 3,
+    launchedTick: 3900,
+    infrastructureScore: 67,
+    orbitAngle: 1.25,
+    orbitBand: 2,
+    isActive: true
+  }];
+  world.planetaryBodies = [{
+    id: 51,
+    name: "Test Moon",
+    discoveredTick: 3960,
+    surveyValue: 77,
+    orbitAngle: 2.2,
+    orbitRadius: 88,
+    isSurveyed: true
+  }];
+  world.probeMissions = [{
+    id: 61,
+    targetBodyId: 51,
+    launchedTick: 4000,
+    arrivalTick: 4100,
+    progress: 1,
+    isComplete: true
+  }];
+  world.starSystems = [{
+    id: 71,
+    name: "S-Parity",
+    discoveredTick: 4120,
+    mapValue: 90,
+    mapX: 0.25,
+    mapY: -0.45,
+    isMapped: true,
+    influenceValue: 91,
+    isClaimed: true,
+    claimedTick: 4180
+  }];
+  world.interstellarFleets = [{
+    id: 81,
+    sourceSystemId: 71,
+    targetSystemId: 71,
+    launchedTick: 4190,
+    arrivalTick: 4230,
+    progress: 1,
+    isComplete: true
+  }];
+  world.empireSectors = [{
+    id: 91,
+    systemId: 71,
+    foundedTick: 4235,
+    controlValue: 120,
+    controlRadius: 0.3,
+    isActive: true
+  }];
+}
+
+function installHistoryWorldState() {
+  world.traitHistory = [{
+    tick: 4200,
+    population: 44,
+    vision: CONFIG.TRAIT_VISION_DEFAULT,
+    metabolism: CONFIG.TRAIT_METABOLISM_DEFAULT,
+    reproductionEnergy: CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT,
+    movementTendency: CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT,
+    terrainAffinity: CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT,
+    carnivory: CONFIG.TRAIT_CARNIVORY_DEFAULT
+  }];
+  world.ecosystemHistory = [{
+    tick: 4200,
+    population: 44,
+    food: 30,
+    averageEnergy: 120,
+    foodPerOrganism: 0.7,
+    populationBalance: "growing",
+    resourceBalance: "stable",
+    foodNetThisTick: 3,
+    foodRunwayTicks: 120,
+    pressure: "balanced",
+    stabilityScore: 85
+  }];
+  world.eventLog = [{
+    tick: 4210,
+    type: "empire",
+    label: "Parity event",
+    detail: "Persistence parity coverage"
+  }];
+  world.timelineEvents = [{
+    tick: 4211,
+    type: "life.first",
+    label: "First life",
+    detail: "organisms 1",
+    details: { value: 1 },
+    deepTime: { years: 123456789 },
+    source: "milestone-detector",
+    severity: "major",
+    id: 13,
+    parentId: 5,
+    lineageId: 7,
+    speciesId: 13,
+    populationId: 17,
+    cause: "geographic-isolation",
+    divergence: 0.68,
+    effect: "species-split",
+    traits: normalizeOrganismTraits({ bodySize: 1.5 })
+  }];
+  world.bookmarks = [{
+    id: "B4",
+    label: "First life marker",
+    note: "Track this split",
+    createdTick: 4212,
+    tick: 4211,
+    deepTimeYears: 123456789,
+    epoch: "Empire",
+    camera: {
+      zoomLevel: 3.5,
+      latitude: 21.25,
+      longitude: -73.5,
+      panEastMeters: 420,
+      panNorthMeters: -155
+    },
+    target: {
+      type: "event",
+      source: "timeline",
+      eventType: "life.first",
+      category: "life.first",
+      label: "First life",
+      tick: 4211,
+      lineageId: 7,
+      speciesId: 13,
+      populationId: 17,
+      inspectTarget: { type: "tile", x: 12, y: 9 }
+    },
+    screenshotRef: ""
+  }];
+  world.nextBookmarkId = 5;
+  world.milestonesReached = {
+    "life.first": {
+      tick: 4211,
+      value: 1
+    }
+  };
+}
+
+function installLayerWorldState() {
+  world.geology = {
+    ageTicks: 12,
+    plates: [{ id: "plate-test", driftX: 1.25 }],
+    volcanicActivity: 0.42,
+    erosionSediment: 3.5,
+    continentFormation: 0.18
+  };
+  world.atmosphere = {
+    ageTicks: 14,
+    gases: {
+      co2: 0.12,
+      o2: 0.2,
+      n2: 0.67,
+      ch4: 0.004,
+      h2o: 0.005,
+      o3: 0.001,
+      sulfur: 0
+    },
+    oxygen: 0.2,
+    temperatureC: 19.5,
+    oxygenStress: 0
+  };
+  world.microbialReady = true;
+  world.microbial = {
+    model: "field-population-hybrid",
+    ageTicks: 8,
+    fieldWidth: 2,
+    fieldHeight: 2,
+    fields: {
+      density: [0.1, 0.2, 0.3, 0.4],
+      chemicalEnergy: [0.5, 0.6, 0.7, 0.8],
+      oxygenProduction: [0.01, 0.02, 0.03, 0.04],
+      stress: [0.1, 0.2, 0.3, 0.4],
+      bloomIntensity: [0.2, 0.4, 0.6, 0.8]
+    },
+    populations: [{
+      id: 5,
+      name: "Microbial mat 5",
+      lineageId: "microbial-5",
+      x: 44,
+      y: 22,
+      bloomIntensity: 0.8,
+      morphology: "mat",
+      isVisible: true
+    }],
+    populationById: {
+      "5": {
+        id: 5,
+        name: "Microbial mat 5"
+      }
+    },
+    nextPopulationId: 6,
+    visibleBlooms: [{
+      id: 5,
+      x: 44,
+      y: 22,
+      intensity: 0.8,
+      morphology: "mat"
+    }],
+    selectedPrototype: "field-population-hybrid",
+    totalDensity: 1,
+    totalOxygenProduction: 0.1
+  };
+  if (PS.time) {
+    PS.time.setManualTimeScale(2);
+  }
+}
+
+function installRepresentativeWorldState() {
+  installRepresentativeWorldMetadata();
+  installEvolutionWorldState();
+  installCivilizationWorldState();
+  installHistoryWorldState();
+  installLayerWorldState();
+}
+
+async function collectPersistenceParityEvidence() {
+await resetTestDatabase();
+installRepresentativeWorldState();
+window.drawWorld = function() {};
+
+const saveData = PS.persistence.createSaveData();
+const exportData = PS.persistence.exportJson();
+const file = new File([JSON.stringify(saveData)], "pixeldarium-parity.json", {
+  type: "application/json"
+});
+
+world.tick = 1;
+world.planetView = { zoomLevel: 0, latitude: 0, longitude: 0, panEastMeters: 0, panNorthMeters: 0 };
+world.settlements = [];
+world.empireSectorCount = 0;
+
+const importedData = await PS.persistence.importJsonFile(file);
+const importedEvidence = {
+  tick: world.tick,
+  camera: Object.assign({}, world.planetView),
+  settlementCount: world.settlements.length,
+  settlement: Object.assign({}, world.settlements[0]),
+  routeCount: world.settlementRoutes.length,
+  orbitalAssets: world.orbitalAssets.length,
+  planetaryBodies: world.planetaryBodies.length,
+  probeMissions: world.probeMissions.length,
+  starSystems: world.starSystems.length,
+  interstellarFleets: world.interstellarFleets.length,
+  empireSectors: world.empireSectors.length,
+  progression: {
+    colonyNetworkScore: world.colonyNetworkScore,
+    spaceProgramReady: world.spaceProgramReady,
+    orbitalPlatformReady: world.orbitalPlatformReady,
+    planetarySurveyReady: world.planetarySurveyReady,
+    probeMissionReady: world.probeMissionReady,
+    starMapReady: world.starMapReady,
+    galacticInfluenceReady: world.galacticInfluenceReady,
+    interstellarFleetReady: world.interstellarFleetReady,
+    empireSectorReady: world.empireSectorReady,
+    empireLegacyReady: world.empireLegacyReady
+  },
+  deepTimeYears: world.deepTimeYears,
+  timeScale: PS.time && PS.time.timeScale ? Object.assign({}, PS.time.timeScale) : null,
+  timelineEvents: world.timelineEvents.slice(),
+  bookmarks: world.bookmarks.slice(),
+  nextBookmarkId: world.nextBookmarkId,
+  milestonesReached: Object.assign({}, world.milestonesReached),
+  biologyPopulations: world.biologyPopulations.slice(),
+  species: world.species.slice(),
+  speciationEvents: world.speciationEvents.slice(),
+  massExtinction: world.massExtinction ? Object.assign({}, world.massExtinction) : null,
+  extinctionEvents: world.extinctionEvents.slice(),
+  speciesByIdKeys: Object.keys(world.speciesById),
+  biologyPopulationByIdKeys: Object.keys(world.biologyPopulationById),
+  biologyRepresentatives: world.biologyRepresentatives.slice(),
+  biologyRepresentativeByIdKeys: Object.keys(world.biologyRepresentativeById),
+  trackedLineage: world.trackedLineage ? Object.assign({}, world.trackedLineage) : null,
+  microbial: Object.assign({}, world.microbial, {
+    fields: Object.assign({}, world.microbial && world.microbial.fields),
+    populations: world.microbial && world.microbial.populations ? world.microbial.populations.slice() : [],
+    visibleBlooms: world.microbial && world.microbial.visibleBlooms ? world.microbial.visibleBlooms.slice() : []
+  }),
+  microbialReady: world.microbialReady,
+  nextBiologyPopulationId: world.nextBiologyPopulationId,
+  nextBiologyRepresentativeId: world.nextBiologyRepresentativeId,
+  nextSpeciesId: world.nextSpeciesId,
+  organismIdentity: world.organisms[0] ? {
+    speciesId: world.organisms[0].speciesId,
+    populationId: world.organisms[0].populationId,
+    representativeId: world.organisms[0].representativeId,
+    bodySize: world.organisms[0].traits.bodySize,
+    limbCount: world.organisms[0].traits.limbCount,
+    camouflage: world.organisms[0].traits.camouflage,
+    carnivory: world.organisms[0].traits.carnivory
+  } : null,
+  geology: Object.assign({}, world.geology),
+  atmosphere: Object.assign({}, world.atmosphere)
+};
+
+world.tick = 2;
+await PS.persistence.save();
+world.tick = 3;
+const loadedData = await PS.persistence.load();
+
+await resetTestDatabase();
+
+return {
+  saveData,
+  exportData,
+  importedData,
+  loadedData,
+  importedEvidence,
+  loadedTick: world.tick
+};
+}
+
+window.__pixeldariumPersistenceParity = {
+  collectEvidence: collectPersistenceParityEvidence
+};
+})();

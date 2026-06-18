@@ -1,5 +1,16 @@
-"use strict";
-function makeSettlement(lineage, organisms) {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getClampedBucketIndexes, getWrappedBucketIndexes } from "../render/planet-grid.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { countFoodInRadius } from "./food-runtime.js";
+import { ensureOrganismTraits } from "./organisms-traits.js";
+import { countChildOutposts, updateSettlementLevel, updateSettlementMetrics } from "./settlements-growth.js";
+// fallow-ignore-next-line circular-dependency
+import { refreshSettlementSummaryCache } from "./settlements-routes.js";
+import { allocateSettlementId, allocateSettlementRouteId, ensureSettlementState, getDistanceBetweenSettlements, getDistanceToSettlement, getLineageCenter, getOrganismsForLineage, getRootSettlementForLineage, getSettlementBucketSize, getSettlementClampedY, getSettlementRouteKey, getSettlementWrappedManhattanDistance, getSettlementWrappedX, registerSettlementInIndexes, registerSettlementRouteInIndex, registerSettlementRouteStats, restoreSettlementGrowthNumber } from "./settlements-state.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
+export function makeSettlement(lineage, organisms) {
   var center = getLineageCenter(organisms);
   return makeSettlementAt(lineage.id, center.x, center.y, {
     parentSettlementId: 0,
@@ -7,7 +18,7 @@ function makeSettlement(lineage, organisms) {
   });
 }
 
-function makeSettlementAt(lineageId, x, y, options) {
+export function makeSettlementAt(lineageId, x, y, options) {
   options = options || {};
   return {
     id: allocateSettlementId(),
@@ -35,7 +46,7 @@ function makeSettlementAt(lineageId, x, y, options) {
   };
 }
 
-function getLineageSettlementTraitReadiness(lineageId) {
+export function getLineageSettlementTraitReadiness(lineageId) {
   var organisms = getOrganismsForLineage(lineageId);
   var count = organisms.length;
   var totalIntelligence = 0;
@@ -54,7 +65,7 @@ function getLineageSettlementTraitReadiness(lineageId) {
   };
 }
 
-function isLineageSettlementReady(lineage) {
+export function isLineageSettlementReady(lineage) {
   if (!lineage) {
     return false;
   }
@@ -68,7 +79,7 @@ function isLineageSettlementReady(lineage) {
   );
 }
 
-function canFoundSettlement(lineage) {
+export function canFoundSettlement(lineage) {
   return (
     lineage &&
     lineage.activeCount >= CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION &&
@@ -79,7 +90,7 @@ function canFoundSettlement(lineage) {
   );
 }
 
-function foundSettlementForLineage(lineage) {
+export function foundSettlementForLineage(lineage) {
   var organisms = getOrganismsForLineage(lineage.id);
 
   if (organisms.length === 0) {
@@ -93,7 +104,7 @@ function foundSettlementForLineage(lineage) {
   return settlement;
 }
 
-function getDistanceToNearestSettlement(x, y, searchRadius) {
+export function getDistanceToNearestSettlement(x, y, searchRadius) {
   ensureSettlementState();
 
   var buckets = world.settlementBuckets;
@@ -139,7 +150,7 @@ function getDistanceToNearestSettlement(x, y, searchRadius) {
   return nearestDistance;
 }
 
-function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
+export function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
   ensureSettlementState();
 
   var buckets = world.settlementBuckets;
@@ -187,7 +198,7 @@ function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
   return nearestSettlement;
 }
 
-function getNearestInfluencingSettlement(x, y) {
+export function getNearestInfluencingSettlement(x, y) {
   var summary = world.settlementSummary || refreshSettlementSummaryCache();
 
   if (!summary) {
@@ -202,11 +213,11 @@ function getNearestInfluencingSettlement(x, y) {
   );
 }
 
-function countFoodNearTile(x, y, radius) {
+export function countFoodNearTile(x, y, radius) {
   return countFoodInRadius(x, y, radius);
 }
 
-function getOutpostPlacement(parentSettlement) {
+export function getOutpostPlacement(parentSettlement) {
   var searchRadius = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_OUTPOST_SEARCH_RADIUS) || 1));
   var minDistance = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_OUTPOST_MIN_DISTANCE) || 1));
   var bestCandidate = null;
@@ -244,7 +255,7 @@ function getOutpostPlacement(parentSettlement) {
   return bestCandidate;
 }
 
-function canFoundOutpost(settlement) {
+export function canFoundOutpost(settlement) {
   return (
     settlement &&
     settlement.isActive &&
@@ -256,7 +267,7 @@ function canFoundOutpost(settlement) {
   );
 }
 
-function foundOutpostFromSettlement(parentSettlement) {
+export function foundOutpostFromSettlement(parentSettlement) {
   if (!canFoundOutpost(parentSettlement)) {
     return null;
   }
@@ -267,7 +278,11 @@ function foundOutpostFromSettlement(parentSettlement) {
     return null;
   }
 
-  parentSettlement.storedFood = Math.max(0, parentSettlement.storedFood - CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
+    PS.sim.resources.recordFlow(parentSettlement, "food", "consumed", CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
+  } else {
+    parentSettlement.storedFood = Math.max(0, parentSettlement.storedFood - CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
+  }
   parentSettlement.development = Math.max(0, parentSettlement.development - CONFIG.SETTLEMENT_OUTPOST_DEVELOPMENT_COST);
   parentSettlement.lastOutpostTick = world.tick;
   updateSettlementLevel(parentSettlement);
@@ -282,7 +297,7 @@ function foundOutpostFromSettlement(parentSettlement) {
   return outpost;
 }
 
-function updateSettlementOutposts() {
+export function updateSettlementOutposts() {
   var settlementCount = world.settlements.length;
 
   for (var i = 0; i < settlementCount; i++) {
@@ -290,12 +305,12 @@ function updateSettlementOutposts() {
   }
 }
 
-function getSettlementRoute(parentSettlementId, childSettlementId) {
+export function getSettlementRoute(parentSettlementId, childSettlementId) {
   ensureSettlementState();
   return world.settlementRoutesByKey[getSettlementRouteKey(parentSettlementId, childSettlementId)] || null;
 }
 
-function makeSettlementRoute(parentSettlement, childSettlement) {
+export function makeSettlementRoute(parentSettlement, childSettlement) {
   return {
     id: allocateSettlementRouteId(),
     parentSettlementId: parentSettlement.id,
@@ -309,7 +324,7 @@ function makeSettlementRoute(parentSettlement, childSettlement) {
   };
 }
 
-function ensureSettlementRoute(parentSettlement, childSettlement) {
+export function ensureSettlementRoute(parentSettlement, childSettlement) {
   var route = getSettlementRoute(parentSettlement.id, childSettlement.id);
 
   if (!route) {
@@ -322,7 +337,7 @@ function ensureSettlementRoute(parentSettlement, childSettlement) {
   return route;
 }
 
-function normalizeSettlementRoute(route) {
+export function normalizeSettlementRoute(route) {
   var previousRouteKey = route._indexKey || getSettlementRouteKey(route.parentSettlementId, route.childSettlementId);
   route.parentSettlementId = Math.max(1, Math.round(restoreSettlementGrowthNumber(route.parentSettlementId, 1)));
   route.childSettlementId = Math.max(1, Math.round(restoreSettlementGrowthNumber(route.childSettlementId, 1)));

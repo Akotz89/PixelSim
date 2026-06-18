@@ -1,4 +1,10 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+import { canvas, captureBookmarkCheckbox, captureModeSelect, persistenceStatus, recordingExportButton, screenshotExportButton } from "./dom-refs.js";
+import { setElementText } from "./foundation.js";
+import { setPersistenceStatus } from "./persistence-controls.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.exportCapture = (function() {

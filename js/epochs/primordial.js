@@ -1,39 +1,47 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTile } from "../render/planet-grid.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.epochs = PS.epochs || {};
 
-var PRIMORDIAL_FIELD_WIDTH = 32;
-var PRIMORDIAL_FIELD_HEIGHT = 18;
-var PRIMORDIAL_THRESHOLD = 1.0;
-var PRIMORDIAL_MAX_SITES = 8;
+export var PRIMORDIAL_FIELD_WIDTH = 32;
+export var PRIMORDIAL_FIELD_HEIGHT = 18;
+export var PRIMORDIAL_THRESHOLD = 1.0;
+export var PRIMORDIAL_MAX_SITES = 8;
 
-function clampPrimordial(value, min, max) {
-  if (PS.math && typeof PS.math.clamp === "function") {
-    return PS.math.clamp(value, min, max);
-  }
-
-  return Math.max(min, Math.min(max, value));
+export function clampPrimordial(value, min, max) {
+  return PS.math && typeof PS.math.clamp === "function" ? PS.math.clamp(value, min, max) : Math.max(min, Math.min(max, value));
 }
 
-function getPrimordialNoise(a, b, c) {
-  if (PS.math && typeof PS.math.deterministicUnitNoise === "function") {
-    return PS.math.deterministicUnitNoise(a, b, c);
-  }
-
-  var value = Math.sin((Number(a) || 0) * 12.9898 + (Number(b) || 0) * 78.233 + (Number(c) || 0) * 37.719) * 43758.5453;
-  return value - Math.floor(value);
+export function getPrimordialNoise(a, b, c) {
+  return PS.math && typeof PS.math.deterministicUnitNoise === "function" ? PS.math.deterministicUnitNoise(a, b, c) : 0;
 }
 
-function makePrimordialArray(length, value) {
-  var values = [];
+export function makePrimordialArray(length, value) {
+  var values;
 
-  for (var i = 0; i < length; i++) {
-    values.push(value);
+  if (PS.core && typeof PS.core.makeFloatFieldArray === "function") {
+    return PS.core.makeFloatFieldArray(length, value);
   }
 
+  values = new Float32Array(Math.max(0, Math.round(Number(length) || 0)));
+  if (Number(value) !== 0) {
+    values.fill(Number(value) || 0);
+  }
   return values;
 }
 
-function getPrimordialInitialState() {
+export function normalizePrimordialField(fields, name, cellCount) {
+  if (PS.core && typeof PS.core.normalizeFloatField === "function") {
+    PS.core.normalizeFloatField(fields, name, cellCount, makePrimordialArray);
+    return;
+  }
+
+  fields[name] = makePrimordialArray(cellCount, 0);
+}
+
+export function getPrimordialInitialState() {
   var cellCount = PRIMORDIAL_FIELD_WIDTH * PRIMORDIAL_FIELD_HEIGHT;
 
   return {
@@ -58,7 +66,7 @@ function getPrimordialInitialState() {
   };
 }
 
-function ensurePrimordialState() {
+export function ensurePrimordialState() {
   var state = world.abiogenesis;
   var cellCount;
 
@@ -72,10 +80,9 @@ function ensurePrimordialState() {
   state.threshold = Math.max(0.1, Number(state.threshold) || PRIMORDIAL_THRESHOLD);
   cellCount = state.fieldWidth * state.fieldHeight;
 
+  state.fields = state.fields || {};
   ["complexity", "lightning", "hydrothermal", "uv", "tidalPools", "soupIntensity"].forEach(function(field) {
-    if (!Array.isArray(state.fields[field]) || state.fields[field].length !== cellCount) {
-      state.fields[field] = makePrimordialArray(cellCount, 0);
-    }
+    normalizePrimordialField(state.fields, field, cellCount);
   });
 
   if (!Array.isArray(state.sites)) {
@@ -90,13 +97,13 @@ function ensurePrimordialState() {
   return state;
 }
 
-function getPrimordialCellIndex(cellX, cellY, state) {
+export function getPrimordialCellIndex(cellX, cellY, state) {
   var x = clampPrimordial(Math.round(Number(cellX) || 0), 0, state.fieldWidth - 1);
   var y = clampPrimordial(Math.round(Number(cellY) || 0), 0, state.fieldHeight - 1);
   return y * state.fieldWidth + x;
 }
 
-function getPrimordialCellForTile(tileX, tileY) {
+export function getPrimordialCellForTile(tileX, tileY) {
   var state = ensurePrimordialState();
   var cellX = Math.floor((Number(tileX) || 0) / Math.max(1, WORLD_WIDTH) * state.fieldWidth);
   var cellY = Math.floor((Number(tileY) || 0) / Math.max(1, WORLD_HEIGHT) * state.fieldHeight);
@@ -115,7 +122,7 @@ function getPrimordialCellForTile(tileX, tileY) {
   };
 }
 
-function getPrimordialTileSignals(cellX, cellY, state) {
+export function getPrimordialTileSignals(cellX, cellY, state) {
   var seed = state.seedHash || (world.rngState || 1);
   var tileX = Math.floor((cellX + 0.5) / state.fieldWidth * Math.max(1, WORLD_WIDTH));
   var tileY = Math.floor((cellY + 0.5) / state.fieldHeight * Math.max(1, WORLD_HEIGHT));
@@ -144,7 +151,7 @@ function getPrimordialTileSignals(cellX, cellY, state) {
   };
 }
 
-function makeAbiogenesisSite(state, cellX, cellY, index, signals) {
+export function makeAbiogenesisSite(state, cellX, cellY, index, signals) {
   var existing = state.sites.filter(function(site) {
     return site.cellX === cellX && site.cellY === cellY;
   })[0];
@@ -203,7 +210,7 @@ function makeAbiogenesisSite(state, cellX, cellY, index, signals) {
   return site;
 }
 
-function emitAbiogenesisTransition(site) {
+export function emitAbiogenesisTransition(site) {
   if (PS.events && typeof PS.events.emit === "function") {
     PS.events.emit(PS.events.types.EPOCH_TRANSITION, {
       from: "primordial",
@@ -226,7 +233,7 @@ function emitAbiogenesisTransition(site) {
   }
 }
 
-function updatePrimordialEpoch(dt) {
+export function updatePrimordialEpoch(dt) {
   var state = ensurePrimordialState();
   var timeStep = Math.max(0.25, Math.min(4, (Number(dt) || 16) / 1000));
   var bestSite = null;
@@ -274,7 +281,7 @@ function updatePrimordialEpoch(dt) {
   return state;
 }
 
-function getPrimordialSoupIntensityForTile(tile) {
+export function getPrimordialSoupIntensityForTile(tile) {
   if (!tile || !world.abiogenesis || !world.abiogenesis.fields) {
     return 0;
   }
@@ -308,3 +315,4 @@ PS.epochs.register("primordial", {
     return updatePrimordialEpoch(dt);
   }
 });
+

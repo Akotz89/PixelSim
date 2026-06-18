@@ -1,4 +1,14 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTile } from "./planet-grid.js";
+import { getSurfaceMeterCoordinate } from "./planet-surface.js";
+import { getLatLonFromLocalOffset, getPlanetEquatorKmPerTile, getPlanetLatLonFromCanvasPoint, invalidatePlanetRenderCache, normalizeLongitude } from "./planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { markCameraInteracting } from "../ui/camera-input.js";
+import { canvas } from "../ui/dom-refs.js";
+import { getDistanceLabel } from "../ui/summary.js";
+
 PS.camera = PS.camera || {};
 PS.camera.stats = PS.camera.stats || {
   lastZoomFrom: 0,
@@ -12,6 +22,9 @@ PS.camera.stats = PS.camera.stats || {
 PS.camera.inertia = PS.camera.inertia || {
   zoomVelocity: 0,
   zoomAccumulator: 0,
+  touchZoomPendingDelta: 0,
+  touchZoomTargetLevel: 0,
+  hasTouchZoomTarget: false,
   panVelocityX: 0,
   panVelocityY: 0,
   anchorCanvasX: 0,
@@ -21,18 +34,42 @@ PS.camera.inertia = PS.camera.inertia || {
 
 PS.camera.getMotionConfig = function () {
   return {
-    panAcceleration: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_PAN_ACCELERATION) || 0.62),
-    panFriction: clamp(Number(CONFIG.PLANET_CAMERA_PAN_FRICTION) || 0.84, 0, 0.98),
-    panMaxSpeed: Math.max(0.1, Number(CONFIG.PLANET_CAMERA_PAN_MAX_SPEED) || 42),
-    zoomAcceleration: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_ACCELERATION) || 0.6),
-    zoomFriction: clamp(Number(CONFIG.PLANET_CAMERA_ZOOM_FRICTION) || 0.72, 0, 0.98),
-    zoomMaxSpeed: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_MAX_SPEED) || 0.85)
+    panAcceleration: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_PAN_ACCELERATION) || 0.32),
+    panFriction: clamp(Number(CONFIG.PLANET_CAMERA_PAN_FRICTION) || 0.88, 0, 0.98),
+    panMaxSpeed: Math.max(0.1, Number(CONFIG.PLANET_CAMERA_PAN_MAX_SPEED) || 18),
+    panInputMaxDelta: Math.max(1, Number(CONFIG.PLANET_CAMERA_PAN_INPUT_MAX_DELTA) || 64),
+    touchPanMultiplier: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_TOUCH_PAN_MULTIPLIER) || 0.35),
+    touchPanInputMaxDelta: Math.max(1, Number(CONFIG.PLANET_CAMERA_TOUCH_PAN_INPUT_MAX_DELTA) || 24),
+    touchRotatePanMultiplier: Math.max(0, Number(CONFIG.PLANET_CAMERA_TOUCH_ROTATE_PAN_MULTIPLIER) || 0),
+    maxLatitudeDeg: clamp(Number(CONFIG.PLANET_CAMERA_MAX_LATITUDE_DEG) || 82, 45, 89),
+    zoomAcceleration: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_ACCELERATION) || 0.15),
+    zoomFriction: clamp(Number(CONFIG.PLANET_CAMERA_ZOOM_FRICTION) || 0.82, 0, 0.98),
+    zoomMaxSpeed: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_MAX_SPEED) || 0.25),
+    zoomInputMaxDelta: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_ZOOM_INPUT_MAX_DELTA) || 0.5),
+    touchPinchZoomMultiplier: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_ZOOM_MULTIPLIER) || 0.45),
+    touchPinchZoomMaxDelta: Math.max(0.01, Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_ZOOM_MAX_DELTA) || 0.08),
+    touchPinchZoomFrameMaxDelta: Math.max(0.001, Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_ZOOM_FRAME_MAX_DELTA) || 0.006),
+    touchPinchDistanceDeadzonePx: Math.max(0, Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_DISTANCE_DEADZONE_PX) || 1.5),
+    touchPinchDistanceSmoothing: clamp(Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_DISTANCE_SMOOTHING) || 0.32, 0.05, 1),
+    touchPinchAnchorDeadzonePx: Math.max(0, Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_ANCHOR_DEADZONE_PX) || 2),
+    touchPinchAnchorSmoothing: clamp(Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_ANCHOR_SMOOTHING) || 0.22, 0.05, 1),
+    touchPinchTargetMaxStep: Math.max(0.001, Number(CONFIG.PLANET_CAMERA_TOUCH_PINCH_TARGET_MAX_STEP) || 0.006)
   };
 };
 
 PS.camera.clampVelocity = function (value, maxSpeed) {
   var speed = Math.max(0, Number(maxSpeed) || 0);
   return clamp(Number(value) || 0, -speed, speed);
+};
+
+PS.camera.clampInputDelta = function (value, maxDelta) {
+  var limit = Math.max(0, Number(maxDelta) || 0);
+
+  if (limit <= 0) {
+    return Number(value) || 0;
+  }
+
+  return clamp(Number(value) || 0, -limit, limit);
 };
 
 PS.camera.getIntegerZoomLevel = function (zoomLevel) {
@@ -204,7 +241,8 @@ PS.camera.getView = function () {
     0,
     PS.camera.getZoomLevels().length - 1
   );
-  world.planetView.latitude = clamp(Number(world.planetView.latitude) || 0, -90, 90);
+  var maxLatitude = PS.camera.getMotionConfig().maxLatitudeDeg;
+  world.planetView.latitude = clamp(Number(world.planetView.latitude) || 0, -maxLatitude, maxLatitude);
   world.planetView.longitude = ((Number(world.planetView.longitude) || 0) + 540) % 360 - 180;
 
   return world.planetView;
@@ -331,7 +369,7 @@ PS.camera.focusLatLon = function (latitude, longitude) {
   var previousLongitude = view.longitude;
   var previousMeters = getSurfaceMeterCoordinate(previousLatitude, previousLongitude);
 
-  view.latitude = clamp(Number(latitude) || 0, -90, 90);
+  view.latitude = clamp(Number(latitude) || 0, -PS.camera.getMotionConfig().maxLatitudeDeg, PS.camera.getMotionConfig().maxLatitudeDeg);
   view.longitude = PS.render.globe.normalizeLongitude(longitude);
 
   if (
@@ -371,9 +409,9 @@ PS.camera.focusCanvasPoint = function (canvasX, canvasY) {
 
 PS.camera.panScreen = function (deltaX, deltaY) {
   var scale = PS.camera.getScale();
-  var normalizedDeltaX = Number(deltaX) || 0;
-  var normalizedDeltaY = Number(deltaY) || 0;
   var motion = PS.camera.getMotionConfig();
+  var normalizedDeltaX = PS.camera.clampInputDelta(deltaX, motion.panInputMaxDelta);
+  var normalizedDeltaY = PS.camera.clampInputDelta(deltaY, motion.panInputMaxDelta);
   var eastKm = -normalizedDeltaX * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
   var northKm = normalizedDeltaY * scale.metersPerSample / CONFIG.TILE_SIZE / 1000;
 
@@ -408,11 +446,13 @@ PS.camera.panKm = function (eastKm, northKm) {
 PS.camera.setRenderZoom = function (zoomLevel) {
   var view = PS.camera.getView();
   var previousZoom = Number(view.zoomLevel) || 0;
+  var previousSurfaceLod = PS.camera.getSurfaceLodZoomIndex(previousZoom);
   var nextZoom = clamp(
     Number(zoomLevel) || 0,
     0,
     PS.camera.getZoomLevels().length - 1
   );
+  var nextSurfaceLod = PS.camera.getSurfaceLodZoomIndex(nextZoom);
 
   if (view.zoomLevel === nextZoom) {
     return false;
@@ -431,7 +471,10 @@ PS.camera.setRenderZoom = function (zoomLevel) {
   if (typeof markCameraInteracting === "function") {
     markCameraInteracting();
   }
-  invalidatePlanetRenderCache();
+  world.needsRender = true;
+  if (previousSurfaceLod !== nextSurfaceLod) {
+    invalidatePlanetRenderCache();
+  }
   return true;
 };
 
@@ -457,18 +500,29 @@ PS.camera.focusLatLonAtCanvasPoint = function (latitude, longitude, canvasX, can
   return PS.camera.getView();
 };
 
+PS.camera.shouldAnchorZoomAtCanvasPoint = function (previousZoom, nextZoom) {
+  return Math.min(Number(previousZoom) || 0, Number(nextZoom) || 0) >= 1.4;
+};
+
 PS.camera.setZoomAtCanvasPoint = function (zoomLevel, canvasX, canvasY) {
+  var previousZoom = Number(PS.camera.getView().zoomLevel) || 0;
   var anchoredLatLon = typeof getPlanetLatLonFromCanvasPoint === "function"
     ? getPlanetLatLonFromCanvasPoint(canvasX, canvasY)
     : null;
+  var nextZoom = clamp(
+    Number(zoomLevel) || 0,
+    0,
+    PS.camera.getZoomLevels().length - 1
+  );
+  var shouldAnchor = PS.camera.shouldAnchorZoomAtCanvasPoint(previousZoom, nextZoom);
   var afterLatLon;
   var longitudeDelta;
 
-  if (!PS.camera.setRenderZoom(zoomLevel)) {
+  if (!PS.camera.setRenderZoom(nextZoom)) {
     return false;
   }
 
-  if (anchoredLatLon && isPlanetLocalView()) {
+  if (shouldAnchor && anchoredLatLon) {
     PS.camera.focusLatLonAtCanvasPoint(
       anchoredLatLon.latitude,
       anchoredLatLon.longitude,
@@ -477,13 +531,13 @@ PS.camera.setZoomAtCanvasPoint = function (zoomLevel, canvasX, canvasY) {
     );
   }
 
-  afterLatLon = anchoredLatLon && typeof getPlanetLatLonFromCanvasPoint === "function"
+  afterLatLon = shouldAnchor && anchoredLatLon && typeof getPlanetLatLonFromCanvasPoint === "function"
     ? getPlanetLatLonFromCanvasPoint(canvasX, canvasY)
     : null;
-  longitudeDelta = anchoredLatLon && afterLatLon
+  longitudeDelta = shouldAnchor && anchoredLatLon && afterLatLon
     ? ((Number(afterLatLon.longitude) - Number(anchoredLatLon.longitude) + 540) % 360) - 180
     : 0;
-  PS.camera.stats.lastZoomAnchorErrorDeg = anchoredLatLon && afterLatLon
+  PS.camera.stats.lastZoomAnchorErrorDeg = shouldAnchor && anchoredLatLon && afterLatLon
     ? Math.abs(Number(afterLatLon.latitude) - Number(anchoredLatLon.latitude)) + Math.abs(longitudeDelta)
     : 0;
   PS.camera.stats.lastZoomAnchorCanvasX = Number(canvasX) || 0;
@@ -504,8 +558,8 @@ PS.camera.getZoomTransitionStats = function () {
 };
 
 PS.camera.adjustZoom = function (delta) {
-  var normalizedDelta = Number(delta) || 0;
   var motion = PS.camera.getMotionConfig();
+  var normalizedDelta = PS.camera.clampInputDelta(delta, motion.zoomInputMaxDelta);
 
   if (normalizedDelta === 0) {
     return false;
@@ -524,8 +578,8 @@ PS.camera.adjustZoom = function (delta) {
 };
 
 PS.camera.adjustZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
-  var normalizedDelta = Number(delta) || 0;
   var motion = PS.camera.getMotionConfig();
+  var normalizedDelta = PS.camera.clampInputDelta(delta, motion.zoomInputMaxDelta);
 
   if (normalizedDelta === 0) {
     return false;
@@ -545,9 +599,86 @@ PS.camera.adjustZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
   return true;
 };
 
+PS.camera.adjustTouchPinchZoomAtCanvasPoint = function (delta, canvasX, canvasY) {
+  var motion = PS.camera.getMotionConfig();
+  var normalizedDelta = PS.camera.clampInputDelta(delta, motion.touchPinchZoomMaxDelta);
+
+  if (normalizedDelta === 0) {
+    return false;
+  }
+
+  PS.camera.inertia.zoomVelocity = 0;
+  PS.camera.inertia.zoomAccumulator = 0;
+  PS.camera.inertia.touchZoomPendingDelta = PS.camera.clampInputDelta(
+    (Number(PS.camera.inertia.touchZoomPendingDelta) || 0) + normalizedDelta,
+    Math.max(motion.touchPinchZoomMaxDelta, motion.touchPinchZoomFrameMaxDelta) * 6
+  );
+  PS.camera.inertia.anchorCanvasX = Number(canvasX) || 0;
+  PS.camera.inertia.anchorCanvasY = Number(canvasY) || 0;
+  PS.camera.inertia.hasZoomAnchor = true;
+
+  if (typeof markCameraInteracting === "function") {
+    markCameraInteracting();
+  }
+  world.needsRender = true;
+  return true;
+};
+
+PS.camera.setTouchPinchZoomTargetAtCanvasPoint = function (zoomLevel, canvasX, canvasY) {
+  var motion = PS.camera.getMotionConfig();
+  var view = PS.camera.getView();
+  var maxZoom = PS.camera.getZoomLevels().length - 1;
+  var targetLead = Math.max(
+    motion.touchPinchZoomFrameMaxDelta * 32,
+    motion.touchPinchTargetMaxStep * 32,
+    motion.touchPinchZoomMaxDelta * 3
+  );
+  var targetZoom = clamp(
+    Number(zoomLevel) || 0,
+    Math.max(0, view.zoomLevel - targetLead),
+    Math.min(maxZoom, view.zoomLevel + targetLead)
+  );
+
+  PS.camera.inertia.zoomVelocity = 0;
+  PS.camera.inertia.zoomAccumulator = 0;
+  PS.camera.inertia.touchZoomPendingDelta = 0;
+  PS.camera.inertia.touchZoomTargetLevel = targetZoom;
+  PS.camera.inertia.hasTouchZoomTarget = true;
+  PS.camera.inertia.anchorCanvasX = Number(canvasX) || 0;
+  PS.camera.inertia.anchorCanvasY = Number(canvasY) || 0;
+  PS.camera.inertia.hasZoomAnchor = true;
+
+  if (typeof markCameraInteracting === "function") {
+    markCameraInteracting();
+  }
+
+  world.needsRender = true;
+  return true;
+};
+
+PS.camera.stopTouchPinchZoom = function () {
+  var motion = PS.camera.getMotionConfig();
+  var view = PS.camera.getView();
+  var releaseLead = Math.max(
+    motion.touchPinchZoomFrameMaxDelta * 3,
+    motion.touchPinchTargetMaxStep * 3
+  );
+
+  PS.camera.inertia.touchZoomPendingDelta = 0;
+  if (PS.camera.inertia.hasTouchZoomTarget === true) {
+    PS.camera.inertia.touchZoomTargetLevel = clamp(
+      Number(PS.camera.inertia.touchZoomTargetLevel) || view.zoomLevel,
+      Math.max(0, view.zoomLevel - releaseLead),
+      Math.min(PS.camera.getZoomLevels().length - 1, view.zoomLevel + releaseLead)
+    );
+  }
+};
+
 PS.camera.stopInertia = function () {
   PS.camera.inertia.zoomVelocity = 0;
   PS.camera.inertia.zoomAccumulator = 0;
+  PS.camera.inertia.touchZoomPendingDelta = 0;
+  PS.camera.inertia.hasTouchZoomTarget = false;
   PS.camera.inertia.panVelocityX = 0;
   PS.camera.inertia.panVelocityY = 0;
   PS.camera.inertia.hasZoomAnchor = false;
@@ -559,13 +690,49 @@ PS.camera.updateInertia = function () {
   var motion = PS.camera.getMotionConfig();
   var maxZoom = PS.camera.getZoomLevels().length - 1;
   var zoomVelocity = Number(inertia.zoomVelocity) || 0;
+  var touchZoomPendingDelta = Number(inertia.touchZoomPendingDelta) || 0;
+  var hasTouchZoomTarget = inertia.hasTouchZoomTarget === true;
   var panVelocityX = Number(inertia.panVelocityX) || 0;
   var panVelocityY = Number(inertia.panVelocityY) || 0;
   var zoomActive = Math.abs(zoomVelocity) > 0.0001;
+  var touchZoomActive = Math.abs(touchZoomPendingDelta) > 0.0001;
+  var touchTargetActive = hasTouchZoomTarget &&
+    Math.abs((Number(inertia.touchZoomTargetLevel) || 0) - view.zoomLevel) > 0.0001;
   var panActive = Math.abs(panVelocityX) + Math.abs(panVelocityY) > 0.35;
   var didMove = false;
 
-  if (zoomActive) {
+  if (touchTargetActive) {
+    var targetZoom = clamp(Number(inertia.touchZoomTargetLevel) || 0, 0, maxZoom);
+    var targetDelta = targetZoom - view.zoomLevel;
+    var targetMaxStep = Math.max(motion.touchPinchZoomFrameMaxDelta, motion.touchPinchTargetMaxStep);
+    var targetStep = clamp(targetDelta, -targetMaxStep, targetMaxStep);
+    var nextTargetZoom = clamp(view.zoomLevel + targetStep, 0, maxZoom);
+    var targetChanged = PS.camera.setZoomAtCanvasPoint(nextTargetZoom, inertia.anchorCanvasX, inertia.anchorCanvasY);
+
+    didMove = targetChanged || didMove;
+    if (!targetChanged || nextTargetZoom <= 0 || nextTargetZoom >= maxZoom || Math.abs(targetZoom - nextTargetZoom) <= 0.0001) {
+      inertia.hasTouchZoomTarget = false;
+    }
+  } else if (touchZoomActive) {
+    var touchStep = clamp(
+      touchZoomPendingDelta,
+      -motion.touchPinchZoomFrameMaxDelta,
+      motion.touchPinchZoomFrameMaxDelta
+    );
+    var nextTouchZoom = clamp(view.zoomLevel + touchStep, 0, maxZoom);
+    var touchChanged = PS.camera.setZoomAtCanvasPoint(nextTouchZoom, inertia.anchorCanvasX, inertia.anchorCanvasY);
+
+    didMove = touchChanged || didMove;
+    if (!touchChanged || nextTouchZoom <= 0 || nextTouchZoom >= maxZoom) {
+      inertia.touchZoomPendingDelta = 0;
+    } else {
+      inertia.touchZoomPendingDelta = touchZoomPendingDelta - touchStep;
+    }
+  } else {
+    inertia.touchZoomPendingDelta = 0;
+  }
+
+  if (!touchZoomActive && zoomActive) {
     var nextZoom = clamp(view.zoomLevel + zoomVelocity, 0, maxZoom);
     var changed = inertia.hasZoomAnchor
       ? PS.camera.setZoomAtCanvasPoint(nextZoom, inertia.anchorCanvasX, inertia.anchorCanvasY)

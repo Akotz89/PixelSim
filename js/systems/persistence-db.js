@@ -1,16 +1,25 @@
-"use strict";
-const PIXELDARIUM_DB_NAME = "pixeldarium";
-const PIXELDARIUM_DB_VERSION = 1;
-const PIXELDARIUM_SAVE_STORE = "saves";
-const PIXELDARIUM_SAVE_ID = "latest";
-const PIXELDARIUM_SAVE_VERSION = 3;
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
+import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { world } from "./state.js";
 
-function clonePersistencePlainValue(value) {
+export const PIXELDARIUM_DB_NAME = "pixeldarium";
+export const PIXELDARIUM_DB_VERSION = 1;
+export const PIXELDARIUM_SAVE_STORE = "saves";
+export const PIXELDARIUM_SAVE_ID = "latest";
+export const PIXELDARIUM_SAVE_VERSION = 3;
+
+export function clonePersistencePlainValue(value) {
   var key;
   var clone;
 
   if (value === null || typeof value !== "object") {
     return value;
+  }
+
+  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView && ArrayBuffer.isView(value)) {
+    return Array.prototype.slice.call(value);
   }
 
   if (Array.isArray(value)) {
@@ -34,14 +43,14 @@ function clonePersistencePlainValue(value) {
   return clone;
 }
 
-function openPixeldariumDatabase() {
+export function openPixeldariumDatabase() {
   return new Promise(function(resolve, reject) {
     if (!window.indexedDB) {
       reject(new Error("IndexedDB is not available"));
       return;
     }
 
-    var request = window.indexedDB.open(PIXELDARIUM_DB_NAME, PIXELDARIUM_DB_VERSION);
+    var request = globalThis.indexedDB.open(PIXELDARIUM_DB_NAME, PIXELDARIUM_DB_VERSION);
 
     request.onupgradeneeded = function(event) {
       var db = event.target.result;
@@ -61,11 +70,11 @@ function openPixeldariumDatabase() {
   });
 }
 
-function copyOrganismTraitsForSave(traits) {
+export function copyOrganismTraitsForSave(traits) {
   return PS.core.traitSchema.copy(traits);
 }
 
-function copyOrganismForSave(organism) {
+export function copyOrganismForSave(organism) {
   var traits = ensureOrganismTraits(organism);
 
   return {
@@ -88,11 +97,14 @@ function copyOrganismForSave(organism) {
     generation: organism.generation,
     speciesId: Math.max(1, Math.round(Number(organism.speciesId) || organism.lineageId || 1)),
     populationId: Math.max(1, Math.round(Number(organism.populationId) || organism.lineageId || 1)),
-    representativeId: Math.max(1, Math.round(Number(organism.representativeId) || 1))
+    representativeId: Math.max(1, Math.round(Number(organism.representativeId) || 1)),
+    ai: PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.serialize === "function"
+      ? PS.sim.organismAi.serialize(organism.ai)
+      : clonePersistencePlainValue(organism.ai || null)
   };
 }
 
-function copyFoodForSave(food) {
+export function copyFoodForSave(food) {
   return {
     x: food.x,
     y: food.y,
@@ -101,14 +113,19 @@ function copyFoodForSave(food) {
   };
 }
 
-function copyTraitHistorySampleForSave(sample) {
+export function copyTraitHistorySampleForSave(sample) {
   var traits = PS.core.traitSchema.copy(sample || {});
   traits.tick = sample.tick;
   traits.population = sample.population;
   return traits;
 }
 
-function copySimulationEventForSave(event) {
+/**
+ * @description Copies a simulation event into a persistence-safe plain object, normalizing text fields, timing, location, category, severity, and lineage details.
+ * @param {Object} event Runtime simulation event to include in save data.
+ * @returns {Object} Serializable event snapshot for the save payload.
+ */
+export function copySimulationEventForSave(event) {
   return {
     tick: Math.max(0, Math.round(Number(event.tick) || 0)),
     type: String(event.type || "sim"),
@@ -149,7 +166,7 @@ function copySimulationEventForSave(event) {
   };
 }
 
-function copyEcosystemHistorySampleForSave(sample) {
+export function copyEcosystemHistorySampleForSave(sample) {
   var foodRunwayTicks = Number(sample.foodRunwayTicks);
 
   return {
@@ -167,7 +184,7 @@ function copyEcosystemHistorySampleForSave(sample) {
   };
 }
 
-function copyLineageForSave(lineage) {
+export function copyLineageForSave(lineage) {
   return {
     id: lineage.id,
     parentId: lineage.parentId,
@@ -181,7 +198,7 @@ function copyLineageForSave(lineage) {
   };
 }
 
-function copySettlementForSave(settlement) {
+export function copySettlementForSave(settlement) {
   return {
     id: settlement.id,
     lineageId: settlement.lineageId,
@@ -208,7 +225,7 @@ function copySettlementForSave(settlement) {
   };
 }
 
-function copySettlementRouteForSave(route) {
+export function copySettlementRouteForSave(route) {
   return {
     id: route.id,
     parentSettlementId: route.parentSettlementId,
@@ -222,7 +239,7 @@ function copySettlementRouteForSave(route) {
   };
 }
 
-function copyOrbitalAssetForSave(asset) {
+export function copyOrbitalAssetForSave(asset) {
   return {
     id: asset.id,
     launchNumber: asset.launchNumber,
@@ -234,7 +251,7 @@ function copyOrbitalAssetForSave(asset) {
   };
 }
 
-function copyPlanetaryBodyForSave(body) {
+export function copyPlanetaryBodyForSave(body) {
   return {
     id: body.id,
     name: body.name,
@@ -246,7 +263,7 @@ function copyPlanetaryBodyForSave(body) {
   };
 }
 
-function copyProbeMissionForSave(mission) {
+export function copyProbeMissionForSave(mission) {
   return {
     id: mission.id,
     targetBodyId: mission.targetBodyId,
@@ -257,7 +274,7 @@ function copyProbeMissionForSave(mission) {
   };
 }
 
-function copyStarSystemForSave(system) {
+export function copyStarSystemForSave(system) {
   return {
     id: system.id,
     name: system.name,
@@ -272,7 +289,7 @@ function copyStarSystemForSave(system) {
   };
 }
 
-function copyInterstellarFleetForSave(fleet) {
+export function copyInterstellarFleetForSave(fleet) {
   return {
     id: fleet.id,
     sourceSystemId: fleet.sourceSystemId,
@@ -284,7 +301,7 @@ function copyInterstellarFleetForSave(fleet) {
   };
 }
 
-function copyEmpireSectorForSave(sector) {
+export function copyEmpireSectorForSave(sector) {
   return {
     id: sector.id,
     systemId: sector.systemId,
@@ -295,7 +312,7 @@ function copyEmpireSectorForSave(sector) {
   };
 }
 
-function getLineagesForSave() {
+export function getLineagesForSave() {
   if (typeof refreshLineageRegistry === "function") {
     refreshLineageRegistry();
   }
@@ -316,7 +333,7 @@ function getLineagesForSave() {
   return lineages;
 }
 
-function getSettlementsForSave() {
+export function getSettlementsForSave() {
   if (!Array.isArray(world.settlements)) {
     return [];
   }
@@ -324,7 +341,7 @@ function getSettlementsForSave() {
   return world.settlements.map(copySettlementForSave);
 }
 
-function getSettlementRoutesForSave() {
+export function getSettlementRoutesForSave() {
   if (!Array.isArray(world.settlementRoutes)) {
     return [];
   }
@@ -332,7 +349,7 @@ function getSettlementRoutesForSave() {
   return world.settlementRoutes.map(copySettlementRouteForSave);
 }
 
-function getOrbitalAssetsForSave() {
+export function getOrbitalAssetsForSave() {
   if (!Array.isArray(world.orbitalAssets)) {
     return [];
   }
@@ -340,7 +357,7 @@ function getOrbitalAssetsForSave() {
   return world.orbitalAssets.map(copyOrbitalAssetForSave);
 }
 
-function getPlanetaryBodiesForSave() {
+export function getPlanetaryBodiesForSave() {
   if (!Array.isArray(world.planetaryBodies)) {
     return [];
   }

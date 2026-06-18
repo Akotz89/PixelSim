@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.sim = PS.sim || {};
 PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
   shaderName: "molecular-dynamics",
@@ -23,15 +24,7 @@ PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
   config: null,
   state: null,
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-    if (!manifest.some(function (entry) { return entry && entry.name === "molecular-dynamics"; })) {
-      manifest.push({ name: this.shaderName, path: this.shaderPath });
-    }
-    return manifest;
+    return PS.render.registerWgslShaderManifestEntries({ name: this.shaderName, path: this.shaderPath });
   },
   normalizeConfig: function (config) {
     var source = config || {};
@@ -480,7 +473,7 @@ PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "molecular-dynamics.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -488,7 +481,8 @@ PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
             { binding: 1, resource: { buffer: owner.getWriteBuffer(self.stateId).buffer } },
             { binding: 2, resource: { buffer: owner.buffers["molecular-dynamics.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function (pass, owner) {
         owner.swap(self.stateId);

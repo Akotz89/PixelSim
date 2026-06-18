@@ -107,6 +107,5 @@ if (require.main === module) {
 }
 
 module.exports = {
-  PATTERNS,
   recommend
 };

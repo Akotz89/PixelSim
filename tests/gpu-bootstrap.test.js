@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -57,9 +58,17 @@ function makeDocument() {
 function makeContext(navigatorValue) {
   const document = makeDocument();
   const runtimeErrors = [];
+  const terminatedWorkers = [];
   const context = {
     PS: {
-      render: {},
+      render: {
+        surfaceWorker: {
+          terminate(reason) {
+            terminatedWorkers.push(reason);
+            return true;
+          }
+        }
+      },
       runtime: {
         recordError(kind, details) {
           runtimeErrors.push({ kind, details });
@@ -75,6 +84,7 @@ function makeContext(navigatorValue) {
   vm.createContext(context);
   vm.runInContext(gpuSource, context, { filename: "js/render/gpu.js" });
   context.runtimeErrors = runtimeErrors;
+  context.terminatedWorkers = terminatedWorkers;
   return context;
 }
 
@@ -133,6 +143,12 @@ function makeContext(navigatorValue) {
     readyContext.PS.gpu.shouldRecoverDeviceLost("destroyed"),
     false,
     "hidden/unloading pages should not loop recovering destroyed WebGPU devices"
+  );
+  readyContext.PS.gpu.handleDeviceLost({ reason: "destroyed" });
+  assert.deepStrictEqual(
+    readyContext.terminatedWorkers,
+    ["device-lost:destroyed"],
+    "device loss should terminate the surface worker before recovery or shutdown"
   );
   assert.strictEqual(
     readyContext.PS.gpu.shouldRecoverDeviceLost("unknown"),

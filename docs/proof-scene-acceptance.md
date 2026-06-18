@@ -61,6 +61,23 @@ fire, poison, decay, particles, and future magic or technology fields.
 Decorative polish can be accepted only as decorative polish. Effects that claim
 to communicate simulation state must prove the communicated state.
 
+## Canonical Dense Readability Suite
+
+AZR-1074 defines the reusable runtime suite in `js/render/proof-scenes.js`.
+The suite has three capture targets:
+
+- `globe-continent-causal-context`: broad terrain, ocean, coast, biome,
+  atmosphere, and event context before local detail dominates.
+- `dense-local-settlement-readability`: terrain materials, boundaries/routes,
+  settlement structures, citizens, stockpiles, work/status marks, vegetation,
+  shadows, particles, lights, and world UI in one dense scene.
+- `actor-effect-readability`: local actor, food/resource, route/boundary, intent,
+  status, and effect readability without debug text.
+
+Every scene must remain runtime-owned. It may reference accepted runtime assets
+or deterministic runtime-generated placeholders, but not Agent Studio scripts,
+raw candidates, provider configs, or source reference material.
+
 ## Example: Simulation/Organism Proof Scene
 
 ```text

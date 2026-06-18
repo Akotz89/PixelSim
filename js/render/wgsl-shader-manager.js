@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.render = PS.render || {};
 
 PS.render.WgslShaderManager = function () {
@@ -314,6 +315,82 @@ PS.render.WgslShaderManager.prototype.getStats = function () {
     computePipelineCount: Object.keys(this.computePipelines).length,
     errorCount: this.errors.length
   };
+};
+
+PS.render.createAlphaBlendTarget = function (format) {
+  return {
+    format: format,
+    blend: {
+      color: {
+        srcFactor: "src-alpha",
+        dstFactor: "one-minus-src-alpha",
+        operation: "add"
+      },
+      alpha: {
+        srcFactor: "one",
+        dstFactor: "one-minus-src-alpha",
+        operation: "add"
+      }
+    }
+  };
+};
+
+PS.render.ensureAlphaBlendPipeline = function (owner, device, options) {
+  var spec = options || {};
+  var state = owner.state || {};
+  var field = spec.field || "pipeline";
+  var module;
+
+  if (!state[field]) {
+    module = PS.render.wgslShaders.getShaderModule(device, spec.shaderName || owner.shaderName);
+    state[field] = PS.render.wgslShaders.getRenderPipeline({
+      label: spec.label,
+      layout: "auto",
+      vertex: {
+        module: module,
+        entryPoint: spec.vertexEntryPoint || "vs_main"
+      },
+      fragment: {
+        module: module,
+        entryPoint: spec.fragmentEntryPoint || "fs_main",
+        targets: spec.targets || [PS.render.createAlphaBlendTarget(spec.format || owner.getFormat())]
+      },
+      primitive: {
+        topology: spec.topology || "triangle-strip"
+      }
+    }, device);
+  }
+
+  owner.state = state;
+  return state[field];
+};
+
+PS.render.registerWgslShaderManifestEntries = function (entries) {
+  var manifest = PS.render && PS.render.wgslShaderManifest;
+  var list = Array.isArray(entries) ? entries : [entries];
+
+  if (!Array.isArray(manifest)) {
+    PS.render.wgslShaderManifest = [];
+    manifest = PS.render.wgslShaderManifest;
+  }
+
+  list.forEach(function (entry) {
+    var found;
+
+    if (!entry || !entry.name || !entry.path) {
+      return;
+    }
+
+    found = manifest.some(function (candidate) {
+      return candidate && candidate.name === entry.name;
+    });
+
+    if (!found) {
+      manifest.push({ name: entry.name, path: entry.path });
+    }
+  });
+
+  return manifest;
 };
 
 PS.render.wgslShaderManager = PS.render.wgslShaderManager || new PS.render.WgslShaderManager();

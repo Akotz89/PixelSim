@@ -1,4 +1,7 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 PS.render = PS.render || {};
 
 PS.atlas = PS.atlas || {
@@ -708,16 +711,13 @@ PS.atlas.drawRouteCell = function (cell, shape, activityBucket, lineageId) {
 };
 
 PS.atlas.drawInfluenceCell = function (cell, strengthBucket, lineageId) {
-  var colors = CONFIG && CONFIG.LINEAGE_COLORS ? CONFIG.LINEAGE_COLORS : ["#72d7ff"];
-  var baseRgb = PS.atlas.hexToRgb(colors[(Math.max(1, lineageId) - 1) % colors.length]);
-  var base = [baseRgb[0], baseRgb[1], baseRgb[2], strengthBucket <= 0 ? 125 : (strengthBucket === 1 ? 178 : 225)];
-  var glow = [
-    Math.min(255, baseRgb[0] + 62),
-    Math.min(255, baseRgb[1] + 62),
-    Math.min(255, baseRgb[2] + 62),
-    210
-  ];
-  var shadow = [8, 14, 22, 145];
+  var base = strengthBucket <= 0
+    ? [72, 64, 56, 112]
+    : (strengthBucket === 1 ? [82, 72, 60, 150] : [92, 78, 62, 184]);
+  var glow = strengthBucket <= 1
+    ? [112, 96, 72, 150]
+    : [128, 106, 76, 178];
+  var shadow = [34, 30, 28, 132];
   var x;
 
   PS.atlas.fillNormalHalf(cell);
@@ -856,15 +856,28 @@ PS.atlas.applyTerrainMoisturePalette = function (palette, sample) {
   var moistureColor = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureColor === "function"
     ? PS.render.surfaceColor.getGroundMoistureColor(sample)
     : null;
+  var signals = sample && sample.detail && sample.detail.materialSignals ? sample.detail.materialSignals : {};
+  var workedGround = clamp(Number(signals.workedGround) || 0, 0, 1);
   var base;
   var lift;
   var drop;
+  var packedEarth;
+  var pressure;
 
   if (!moistureColor) {
     return palette;
   }
 
   base = PS.atlas.hexToRgb(moistureColor);
+  if (workedGround > 0.12) {
+    packedEarth = [104, 78, 58];
+    pressure = clamp(0.48 + workedGround * 0.42, 0.48, 0.90);
+    base = [
+      Math.round(base[0] * (1 - pressure) + packedEarth[0] * pressure),
+      Math.round(base[1] * (1 - pressure) + packedEarth[1] * pressure),
+      Math.round(base[2] * (1 - pressure) + packedEarth[2] * pressure)
+    ];
+  }
   lift = 34;
   drop = 26;
   return {
@@ -903,6 +916,15 @@ PS.atlas.getTerrainPatternForTile = function (tileDefinition, fallbackPattern) {
   return fallbackPattern || "grit";
 };
 
+/**
+ * @description Scores how well an atlas tile definition matches the sampled terrain material, biome, elevation band, hydrology, and feature signals.
+ * @param {Object|null} tileDefinition Candidate atlas tile definition.
+ * @param {Object|null} sample Surface sample with detail and material signals.
+ * @param {string} biome Normalized biome id for the sample.
+ * @param {number} tileX Wrapped world tile x coordinate.
+ * @param {number} tileY Clamped world tile y coordinate.
+ * @returns {number} Match score used to choose the best terrain atlas tile.
+ */
 PS.atlas.getTerrainMaterialScore = function (tileDefinition, sample, biome, tileX, tileY) {
   var detail = sample && sample.detail ? sample.detail : {};
   var signals = detail.materialSignals || {};
@@ -1044,6 +1066,14 @@ PS.atlas.getTerrainHeightAlpha = function (sample, amount) {
   return Math.round(clamp(normalizedHeight + relief, 0, 1) * 255);
 };
 
+/**
+ * @description Computes the local intensity adjustment for a named terrain pattern at an atlas-cell coordinate and deterministic variant.
+ * @param {string} pattern Terrain pattern id such as wave, stream, grass, crack, or lava.
+ * @param {number} x Cell-local x coordinate.
+ * @param {number} y Cell-local y coordinate.
+ * @param {number} variant Deterministic variant index for seeded pattern jitter.
+ * @returns {number} Signed pattern amount used to brighten, darken, or accent the material cell.
+ */
 PS.atlas.getTerrainPatternAmount = function (pattern, x, y, variant) {
   var hash = (x * 17 + y * 31 + variant * 43) & 15;
 
@@ -1088,6 +1118,27 @@ PS.atlas.getTerrainPatternAmount = function (pattern, x, y, variant) {
   }
   if (pattern === "nutrient") {
     return (hash < 4 || (x + y * 2 + variant) % 9 === 0) ? 0.42 : (hash > 12 ? -0.18 : 0);
+  }
+  if (pattern === "parcel") {
+    var blockX = Math.floor((x + (variant % 3)) / 4);
+    var blockY = Math.floor((y + ((variant * 2) % 5)) / 4);
+    var parcelHash = (blockX * 29 + blockY * 37 + x * 5 + y * 7 + variant * 11) & 31;
+    if (parcelHash < 3) {
+      return 0.08;
+    }
+    if (parcelHash > 28) {
+      return -0.07;
+    }
+    return ((blockX + blockY + variant) % 5 === 0 && (x + y + variant) % 4 === 0) ? 0.05 : 0;
+  }
+  if (pattern === "roadbed") {
+    return hash < 2 ? 0.07 : (hash > 13 ? -0.06 : 0);
+  }
+  if (pattern === "settlementGround") {
+    return hash === 1 ? 0.025 : (hash === 14 ? -0.025 : 0);
+  }
+  if (pattern === "workedGround") {
+    return hash < 2 ? 0.05 : (hash > 13 ? -0.04 : ((Math.floor(x / 4) + Math.floor(y / 4) + variant) % 4 === 0 ? 0.035 : 0));
   }
   if (pattern === "grass") {
     return hash < 4 ? 0.28 : (hash > 12 ? -0.18 : 0);
@@ -1286,12 +1337,27 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
   for (y = 0; y < cell.h; y++) {
     for (x = 0; x < cell.w; x++) {
       var patternAmount = PS.atlas.getTerrainPatternAmount(palette.pattern, x, y, variant);
-      PS.atlas.writePixel(cell, x, y, PS.atlas.mixTerrainColor(
+      var heightAlpha = civilization && typeof PS.atlas.getTerrainCivilizationBaseHeightAlpha === "function"
+        ? PS.atlas.getTerrainCivilizationBaseHeightAlpha(civilization, patternAmount)
+        : PS.atlas.getTerrainHeightAlpha(sample, patternAmount);
+      var terrainPixel = PS.atlas.mixTerrainColor(
         palette,
         patternAmount,
-        PS.atlas.getTerrainHeightAlpha(sample, patternAmount)
-      ));
+        heightAlpha
+      );
+      PS.atlas.writePixel(cell, x, y, civilization && typeof PS.atlas.warmTerrainCivilizationPixel === "function"
+        ? PS.atlas.warmTerrainCivilizationPixel(terrainPixel)
+        : terrainPixel);
     }
+  }
+
+  if (
+    civilization &&
+    (civilization.type === "settlement" || civilization.type === "route" || civilization.type === "border") &&
+    typeof PS.atlas.drawTerrainCivilizationMarks === "function"
+  ) {
+    PS.atlas.drawTerrainCivilizationMarks(cell, palette, variant, sample);
+    return;
   }
 
   if (typeof PS.atlas.drawTerrainDetailOverlay === "function") {
@@ -1300,18 +1366,20 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
 };
 
 PS.atlas.getImageDimension = function (image, key) {
+  var naturalKey;
+  var dimension;
+
+  if (PS.assets && typeof PS.assets.getImageDimension === "function") {
+    return PS.assets.getImageDimension(image, key);
+  }
+
   if (!image) {
     return 0;
   }
 
-  return Math.max(
-    0,
-    Math.round(
-      Number(image[key]) ||
-      Number(image["natural" + key.charAt(0).toUpperCase() + key.slice(1)]) ||
-      0
-    )
-  );
+  naturalKey = "natural" + key.charAt(0).toUpperCase() + key.slice(1);
+  dimension = Number(image[key]) || Number(image[naturalKey]) || 0;
+  return Math.max(0, Math.round(dimension));
 };
 
 PS.atlas.addExternalPage = function (image, sourceId) {

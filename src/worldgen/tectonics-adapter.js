@@ -196,13 +196,5 @@ function createElevationTextureDescriptor(width, height) {
 
 module.exports = {
   runTectonicsjs: runTectonicsjs,
-  runEmbeddedTectonics: runEmbeddedTectonics,
-  createElevationTextureDescriptor: createElevationTextureDescriptor,
-  _internals: {
-    hashSeedText: hashSeedText,
-    makePrng: makePrng,
-    makePlates: makePlates,
-    findNearestPlate: findNearestPlate,
-    boundaryInteraction: boundaryInteraction
-  }
+  createElevationTextureDescriptor: createElevationTextureDescriptor
 };

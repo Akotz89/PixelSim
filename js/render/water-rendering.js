@@ -1,6 +1,43 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.waterRendering = PS.render.waterRendering || {};
+
+PS.render.waterRendering.state = PS.render.waterRendering.state || {
+  waterFrameIndex: 0,
+  lastFrameTimeMs: -1
+};
+
+PS.render.waterRendering.getRenderTimeMs = function () {
+  if (typeof world !== "undefined" && world && Number.isFinite(Number(world.timeMs))) {
+    return Number(world.timeMs);
+  }
+
+  return typeof performance !== "undefined" && performance && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+};
+
+PS.render.waterRendering.getWaterFrameIndex = function (timeMs) {
+  var nowMs = Number.isFinite(Number(timeMs)) ? Number(timeMs) : PS.render.waterRendering.getRenderTimeMs();
+  var frame = Math.floor(Math.max(0, nowMs) / 500) & 3;
+
+  PS.render.waterRendering.state.waterFrameIndex = frame;
+  PS.render.waterRendering.state.lastFrameTimeMs = nowMs;
+  return frame;
+};
+
+PS.render.waterRendering.getAnimatedVariant = function (tileX, tileY, variantCount, timeMs) {
+  var count = Math.max(1, Math.round(Number(variantCount) || 1));
+  var frame = PS.render.waterRendering.getWaterFrameIndex(timeMs);
+  var phase = PS.ranmap && typeof PS.ranmap.variant === "function"
+    ? PS.ranmap.variant(tileX, tileY, 4)
+    : Math.abs(Math.round(Number(tileX) || 0) * 17 + Math.round(Number(tileY) || 0) * 31) % 4;
+
+  return (frame + phase) % count;
+};
 
 PS.render.waterRendering.isWaterSample = function (sample, biome) {
   var detail = sample && sample.detail ? sample.detail : {};

@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 function makeElement() {
   return {
@@ -143,9 +134,11 @@ assert.ok(visibleRect.minY >= 0 && visibleRect.maxY < WORLD_HEIGHT, "visible rec
 CONFIG.PLANET_CAMERA_PAN_ACCELERATION = 0.5;
 CONFIG.PLANET_CAMERA_PAN_FRICTION = 0.5;
 CONFIG.PLANET_CAMERA_PAN_MAX_SPEED = 10;
+CONFIG.PLANET_CAMERA_PAN_INPUT_MAX_DELTA = 1000;
 CONFIG.PLANET_CAMERA_ZOOM_ACCELERATION = 0.25;
 CONFIG.PLANET_CAMERA_ZOOM_FRICTION = 0.5;
 CONFIG.PLANET_CAMERA_ZOOM_MAX_SPEED = 0.5;
+CONFIG.PLANET_CAMERA_ZOOM_INPUT_MAX_DELTA = 10;
 PS.camera.stopInertia();
 PS.camera.panScreen(1000, -1000);
 assert.strictEqual(PS.camera.inertia.panVelocityX, 10, "camera pan velocity should clamp to configured max speed");
@@ -157,6 +150,29 @@ PS.camera.adjustZoom(10);
 assert.strictEqual(PS.camera.inertia.zoomVelocity, 0.5, "camera zoom velocity should clamp to configured max speed");
 PS.camera.updateInertia();
 assert.ok(PS.camera.inertia.zoomVelocity <= 0.25, "camera zoom velocity should decay through configured friction");
+
+PS.camera.stopInertia();
+focusPlanetViewOnLatLon(0, 0);
+setPlanetZoomLevel(3);
+CONFIG.PLANET_CAMERA_PAN_INPUT_MAX_DELTA = 24;
+var clampedPanScale = PS.camera.getScale();
+PS.camera.panScreen(1000, -1000);
+var clampedPanMeters = Math.max(Math.abs(getPlanetView().panEastMeters), Math.abs(getPlanetView().panNorthMeters));
+var maxImmediatePanMeters = 24 * clampedPanScale.metersPerSample / CONFIG.TILE_SIZE * 1.05;
+assert.ok(
+  clampedPanMeters <= maxImmediatePanMeters,
+  "camera pan should clamp immediate oversized pointer deltas before moving, got " + clampedPanMeters + " > " + maxImmediatePanMeters
+);
+assert.strictEqual(PS.camera.inertia.panVelocityX, 10, "clamped oversized pointer delta should still respect velocity max speed");
+assert.strictEqual(PS.camera.inertia.panVelocityY, -10, "clamped oversized pointer delta should still respect velocity max speed per axis");
+
+PS.camera.stopInertia();
+CONFIG.PLANET_CAMERA_ZOOM_INPUT_MAX_DELTA = 0.4;
+PS.camera.adjustZoom(10);
+assert.ok(
+  Math.abs(PS.camera.inertia.zoomVelocity - 0.1) <= 0.000001,
+  "camera zoom should clamp oversized wheel/gesture deltas before velocity injection"
+);
 
 setPlanetZoomLevel(0);
 assert.strictEqual(camera.getZoomBand(), "orbit", "zoom band should classify orbit");

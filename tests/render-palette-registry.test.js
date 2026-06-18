@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const registrySource = read("js/assets/registry.js");
 const terrainSource = read("js/render/terrain.js");
@@ -162,9 +153,27 @@ assert.strictEqual(
   "ground moisture key should include gradient id and index"
 );
 assert.strictEqual(
+  context.PS.render.surfaceColor.applyGroundMoistureTint(moistGrassSample, "#305f22"),
+  context.PS.render.terrain.blendHexColors(
+    "#305f22",
+    expectedMoistGrass,
+    context.PS.render.surfaceColor.getGroundMoistureBlendAmount(moistGrassSample)
+  ),
+  "hex moisture tint should blend with existing terrain color instead of replacing it"
+);
+assert.strictEqual(
+  context.PS.render.surfaceColor.applyGroundMoisturePackedTint(moistGrassSample, 0x305f22),
+  context.PS.render.terrain.blendPacked(
+    0x305f22,
+    context.PS.render.terrain.hexToPacked(expectedMoistGrass),
+    context.PS.render.surfaceColor.getGroundMoistureBlendAmount(moistGrassSample)
+  ),
+  "packed moisture tint should blend with existing terrain color instead of replacing it"
+);
+assert.notStrictEqual(
   context.PS.render.surfaceColor.getSurfaceColorPacked(moistGrassSample),
   context.PS.render.terrain.shadePacked(context.PS.render.terrain.hexToPacked(expectedMoistGrass), 0.41),
-  "packed surface path should use the same moisture gradient color before shading"
+  "packed surface path should not replace the full terrain pipeline with moisture color"
 );
 
 context.PS.render.surfaceColor.loadEraPaletteConfig(context.PS.assets.jsonData["data/era-palettes.json"]);
@@ -204,16 +213,20 @@ const eraGrassSample = Object.assign({}, moistGrassSample, {
 });
 const eraGrassHex = context.PS.render.surfaceColor.getGroundMoistureColor(eraGrassSample);
 assert.strictEqual(
-  context.PS.render.surfaceColor.getSurfaceColorPacked(eraGrassSample),
-  context.PS.render.terrain.shadePacked(context.PS.render.terrain.hexToPacked(eraGrassHex), 0.41),
-  "packed surface path should match interpolated era palette color"
+  context.PS.render.surfaceColor.applyGroundMoisturePackedTint(eraGrassSample, 0x305f22),
+  context.PS.render.terrain.blendPacked(
+    0x305f22,
+    context.PS.render.terrain.hexToPacked(eraGrassHex),
+    context.PS.render.surfaceColor.getGroundMoistureBlendAmount(eraGrassSample)
+  ),
+  "packed surface path should blend interpolated era palette color as a tint"
 );
 context.PS.deepTime = {
   getTerrainTint() {
     return { color: "#ffffff", amount: 0.25 };
   }
 };
-assert.strictEqual(
+assert.notStrictEqual(
   context.PS.render.surfaceColor.getSurfaceColorPacked(eraGrassSample),
   context.PS.render.terrain.shadePacked(
     context.PS.render.terrain.blendPacked(
@@ -223,7 +236,7 @@ assert.strictEqual(
     ),
     0.41
   ),
-  "packed era palette path should preserve deep-time terrain tint"
+  "packed era palette path should not apply deep-time terrain tint to a wholesale moisture replacement"
 );
 context.PS.deepTime = null;
 assert.strictEqual(

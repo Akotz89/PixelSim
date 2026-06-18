@@ -1,5 +1,22 @@
-"use strict";
-function getDistanceLabel(distance, distanceKm) {
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { formatEcosystemStabilityFactorScore } from "../main-ecosystem-stability.js";
+import { formatFoodRunway, refreshEcosystemSummary } from "../main-ecosystem-summary.js";
+import { refreshSimulationAlerts } from "../main-simulation.js";
+import { getTileGreatCircleDistanceKm, getTileManhattanDistance } from "../render/planet-grid.js";
+import { countFoodInRadius, findNearestFoodInBuckets } from "../sim/food-runtime.js";
+import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
+import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { getDistanceToNearestSettlement } from "../sim/settlements-founding.js";
+import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "../sim/settlements-routes.js";
+import { getSettlementRouteStats } from "../sim/settlements-state.js";
+import { world } from "../systems/state.js";
+import { ecosystemSummaryText, lineageSummaryText, simulationAlertsText, traitSummaryText } from "./dom-refs.js";
+import { countFertileTilesInRadius, getInspectContextRadius, setElementClass, setElementHtml, setElementText } from "./foundation.js";
+import { drawEcosystemHistory, formatSignedNumber } from "./history-summary.js";
+import { getStatisticsDashboardSnapshot } from "./statistics-dashboard.js";
+
+export function getDistanceLabel(distance, distanceKm) {
   if (!Number.isFinite(distance)) {
     return "-";
   }
@@ -11,7 +28,7 @@ function getDistanceLabel(distance, distanceKm) {
   return String(distance);
 }
 
-function getLocalInspectContext(tileX, tileY) {
+export function getLocalInspectContext(tileX, tileY) {
   var contextRadius = getInspectContextRadius();
   var nearbyOrganisms = typeof collectOrganismsInRadius === "function"
     ? collectOrganismsInRadius(tileX, tileY, contextRadius, 0)
@@ -52,7 +69,7 @@ function getLocalInspectContext(tileX, tileY) {
   };
 }
 
-function getRouteSummaryForSettlement(settlementId) {
+export function getRouteSummaryForSettlement(settlementId) {
   if (typeof getSettlementRouteStats === "function") {
     return getSettlementRouteStats(settlementId);
   }
@@ -64,7 +81,31 @@ function getRouteSummaryForSettlement(settlementId) {
   };
 }
 
-function formatOrganismTraits(organism) {
+export function getResourceSummaryForSettlement(settlement) {
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
+    return PS.sim.resources.getSettlementSummary(settlement);
+  }
+
+  return {
+    entries: [],
+    totalStock: 0,
+    net: 0,
+    top: null
+  };
+}
+
+export function formatResourceBreakdown(summary) {
+  var entries = summary && Array.isArray(summary.entries) ? summary.entries : [];
+  var labels = [];
+
+  for (var i = 0; i < Math.min(5, entries.length); i++) {
+    labels.push(entries[i].label + " " + Math.round(entries[i].stock));
+  }
+
+  return labels.length ? labels.join(" / ") : "-";
+}
+
+export function formatOrganismTraits(organism) {
   var traits = ensureOrganismTraits(organism);
 
   return (
@@ -86,11 +127,11 @@ function formatOrganismTraits(organism) {
   );
 }
 
-function getPopulationTraitSummary() {
+export function getPopulationTraitSummary() {
   return world.populationTraitSummary;
 }
 
-function getSummaryTraitValue(summary, key) {
+export function getSummaryTraitValue(summary, key) {
   var value = Number(summary && summary[key]);
 
   if (Number.isFinite(value)) {
@@ -102,7 +143,7 @@ function getSummaryTraitValue(summary, key) {
     : 0;
 }
 
-function updateTraitSummary() {
+export function updateTraitSummary() {
   var summary = getPopulationTraitSummary();
 
   if (!summary) {
@@ -131,7 +172,7 @@ function updateTraitSummary() {
   setElementHtml(traitSummaryText, chips.join(""));
 }
 
-function updateLineageSummary() {
+export function updateLineageSummary() {
   var summary = world.lineageSummary || null;
   var trackedSummary = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getSummary === "function"
     ? PS.sim.lineageTracking.getSummary()
@@ -176,7 +217,7 @@ function updateLineageSummary() {
   setElementHtml(lineageSummaryText, chips.join(""));
 }
 
-function makeTrackedLineageChips(trackedSummary) {
+export function makeTrackedLineageChips(trackedSummary) {
   var recent = trackedSummary.recentEvents && trackedSummary.recentEvents.length > 0
     ? trackedSummary.recentEvents[trackedSummary.recentEvents.length - 1].label
     : "-";
@@ -194,7 +235,7 @@ function makeTrackedLineageChips(trackedSummary) {
   ];
 }
 
-function getSettlementSummary() {
+export function getSettlementSummary() {
   if (!world.settlementSummary && typeof refreshSettlementSummaryCache === "function") {
     return refreshSettlementSummaryCache();
   }
@@ -202,7 +243,7 @@ function getSettlementSummary() {
   return world.settlementSummary;
 }
 
-function getEarlyProgressionSummary() {
+export function getEarlyProgressionSummary() {
   if (typeof refreshEarlyProgressionSummaryCache === "function") {
     return refreshEarlyProgressionSummaryCache();
   }
@@ -210,7 +251,7 @@ function getEarlyProgressionSummary() {
   return null;
 }
 
-function escapeSummaryText(value) {
+export function escapeSummaryText(value) {
   return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -218,12 +259,12 @@ function escapeSummaryText(value) {
     .replace(/"/g, "&quot;");
 }
 
-function getProgressRatio(currentValue, targetValue) {
+export function getProgressRatio(currentValue, targetValue) {
   var target = Math.max(1, Number(targetValue) || 1);
   return clamp((Number(currentValue) || 0) / target, 0, 1);
 }
 
-function makeSummaryChip(label, value) {
+export function makeSummaryChip(label, value) {
   return (
     "<span class=\"summary-chip\">" +
     "<b>" + escapeSummaryText(label) + "</b>" +
@@ -232,7 +273,7 @@ function makeSummaryChip(label, value) {
   );
 }
 
-function makeDashboardCard(title, tone, bodyHtml) {
+export function makeDashboardCard(title, tone, bodyHtml) {
   return (
     "<section class=\"dashboard-card dashboard-" + escapeSummaryText(tone || "neutral") + "\">" +
     "<h2>" + escapeSummaryText(title) + "</h2>" +
@@ -241,7 +282,7 @@ function makeDashboardCard(title, tone, bodyHtml) {
   );
 }
 
-function makePrimaryMetric(label, value, detail) {
+export function makePrimaryMetric(label, value, detail) {
   return (
     "<div class=\"primary-metric\">" +
     "<span>" + escapeSummaryText(label) + "</span>" +
@@ -251,7 +292,7 @@ function makePrimaryMetric(label, value, detail) {
   );
 }
 
-function makeMetricRow(label, value) {
+export function makeMetricRow(label, value) {
   return (
     "<span class=\"metric-row\">" +
     "<b>" + escapeSummaryText(label) + "</b>" +
@@ -260,7 +301,7 @@ function makeMetricRow(label, value) {
   );
 }
 
-function getDashboardTraitMetric(stats, key) {
+export function getDashboardTraitMetric(stats, key) {
   var traits = stats && Array.isArray(stats.traitDistribution) ? stats.traitDistribution : [];
 
   for (var i = 0; i < traits.length; i++) {
@@ -272,7 +313,7 @@ function getDashboardTraitMetric(stats, key) {
   return "-";
 }
 
-function makeInspectChip(label, value) {
+export function makeInspectChip(label, value) {
   return (
     "<span class=\"inspect-chip\">" +
     "<b>" + escapeSummaryText(label) + "</b>" +
@@ -281,7 +322,7 @@ function makeInspectChip(label, value) {
   );
 }
 
-function makeAlertChip(alert) {
+export function makeAlertChip(alert) {
   return (
     "<span class=\"alert-chip alert-" + escapeSummaryText(alert.severity || "info") + "\">" +
     "<b>" + escapeSummaryText(alert.label || "Simulation") + "</b>" +
@@ -290,7 +331,7 @@ function makeAlertChip(alert) {
   );
 }
 
-function getEcosystemSummary() {
+export function getEcosystemSummary() {
   if (!world.ecosystemSummary && typeof refreshEcosystemSummary === "function") {
     return refreshEcosystemSummary();
   }
@@ -298,7 +339,7 @@ function getEcosystemSummary() {
   return world.ecosystemSummary;
 }
 
-function getSimulationAlerts() {
+export function getSimulationAlerts() {
   if (typeof refreshSimulationAlerts === "function") {
     return refreshSimulationAlerts();
   }
@@ -306,7 +347,7 @@ function getSimulationAlerts() {
   return Array.isArray(world.simulationAlerts) ? world.simulationAlerts : [];
 }
 
-function updateSimulationAlerts() {
+export function updateSimulationAlerts() {
   var alerts = getSimulationAlerts();
 
   if (alerts.length === 0) {
@@ -325,7 +366,7 @@ function updateSimulationAlerts() {
   setElementHtml(simulationAlertsText, chips.join(""));
 }
 
-function formatStabilityProfileMix(profile) {
+export function formatStabilityProfileMix(profile) {
   if (!profile) {
     return "-";
   }
@@ -339,7 +380,7 @@ function formatStabilityProfileMix(profile) {
   );
 }
 
-function formatStabilityLimiter(profile) {
+export function formatStabilityLimiter(profile) {
   if (!profile || !profile.limitingFactor) {
     return "-";
   }
@@ -351,7 +392,11 @@ function formatStabilityLimiter(profile) {
   return String(profile.limitingFactor);
 }
 
-function updateEcosystemSummary() {
+/**
+ * @description Refreshes the ecosystem HUD summary, trend history, limiting-factor copy, stability messaging, and optional biomass/food-web diagnostics.
+ * @returns {void} Updates the summary UI and history visualization in place.
+ */
+export function updateEcosystemSummary() {
   var summary = getEcosystemSummary();
 
   if (!summary) {
@@ -381,6 +426,9 @@ function updateEcosystemSummary() {
   var stats = typeof getStatisticsDashboardSnapshot === "function"
     ? getStatisticsDashboardSnapshot(summary)
     : null;
+  var resourceRegistry = PS.sim && PS.sim.resources ? PS.sim.resources : null;
+  var worldResourceSummary = resourceRegistry ? resourceRegistry.getWorldSummary() : null;
+  var resourceDefinitions = resourceRegistry ? resourceRegistry.getDefinitions() : [];
   var cards = [
     makeDashboardCard("Planet Stats", "status",
       makePrimaryMetric("Epoch", stats ? stats.epoch : world.era, stats ? stats.deepTime : "-") +
@@ -417,6 +465,26 @@ function updateEcosystemSummary() {
       makeMetricRow("Runway", foodRunway) +
       makeMetricRow("Regrowth", Math.round((summary.foodRecoveryPressure || 0) * 100) + "% / " + (summary.foodRecoveryAttempts || 0)) +
       makeMetricRow("Food Life", world.totalFoodSpawned + " / " + world.totalFoodConsumed)
+    ),
+    makeDashboardCard("Resources", "food",
+      makePrimaryMetric("Settlements", worldResourceSummary ? worldResourceSummary.settlementCount : 0, "tracked") +
+      makeMetricRow("Stock", worldResourceSummary ? formatResourceBreakdown({
+        entries: resourceDefinitions.map(function (definition) {
+          return {
+            label: definition.label,
+            stock: worldResourceSummary.totals[definition.id] || 0
+          };
+        })
+      }) : "-") +
+      makeMetricRow("Net", worldResourceSummary ? formatResourceBreakdown({
+        entries: resourceDefinitions.map(function (definition) {
+          return {
+            label: definition.label,
+            stock: worldResourceSummary.net[definition.id] || 0
+          };
+        })
+      }) : "-") +
+      makeMetricRow("Categories", resourceDefinitions.length ? resourceDefinitions.map(function (definition) { return definition.category; }).slice(0, 5).join(" / ") : "-")
     ),
     makeDashboardCard("Food Web", "biology",
       makePrimaryMetric("Trophic", Math.max(0, Math.round(Number(foodWeb.trophicBalance) || 0)) + "/100", foodWeb.recoveryTrend || "unknown") +

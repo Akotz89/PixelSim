@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -14,6 +15,7 @@ const waterExportPngPath = path.join(root, "exports/terrain/water-tiles.png");
 const handoffManifestPath = path.join(root, "assets/pixeldarium-equivalence/handoff-manifest.json");
 const loaderSource = fs.readFileSync(path.join(root, "js/assets/loader.js"), "utf8");
 const spriteSheetSource = fs.readFileSync(path.join(root, "js/assets/sprite-sheet.js"), "utf8");
+const equivalenceSource = fs.readFileSync(path.join(root, "js/assets/equivalence.js"), "utf8");
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
 const grassMeta = JSON.parse(fs.readFileSync(grassMetaPath, "utf8"));
 const rockExportMeta = JSON.parse(fs.readFileSync(rockExportMetaPath, "utf8"));
@@ -236,9 +238,49 @@ const shoreFoam = averageRgb(waterExportRaw, waterExportSize, 96, 1, 32, 8);
 assert.ok(shoreFoam[0] > shallowWater[0] + 45 && shoreFoam[1] > shallowWater[1] + 25, "shore variant should include bright foam pixels");
 
 assert.strictEqual(handoffManifest.runtimeUse, true, "accepted visual handoff should be runtime-owned");
-assert.strictEqual(handoffManifest.acceptedSheetCount, 15, "visual handoff should include accepted sheets only");
+assert.strictEqual(handoffManifest.acceptedSheetCount, 23, "visual handoff should include accepted sheets only");
 assert.ok(handoffManifest.rejected.includes("creature_npc_original_v0"), "visual handoff should record rejected/superseded creature v0");
 assert.ok(!manifest.sheets.equivalence_creature_npc_original_v0, "runtime manifest should not include rejected creature v0");
+
+[
+  "grass-sand",
+  "grass-water",
+  "grass-rock",
+  "sand-water",
+  "rock-snow",
+  "grass-forest-floor",
+  "mud-water",
+  "volcanic-rock"
+].forEach((pair) => {
+  const sheetId = "equivalence_terrain_transition_" + pair.replace(/-/g, "_") + "_v1";
+  const sheet = manifest.sheets[sheetId];
+  const metaPath = "assets/pixeldarium-equivalence/transitions/" + pair + ".json";
+  const pngPath = "assets/pixeldarium-equivalence/transitions/" + pair + ".png";
+  const rgbaPath = "assets/pixeldarium-equivalence/transitions/" + pair + ".rgba.json";
+  const meta = JSON.parse(fs.readFileSync(path.join(root, metaPath), "utf8"));
+  const pngSizeInfo = pngSize(fs.readFileSync(path.join(root, pngPath)));
+
+  assert.ok(sheet, sheetId + " should be installed in the runtime manifest");
+  assert.strictEqual(sheet.path, pngPath, sheetId + " should point at accepted transition PNG");
+  assert.strictEqual(sheet.meta, metaPath, sheetId + " should point at accepted transition metadata");
+  assert.strictEqual(sheet.pixelData, rgbaPath, sheetId + " should expose RGBA sidecar for file-safe WebGPU upload");
+  assert.strictEqual(sheet.sourceIssue, "AZR-1141", sheetId + " should identify the runtime handoff issue");
+  assert.strictEqual(sheet.sprites.length, 46, sheetId + " should declare all canonical join-pattern cells");
+  assert.deepStrictEqual(pngSizeInfo, { width: 8 * 32 * 3, height: 6 * 32 }, sheetId + " should be a triple-panel transition atlas");
+  assert.strictEqual(meta.type, "texturepacker", sheetId + " metadata should be directly loadable by SpriteSheet.detect");
+  assert.strictEqual(meta.patternCount, 46, sheetId + " metadata should declare the canonical pattern count");
+  assert.ok(meta.frames[pair + ".pattern-00"], sheetId + " metadata should include pattern-00");
+  assert.ok(meta.frames[pair + ".pattern-45"], sheetId + " metadata should include pattern-45");
+  assert.deepStrictEqual(meta.frames[pair + ".pattern-00"].normalFrame, { x: 8 * 32, y: 0, w: 32, h: 32 }, sheetId + " pattern frames should include normal panel rects");
+  assert.deepStrictEqual(meta.frames[pair + ".pattern-00"].materialFrame, { x: 8 * 32 * 2, y: 0, w: 32, h: 32 }, sheetId + " pattern frames should include material panel rects");
+  assert.ok(fs.existsSync(path.join(root, metaPath + ".js")), sheetId + " metadata should include a file:// JSON sidecar");
+  assert.ok(fs.existsSync(path.join(root, rgbaPath)), sheetId + " RGBA sidecar should exist");
+  assert.ok(fs.existsSync(path.join(root, rgbaPath + ".js")), sheetId + " RGBA sidecar should include a file:// JSON sidecar");
+  assert.ok(
+    handoffManifest.sheets.some((entry) => entry.id === sheetId && entry.frameCount === 46),
+    sheetId + " should be recorded in the accepted visual handoff manifest"
+  );
+});
 
 Object.values(manifest.sheets).forEach((sheet) => {
   if (sheet.meta) {
@@ -273,6 +315,7 @@ function createContext() {
   const context = {
     PS: {
       assets: {},
+      atlas: { pages: [] },
       runtime: {
         recordError() {}
       }
@@ -286,6 +329,8 @@ function createContext() {
     Object: Object,
     Array: Array,
     String: String,
+    Buffer: Buffer,
+    Uint8Array: Uint8Array,
     window: { location: { protocol: "http:" } },
     fetch(url) {
       fetchCalls.push(url);
@@ -319,6 +364,7 @@ function createContext() {
   vm.createContext(context);
   vm.runInContext(spriteSheetSource, context, { filename: "js/assets/sprite-sheet.js" });
   vm.runInContext(loaderSource, context, { filename: "js/assets/loader.js" });
+  vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
   return context;
 }
 
@@ -346,14 +392,26 @@ function createContext() {
   const expectedImageLoads = Object.values(manifest.sheets).map((sheet) => sheet.path).filter(Boolean);
   expectedImageLoads.push("assets/tile-sheets/terrain_tiles.page0.png");
   const handoffSheet = context.PS.assets.loadedSheets.equivalence_creature_npc_refined_v1;
+  const generatedTransitionSheet = context.PS.assets.loadedSheets.equivalence_terrain_transition_grass_sand_v1;
   const tileSheet = context.PS.assets.TILE_SHEET;
   const terrainGrassTile = tileSheet.getCell("terrain_grass.terrain.grass.0");
+  const generatedTransitionSelection = context.PS.assets.equivalence.selectCell(
+    "transitions",
+    "grass-sand.pattern-02",
+    "terrainTransition",
+    "terrain.transition.fallback"
+  );
 
   assert.strictEqual(loadedManifest, manifest, "loadManifest should resolve the parsed manifest");
   assert.deepStrictEqual(context.fetchCalls, ["assets/manifest.json"].concat(expectedSheetFetches), "loadManifest should fetch manifest, sheet metadata, and equivalence pixel sidecars");
   assert.deepStrictEqual(context.imageLoads, expectedImageLoads, "loadManifest should load every manifest PNG");
   assert.ok(loadedGrass.sheet, "loadManifest should populate loaded sprite sheet dictionary");
   assert.ok(handoffSheet && handoffSheet.sheet, "loadManifest should populate accepted visual handoff sheets");
+  assert.ok(generatedTransitionSheet && generatedTransitionSheet.sheet, "loadManifest should populate generated 46-pattern transition sheets");
+  assert.strictEqual(generatedTransitionSelection.sheetId, "equivalence_terrain_transition_grass_sand_v1", "equivalence selector should resolve 46-pattern transition cells from generated runtime sheets");
+  assert.strictEqual(generatedTransitionSelection.renderCell.splitAtlas, true, "generated transition selection should preserve split normal atlas metadata");
+  assert.strictEqual(generatedTransitionSelection.renderCell.normalX, 320, "generated transition selection should expose normal panel coordinates");
+  assert.strictEqual(generatedTransitionSelection.renderCell.materialX, 576, "generated transition selection should expose packed material panel coordinates");
   assert.strictEqual(
     Object.keys(context.PS.assets.loadedSheets).length,
     Object.keys(manifest.sheets).length,

@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 
 PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
@@ -7,6 +9,8 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
   state: {
     pipeline: null,
     sampler: null,
+    cloudShadowTexture: null,
+    cloudShadowTextureToken: "",
     uniformBuffer: null,
     drawCount: 0,
     lastFrameMs: 0,
@@ -43,10 +47,10 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     if (!this.state.sampler) {
       this.state.sampler = device.createSampler({
         label: "gbuffer-compose.sampler",
-        magFilter: "nearest",
-        minFilter: "nearest",
-        addressModeU: "clamp-to-edge",
-        addressModeV: "clamp-to-edge"
+        magFilter: "linear",
+        minFilter: "linear",
+        addressModeU: "repeat",
+        addressModeV: "repeat"
       });
     }
 
@@ -57,7 +61,7 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     if (!this.state.uniformBuffer) {
       this.state.uniformBuffer = device.createBuffer({
         label: "gbuffer-compose.uniforms",
-        size: 48,
+        size: 80,
         usage: 64 | 8
       });
     }
@@ -114,7 +118,19 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     var ambientColor = Array.isArray(spec.ambientColor) && spec.ambientColor.length >= 3
       ? spec.ambientColor
       : (cycle ? cycle.ambientColor : [1, 1, 1]);
-    var data = new Float32Array(12);
+    var normalStrength = spec.normalLightingStrength !== undefined
+      ? Math.max(0, Math.min(1, Number(spec.normalLightingStrength) || 0))
+      : 1;
+    var normalMode = String(spec.normalMappedLighting || "");
+    var cloud = spec.cloudShadow || {};
+    var cloudScale = Array.isArray(cloud.scale) ? cloud.scale : [1, 1];
+    var cloudScroll = Array.isArray(cloud.scroll) ? cloud.scroll : [0, 0];
+    var cloudMaxAlpha = cloud.maxAlpha === undefined ? 0.2 : Math.max(0, Math.min(0.2, Number(cloud.maxAlpha) || 0));
+    var data = new Float32Array(20);
+
+    if (normalMode === "disabled") {
+      normalStrength = 0;
+    }
 
     data[0] = sun.x;
     data[1] = sun.y;
@@ -128,50 +144,93 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     data[9] = Math.max(0, Math.min(1, Number(ambientColor[1]) || 0));
     data[10] = Math.max(0, Math.min(1, Number(ambientColor[2]) || 0));
     data[11] = 0;
+    data[12] = normalStrength;
+    data[13] = normalMode === "disabled" ? 0 : 1;
+    data[14] = 0;
+    data[15] = 0;
+    data[16] = Math.max(0.0001, Number(cloudScale[0]) || 1);
+    data[17] = cloudMaxAlpha;
+    data[18] = Number(cloudScroll[0]) || 0;
+    data[19] = Number(cloudScroll[1]) || 0;
     return data;
   },
 
-  ensurePipeline: function (device) {
-    var module;
+  makeCloudShadowTextureData: function (cloudMap, size) {
+    var mapSize = Math.max(1, Math.round(Number(size) || 1));
+    var source = cloudMap instanceof Uint8Array ? cloudMap : null;
+    var rgba = new Uint8Array(mapSize * mapSize * 4);
 
-    if (!this.state.pipeline) {
-      module = PS.render.wgslShaders.getShaderModule(device, this.shaderName);
-      this.state.pipeline = PS.render.wgslShaders.getRenderPipeline({
-        label: "gbuffer-compose.pipeline",
-        layout: "auto",
-        vertex: {
-          module: module,
-          entryPoint: "vs_main"
-        },
-        fragment: {
-          module: module,
-          entryPoint: "fs_main",
-          targets: [{
-            format: this.getFormat(),
-            blend: {
-              color: {
-                srcFactor: "src-alpha",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              },
-              alpha: {
-                srcFactor: "one",
-                dstFactor: "one-minus-src-alpha",
-                operation: "add"
-              }
-            }
-          }]
-        },
-        primitive: {
-          topology: "triangle-strip"
-        }
-      }, device);
+    for (var i = 0; i < mapSize * mapSize; i += 1) {
+      var value = source && i < source.length ? source[i] : 0;
+      var offset = i * 4;
+      rgba[offset] = value;
+      rgba[offset + 1] = value;
+      rgba[offset + 2] = value;
+      rgba[offset + 3] = 255;
     }
 
-    return this.state.pipeline;
+    return rgba;
   },
 
-  createBindGroup: function (device, pipeline, albedoTexture, normalHeightTexture) {
+  getCloudShadowSpec: function (options) {
+    var spec = options || {};
+    var overlays = PS.render.environmentOverlays;
+    var map = spec.cloudShadowMap || (overlays && typeof overlays.ensureCloudShadowMap === "function" ? overlays.ensureCloudShadowMap() : null);
+    var size = Math.max(1, Math.round(Number(spec.cloudShadowSize || overlays && overlays.cloudShadowSize || 1)));
+    var timeSeconds = spec.timeSeconds !== undefined
+      ? Number(spec.timeSeconds) || 0
+      : overlays && typeof overlays.getNowSeconds === "function"
+        ? overlays.getNowSeconds()
+        : 0;
+
+    return {
+      map: map,
+      size: size,
+      scale: [1, 1],
+      scroll: [timeSeconds * 0.07, timeSeconds * 0.045],
+      maxAlpha: 0.2
+    };
+  },
+
+  ensureCloudShadowTexture: function (device, cloudSpec) {
+    var spec = cloudSpec || {};
+    var map = spec.map instanceof Uint8Array ? spec.map : new Uint8Array([0]);
+    var size = Math.max(1, Math.round(Number(spec.size) || 1));
+    var token = size + ":" + map.length + ":" + map[0] + ":" + map[Math.max(0, map.length - 1)];
+    var texture;
+
+    if (this.state.cloudShadowTexture && this.state.cloudShadowTextureToken === token) {
+      return this.state.cloudShadowTexture;
+    }
+
+    texture = device.createTexture({
+      label: "gbuffer-compose.cloud-shadow",
+      size: { width: size, height: size },
+      format: "rgba8unorm",
+      usage: 4 | 2
+    });
+
+    if (device.queue && typeof device.queue.writeTexture === "function") {
+      device.queue.writeTexture(
+        { texture: texture },
+        this.makeCloudShadowTextureData(map, size),
+        { bytesPerRow: size * 4, rowsPerImage: size },
+        { width: size, height: size }
+      );
+    }
+
+    this.state.cloudShadowTexture = texture;
+    this.state.cloudShadowTextureToken = token;
+    return texture;
+  },
+
+  ensurePipeline: function (device) {
+    return PS.render.ensureAlphaBlendPipeline(this, device, {
+      label: "gbuffer-compose.pipeline"
+    });
+  },
+
+  createBindGroup: function (device, pipeline, albedoTexture, normalHeightTexture, cloudShadowTexture) {
     return device.createBindGroup({
       label: "gbuffer-compose.bind-group",
       layout: pipeline.getBindGroupLayout(0),
@@ -179,7 +238,8 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
         { binding: 0, resource: albedoTexture.createView() },
         { binding: 1, resource: normalHeightTexture.createView() },
         { binding: 2, resource: this.ensureSampler(device) },
-        { binding: 3, resource: { buffer: this.ensureUniformBuffer(device) } }
+        { binding: 3, resource: { buffer: this.ensureUniformBuffer(device) } },
+        { binding: 4, resource: cloudShadowTexture.createView() }
       ]
     });
   },
@@ -193,6 +253,8 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     var pipeline;
     var pass;
     var outputView;
+    var cloudShadowSpec;
+    var cloudShadowTexture;
 
     if (!device || typeof device.createCommandEncoder !== "function") {
       throw new Error("WebGPU compositor draw requires GPUDevice");
@@ -207,6 +269,9 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     }
 
     pipeline = this.ensurePipeline(device);
+    cloudShadowSpec = this.getCloudShadowSpec(spec);
+    spec.cloudShadow = cloudShadowSpec;
+    cloudShadowTexture = this.ensureCloudShadowTexture(device, cloudShadowSpec);
     device.queue.writeBuffer(this.ensureUniformBuffer(device), 0, this.makeUniformData(spec));
     encoder = spec.commandEncoder || device.createCommandEncoder({ label: "gbuffer-compose.encoder" });
     outputView = spec.textureView || context.getCurrentTexture().createView();
@@ -221,7 +286,7 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
     });
 
     pass.setPipeline(pipeline);
-    pass.setBindGroup(0, this.createBindGroup(device, pipeline, spec.albedoTexture, spec.normalHeightTexture));
+    pass.setBindGroup(0, this.createBindGroup(device, pipeline, spec.albedoTexture, spec.normalHeightTexture, cloudShadowTexture));
     pass.draw(4, 1, 0, 0);
     pass.end();
 

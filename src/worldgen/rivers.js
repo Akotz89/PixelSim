@@ -156,8 +156,6 @@ function validateRiverNetwork(network, elevation, oceanMask) {
 }
 
 module.exports = {
-  computeFlowDirection: computeFlowDirection,
   computeRiverNetwork: computeRiverNetwork,
-  validateRiverNetwork: validateRiverNetwork,
-  D8: D8
+  validateRiverNetwork: validateRiverNetwork
 };

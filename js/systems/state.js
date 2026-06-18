@@ -1,12 +1,13 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { canvas, lineageSummaryText } from "../ui/dom-refs.js";
 
 canvas.width = CONFIG.CANVAS_WIDTH;
 canvas.height = CONFIG.CANVAS_HEIGHT;
 
-const WORLD_WIDTH = Math.floor(canvas.width / CONFIG.TILE_SIZE);
-const WORLD_HEIGHT = Math.floor(canvas.height / CONFIG.TILE_SIZE);
+export const WORLD_WIDTH = Math.floor(canvas.width / CONFIG.TILE_SIZE);
+export const WORLD_HEIGHT = Math.floor(canvas.height / CONFIG.TILE_SIZE);
 
-function defineWorldAlias(target, groupName, key) {
+export function defineWorldAlias(target, groupName, key) {
   if (Object.prototype.hasOwnProperty.call(target, key)) {
     return;
   }
@@ -23,13 +24,13 @@ function defineWorldAlias(target, groupName, key) {
   });
 }
 
-function defineWorldAliases(target, groupName) {
+export function defineWorldAliases(target, groupName) {
   Object.keys(target[groupName]).forEach(function(key) {
     defineWorldAlias(target, groupName, key);
   });
 }
 
-function defineWorldSubsystemAlias(target, subsystemName, groupName, key, aliasKey) {
+export function defineWorldSubsystemAlias(target, subsystemName, groupName, key, aliasKey) {
   Object.defineProperty(target[subsystemName], aliasKey || key, {
     enumerable: true,
     configurable: false,
@@ -42,14 +43,14 @@ function defineWorldSubsystemAlias(target, subsystemName, groupName, key, aliasK
   });
 }
 
-function defineWorldSubsystemAliases(target, subsystemName, mappings) {
+export function defineWorldSubsystemAliases(target, subsystemName, mappings) {
   target[subsystemName] = target[subsystemName] || {};
   mappings.forEach(function(mapping) {
     defineWorldSubsystemAlias(target, subsystemName, mapping.group, mapping.key, mapping.alias);
   });
 }
 
-const world = {
+export const world = {
   simulation: {
     tick: 0,
     era: "Organisms",
@@ -303,3 +304,4 @@ defineWorldSubsystemAliases(world, "history", [
 ].forEach(function(groupName) {
   defineWorldAliases(world, groupName);
 });
+

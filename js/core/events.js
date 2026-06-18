@@ -1,4 +1,8 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "./namespace.js";
+import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
+import { world } from "../systems/state.js";
+
 PS.events = PS.events || {};
 
 PS.events.listeners = PS.events.listeners || {};
@@ -231,6 +235,11 @@ PS.events.inferCategory = function(payload) {
   return "biology";
 };
 
+/**
+ * @description Normalizes raw milestone/event payloads into the canonical event shape used by logs, timeline summaries, and persistence.
+ * @param {Object|null} payload Raw event payload from simulation, UI, or migration code.
+ * @returns {Object} Canonical milestone payload with type, label, detail, time, category, and severity fields.
+ */
 PS.events.normalizeMilestonePayload = function (payload) {
   payload = payload || {};
 

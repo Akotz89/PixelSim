@@ -23,6 +23,7 @@ const packageJson = JSON.parse(read("package.json"));
   "Zoom Band Contracts",
   "Camera Contract",
   "Simulation Readability Contract",
+  "Snake2D-Equivalent Render Capability Matrix",
   "Actor-Scale Readability Gate",
   "Screenshot And Performance Evidence",
   "Required Verification Commands"
@@ -51,6 +52,48 @@ const packageJson = JSON.parse(read("package.json"));
   "must remain original"
 ].forEach((contract) => {
   assert.ok(gate.indexOf(contract) >= 0, "visual quality gate should require: " + contract);
+});
+
+[
+  "Albedo/normal/material atlas contract",
+  "G-buffer attachments",
+  "Sprite/entity batching",
+  "Ambient lighting",
+  "Point lighting",
+  "Tile lighting",
+  "Shadows/stencil equivalent",
+  "Displacement/distortion",
+  "Particles/VFX",
+  "Animation frames",
+  "Deterministic variation",
+  "Final composite order",
+  "Zoom/LOD integration"
+].forEach((capability) => {
+  assert.ok(gate.indexOf(capability) >= 0, "visual quality gate should include render capability: " + capability);
+});
+
+[
+  "AZR-1137",
+  "AZR-549",
+  "AZR-539",
+  "AZR-1084",
+  "AZR-1093",
+  "AZR-1085",
+  "AZR-596",
+  "AZR-595",
+  "AZR-1075",
+  "AZR-1138"
+].forEach((issueId) => {
+  assert.ok(gate.indexOf(issueId) >= 0, "render capability matrix should name Linear owner: " + issueId);
+});
+
+[
+  "_reference/songs-of-syx-source/CATALOG.md",
+  "_reference/songs-of-syx-source/ENGINE_INVENTORY.md",
+  "do not copy Songs of Syx source",
+  "One WebGPU frame proves terrain, material normals, entities, shadows, particles/effects, tile lights, point lights, overlays, and HUD"
+].forEach((reference) => {
+  assert.ok(gate.indexOf(reference) >= 0, "render capability matrix should require: " + reference);
 });
 
 [

@@ -266,8 +266,8 @@
     });
   </script>
 
-  <!-- Bootstrap -->
-  <script src="js/core/namespace.js"></script>
-  <script src="js/core/loader.js"></script>
+  <!-- Bootstrap: namespace exports PS, then ESM loader loads all modules -->
+  <script type="module" src="js/core/namespace.js"></script>
+  <script type="module" src="js/core/loader-esm.js"></script>
 </body>
 </html>

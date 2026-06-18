@@ -1,4 +1,8 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { normalizeSeedText } from "../core/utils.js";
+import { clonePersistencePlainValue } from "./persistence-db.js";
+
 PS.systems = PS.systems || {};
 
 PS.systems.persistenceConfig = (function() {

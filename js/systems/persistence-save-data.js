@@ -1,5 +1,12 @@
-"use strict";
-function getProbeMissionsForSave() {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, normalizeSeedText } from "../core/utils.js";
+import { getPlanetView, normalizeLongitude } from "../render/planet-view.js";
+import { clonePersistencePlainValue, copyEcosystemHistorySampleForSave, copyEmpireSectorForSave, copyFoodForSave, copyInterstellarFleetForSave, copyOrganismForSave, copyProbeMissionForSave, copySimulationEventForSave, copyStarSystemForSave, copyTraitHistorySampleForSave, getLineagesForSave, getOrbitalAssetsForSave, getPlanetaryBodiesForSave, getSettlementRoutesForSave, getSettlementsForSave, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_VERSION } from "./persistence-db.js";
+import { getTerrainTileIdsForSave } from "./save-migration.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
+
+export function getProbeMissionsForSave() {
   if (!Array.isArray(world.probeMissions)) {
     return [];
   }
@@ -7,7 +14,7 @@ function getProbeMissionsForSave() {
   return world.probeMissions.map(copyProbeMissionForSave);
 }
 
-function getStarSystemsForSave() {
+export function getStarSystemsForSave() {
   if (!Array.isArray(world.starSystems)) {
     return [];
   }
@@ -15,7 +22,7 @@ function getStarSystemsForSave() {
   return world.starSystems.map(copyStarSystemForSave);
 }
 
-function getInterstellarFleetsForSave() {
+export function getInterstellarFleetsForSave() {
   if (!Array.isArray(world.interstellarFleets)) {
     return [];
   }
@@ -23,7 +30,7 @@ function getInterstellarFleetsForSave() {
   return world.interstellarFleets.map(copyInterstellarFleetForSave);
 }
 
-function getEmpireSectorsForSave() {
+export function getEmpireSectorsForSave() {
   if (!Array.isArray(world.empireSectors)) {
     return [];
   }
@@ -31,7 +38,7 @@ function getEmpireSectorsForSave() {
   return world.empireSectors.map(copyEmpireSectorForSave);
 }
 
-function copyCameraForSave() {
+export function copyCameraForSave() {
   var view = typeof getPlanetView === "function"
     ? getPlanetView()
     : (world.planetView || {});
@@ -45,7 +52,7 @@ function copyCameraForSave() {
   };
 }
 
-function copyLayerStateForSave(layerState) {
+export function copyLayerStateForSave(layerState) {
   if (!layerState) {
     return null;
   }
@@ -53,11 +60,11 @@ function copyLayerStateForSave(layerState) {
   return clonePersistencePlainValue(layerState);
 }
 
-function createSaveConfigDelta() {
+export function createSaveConfigDelta() {
   return PS.systems.persistenceConfig.createDelta();
 }
 
-function createWorldSubsystemSaveData() {
+export function createWorldSubsystemSaveData() {
   return {
     meta: {
       tick: world.tick,
@@ -129,7 +136,11 @@ function createWorldSubsystemSaveData() {
   };
 }
 
-function createWorldSaveData() {
+/**
+ * @description Serializes the complete world state into the current Pixeldarium save schema, including terrain, organisms, simulation history, bookmarks, and subsystem state.
+ * @returns {Object} Versioned save payload ready for IndexedDB or export.
+ */
+export function createWorldSaveData() {
   return {
     id: PIXELDARIUM_SAVE_ID,
     version: PIXELDARIUM_SAVE_VERSION,

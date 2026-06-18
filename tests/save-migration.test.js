@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const dbSource = read("js/systems/persistence-db.js");
@@ -92,6 +83,8 @@ assert.strictEqual(migrated.organisms[0].entityType, "herbivore_basic", "v2 migr
 assert.strictEqual(migrated.organisms[0].animationState, "idle", "v2 migration should add animation default");
 assert.strictEqual(migrated.organisms[1].entityType, "predator_basic", "v2 migration should preserve existing entity type");
 assert.strictEqual(migrated.organisms[1].animationState, "walk_left", "v2 migration should preserve existing animation state");
+assert.strictEqual(migrated.era, "Organisms", "pre-epoch saves should migrate with a default active era");
+assert.strictEqual(migrated.epochScaling, null, "pre-epoch saves should migrate with explicit epoch scaling state");
 assert.deepStrictEqual(Array.from(stats.lastPath), [1, 2, 3], "migration stats should record traversed versions");
 assert.strictEqual(stats.lastLog, "Migrated save from v1 -> v2 -> v3", "migration log should name traversed versions");
 assert.strictEqual(context.PS.persistence.validateSaveData(migrated), true, "migrated save should validate");

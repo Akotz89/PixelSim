@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -203,6 +194,47 @@ assert.ok(memoryLabel.indexOf("MB est") > -1, "performance debug should estimate
 assert.ok(poolLabel.indexOf("org 4/4") > -1, "performance debug should report organism pool usage");
 assert.ok(poolLabel.indexOf("food 3/3") > -1, "performance debug should report food pool usage");
 assert.ok(poolLabel.indexOf("poolMB") > -1, "performance debug should report pool memory usage");
+
+var unsafePool = {
+  capacity: 2,
+  items: [{ id: 1 }, { id: 2 }],
+  freeList: [1, 0],
+  freeTop: 2,
+  activeCount: 0,
+  acquire: function() {
+    if (this.freeTop <= 0) {
+      return null;
+    }
+
+    var slot = this.items[this.freeList[--this.freeTop]];
+    this.activeCount++;
+    return slot;
+  },
+  release: function(slot) {
+    var index = this.items.indexOf(slot);
+
+    if (index < 0) {
+      return false;
+    }
+
+    this.freeList[this.freeTop++] = index;
+    this.activeCount--;
+    return true;
+  },
+  reset: function() {
+    this.freeList = [1, 0];
+    this.freeTop = 2;
+    this.activeCount = 0;
+  }
+};
+
+PS.poolManager.register("unsafe-test", unsafePool);
+var unsafeSlot = PS.poolManager.acquire("unsafe-test");
+assert.strictEqual(PS.poolManager.release("unsafe-test", unsafeSlot), true, "first release should return slot to unsafe pool");
+assert.strictEqual(PS.poolManager.release("unsafe-test", unsafeSlot), false, "pool manager should reject double-free before raw pool mutates");
+var unsafeA = PS.poolManager.acquire("unsafe-test");
+var unsafeB = PS.poolManager.acquire("unsafe-test");
+assert.notStrictEqual(unsafeA, unsafeB, "double-free guard should prevent duplicate slot acquisition");
 
 console.log("pool checks passed");
 `, context);

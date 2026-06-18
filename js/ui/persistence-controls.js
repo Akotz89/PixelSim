@@ -1,10 +1,15 @@
-"use strict";
-function setPersistenceStatus(message, isError) {
+import { PS } from "../core/namespace.js";
+import { seedWorld } from "../main-simulation.js";
+import { drawWorld } from "../render/pipeline.js";
+import { persistenceStatus } from "./dom-refs.js";
+import { applyTuningFromControls, setElementText, updateHud } from "./foundation.js";
+
+export function setPersistenceStatus(message, isError) {
   setElementText(persistenceStatus, message);
   persistenceStatus.classList.toggle("error", Boolean(isError));
 }
 
-function restartSimulationFromControls() {
+export function restartSimulationFromControls() {
   applyTuningFromControls(false);
   seedWorld();
   drawWorld();
@@ -12,7 +17,7 @@ function restartSimulationFromControls() {
   setPersistenceStatus("SAVE: Ready", false);
 }
 
-function requestRestartSimulationFromControls() {
+export function requestRestartSimulationFromControls() {
   if (PS.ui && PS.ui.modal && typeof PS.ui.modal.confirm === "function") {
     return PS.ui.modal.confirm({
       title: "Restart simulation",

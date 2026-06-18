@@ -1,19 +1,26 @@
-"use strict";
-function getTerrainRidgedNoise(x, y, scale, seedOffset) {
+import { CONFIG } from "../../config.js";
+import { clamp, hashSeedText, randomInt } from "../core/utils.js";
+import { getPlanetTileAreaKm2, makePlanetTile, refreshPlanetSummary } from "./planet-grid.js";
+import { getDeterministicUnitNoise, resetPlanetGroundFeatureBlockCache } from "./planet-surface.js";
+import { getPlanetLatitudeForTile, resetPlanetSurfaceChunkCache } from "./planet-view.js";
+import { annotatePlanetHydrology, annotatePlanetTerrainRelief, getTerrainFractalNoise, isFertile } from "./terrain-hydrology.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
+export function getTerrainRidgedNoise(x, y, scale, seedOffset) {
   var base = getTerrainFractalNoise(x, y, scale, seedOffset, 4, 0.54);
   var ridge = 1 - Math.abs(base * 2 - 1);
 
   return clamp(ridge * ridge * 1.35, 0, 1);
 }
 
-function getTerrainWrappedTileDeltaX(x, centerX) {
+export function getTerrainWrappedTileDeltaX(x, centerX) {
   var width = Math.max(1, WORLD_WIDTH);
   var delta = Math.abs((Number(x) || 0) - (Number(centerX) || 0));
 
   return Math.min(delta, width - delta);
 }
 
-function getTerrainContinentPlateInfluence(x, y, seedOffset) {
+export function getTerrainContinentPlateInfluence(x, y, seedOffset) {
   var influence = 0;
   var plateCount = 8;
   var normalizedX = Number(x) || 0;
@@ -36,7 +43,7 @@ function getTerrainContinentPlateInfluence(x, y, seedOffset) {
   return clamp(influence, 0, 1);
 }
 
-function seedTerrain() {
+export function seedTerrain() {
   if (typeof resetPlanetSurfaceChunkCache === "function") {
     resetPlanetSurfaceChunkCache();
   }
@@ -231,7 +238,7 @@ function seedTerrain() {
   refreshPlanetSummary();
 }
 
-function randomFertilePosition() {
+export function randomFertilePosition() {
   for (let i = 0; i < 200; i++) {
     const x = randomInt(WORLD_WIDTH);
     const y = randomInt(WORLD_HEIGHT);
@@ -246,3 +253,4 @@ function randomFertilePosition() {
     y: randomInt(WORLD_HEIGHT)
   };
 }
+

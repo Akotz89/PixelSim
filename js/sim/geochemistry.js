@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.sim = PS.sim || {};
 
 PS.sim.geochemistry = PS.sim.geochemistry || {
@@ -62,15 +64,7 @@ PS.sim.geochemistry = PS.sim.geochemistry || {
   state: null,
 
   registerManifest: function () {
-    var manifest = PS.render && PS.render.wgslShaderManifest;
-    if (!Array.isArray(manifest)) {
-      PS.render.wgslShaderManifest = [];
-      manifest = PS.render.wgslShaderManifest;
-    }
-    if (!manifest.some(function (entry) { return entry && entry.name === "geochemistry"; })) {
-      manifest.push({ name: this.shaderName, path: this.shaderPath });
-    }
-    return manifest;
+    return PS.render.registerWgslShaderManifestEntries({ name: this.shaderName, path: this.shaderPath });
   },
 
   normalizeConfig: function (config) {
@@ -532,7 +526,7 @@ PS.sim.geochemistry = PS.sim.geochemistry || {
       },
       beforeDispatch: function (pass, owner) {
         var pipeline = pass.pipeline || owner.getPassPipeline(pass, device);
-        pass.bindGroups = [device.createBindGroup({
+        var descriptor = {
           label: "geochemistry.bind-group",
           layout: pipeline.getBindGroupLayout(0),
           entries: [
@@ -546,7 +540,8 @@ PS.sim.geochemistry = PS.sim.geochemistry || {
             { binding: 7, resource: { buffer: owner.buffers["geochemistry.volcanicEmission"].buffer } },
             { binding: 8, resource: { buffer: owner.buffers["geochemistry.params"].buffer } }
           ]
-        })];
+        };
+        pass.bindGroups = [owner.createCachedBindGroup(pass, device, 0, descriptor)];
       },
       afterDispatch: function () {
         harness.swap(self.stateId);

@@ -1,4 +1,9 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { setSimulationSpeed, stepSimulationOnce, toggleSimulationPaused } from "../main-loop.js";
+import { setSimulationPaused, updateWorld } from "../main-simulation.js";
+import { world } from "./state.js";
+
 PS.systems = PS.systems || {};
 
 PS.time = {

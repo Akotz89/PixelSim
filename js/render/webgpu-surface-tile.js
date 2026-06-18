@@ -1,7 +1,12 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
-var webgpuSurfaceTileState = PS.render.webgpuSurfaceTile && PS.render.webgpuSurfaceTile.state
+export var webgpuSurfaceTileState = PS.render.webgpuSurfaceTile && PS.render.webgpuSurfaceTile.state
   ? PS.render.webgpuSurfaceTile.state
   : null;
 
@@ -27,10 +32,15 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     tilemapPipeline: null,
     tilemapBindGroups: {},
     tilemapTextures: {},
+    bindGroups: {},
+    textureViews: {},
+    uniformData: null,
     nextTilemapTextureId: 1,
     instanceCapacity: 0,
     textures: {},
     textureUploadCount: 0,
+    bindGroupCacheHits: 0,
+    bindGroupCacheMisses: 0,
     drawCount: 0,
     tileDrawCount: 0,
     tilemapDataTextureDraws: 0,
@@ -39,9 +49,15 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     tilemapDirtyUploadBytes: 0,
     tilemapMemoryBytes: 0,
     tilemapVisibleTiles: 0,
+    batchCacheKey: "",
+    batchCache: null,
+    batchCacheHits: 0,
+    batchCacheMisses: 0,
     pageDrawCount: 0,
     culledCount: 0,
     materialCounts: {},
+    civilizationCounts: {},
+    districtMaterialDrawCount: 0,
     equivalenceTerrainDrawCount: 0,
     equivalenceTransitionDrawCount: 0,
     equivalenceSelectedUses: {},
@@ -104,10 +120,73 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     state.pageDrawCount = 0;
     state.culledCount = 0;
     state.materialCounts = {};
+    state.civilizationCounts = {};
+    state.districtMaterialDrawCount = 0;
     state.equivalenceTerrainDrawCount = 0;
     state.equivalenceTransitionDrawCount = 0;
     state.equivalenceSelectedUses = {};
     state.equivalenceSelectedSheets = {};
+  },
+
+  canUseBatchCache: function () {
+    return typeof world !== "undefined" &&
+      world &&
+      world.isPaused === true &&
+      !world.isCameraInteracting;
+  },
+
+  getBatchCacheKey: function (chunks, alpha, options) {
+    var spec = options || {};
+    var lodState = spec.lodState || null;
+    var visualPolicy = lodState && lodState.visualPolicy ? lodState.visualPolicy : null;
+    if (!visualPolicy && PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function") {
+      visualPolicy = PS.render.lod.getVisualPolicy();
+    }
+    visualPolicy = visualPolicy || {};
+    var list = Array.isArray(chunks) ? chunks : [];
+    var parts = [
+      "alpha", Number(alpha) || 0,
+      "lod", visualPolicy.level || "",
+      visualPolicy.transitionAlphaScale,
+      visualPolicy.mountainOverlays,
+      visualPolicy.autotileTransitions,
+      visualPolicy.pointLightScale,
+      visualPolicy.normalLightingStrength,
+      spec.loadOp || ""
+    ];
+
+    for (var i = 0; i < list.length; i += 1) {
+      var item = list[i] || {};
+      var address = item.address || {};
+      var itemPolicy = item.lodState && item.lodState.visualPolicy ? item.lodState.visualPolicy : null;
+      parts.push(
+        address.chunkKey || "",
+        address.renderScreenX,
+        address.renderScreenY,
+        address.renderSamplePixelSize,
+        address.chunkSamples,
+        item.alpha === undefined ? alpha : item.alpha,
+        item.cellCache && item.cellCache.length,
+        itemPolicy ? itemPolicy.level : "",
+        itemPolicy ? itemPolicy.transitionAlphaScale : "",
+        itemPolicy ? itemPolicy.mountainOverlays : "",
+        itemPolicy ? itemPolicy.autotileTransitions : "",
+        itemPolicy ? itemPolicy.pointLightScale : "",
+        itemPolicy ? itemPolicy.normalLightingStrength : ""
+      );
+    }
+
+    return parts.join("|");
+  },
+
+  clearBatchCache: function () {
+    this.state.batchCacheKey = "";
+    this.state.batchCache = null;
+  },
+
+  clearBindGroupCache: function () {
+    this.state.bindGroups = {};
+    this.state.textureViews = {};
   },
 
   ensureAtlas: function () {
@@ -343,16 +422,22 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     var textureSize = descriptor.size || {};
     var textureWidth = Math.max(1, Number(textureSize.width) || Number(texture.width) || 1);
     var textureHeight = Math.max(1, Number(textureSize.height) || Number(texture.height) || 1);
+    var data = this.state.uniformData;
+
+    if (!data) {
+      data = new Float32Array(4);
+      this.state.uniformData = data;
+    }
+
+    data[0] = Math.max(1, Number(width) || 1);
+    data[1] = Math.max(1, Number(height) || 1);
+    data[2] = 1 / textureWidth;
+    data[3] = 1 / textureHeight;
 
     device.queue.writeBuffer(
       this.ensureUniformBuffer(device),
       0,
-      new Float32Array([
-        Math.max(1, Number(width) || 1),
-        Math.max(1, Number(height) || 1),
-        1 / textureWidth,
-        1 / textureHeight
-      ])
+      data
     );
   },
 
@@ -389,6 +474,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     }
 
     this.state.textures[cacheKey] = texture;
+    texture._pixeldariumSurfaceTileCacheKey = cacheKey;
     this.state.textureUploadCount += 1;
     return texture;
   },
@@ -650,15 +736,42 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   },
 
   createBindGroup: function (device, pipeline, texture) {
-    return device.createBindGroup({
+    var textureKey = texture && texture._pixeldariumSurfaceTileCacheKey
+      ? texture._pixeldariumSurfaceTileCacheKey
+      : String(texture && (texture.label || texture.id || texture.descriptor && texture.descriptor.label) || "texture");
+    var pipelineKey = pipeline && pipeline.descriptor && pipeline.descriptor.label
+      ? pipeline.descriptor.label
+      : "pipeline";
+    var cacheKey = pipelineKey + "|" + textureKey;
+    var cached = this.state.bindGroups && this.state.bindGroups[cacheKey];
+    var textureView;
+    var bindGroup;
+
+    if (cached) {
+      this.state.bindGroupCacheHits += 1;
+      return cached;
+    }
+
+    this.state.bindGroups = this.state.bindGroups || {};
+    this.state.textureViews = this.state.textureViews || {};
+    textureView = this.state.textureViews[textureKey];
+    if (!textureView) {
+      textureView = texture.createView();
+      this.state.textureViews[textureKey] = textureView;
+    }
+
+    bindGroup = device.createBindGroup({
       label: "terrain-tile.bind-group",
       layout: pipeline.getBindGroupLayout(0),
       entries: [
-        { binding: 0, resource: texture.createView() },
+        { binding: 0, resource: textureView },
         { binding: 1, resource: this.ensureSampler(device) },
         { binding: 2, resource: { buffer: this.ensureUniformBuffer(device) } }
       ]
     });
+    this.state.bindGroups[cacheKey] = bindGroup;
+    this.state.bindGroupCacheMisses += 1;
+    return bindGroup;
   },
 
   finalizeBatchPages: function (batches) {
@@ -725,6 +838,21 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         height: height
       });
     }
+
+    if (
+      readyBatches.displacementRects &&
+      readyBatches.displacementRects.length > 0 &&
+      typeof PS.render.webgpuEntity.drawDisplacementRects === "function"
+    ) {
+      PS.render.webgpuEntity.drawDisplacementRects(new Float32Array(readyBatches.displacementRects), {
+        device: device,
+        context: context,
+        commandEncoder: encoder,
+        textureView: textureView,
+        width: width,
+        height: height
+      });
+    }
   },
 
   getVisualPolicy: function (lodState) {
@@ -737,6 +865,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
       : { level: "SURFACE", pointLightScale: 1, normalLightingStrength: 1 };
   },
 
+  /**
+   * @description Uploads packed surface tile batches to WebGPU, binds terrain/material/light resources, and submits the tile draw passes for the current frame.
+   * @param {Object|null} batches Surface tile batches produced by the CPU batcher.
+   * @param {Object|null} options Render options including device, context, viewport, alpha, and LOD state.
+   * @returns {boolean} True when a WebGPU draw was submitted, otherwise false.
+   */
   drawBatches: function (batches, options) {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
@@ -796,14 +930,14 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
           width,
           height,
           device,
-          { loadOp: firstPass ? "clear" : "load" }
+          { loadOp: firstPass ? "clear" : "load", clearColor: spec.clearColor || null }
         );
       } else {
         pass = encoder.beginRenderPass({
           label: "terrain-tile.render-pass",
           colorAttachments: [{
             view: spec.textureView || context.getCurrentTexture().createView(),
-            clearValue: { r: 8 / 255, g: 12 / 255, b: 18 / 255, a: 1 },
+            clearValue: spec.clearColor || { r: 8 / 255, g: 12 / 255, b: 18 / 255, a: 1 },
             loadOp: firstPass && spec.loadOp !== "load" ? "clear" : "load",
             storeOp: "store"
           }]
@@ -846,8 +980,29 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         wrapStrength: (spec.wrapStrength === undefined ? (cycle ? cycle.wrapStrength : 0.16) : Math.max(0, Number(spec.wrapStrength) || 0)) *
           Math.max(0, Number(policy.normalLightingStrength) || 0),
         heightTintStrength: (spec.heightTintStrength === undefined ? (cycle ? cycle.heightTintStrength : 0.08) : Math.max(0, Number(spec.heightTintStrength) || 0)) *
-          Math.max(0, Number(policy.normalLightingStrength) || 0)
+          Math.max(0, Number(policy.normalLightingStrength) || 0),
+        normalLightingStrength: policy.normalLightingStrength,
+        normalMappedLighting: policy.normalMappedLighting,
+        timeSeconds: PS.render.environmentOverlays && typeof PS.render.environmentOverlays.getNowSeconds === "function"
+          ? PS.render.environmentOverlays.getNowSeconds()
+          : undefined
       });
+
+      if (PS.render.webgpuTileLights && typeof PS.render.webgpuTileLights.draw === "function") {
+        PS.render.webgpuTileLights.draw({
+          device: device,
+          context: context,
+          commandEncoder: encoder,
+          tileLights: readyBatches.tileLights || [],
+          textureView: spec.textureView || null,
+          loadOp: "load",
+          width: width,
+          height: height,
+          tileSize: spec.tileSize || (typeof CONFIG !== "undefined" && CONFIG.TILE_SIZE) || 16,
+          tileLightStrength: policy.tileLightStrength === undefined ? 1 : policy.tileLightStrength,
+          tileLightAmbientFloor: policy.tileLightAmbientFloor === undefined ? 0.24 : policy.tileLightAmbientFloor
+        });
+      }
 
       if (PS.render.webgpuPointLights && typeof PS.render.webgpuPointLights.draw === "function") {
         PS.render.webgpuPointLights.draw({
@@ -858,7 +1013,10 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
           textureView: spec.textureView || null,
           loadOp: "load",
           width: width,
-          height: height
+          height: height,
+          timeOfDay: spec.timeOfDay,
+          lightingCycleState: cycle,
+          ambient: spec.ambient !== undefined ? spec.ambient : (cycle ? cycle.ambient : undefined)
         });
       }
     }
@@ -874,13 +1032,30 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     this.state.pageDrawCount = pageDraws;
     this.state.culledCount = readyBatches.culled || 0;
     this.state.materialCounts = Object.assign({}, readyBatches.materialCounts || {});
-    this.state.equivalenceTerrainDrawCount += readyBatches.equivalenceTerrain || 0;
-    this.state.equivalenceTransitionDrawCount += readyBatches.equivalenceTransitions || 0;
+    this.state.civilizationCounts = Object.assign({}, readyBatches.civilizationCounts || {});
+    this.state.districtMaterialDrawCount = Number(readyBatches.districtMaterialDraws) || 0;
 
     if (PS.assets && PS.assets.equivalence && typeof PS.assets.equivalence.getStats === "function") {
       var equivalenceStats = PS.assets.equivalence.getStats();
+      var equivalenceUses = equivalenceStats.byUse || {};
+      var terrainEvidence = Number(readyBatches.equivalenceTerrain) || 0;
+      var transitionEvidence = Number(readyBatches.equivalenceTransitions) || 0;
+
+      if (terrainEvidence <= 0 && Number(equivalenceUses.terrainMaterial) > 0) {
+        terrainEvidence = Number(equivalenceUses.terrainMaterial) || 0;
+      }
+
+      if (transitionEvidence <= 0 && Number(equivalenceUses.terrainTransition) > 0) {
+        transitionEvidence = Number(equivalenceUses.terrainTransition) || 0;
+      }
+
+      this.state.equivalenceTerrainDrawCount += terrainEvidence;
+      this.state.equivalenceTransitionDrawCount += transitionEvidence;
       this.state.equivalenceSelectedUses = equivalenceStats.byUse;
       this.state.equivalenceSelectedSheets = equivalenceStats.bySheet;
+    } else {
+      this.state.equivalenceTerrainDrawCount += readyBatches.equivalenceTerrain || 0;
+      this.state.equivalenceTransitionDrawCount += readyBatches.equivalenceTransitions || 0;
     }
 
     this.state.lastFrameMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
@@ -896,24 +1071,45 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
         return false;
       }
 
-      var batches = this.beginBatches();
       var lodState = options && options.lodState ? options.lodState : null;
+      var useBatchCache = this.canUseBatchCache();
+      var batchCacheKey = useBatchCache ? this.getBatchCacheKey(list, alpha, options) : "";
+      var batches = useBatchCache && this.state.batchCacheKey === batchCacheKey && this.state.batchCache
+        ? this.state.batchCache
+        : null;
 
-      for (var i = 0; i < list.length; i += 1) {
-        var item = list[i];
-
-        if (!item || !item.address || !Array.isArray(item.cellCache)) {
-          batches.culled++;
-          continue;
+      if (batches) {
+        this.state.batchCacheHits += 1;
+      } else {
+        batches = this.beginBatches();
+        if (useBatchCache) {
+          this.state.batchCacheMisses += 1;
         }
 
-        this.appendBatches(
-          batches,
-          item.address,
-          item.cellCache,
-          item.alpha === undefined ? alpha : item.alpha,
-          item.lodState || lodState
-        );
+        for (var i = 0; i < list.length; i += 1) {
+          var item = list[i];
+
+          if (!item || !item.address || !Array.isArray(item.cellCache)) {
+            batches.culled++;
+            continue;
+          }
+
+          this.appendBatches(
+            batches,
+            item.address,
+            item.cellCache,
+            item.alpha === undefined ? alpha : item.alpha,
+            item.lodState || lodState
+          );
+        }
+
+        if (useBatchCache) {
+          this.state.batchCacheKey = batchCacheKey;
+          this.state.batchCache = this.finalizeBatchPages(batches);
+          batches = this.state.batchCache;
+        } else {
+          this.clearBatchCache();
+        }
       }
 
       return this.drawBatches(batches, options);
@@ -950,8 +1146,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
       textureUploadCount: this.state.textureUploadCount,
       culledCount: this.state.culledCount,
       materialCounts: Object.assign({}, this.state.materialCounts || {}),
+      civilizationCounts: Object.assign({}, this.state.civilizationCounts || {}),
+      districtMaterialDrawCount: this.state.districtMaterialDrawCount,
       equivalenceTerrainDrawCount: this.state.equivalenceTerrainDrawCount,
       equivalenceTransitionDrawCount: this.state.equivalenceTransitionDrawCount,
+      batchCacheHits: this.state.batchCacheHits,
+      batchCacheMisses: this.state.batchCacheMisses,
       lastFrameMs: this.state.lastFrameMs,
       lastError: this.state.lastError
     };
@@ -961,6 +1161,7 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     this.state.pipeline = null;
     this.state.gbufferPipeline = null;
     this.state.tilemapPipeline = null;
+    this.clearBatchCache();
   },
 
   rebuildTextures: function () {
@@ -968,5 +1169,6 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     this.state.tilemapTextures = {};
     this.state.tilemapBindGroups = {};
     this.state.textureUploadCount = 0;
+    this.clearBatchCache();
   }
 });

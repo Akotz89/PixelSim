@@ -1,4 +1,13 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getTileManhattanDistance } from "../render/planet-grid.js";
+import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
+import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { world } from "../systems/state.js";
+import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
+import { setElementText } from "./foundation.js";
+
 PS.ui = PS.ui || {};
 PS.render = PS.render || {};
 PS.render.overlays = PS.render.overlays || {
@@ -153,6 +162,14 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
       alpha: clamp(Math.round(Number(alpha) || 0), 0, 255)
     };
   },
+  /**
+   * @description Converts a named observation overlay and tile state into an RGBA sample used for terrain diagnostics and visualization layers.
+   * @param {string} id Overlay identifier, for example temperature, moisture, biomass, or civilization pressure.
+   * @param {number} tileX World tile x coordinate.
+   * @param {number} tileY World tile y coordinate.
+   * @param {Object|null} tile Terrain tile data used by the selected overlay.
+   * @returns {Object} RGBA sample with red, green, blue, and alpha channels.
+   */
   getOverlaySample: function (id, tileX, tileY, tile) {
     var activeId = String(id || "none");
     var safeTile = tile || {};

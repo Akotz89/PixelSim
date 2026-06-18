@@ -1,13 +1,22 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getClampedWorldY, getWrappedWorldX } from "../render/planet-grid.js";
+import { getPlanetLatitudeForTile, getPlanetLongitudeForTile } from "../render/planet-view.js";
+import { normalizeOrganismTraits } from "./organisms-traits.js";
+import { getBiologyRepresentativeById } from "./representatives.js";
+import { clonePersistencePlainValue } from "../systems/persistence-db.js";
+import { world } from "../systems/state.js";
+
 PS.sim = PS.sim || {};
 
-var SPECIATION_DISTANCE_DEFAULT = 0.58;
-var SPECIATION_ISOLATION_WEIGHT_DEFAULT = 0.28;
-var SPECIATION_MIN_POPULATION_DEFAULT = 2;
-var SPECIATION_MIN_INTERVAL_DEFAULT = 180;
-var SPECIATION_MAX_SPECIES_DEFAULT = 512;
+export var SPECIATION_DISTANCE_DEFAULT = 0.58;
+export var SPECIATION_ISOLATION_WEIGHT_DEFAULT = 0.28;
+export var SPECIATION_MIN_POPULATION_DEFAULT = 2;
+export var SPECIATION_MIN_INTERVAL_DEFAULT = 180;
+export var SPECIATION_MAX_SPECIES_DEFAULT = 512;
 
-function ensureSpeciesState() {
+export function ensureSpeciesState() {
   world.species = Array.isArray(world.species) ? world.species : [];
   world.speciesById = world.speciesById || {};
   world.speciationEvents = Array.isArray(world.speciationEvents) ? world.speciationEvents : [];
@@ -21,23 +30,23 @@ function ensureSpeciesState() {
   }
 }
 
-function getSpeciesConfigValue(key, fallback) {
+export function getSpeciesConfigValue(key, fallback) {
   var config = PS.config && PS.config.evolution ? PS.config.evolution : {};
   return Number.isFinite(Number(config[key])) ? Number(config[key]) : fallback;
 }
 
-function getSpeciesById(speciesId) {
+export function getSpeciesById(speciesId) {
   ensureSpeciesState();
   return world.speciesById[String(Math.max(1, Math.round(Number(speciesId) || 1)))] || null;
 }
 
-function allocateSpeciesRecordId() {
+export function allocateSpeciesRecordId() {
   var speciesId = Math.max(1, Math.round(Number(world.nextSpeciesId) || 1));
   world.nextSpeciesId = speciesId + 1;
   return speciesId;
 }
 
-function getSpeciationLocation(population, organisms) {
+export function getSpeciationLocation(population, organisms) {
   var cell = population && Array.isArray(population.territoryCells) && population.territoryCells.length > 0
     ? population.territoryCells[0]
     : null;
@@ -53,7 +62,7 @@ function getSpeciationLocation(population, organisms) {
   };
 }
 
-function makeSpeciesRecord(options) {
+export function makeSpeciesRecord(options) {
   options = options || {};
 
   return {
@@ -76,7 +85,7 @@ function makeSpeciesRecord(options) {
   };
 }
 
-function ensureSpeciesRecord(speciesId, options) {
+export function ensureSpeciesRecord(speciesId, options) {
   ensureSpeciesState();
   var normalizedId = Math.max(1, Math.round(Number(speciesId) || 1));
   var record = getSpeciesById(normalizedId);
@@ -96,7 +105,7 @@ function ensureSpeciesRecord(speciesId, options) {
   return record;
 }
 
-function getNormalizedTraitDistance(a, b) {
+export function getNormalizedTraitDistance(a, b) {
   var definitions = PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.getDefinitions === "function"
     ? PS.core.traitSchema.getDefinitions()
     : [];
@@ -124,7 +133,7 @@ function getNormalizedTraitDistance(a, b) {
   return count > 0 ? clamp(total / count, 0, 1) : 0;
 }
 
-function getPopulationRange(population) {
+export function getPopulationRange(population) {
   var cells = population && Array.isArray(population.territoryCells) ? population.territoryCells : [];
 
   if (cells.length === 0) {
@@ -152,7 +161,7 @@ function getPopulationRange(population) {
   };
 }
 
-function getSpeciationCause(distance, isolation, threshold) {
+export function getSpeciationCause(distance, isolation, threshold) {
   if (isolation >= 0.5 && distance >= threshold * 0.55) {
     return "geographic-isolation";
   }
@@ -164,7 +173,7 @@ function getSpeciationCause(distance, isolation, threshold) {
   return "selection-pressure";
 }
 
-function canSpeciatePopulation(population, parentSpecies, divergence) {
+export function canSpeciatePopulation(population, parentSpecies, divergence) {
   var maxSpecies = Math.max(1, Math.round(getSpeciesConfigValue("speciationMaxSpecies", SPECIATION_MAX_SPECIES_DEFAULT)));
   var minPopulation = Math.max(1, Math.round(getSpeciesConfigValue("speciationMinPopulation", SPECIATION_MIN_POPULATION_DEFAULT)));
   var minInterval = Math.max(1, Math.round(getSpeciesConfigValue("speciationMinIntervalTicks", SPECIATION_MIN_INTERVAL_DEFAULT)));
@@ -185,7 +194,7 @@ function canSpeciatePopulation(population, parentSpecies, divergence) {
   return divergence >= getSpeciesConfigValue("speciationDistance", SPECIATION_DISTANCE_DEFAULT);
 }
 
-function emitSpeciationEvent(record, parentSpecies, population) {
+export function emitSpeciationEvent(record, parentSpecies, population) {
   if (!PS.events || typeof PS.events.emitMilestone !== "function") {
     return null;
   }
@@ -225,7 +234,7 @@ function emitSpeciationEvent(record, parentSpecies, population) {
   return result;
 }
 
-function evaluatePopulationForSpeciation(population, organisms, traitsList) {
+export function evaluatePopulationForSpeciation(population, organisms, traitsList) {
   ensureSpeciesState();
   var currentSpeciesId = Math.max(1, Math.round(Number(population && population.speciesId) || 1));
   var parentSpecies = ensureSpeciesRecord(currentSpeciesId, {
@@ -381,7 +390,7 @@ function evaluatePopulationForSpeciation(population, organisms, traitsList) {
   };
 }
 
-function refreshSpeciesSummary(populations) {
+export function refreshSpeciesSummary(populations) {
   ensureSpeciesState();
   var activePopulations = Array.isArray(populations) ? populations : [];
   var activeSpecies = {};
@@ -464,3 +473,4 @@ PS.sim.speciation = {
   evaluatePopulation: evaluatePopulationForSpeciation,
   refreshSummary: refreshSpeciesSummary
 };
+

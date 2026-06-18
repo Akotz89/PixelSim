@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const epochRegistrySource = read("js/epochs/registry.js");
@@ -131,6 +122,18 @@ const archean = epochs.setEpoch(1, { pipeline: coupling });
 assert.strictEqual(archean.id, 1, "setEpoch(1) should transition to Archean");
 assert.ok(archean.activePasses.includes("lbm-ocean"), "Archean should enable ocean pass");
 assert.ok(archean.atmosphere.co2Ppm < hadean.atmosphere.co2Ppm, "Archean atmosphere should causally reduce CO2");
+const archeanCo2 = context.world.atmosphere.carbonDioxidePpm;
+const writesBeforeQueuedTransition = greenhouseWrites.length;
+context.world.epochAtmospherePhase = "updating";
+const queuedEpoch = epochs.setEpoch(2, { pipeline: coupling });
+assert.strictEqual(queuedEpoch.id, 2, "epoch transition during atmosphere update should still advance epoch state");
+assert.strictEqual(context.world.atmosphere.carbonDioxidePpm, archeanCo2, "epoch transition should not mutate atmosphere mid-update");
+assert.strictEqual(greenhouseWrites.length, writesBeforeQueuedTransition, "queued epoch atmosphere should not write heat forcing mid-update");
+assert.strictEqual(context.world.pendingEpochAtmosphere.id, 2, "queued epoch atmosphere should be recorded for tick-boundary flush");
+context.world.epochAtmospherePhase = "idle";
+epochs.flushPendingEpochAtmosphere();
+assert.strictEqual(context.world.atmosphere.carbonDioxidePpm, queuedEpoch.atmosphere.co2Ppm, "queued epoch atmosphere should apply after atmosphere update exits");
+assert.ok(greenhouseWrites.length > writesBeforeQueuedTransition, "queued epoch atmosphere should write heat forcing when flushed");
 assert.strictEqual(coupling.validatePassOrder().actual.join(","), [
   "heat-diffusion",
   "lbm-ocean",

@@ -1,5 +1,26 @@
-"use strict";
-function registerSimulationInputActions() {
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { stepSimulationOnce, toggleSimulationPaused } from "../main-loop.js";
+import { world } from "../systems/state.js";
+import { beginPlanetDrag, endPlanetDrag, getCanvasPointFromEvent, panPlanetViewFromKeyboard, updatePlanetDrag, zoomPlanetView } from "./camera-input.js";
+import { setMenuOpen, setMenuPage, toggleMenuOpen } from "./foundation.js";
+import { requestRestartSimulationFromControls } from "./persistence-controls.js";
+
+export function getPlanetWheelZoomDelta(event) {
+  var deltaY = Number(event && event.deltaY) || 0;
+  var mode = Number(event && event.deltaMode) || 0;
+  var pixelDelta = deltaY;
+
+  if (mode === 1) {
+    pixelDelta *= 16;
+  } else if (mode === 2) {
+    pixelDelta *= 240;
+  }
+
+  return clamp(-pixelDelta / 1200, -0.08, 0.08);
+}
+
+export function registerSimulationInputActions() {
   if (!PS.input) {
     return false;
   }
@@ -29,7 +50,7 @@ function registerSimulationInputActions() {
       event.preventDefault();
     }
 
-    zoomPlanetView(event.deltaY < 0 ? 0.25 : -0.25, getCanvasPointFromEvent(event));
+    zoomPlanetView(getPlanetWheelZoomDelta(event), getCanvasPointFromEvent(event));
     return true;
   });
   PS.input.on("close_menu", function(event) {
@@ -155,7 +176,7 @@ function registerSimulationInputActions() {
   return true;
 }
 
-function shouldIgnoreSimulationShortcut(target) {
+export function shouldIgnoreSimulationShortcut(target) {
   if (!target) {
     return false;
   }
@@ -171,7 +192,7 @@ function shouldIgnoreSimulationShortcut(target) {
   );
 }
 
-function handleSimulationShortcut(event) {
+export function handleSimulationShortcut(event) {
   if (shouldIgnoreSimulationShortcut(event.target)) {
     return false;
   }
@@ -186,3 +207,4 @@ function handleSimulationShortcut(event) {
 
   return handled;
 }
+

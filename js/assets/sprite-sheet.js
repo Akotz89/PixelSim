@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.assets = PS.assets || {};
 
 PS.assets.SpriteSheet = function (image, cells, order, animations, format) {
@@ -26,7 +27,9 @@ PS.assets.SpriteSheet.prototype.getAnimation = function (tag) {
 };
 
 PS.assets.SpriteSheet._makeCell = function (image, name, frame) {
-  return {
+  var normalFrame = frame.normalFrame || frame.normal || null;
+  var materialFrame = frame.materialFrame || frame.material || null;
+  var cell = {
     name: name,
     x: Number(frame.x) || 0,
     y: Number(frame.y) || 0,
@@ -34,20 +37,59 @@ PS.assets.SpriteSheet._makeCell = function (image, name, frame) {
     h: Number(frame.h) || Number(frame.height) || 0,
     image: image
   };
+
+  if (normalFrame) {
+    cell.normalX = Number(normalFrame.x) || 0;
+    cell.normalY = Number(normalFrame.y) || 0;
+    cell.normalW = Number(normalFrame.w) || Number(normalFrame.width) || cell.w;
+    cell.normalH = Number(normalFrame.h) || Number(normalFrame.height) || cell.h;
+    cell.splitAtlas = true;
+  }
+  if (Array.isArray(frame.normalOffset)) {
+    cell.normalOffsetX = Number(frame.normalOffset[0]) || 0;
+    cell.normalOffsetY = Number(frame.normalOffset[1]) || 0;
+    cell.splitAtlas = true;
+  }
+  if (materialFrame) {
+    cell.materialX = Number(materialFrame.x) || 0;
+    cell.materialY = Number(materialFrame.y) || 0;
+    cell.materialW = Number(materialFrame.w) || Number(materialFrame.width) || cell.w;
+    cell.materialH = Number(materialFrame.h) || Number(materialFrame.height) || cell.h;
+    cell.materialChannels = true;
+  }
+  if (Array.isArray(frame.materialOffset)) {
+    cell.materialOffsetX = Number(frame.materialOffset[0]) || 0;
+    cell.materialOffsetY = Number(frame.materialOffset[1]) || 0;
+    cell.materialChannels = true;
+  }
+
+  return cell;
+};
+
+PS.assets.SpriteSheet._addFrameCell = function (cells, order, image, name, entry, frame) {
+  cells[name] = PS.assets.SpriteSheet._makeCell(image, name, Object.assign({}, entry || {}, frame || {}));
+  order.push(name);
 };
 
 PS.assets.SpriteSheet._fromFrames = function (image, frames, format) {
   var cells = {};
   var order = [];
 
-  Object.keys(frames || {}).forEach(function (name) {
-    var entry = frames[name] || {};
-    var frame = entry.frame || entry;
-    var cell = PS.assets.SpriteSheet._makeCell(image, name, frame);
+  if (Array.isArray(frames)) {
+    frames.forEach(function (entry, index) {
+      var name = entry && entry.filename ? String(entry.filename) : String(index);
+      var frame = entry && (entry.frame || entry) || {};
 
-    cells[name] = cell;
-    order.push(name);
-  });
+      PS.assets.SpriteSheet._addFrameCell(cells, order, image, name, entry, frame);
+    });
+  } else {
+    Object.keys(frames || {}).forEach(function (name) {
+      var entry = frames[name] || {};
+      var frame = entry.frame || entry;
+
+      PS.assets.SpriteSheet._addFrameCell(cells, order, image, name, entry, frame);
+    });
+  }
 
   return new PS.assets.SpriteSheet(image, cells, order, {}, format);
 };
@@ -85,7 +127,35 @@ PS.assets.SpriteSheet.fromGrid = function (image, meta) {
 };
 
 PS.assets.SpriteSheet.fromTexturePacker = function (image, json) {
-  return PS.assets.SpriteSheet._fromFrames(image, json && json.frames, "texturepacker");
+  var sheet = PS.assets.SpriteSheet._fromFrames(image, json && json.frames, "texturepacker");
+  var meta = json && json.meta ? json.meta : {};
+
+  if (meta.splitAtlas) {
+    sheet.getCells().forEach(function (cell) {
+      cell.splitAtlas = true;
+      cell.normalOffsetX = Number(meta.normalOffsetX) || Number(meta.normalOffset && meta.normalOffset[0]) || cell.normalOffsetX || 0;
+      cell.normalOffsetY = Number(meta.normalOffset && meta.normalOffset[1]) || cell.normalOffsetY || 0;
+      if (!cell.normalW) {
+        cell.normalX = cell.x + cell.normalOffsetX;
+        cell.normalY = cell.y + cell.normalOffsetY;
+        cell.normalW = cell.w;
+        cell.normalH = cell.h;
+      }
+      if (meta.materialChannels) {
+        cell.materialChannels = meta.materialChannels;
+        cell.materialOffsetX = Number(meta.materialOffsetX) || Number(meta.materialOffset && meta.materialOffset[0]) || cell.materialOffsetX || 0;
+        cell.materialOffsetY = Number(meta.materialOffset && meta.materialOffset[1]) || cell.materialOffsetY || 0;
+        if (!cell.materialW) {
+          cell.materialX = cell.x + cell.materialOffsetX;
+          cell.materialY = cell.y + cell.materialOffsetY;
+          cell.materialW = cell.w;
+          cell.materialH = cell.h;
+        }
+      }
+    });
+  }
+
+  return sheet;
 };
 
 PS.assets.SpriteSheet.fromAseprite = function (image, json) {

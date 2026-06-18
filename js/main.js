@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "./core/namespace.js";
+import { startGame } from "./main-loop.js";
+
 PS.init = function() {
   if (PS.isInitialized) {
     return false;

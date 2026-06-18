@@ -1,8 +1,16 @@
-"use strict";
+import { CONFIG } from "../../config.js";
+// fallow-ignore-next-line circular-dependency
+import { getEmpireLegacyLevel, getEmpireSectorCount } from "./civilizations-empire.js";
+import { allocateProbeMissionId, ensureProbeMissionState, getDiscoveredPlanetaryBodyCount, getProbeMissionTargetBodyId, normalizeProbeMission, updatePlanetarySurveyEra } from "./civilizations-orbital.js";
+// fallow-ignore-next-line circular-dependency
+import { getCompletedInterstellarFleetCount, getInterstellarFleetCount } from "./civilizations-stars.js";
+import { restoreSettlementGrowthNumber } from "./settlements-state.js";
+import { world } from "../systems/state.js";
+
 // SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
 // Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
-function makeProbeMission() {
+export function makeProbeMission() {
   var missionId = allocateProbeMissionId();
   var targetBodyId = getProbeMissionTargetBodyId();
   var travelTicks = Math.max(1, Math.round(Number(CONFIG.PROBE_MISSION_COMPLETE_TICKS) || 1));
@@ -17,7 +25,7 @@ function makeProbeMission() {
   };
 }
 
-function normalizeProbeMissions() {
+export function normalizeProbeMissions() {
   ensureProbeMissionState();
 
   for (var i = 0; i < world.probeMissions.length; i++) {
@@ -25,7 +33,7 @@ function normalizeProbeMissions() {
   }
 }
 
-function getCompletedProbeMissionCount() {
+export function getCompletedProbeMissionCount() {
   normalizeProbeMissions();
 
   var completedMissions = 0;
@@ -39,7 +47,7 @@ function getCompletedProbeMissionCount() {
   return completedMissions;
 }
 
-function updateProbeMissionTravel() {
+export function updateProbeMissionTravel() {
   normalizeProbeMissions();
 
   for (var i = 0; i < world.probeMissions.length; i++) {
@@ -60,7 +68,7 @@ function updateProbeMissionTravel() {
   }
 }
 
-function updateProbeMissionEra() {
+export function updateProbeMissionEra() {
   if (getEmpireLegacyLevel() >= CONFIG.ASCENDANT_EMPIRE_LEGACY_LEVEL) {
     world.era = "Ascendant Empire";
   } else if (getEmpireSectorCount() >= CONFIG.GALACTIC_EMPIRE_SECTOR_COUNT) {
@@ -86,7 +94,7 @@ function updateProbeMissionEra() {
   }
 }
 
-function updateProbeMissionReadiness() {
+export function updateProbeMissionReadiness() {
   ensureProbeMissionState();
   updateProbeMissionTravel();
 
@@ -99,7 +107,7 @@ function updateProbeMissionReadiness() {
   return world.probeMissionReady;
 }
 
-function updateProbeMissionState() {
+export function updateProbeMissionState() {
   if (!updateProbeMissionReadiness()) {
     return;
   }
@@ -125,7 +133,7 @@ function updateProbeMissionState() {
   updateProbeMissionReadiness();
 }
 
-function ensureStarMapState() {
+export function ensureStarMapState() {
   if (!Array.isArray(world.starSystems)) {
     world.starSystems = [];
   }
@@ -143,7 +151,7 @@ function ensureStarMapState() {
   world.lastStarMapTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.lastStarMapTick, 0)));
 }
 
-function allocateStarSystemId() {
+export function allocateStarSystemId() {
   ensureStarMapState();
 
   var systemId = world.nextStarSystemId;
@@ -151,11 +159,11 @@ function allocateStarSystemId() {
   return systemId;
 }
 
-function getStarSystemName(systemId) {
+export function getStarSystemName(systemId) {
   return "S-" + String(200 + systemId);
 }
 
-function normalizeStarSystem(system) {
+export function normalizeStarSystem(system) {
   system.id = Math.max(1, Math.round(restoreSettlementGrowthNumber(system.id, world.nextStarSystemId)));
   system.name = String(system.name || getStarSystemName(system.id));
   system.discoveredTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(system.discoveredTick, world.tick)));
@@ -172,7 +180,7 @@ function normalizeStarSystem(system) {
   }
 }
 
-function makeStarSystem() {
+export function makeStarSystem() {
   var systemId = allocateStarSystemId();
   var angle = systemId * 2.1;
   var distance = 0.34 + (systemId % 4) * 0.16;
@@ -191,7 +199,7 @@ function makeStarSystem() {
   };
 }
 
-function registerStarSystemInIndex(system) {
+export function registerStarSystemInIndex(system) {
   if (!system) {
     return;
   }
@@ -203,7 +211,7 @@ function registerStarSystemInIndex(system) {
   world.starSystemsById[String(system.id)] = system;
 }
 
-function rebuildStarSystemIndexes() {
+export function rebuildStarSystemIndexes() {
   world.starSystemsById = {};
 
   if (!Array.isArray(world.starSystems)) {
@@ -217,7 +225,7 @@ function rebuildStarSystemIndexes() {
   return world.starSystemsById;
 }
 
-function normalizeStarSystems() {
+export function normalizeStarSystems() {
   ensureStarMapState();
   world.starSystemsById = {};
 
@@ -227,7 +235,7 @@ function normalizeStarSystems() {
   }
 }
 
-function getDiscoveredStarSystemCount() {
+export function getDiscoveredStarSystemCount() {
   normalizeStarSystems();
 
   var discoveredSystems = 0;
@@ -241,7 +249,7 @@ function getDiscoveredStarSystemCount() {
   return discoveredSystems;
 }
 
-function getMappedStarSystemValue() {
+export function getMappedStarSystemValue() {
   normalizeStarSystems();
 
   var mapValue = 0;
@@ -255,7 +263,7 @@ function getMappedStarSystemValue() {
   return mapValue;
 }
 
-function getClaimedStarSystemCount() {
+export function getClaimedStarSystemCount() {
   normalizeStarSystems();
 
   var claimedSystems = 0;
@@ -269,7 +277,7 @@ function getClaimedStarSystemCount() {
   return claimedSystems;
 }
 
-function updateStarMapEra() {
+export function updateStarMapEra() {
   if (getEmpireLegacyLevel() >= CONFIG.ASCENDANT_EMPIRE_LEGACY_LEVEL) {
     world.era = "Ascendant Empire";
   } else if (getEmpireSectorCount() >= CONFIG.GALACTIC_EMPIRE_SECTOR_COUNT) {
@@ -291,7 +299,7 @@ function updateStarMapEra() {
   }
 }
 
-function updateStarMapReadiness() {
+export function updateStarMapReadiness() {
   ensureStarMapState();
 
   world.starMapReady = Boolean(

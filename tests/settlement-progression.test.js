@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -63,8 +54,10 @@ function removeFoodInRadius() {
   return 0;
 }
 
+var settlementPopulation = 12;
+
 function countOrganismsInRadiusForLineage() {
-  return 12;
+  return settlementPopulation;
 }
 
 var indexedOrganismsByLineage = {};
@@ -281,6 +274,37 @@ world.empireLegacyProgress = CONFIG.EMPIRE_LEGACY_THRESHOLD - 1;
 world.lastEmpireLegacyTick = 0;
 PS.sim.civilizations.updateEmpireLegacy();
 assert.ok(world.empireLegacyLevel > 0, "legacy progression should advance empire legacy level");
+
+settlementPopulation = 0;
+var ghostTown = PS.sim.settlements.makeAt(1, 55, 25, {});
+ghostTown.development = CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT * 2 + 2;
+ghostTown.storedFood = 0;
+ghostTown.lastGrowthTick = world.tick;
+PS.sim.settlements.updateMetrics(ghostTown);
+assert.strictEqual(ghostTown.isActive, false, "test settlement should be empty before decay");
+var ghostDevelopmentBeforeDecay = ghostTown.development;
+for (var decayTick = 1; decayTick <= 100; decayTick++) {
+  world.tick += 1;
+  PS.sim.settlements.updateMetrics(ghostTown);
+  runSettlementGrowth(ghostTown);
+}
+assert.ok(ghostTown.development < ghostDevelopmentBeforeDecay, "empty settlement should lose development over 100 ticks");
+assert.ok(ghostTown.declineTicks > 0, "empty settlement should record decline intervals");
+assert.strictEqual(ghostTown.isActive, false, "empty settlement should not become active from preserved development");
+
+settlementPopulation = 0;
+var regressingTown = PS.sim.settlements.makeAt(1, 65, 25, {});
+regressingTown.development = CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT * 2 + 2;
+regressingTown.storedFood = 0;
+regressingTown.lastGrowthTick = world.tick;
+PS.sim.settlements.updateMetrics(regressingTown);
+assert.strictEqual(regressingTown.level, 3, "regression fixture should start at level 3");
+for (var regressionTick = 1; regressionTick <= 100; regressionTick++) {
+  world.tick += 1;
+  PS.sim.settlements.updateMetrics(regressingTown);
+  runSettlementGrowth(regressingTown);
+}
+assert.strictEqual(regressingTown.level, 2, "settlement development decay should allow level 3 to regress to level 2");
 
 console.log("settlement progression checks passed");
 `, context);

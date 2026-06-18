@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const particleData = JSON.parse(read("data/particles.json"));
 const namespaceSource = read("js/core/namespace.js");
@@ -17,6 +8,7 @@ const pipelineSource = read("js/render/pipeline.js");
 assert.ok(particleData.effects.rain, "particle data should define rain");
 assert.strictEqual(particleData.effects.rain.rate, 200, "rain should emit 200 particles per second");
 assert.ok(particleData.effects.snow, "particle data should define snow");
+assert.ok(particleData.effects.falling_leaves, "particle data should define falling leaf particles");
 assert.ok(particleData.effects.birth_sparkle, "particle data should define birth sparkle burst");
 assert.ok(particleData.effects.settlement_activity, "particle data should define settlement activity burst");
 assert.ok(namespaceSource.indexOf("js/render/particles.js") >= 0, "runtime manifest should load particles");
@@ -30,6 +22,13 @@ const context = {
   PS: { render: {} },
   CONFIG: { PARTICLE_MAX_ACTIVE: 10000 },
   canvas: { width: 1600, height: 850 },
+  world: {
+    tick: 0,
+    season: "autumn",
+    weather: { wind: { x: 0.5, y: 0, speed: 1.2 } }
+  },
+  WORLD_WIDTH: 4,
+  WORLD_HEIGHT: 4,
   performance: {
     now() {
       return Date.now();
@@ -58,6 +57,32 @@ context.PS.render.webgpuEntity = {
   drawParticleRects(values) {
     particleDraws.push(Array.from(values));
     return values && values.length > 0;
+  }
+};
+context.PS.vegetation = {
+  TYPES: {
+    NONE: 0,
+    TREE_SMALL: 1,
+    TREE_MEDIUM: 2,
+    TREE_BIG: 3
+  },
+  width: 4,
+  height: 4,
+  data: new context.Uint8Array(16)
+};
+context.PS.vegetation.data[5] = context.PS.vegetation.TYPES.TREE_BIG;
+context.PS.render.vegetation = {
+  getGrid() {
+    return context.PS.vegetation;
+  },
+  getVisibleTileRect() {
+    return { minX: 0, minY: 0, maxX: 3, maxY: 3 };
+  },
+  getTilePoint(tileX, tileY) {
+    return { x: tileX * 16 + 8, y: tileY * 16 + 8, visible: true, visibility: 1, scale: 1 };
+  },
+  isTreeType(type) {
+    return type >= 1 && type <= 3;
   }
 };
 
@@ -114,6 +139,22 @@ context.PS.render.projection = {
   }
 };
 assert.strictEqual(system.emitBirthSparkle({ x: 4, y: 8 }), 12, "organism birth should trigger a projected sparkle burst");
+
+const leaves = new context.PS.render.ParticleSystem(1000);
+leaves.loadDefinitions(particleData);
+const leafHash = leaves.hash(1, 1, 229);
+context.world.tick = (leafHash >>> 1) & 127;
+const emittedAutumnLeaves = leaves.emitFallingLeaves({
+  visualPolicy: { fallingLeavesPerTree: 4 }
+});
+const activeLeafIndex = Array.from(leaves.active).findIndex((active) => active);
+assert.ok(emittedAutumnLeaves > 0 && emittedAutumnLeaves <= 4, "autumn tree tiles should emit bounded falling leaf particles on their 128-tick slot");
+assert.strictEqual(leaves.emitFallingLeaves({ visualPolicy: { fallingLeavesPerTree: 4 } }), 0, "falling leaves should not double-emit within the same cycle frame");
+assert.ok(leaves.getStats().fallingLeafEmitted >= emittedAutumnLeaves, "leaf stats should track tree-derived emissions");
+assert.ok(activeLeafIndex >= 0 && leaves.vx[activeLeafIndex] > 0, "falling leaves should inherit wind influence into horizontal velocity");
+context.world.season = "winter";
+context.world.tick = (context.world.tick + 1) & 127;
+assert.strictEqual(leaves.emitFallingLeaves({ visualPolicy: { fallingLeavesPerTree: 4 } }), 0, "winter should suppress falling leaf emissions");
 
 const full = new context.PS.render.ParticleSystem(4);
 full.loadDefinitions(particleData);

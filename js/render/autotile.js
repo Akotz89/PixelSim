@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.autotile = PS.autotile || {};
 
 PS.autotile.getMask = function (tileX, tileY, grid) {
@@ -7,16 +8,13 @@ PS.autotile.getMask = function (tileX, tileY, grid) {
   var bits = PS.render && PS.render.TerrainTransitionResolver
     ? PS.render.TerrainTransitionResolver.BITS
     : { NW: 1, N: 2, NE: 4, E: 8, SE: 16, S: 32, SW: 64, W: 128 };
-  var offsets = [
-    { dx: -1, dy: -1, bit: bits.NW },
-    { dx: 0, dy: -1, bit: bits.N },
-    { dx: 1, dy: -1, bit: bits.NE },
-    { dx: 1, dy: 0, bit: bits.E },
-    { dx: 1, dy: 1, bit: bits.SE },
-    { dx: 0, dy: 1, bit: bits.S },
-    { dx: -1, dy: 1, bit: bits.SW },
-    { dx: -1, dy: 0, bit: bits.W }
-  ];
+  var offsets = PS.core && typeof PS.core.getTerrainNeighborOffsets === "function"
+    ? PS.core.getTerrainNeighborOffsets(bits)
+    : ["NW", "N", "NE", "E", "SE", "S", "SW", "W"].map(function (id, index) {
+      var dx = [ -1, 0, 1, 1, 1, 0, -1, -1 ][index];
+      var dy = [ -1, -1, -1, 0, 1, 1, 1, 0 ][index];
+      return { dx: dx, dy: dy, bit: bits[id] };
+    });
   var centerId = PS.render.Autotile.getTileId(grid, x, y);
   var mask = 0;
   var i;

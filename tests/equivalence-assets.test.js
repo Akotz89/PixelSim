@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const equivalenceSource = read("js/assets/equivalence.js");
@@ -200,5 +191,48 @@ assert.ok(
     brokenStats.missingKeys["pixel-data:unknown"] > 0,
   "broken pixel sidecar should be diagnostic"
 );
+
+context.PS.assets.loadedSheets.equivalence_terrain_transition_grass_sand_v1 = makeLoadedSheet(["grass-sand.pattern-02"]);
+context.PS.assets.loadedSheets.equivalence_terrain_transition_grass_sand_v1.sheet.getCell = function (name) {
+  if (name !== "grass-sand.pattern-02") {
+    return null;
+  }
+  return {
+    name,
+    x: 64,
+    y: 0,
+    w: 32,
+    h: 32,
+    image: { width: 32, height: 32 },
+    splitAtlas: true,
+    normalX: 320,
+    normalY: 0,
+    normalW: 32,
+    normalH: 32,
+    materialChannels: { r: "height", g: "roughness", b: "emissive", a: "coverage" },
+    materialX: 576,
+    materialY: 0,
+    materialW: 32,
+    materialH: 32
+  };
+};
+context.PS.assets.equivalence.resetFrameStats();
+context.PS.atlas.pages = [];
+const generatedTransition = context.PS.assets.equivalence.selectCell(
+  "transitions",
+  "grass-sand.pattern-02",
+  "terrainTransition",
+  "terrain.transition.fallback"
+);
+assert.strictEqual(generatedTransition.sheetId, "equivalence_terrain_transition_grass_sand_v1", "generated 46-pattern transition cells should resolve from transition atlas sheets when the legacy sheet does not contain them");
+assert.strictEqual(generatedTransition.renderCell.splitAtlas, true, "generated transition render cells should preserve split normal atlas metadata");
+assert.strictEqual(generatedTransition.renderCell.normalX, 320, "generated transition render cells should preserve normal panel coordinates");
+assert.strictEqual(generatedTransition.renderCell.materialX, 576, "generated transition render cells should preserve packed material panel coordinates");
+assert.deepStrictEqual(generatedTransition.renderCell.materialChannels, {
+  r: "height",
+  g: "roughness",
+  b: "emissive",
+  a: "coverage"
+}, "generated transition render cells should preserve material channel semantics");
 
 console.log("equivalence asset selection checks passed");

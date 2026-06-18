@@ -6,7 +6,18 @@ dist/
 .vite/
 tmp/
 reports/
+coverage/
 src/sim/target/
+output/
+.playwright-cli/
+fallow-report.json
+fallow-latest.md
+fallow-dupes.md
+fallow-health.md
+fallow-hotspots.md
+fallow-security.json
+fallow-security.md
+fallow-semantic.md
 
 # BMAD symlink (points to monorepo root _bmad/)
 _bmad

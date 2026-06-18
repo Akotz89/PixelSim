@@ -195,4 +195,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { buildAtlas, encodePng, variants };
+module.exports = { buildAtlas };

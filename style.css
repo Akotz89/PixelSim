@@ -51,7 +51,6 @@ h1 {
   box-sizing: border-box;
   box-shadow:
     inset 0 0 30px rgba(0, 0, 0, 0.78);
-  image-rendering: pixelated;
   cursor: grab;
   touch-action: none;
 }
@@ -907,6 +906,68 @@ h1 {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.hud-scale-cue {
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: minmax(54px, 0.7fr) minmax(72px, 1fr) minmax(64px, 0.8fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 7px;
+  background: rgba(112, 240, 208, 0.08);
+  border: 1px solid rgba(112, 240, 208, 0.24);
+  border-radius: 6px;
+}
+
+.hud-scale-cue b {
+  color: #aeb7d9;
+  font-size: 10px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-scale-bar {
+  display: block;
+  min-width: 64px;
+  height: 16px;
+  position: relative;
+}
+
+.hud-scale-bar i {
+  display: block;
+  max-width: 100%;
+  height: 8px;
+  margin-top: 4px;
+  border-left: 2px solid #f4f7ff;
+  border-right: 2px solid #f4f7ff;
+  border-bottom: 2px solid #f4f7ff;
+  box-sizing: border-box;
+}
+
+.hud-scale-meta {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  min-width: 0;
+}
+
+.hud-scale-meta strong,
+.hud-scale-meta em {
+  color: #f4f7ff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hud-scale-meta em {
+  color: #aeb7d9;
+  font-size: 9px;
 }
 
 #inspect-panel {

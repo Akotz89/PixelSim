@@ -1,4 +1,6 @@
-"use strict";
+import { PS } from "../core/namespace.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 // ── Staggered Tile Worker (AZR-492) ────────────────────────────────
 // Distributes tile-based work evenly across frames using a persistent
 // cursor and pre-shuffled visitation order.

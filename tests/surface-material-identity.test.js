@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   PS: {
@@ -163,5 +154,35 @@ assert.deepStrictEqual(blendedRgb, cappedTarget, "tile blend should cap cross-bi
 
 const packedBlend = context.PS.render.surfaceColor.blendWithTileBlendPacked(sample("grassland", "grass"), 0x2e6010);
 assert.deepStrictEqual(rgbFromPacked(packedBlend), cappedTarget, "packed tile blend should cap cross-biome contribution at 25%");
+
+const protectedWaterSample = sample("ocean", "open water", {
+  biomeWeights: { ocean: 0 },
+  blendTile: { biome: "desert" },
+  detail: { materialSignals: { waterDepth: 1 } }
+});
+const rawWaterBlend = context.PS.render.surfaceColor.blendWithTileBlendPacked(protectedWaterSample, 0x102030);
+const rawWaterTarget = context.PS.render.surfaceColor.getTileBlendRgb(protectedWaterSample.tileBlend);
+const rawWaterTargetPacked = context.PS.render.terrain.packRgb(rawWaterTarget.red, rawWaterTarget.green, rawWaterTarget.blue);
+assert.deepStrictEqual(
+  rgbFromPacked(rawWaterBlend),
+  rgbFromPacked(context.PS.render.terrain.blendPacked(0x102030, rawWaterTargetPacked, 0.2108)),
+  "packed tile blend should not protect material identity before final shade"
+);
+const protectedWater = rgbFromPacked(context.PS.render.surfaceColor.protectMaterialIdentityPacked(
+  protectedWaterSample,
+  context.PS.render.terrain.shadePacked(rawWaterBlend, 0.5)
+));
+assert.ok(protectedWater.blue >= 92, "final packed protection should preserve water identity after shading");
+
+const originalGetTileBlendRgb = context.PS.render.surfaceColor.getTileBlendRgb;
+context.PS.render.surfaceColor.getTileBlendRgb = function () {
+  throw new Error("packed tile blending must not route through hex/RGB tile blend helper");
+};
+assert.strictEqual(
+  context.PS.render.surfaceColor.blendWithTileBlendPacked(sample("grassland", "grass"), 0x2e6010),
+  packedBlend,
+  "packed tile blend should compute transition targets without hex/RGB conversion"
+);
+context.PS.render.surfaceColor.getTileBlendRgb = originalGetTileBlendRgb;
 
 console.log("surface material identity checks passed");

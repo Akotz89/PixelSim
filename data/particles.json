@@ -50,6 +50,20 @@
       "fadeIn": 0.08,
       "fadeOut": 0.7
     },
+    "falling_leaves": {
+      "type": "point",
+      "rate": 0,
+      "lifetime": 2.2,
+      "velocity": { "x": [-10, 10], "y": [18, 34] },
+      "gravity": 2,
+      "color": ["#9b5f22", "#b7742a", "#c49a38", "#7f8d35"],
+      "size": [2, 2],
+      "fadeIn": 0.08,
+      "fadeOut": 0.7,
+      "wobbleAmplitude": [3, 7],
+      "wobbleFrequency": [1.2, 2.1],
+      "windInfluence": 14
+    },
     "birth_sparkle": {
       "type": "point",
       "rate": 0,

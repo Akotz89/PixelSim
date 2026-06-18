@@ -1,4 +1,5 @@
-"use strict";
+import { PS } from "./namespace.js";
+
 PS.eventTypes = PS.eventTypes || {};
 
 PS.eventTypes.MILESTONE_REACHED = "milestone.reached";

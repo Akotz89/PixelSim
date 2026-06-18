@@ -107,10 +107,10 @@ This architecture document is being created through the GDS Architecture Workflo
 
 | Category | API | Role | Status |
 |----------|-----|------|--------|
-| Rendering | WebGPU (navigator.gpu) | Primary GPU renderer, WGSL shaders | ✅ Target (M-GPU-0) |
-| Rendering | WebGL2 (raw) | Fallback for browsers without WebGPU | ⏳ Maintained during migration |
-| Compute | WASM (WebAssembly) | CPU-heavy sim: tectonics, rivers, erosion | ⏳ M-Sim-3 |
-| Threading | Web Worker (blob URL) | WASM compute off main thread | ⏳ AZR-855 |
+| Rendering | WebGPU (navigator.gpu) | Required GPU renderer, WGSL shaders | ✅ In use |
+| Rendering | WebGL2 (raw) | Legacy migration debt only, not a fallback | 🚫 Retired |
+| Compute | WASM (WebAssembly) | CPU-heavy sim: tectonics, rivers, erosion | ✅ Sidecar path |
+| Threading | Web Worker (blob URL) | WASM compute off main thread | ✅ In use |
 | Threading | OffscreenCanvas | Background terrain chunk generation | ⏳ Evaluate |
 | Storage | IndexedDB | Save/load world state | ⏳ Planned |
 | Audio | Web Audio API | Procedural soundscapes | 🔵 Deferred (Phase 5) |
@@ -131,7 +131,7 @@ The game must work when opened as a local file (double-click `index.html`). This
 
 These must be made in Step 4:
 
-1. Rendering pipeline architecture (Canvas 2D primary, WebGL2 upgrade path)
+1. Rendering pipeline architecture (WebGPU required, no runtime fallback)
 2. Simulation loop (fixed timestep, decoupling strategy)
 3. Data model (classes, typed arrays, ECS-like, struct-of-arrays)
 4. Script loading (classic scripts order, concatenation, or import-map)
@@ -148,7 +148,7 @@ These must be made in Step 4:
 
 | # | Category | Decision | Rationale |
 |---|----------|----------|-----------|
-| D1 | Rendering | WebGPU primary + WASM compute | Planet rendering is a GPU workload. WebGPU is the native web GPU API; WASM handles CPU-bound serial work. Both are vanilla browser built-ins. WebGL2 is the fallback. |
+| D1 | Rendering | WebGPU required + WASM compute | Planet rendering is a GPU workload. WebGPU is the native web GPU API; WASM handles CPU-bound serial work. Both are vanilla browser built-ins. WebGL2 is legacy migration debt only. |
 | D2 | Sim Loop | Decoupled accumulator | Handles 12-order-of-magnitude time compression. Deterministic fixed dt. WASM worker owns sim tick; main thread owns render. |
 | D3 | Data Model | Hybrid (classes + typed arrays) | Complex entities (settlements) use classes. Mass entities (organisms, particles) use typed arrays. |
 | D4 | Script Loading | Classic `<script>` + `PS.*` namespace | Works on `file://`. No build tools. Namespace convention keeps growing codebase organized. |
@@ -173,8 +173,9 @@ base64-encoded to a `.wasm.js` sidecar and committed.
 - G-Buffer rendering: diffuse + normal attachments, full-screen compositor blit
 - Texture atlas as `GPUTexture` arrays
 
-**Fallback:** WebGL2 for browsers without `navigator.gpu` (Safari < 18, older
-Chromium). Feature-detect in `PS.gpu.init()`.
+**Unsupported browsers:** browsers without `navigator.gpu` receive a
+WebGPU-required startup failure. Pixeldarium does not maintain a WebGL2 or
+Canvas2D runtime fallback.
 
 ### D2: Simulation Loop — Decoupled Accumulator
 
@@ -439,42 +440,14 @@ Pixeldarium/
 
 ---
 
-**Pattern:** Listen for `webglcontextlost` / `webglcontextrestored` events. Pause simulation, rebuild all GPU resources on restore.
+**Pattern:** handle WebGPU `device.lost`. Pause simulation, terminate streaming
+workers that own GPU-bound transfer buffers, clear transient renderer resources,
+and either surface a permanent WebGPU-required failure or recreate WebGPU
+resources on the supported recovery path.
 
-```
-// In js/render/gl.js
-PS.gl.init = function(canvas) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('webgl2', { antialias: false, alpha: false });
-    PS.assert(this.ctx, 'WebGL2 not supported in this browser');
-    
-    canvas.addEventListener('webglcontextlost', (e) => {
-        e.preventDefault(); // Required to enable restore
-        PS.log('render', 'error', 'WebGL context lost');
-        PS.sim.pause();
-        PS.events.emit('render.contextlost');
-    });
-    
-    canvas.addEventListener('webglcontextrestored', () => {
-        PS.log('render', 'info', 'WebGL context restored — rebuilding GPU resources');
-        this.rebuildAllResources();
-        PS.sim.resume();
-        PS.events.emit('render.contextrestored');
-    });
-};
-
-PS.gl.rebuildAllResources = function() {
-    // Recompile all shaders
-    PS.render.terrain.rebuildShaders();
-    PS.render.entities.rebuildShaders();
-    PS.render.atmosphere.rebuildShaders();
-    // Re-upload all textures and buffers
-    PS.render.terrain.rebuildTextures();
-    PS.render.entities.rebuildBuffers();
-};
-```
-
-**Rule:** Every render subsystem must implement `rebuildShaders()` and `rebuildTextures()`/`rebuildBuffers()`. GPU resources are NEVER assumed to persist between frames.
+**Rule:** Every render subsystem must implement `rebuildShaders()` and
+`rebuildTextures()`/`rebuildBuffers()`. GPU resources are NEVER assumed to
+persist after device loss.
 
 ---
 
@@ -500,7 +473,7 @@ PS.gl.rebuildAllResources = function() {
 
 ### Issues Found and Resolved
 
-1. **WebGL2 context loss** — Added recovery pattern with `rebuildAllResources()` contract
+1. **WebGPU device loss** — Added recovery pattern with `device.lost` and renderer resource rebuild contract
 
 ### Validation Date
 
