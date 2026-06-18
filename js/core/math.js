@@ -1,4 +1,10 @@
+"use strict";
+import { PS } from "./namespace.js";
+import { chance, clamp, hashSeedText, normalizeSeedText, randomInt, randomUnit, setWorldSeed } from "./utils.js";
+import { world } from "../systems/state.js";
+
 PS.math = PS.math || {};
+PS.core = PS.core || {};
 
 PS.math.normalizeSeedText = function (seedValue) {
   if (typeof normalizeSeedText === "function") {
@@ -10,19 +16,16 @@ PS.math.normalizeSeedText = function (seedValue) {
 };
 
 PS.math.hashSeedText = function (seedText) {
+  var hash;
+
   if (typeof hashSeedText === "function") {
     return hashSeedText(seedText);
   }
 
-  var hash = 2166136261;
-
-  for (var i = 0; i < seedText.length; i++) {
-    hash ^= seedText.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  hash = hash >>> 0;
-  return hash === 0 ? 1 : hash;
+  hash = String(seedText || "").split("").reduce(function (state, character) {
+    return Math.imul(state ^ character.charCodeAt(0), 16777619);
+  }, 2166136261) >>> 0;
+  return hash || 1;
 };
 
 PS.math.setSeed = function (seedValue) {
@@ -105,6 +108,38 @@ PS.math.deterministicUnitNoise = function (a, b, c) {
   var value = Math.sin((Number(a) || 0) * 12.9898 + (Number(b) || 0) * 78.233 + (Number(c) || 0) * 37.719) * 43758.5453;
 
   return value - Math.floor(value);
+};
+
+PS.core.makeFloatFieldArray = PS.core.makeFloatFieldArray || function (length, value) {
+  var values = new Float32Array(Math.max(0, Math.round(Number(length) || 0)));
+
+  if (Number(value) !== 0) {
+    values.fill(Number(value) || 0);
+  }
+
+  return values;
+};
+
+PS.core.normalizeFloatField = PS.core.normalizeFloatField || function (fields, name, cellCount, makeArray) {
+  var source = fields[name];
+  var target;
+  var limit;
+
+  if (source instanceof Float32Array && source.length === cellCount) {
+    return;
+  }
+
+  target = (makeArray || PS.core.makeFloatFieldArray)(cellCount, 0);
+
+  if (source && typeof source.length === "number") {
+    limit = Math.min(cellCount, source.length);
+
+    for (var i = 0; i < limit; i++) {
+      target[i] = Number(source[i]) || 0;
+    }
+  }
+
+  fields[name] = target;
 };
 
 PS.math.seedText = PS.math.seedText || "";

@@ -1,34 +1,25 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const equivalenceSource = read("js/assets/equivalence.js");
-const entityWebglSource = read("js/render/entity-webgl.js");
-const webgl2RendererSource = read("js/render/webgl2-renderer.js");
+const batcherSource = read("js/render/surface-tile-batcher.js");
+const webgpuSurfaceTileSource = read("js/render/webgpu-surface-tile.js");
 
 assert.ok(
   namespaceSource.indexOf("js/assets/equivalence.js") > namespaceSource.indexOf("js/assets/sprite-sheet.js"),
   "equivalence selector should load after sprite sheet support"
 );
 assert.ok(
-  namespaceSource.indexOf("js/assets/equivalence.js") < namespaceSource.indexOf("js/render/entity-webgl.js"),
-  "equivalence selector should load before entity WebGL selection"
+  namespaceSource.indexOf("js/assets/equivalence.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js"),
+  "equivalence selector should load before terrain batch selection"
 );
 assert.ok(
-  entityWebglSource.indexOf("selectEquivalenceCell") >= 0,
-  "entity WebGL should select accepted equivalence cells before submitting fallback atlas cells"
+  batcherSource.indexOf("selectAcceptedTerrainCell") >= 0,
+  "terrain batcher should select accepted equivalence terrain cells before submitting atlas cells"
 );
 assert.ok(
-  webgl2RendererSource.indexOf("equivalenceAssetSelections") >= 0,
-  "renderer stats should expose accepted equivalence asset selection counts"
+  webgpuSurfaceTileSource.indexOf("equivalenceSelectedUses") >= 0,
+  "WebGPU surface tile stats should expose accepted equivalence asset selection counts"
 );
 
 function makeLoadedSheet(cellIds) {
@@ -90,7 +81,12 @@ const context = {
           "grain"
         ]),
         equivalence_vegetation_scatter_v0: makeLoadedSheet([
-          "oak.0"
+          "oak.0",
+          "pine.0",
+          "berry-bush.0",
+          "flower.0",
+          "grass-tuft.0",
+          "mushroom.0"
         ]),
         equivalence_ui_status_icons_v0: makeLoadedSheet([
           "stat-population"
@@ -110,24 +106,7 @@ const context = {
       }
     },
     render: {},
-    atlas: {
-      pages: [],
-      getTraitOrganismCell() {
-        return { name: "entity.organism.trait.1.1.1.0.0.0.0", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getFoodCell() {
-        return { name: "entity.food.0", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getSettlementCell() {
-        return { name: "entity.settlement.0", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getSettlementWorldUiCell() {
-        return { name: "entity.settlement.world-ui.population", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      },
-      getRepresentativeIntentCell() {
-        return { name: "entity.intent.work", pageIndex: 0, u0: 0, v0: 0, u1: 1, v1: 1 };
-      }
-    }
+    atlas: { pages: [] }
   },
   Number,
   String,
@@ -147,31 +126,34 @@ const context = {
   }
 };
 
-context.PS.render.entityWebgl = {};
 vm.createContext(context);
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
-vm.runInContext(entityWebglSource, context, { filename: "js/render/entity-webgl.js" });
 
-context.PS.render.entityWebgl.resetFrameStats();
-context.PS.render.entityWebgl.getOrganismCell({ x: 1, y: 1, traits: { bodySize: 1 }, lineageId: 1 }, "citizen");
-context.PS.render.entityWebgl.getFoodCell({ x: 1, y: 1 }, "stockpile");
-context.PS.render.entityWebgl.getFoodCell({ x: 1, y: 1 }, "vegetation");
-context.PS.render.entityWebgl.getSettlementCell({ id: 1 }, "settlement");
-context.PS.render.entityWebgl.getSettlementWorldUiCell({ id: 1 }, "population");
+context.PS.assets.equivalence.resetFrameStats();
+context.PS.assets.equivalence.select("citizen", "entity.fallback");
+context.PS.assets.equivalence.select("stockpile", "entity.food.fallback");
+context.PS.assets.equivalence.select("vegetation", "entity.vegetation.fallback");
+context.PS.assets.equivalence.select("settlement", "entity.settlement.fallback");
+context.PS.assets.equivalence.select("worldUi", "entity.settlement.world-ui.population");
 context.PS.assets.equivalence.select("workStatus", "entity.intent.work");
 context.PS.assets.equivalence.select("effect", "entity.effect.fallback");
 context.PS.assets.equivalence.selectCell("terrain", "grass-lush.0", "terrainGround", "terrain.fallback");
 context.PS.assets.equivalence.selectCell("transitions", "grass-water.edge.n", "terrainTransition", "terrain.transition.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "pine.0", "vegetation", "entity.vegetation.tree.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "berry-bush.0", "vegetation", "entity.vegetation.bush.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "flower.0", "vegetation", "entity.vegetation.flower.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "grass-tuft.0", "vegetation", "entity.vegetation.tuft.fallback");
+context.PS.assets.equivalence.selectCell("vegetation", "mushroom.0", "vegetation", "entity.vegetation.mushroom.fallback");
 
 const selectedCitizen = context.PS.assets.equivalence.select("citizen", "entity.fallback");
 const stats = context.PS.assets.equivalence.getStats();
 
-assert.strictEqual(stats.selected, 10, "accepted equivalence selector should record each render category selection");
-assert.strictEqual(stats.rendered, 10, "accepted equivalence selector should create renderable atlas cells");
+assert.strictEqual(stats.selected, 15, "accepted equivalence selector should record each render category selection");
+assert.strictEqual(stats.rendered, 15, "accepted equivalence selector should create renderable atlas cells");
 assert.strictEqual(stats.missing, 0, "all test equivalence sheets/cells should resolve");
 assert.strictEqual(stats.byUse.citizen, 2, "citizen render category should select accepted creature sheet cells");
 assert.strictEqual(stats.byUse.stockpile, 1, "stockpile render category should select accepted resource sheet cells");
-assert.strictEqual(stats.byUse.vegetation, 1, "vegetation render category should select accepted vegetation sheet cells");
+assert.strictEqual(stats.byUse.vegetation, 6, "vegetation render category should select accepted vegetation sheet cells");
 assert.strictEqual(stats.byUse.settlement, 1, "settlement render category should select accepted structure sheet cells");
 assert.strictEqual(stats.byUse.worldUi, 1, "world UI render category should select accepted UI sheet cells");
 assert.strictEqual(stats.byUse.workStatus, 1, "intent/status render category should select accepted overlay sheet cells");
@@ -181,6 +163,7 @@ assert.strictEqual(stats.byUse.terrainTransition, 1, "terrain transition render 
 assert.strictEqual(stats.bySheet.equivalence_creature_npc_refined_v1, 2, "creature/citizen usage should name the accepted creature sheet");
 assert.strictEqual(stats.bySheet.equivalence_settlement_structures_v0, 1, "settlement usage should name the accepted structure sheet");
 assert.strictEqual(stats.bySheet.equivalence_resource_stockpiles_v0, 1, "stockpile usage should name the accepted resource sheet");
+assert.strictEqual(stats.bySheet.equivalence_vegetation_scatter_v0, 6, "vegetation usage should name the accepted scatter sheet");
 assert.strictEqual(stats.bySheet.equivalence_material_effect_overlays_v0, 1, "effect usage should name the accepted material/effect sheet");
 assert.strictEqual(stats.bySheet.equivalence_terrain_materials_v0, 1, "terrain usage should name the accepted terrain material sheet");
 assert.strictEqual(stats.bySheet.equivalence_terrain_transitions_v0, 1, "transition usage should name the accepted terrain transition sheet");
@@ -208,5 +191,48 @@ assert.ok(
     brokenStats.missingKeys["pixel-data:unknown"] > 0,
   "broken pixel sidecar should be diagnostic"
 );
+
+context.PS.assets.loadedSheets.equivalence_terrain_transition_grass_sand_v1 = makeLoadedSheet(["grass-sand.pattern-02"]);
+context.PS.assets.loadedSheets.equivalence_terrain_transition_grass_sand_v1.sheet.getCell = function (name) {
+  if (name !== "grass-sand.pattern-02") {
+    return null;
+  }
+  return {
+    name,
+    x: 64,
+    y: 0,
+    w: 32,
+    h: 32,
+    image: { width: 32, height: 32 },
+    splitAtlas: true,
+    normalX: 320,
+    normalY: 0,
+    normalW: 32,
+    normalH: 32,
+    materialChannels: { r: "height", g: "roughness", b: "emissive", a: "coverage" },
+    materialX: 576,
+    materialY: 0,
+    materialW: 32,
+    materialH: 32
+  };
+};
+context.PS.assets.equivalence.resetFrameStats();
+context.PS.atlas.pages = [];
+const generatedTransition = context.PS.assets.equivalence.selectCell(
+  "transitions",
+  "grass-sand.pattern-02",
+  "terrainTransition",
+  "terrain.transition.fallback"
+);
+assert.strictEqual(generatedTransition.sheetId, "equivalence_terrain_transition_grass_sand_v1", "generated 46-pattern transition cells should resolve from transition atlas sheets when the legacy sheet does not contain them");
+assert.strictEqual(generatedTransition.renderCell.splitAtlas, true, "generated transition render cells should preserve split normal atlas metadata");
+assert.strictEqual(generatedTransition.renderCell.normalX, 320, "generated transition render cells should preserve normal panel coordinates");
+assert.strictEqual(generatedTransition.renderCell.materialX, 576, "generated transition render cells should preserve packed material panel coordinates");
+assert.deepStrictEqual(generatedTransition.renderCell.materialChannels, {
+  r: "height",
+  g: "roughness",
+  b: "emissive",
+  a: "coverage"
+}, "generated transition render cells should preserve material channel semantics");
 
 console.log("equivalence asset selection checks passed");

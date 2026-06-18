@@ -1,7 +1,13 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetSurfaceSnowSignal } from "./planet-surface.js";
+import { blendHexColors, blendRgbWithHex, clampRgb, shadeRgb } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceLandform = PS.render.surfaceLandform || {};
 
-PS.render.surfaceLandform.applyMaterialPixelAccents = function (color, latitude, longitude, tile) {
+function makeLandformMaterialContext(color, latitude, longitude, tile) {
   var biome = tile && tile.biome ? tile.biome : "unknown";
   var coarse = PS.render.terrain.getMaterialPixelNoise(latitude, longitude, 18000, 503);
   var fine = PS.render.terrain.getMaterialPixelNoise(latitude, longitude, 6200, 607);
@@ -19,39 +25,79 @@ PS.render.surfaceLandform.applyMaterialPixelAccents = function (color, latitude,
     tile && Number.isFinite(Number(tile.shelfStrength)) ? Number(tile.shelfStrength) : 0
   ), 0, 1);
   var snowSignal = getPlanetSurfaceSnowSignal(tile, latitude);
-  var snowVisual = PS.render.surfaceLandform.getCloudlessSnowVisualAmount(biome, snowSignal, polar, highland, ridge);
-  var material = color;
 
-  if (biome === "ocean") {
-    material = blendRgbWithHex(material, coarse > 0.58 ? "#0d4e70" : "#03152f", clamp(0.035 + fine * 0.045, 0, 0.08));
-    material = blendRgbWithHex(material, "#6fb9b1", clamp(shallowWater * 0.10 + coast * 0.05 + fleck * coast * 0.05, 0, 0.16));
-  } else if (biome === "forest") {
-    material = blendRgbWithHex(material, coarse > 0.50 ? "#143d21" : "#06180e", clamp(0.05 + fine * 0.08, 0, 0.13));
-    material = blendRgbWithHex(material, "#2d6b35", clamp(fleck * 0.045, 0, 0.06));
-  } else if (biome === "grassland") {
-    material = blendRgbWithHex(material, coarse > 0.54 ? "#7c8d42" : "#244d28", clamp(0.045 + fine * 0.065, 0, 0.12));
-    material = blendRgbWithHex(material, "#917638", clamp((1 - fine) * 0.04, 0, 0.06));
-  } else if (biome === "desert") {
-    material = blendRgbWithHex(material, coarse > 0.48 ? "#c2a25a" : "#755e31", clamp(0.055 + fine * 0.070, 0, 0.14));
-    material = blendRgbWithHex(material, "#564f43", clamp((ridge + roughness) * 0.035 + fleck * 0.035, 0, 0.09));
-  } else if (biome === "tundra") {
-    material = blendRgbWithHex(material, coarse > 0.50 ? "#7f8b78" : "#465a50", clamp(0.045 + fine * 0.060, 0, 0.12));
-    material = blendRgbWithHex(material, "#cfd9d7", clamp(snowSignal * 0.18, 0, 0.22));
-  } else if (biome === "ice") {
-    material = blendRgbWithHex(material, coarse > 0.48 ? "#f0f8f9" : "#8fbfd1", clamp(0.08 + fine * 0.08, 0, 0.18));
-    material = blendRgbWithHex(material, "#d7eef7", clamp(fleck * 0.08, 0, 0.10));
-  }
+  return {
+    biome: biome,
+    coarse: coarse,
+    fine: fine,
+    fleck: fleck,
+    ridge: ridge,
+    roughness: roughness,
+    coast: coast,
+    shallowWater: shallowWater,
+    snowSignal: snowSignal,
+    snowVisual: PS.render.surfaceLandform.getCloudlessSnowVisualAmount(biome, snowSignal, polar, highland, ridge),
+    material: color
+  };
+}
 
-  material = blendRgbWithHex(material, "#68655a", clamp(ridge * 0.08 + roughness * 0.05, 0, 0.15));
+function applyOceanMaterialAccent(context) {
+  context.material = blendRgbWithHex(context.material, context.coarse > 0.58 ? "#0d4e70" : "#03152f", clamp(0.035 + context.fine * 0.045, 0, 0.08));
+  context.material = blendRgbWithHex(context.material, "#6fb9b1", clamp(context.shallowWater * 0.10 + context.coast * 0.05 + context.fleck * context.coast * 0.05, 0, 0.16));
+}
 
-  if (biome !== "ice") {
-    material = blendRgbWithHex(material, "#e6f2f3", clamp(snowVisual * 0.72, 0, 0.18));
-  }
+function applyForestMaterialAccent(context) {
+  context.material = blendRgbWithHex(context.material, context.coarse > 0.50 ? "#143d21" : "#06180e", clamp(0.05 + context.fine * 0.08, 0, 0.13));
+  context.material = blendRgbWithHex(context.material, "#2d6b35", clamp(context.fleck * 0.045, 0, 0.06));
+}
 
-  return clampRgb(shadeRgb(material, clamp(0.94 + (coarse - 0.5) * 0.10 + (fine - 0.5) * 0.08, 0.84, 1.08)));
+function applyGrasslandMaterialAccent(context) {
+  context.material = blendRgbWithHex(context.material, context.coarse > 0.54 ? "#7c8d42" : "#244d28", clamp(0.045 + context.fine * 0.065, 0, 0.12));
+  context.material = blendRgbWithHex(context.material, "#917638", clamp((1 - context.fine) * 0.04, 0, 0.06));
+}
+
+function applyDesertMaterialAccent(context) {
+  context.material = blendRgbWithHex(context.material, context.coarse > 0.48 ? "#c2a25a" : "#755e31", clamp(0.055 + context.fine * 0.070, 0, 0.14));
+  context.material = blendRgbWithHex(context.material, "#564f43", clamp((context.ridge + context.roughness) * 0.035 + context.fleck * 0.035, 0, 0.09));
+}
+
+function applyTundraMaterialAccent(context) {
+  context.material = blendRgbWithHex(context.material, context.coarse > 0.50 ? "#7f8b78" : "#465a50", clamp(0.045 + context.fine * 0.060, 0, 0.12));
+  context.material = blendRgbWithHex(context.material, "#cfd9d7", clamp(context.snowSignal * 0.18, 0, 0.22));
+}
+
+function applyIceMaterialAccent(context) {
+  context.material = blendRgbWithHex(context.material, context.coarse > 0.48 ? "#f0f8f9" : "#8fbfd1", clamp(0.08 + context.fine * 0.08, 0, 0.18));
+  context.material = blendRgbWithHex(context.material, "#d7eef7", clamp(context.fleck * 0.08, 0, 0.10));
+}
+
+var LANDFORM_MATERIAL_ACCENT_HANDLERS = {
+  ocean: applyOceanMaterialAccent,
+  forest: applyForestMaterialAccent,
+  grassland: applyGrasslandMaterialAccent,
+  desert: applyDesertMaterialAccent,
+  tundra: applyTundraMaterialAccent,
+  ice: applyIceMaterialAccent
 };
 
-PS.render.surfaceLandform.makeImagerySignalTile = function (biome, signals, latitude) {
+PS.render.surfaceLandform.applyMaterialPixelAccents = function applyLandformMaterialPixelAccents(color, latitude, longitude, tile) {
+  var context = makeLandformMaterialContext(color, latitude, longitude, tile);
+  var handler = LANDFORM_MATERIAL_ACCENT_HANDLERS[context.biome];
+
+  if (handler) {
+    handler(context);
+  }
+
+  context.material = blendRgbWithHex(context.material, "#68655a", clamp(context.ridge * 0.08 + context.roughness * 0.05, 0, 0.15));
+
+  if (context.biome !== "ice") {
+    context.material = blendRgbWithHex(context.material, "#e6f2f3", clamp(context.snowVisual * 0.72, 0, 0.18));
+  }
+
+  return clampRgb(shadeRgb(context.material, clamp(0.94 + (context.coarse - 0.5) * 0.10 + (context.fine - 0.5) * 0.08, 0.84, 1.08)));
+};
+
+PS.render.surfaceLandform.makeImagerySignalTile = function makeLandformImagerySignalTile(biome, signals, latitude) {
   return {
     biome: biome,
     latitude: latitude,
@@ -71,7 +117,7 @@ PS.render.surfaceLandform.makeImagerySignalTile = function (biome, signals, lati
   };
 };
 
-PS.render.surfaceLandform.getCloudlessSnowVisualAmount = function (biome, snowSignal, polar, highland, ridge) {
+PS.render.surfaceLandform.getCloudlessSnowVisualAmount = function getLandformCloudlessSnowVisualAmount(biome, snowSignal, polar, highland, ridge) {
   var normalizedSnow = clamp(Number(snowSignal) || 0, 0, 1);
   var normalizedPolar = clamp(Number(polar) || 0, 0, 1);
   var normalizedHighland = clamp(Number(highland) || 0, 0, 1);
@@ -93,11 +139,11 @@ PS.render.surfaceLandform.getCloudlessSnowVisualAmount = function (biome, snowSi
   return clamp(normalizedSnow * mountainGate * 0.075, 0, 0.09);
 };
 
-function getPlanetCloudlessSnowVisualAmount(biome, snowSignal, polar, highland, ridge) {
+export function getPlanetCloudlessSnowVisualAmount(biome, snowSignal, polar, highland, ridge) {
   return PS.render.surfaceLandform.getCloudlessSnowVisualAmount(biome, snowSignal, polar, highland, ridge);
 }
 
-PS.render.surfaceLandform.getGlobeLandformIdentity = function (biome, signals, noise, surfaceMeters, normalizedLatitude) {
+function makeLandformIdentityContext(biome, signals, noise, surfaceMeters, normalizedLatitude) {
   var normalizedBiome = biome || "unknown";
   var elevation = clamp((Math.tanh((Number(signals && signals.elevation) || 0) / 2) + 1) / 2, 0, 1);
   var moisture = clamp((Number(signals && signals.moisture) || 0.8) / 1.8, 0, 1);
@@ -121,67 +167,125 @@ PS.render.surfaceLandform.getGlobeLandformIdentity = function (biome, signals, n
   var relief = clamp(highland * 0.34 + ridge * 0.34 + roughness * 0.17 + slope * 0.15, 0, 1);
   var directionalBands = Math.sin(eastMeters * 0.000018 + northMeters * 0.000010 + regional * Math.PI * 2) * 0.5 + 0.5;
   var brokenBands = clamp(directionalBands * 0.62 + local * 0.24 + fine * 0.14, 0, 1);
-  var identity = {
+
+  return {
+    biome: normalizedBiome,
+    elevation: elevation,
+    moisture: moisture,
+    coast: coast,
+    shelf: shelf,
+    river: river,
+    riverMouth: riverMouth,
+    snowSignal: snowSignal,
+    polar: polar,
+    highland: highland,
+    dry: dry,
+    relief: relief,
+    brokenBands: brokenBands,
+    broad: broad
+  };
+}
+
+function makeBaseLandformIdentity(context) {
+  return {
     type: "lowland",
     color: "#5f6b45",
-    amount: clamp(0.025 + relief * 0.09 + Math.abs(broad - 0.5) * 0.04, 0, 0.18),
+    amount: clamp(0.025 + context.relief * 0.09 + Math.abs(context.broad - 0.5) * 0.04, 0, 0.18),
     snowcap: 0,
-    relief: relief
+    relief: context.relief
   };
+}
 
-  if (normalizedBiome === "ocean") {
-    var basin = clamp((1 - elevation) * 0.52 + (1 - shelf) * 0.36 + (1 - coast) * 0.12, 0, 1);
+function applyOceanLandformIdentity(identity, context) {
+    var basin = clamp((1 - context.elevation) * 0.52 + (1 - context.shelf) * 0.36 + (1 - context.coast) * 0.12, 0, 1);
 
-    identity.type = shelf > 0.34 || coast > 0.42 || riverMouth > 0.18 ? "continental-shelf" : "deep-basin";
+    identity.type = context.shelf > 0.34 || context.coast > 0.42 || context.riverMouth > 0.18 ? "continental-shelf" : "deep-basin";
     identity.color = identity.type === "continental-shelf" ? "#7bc7ad" : "#001229";
-    identity.amount = clamp(0.05 + basin * 0.12 + shelf * 0.16 + coast * 0.08 + brokenBands * 0.035, 0, 0.25);
-    return identity;
-  }
+    identity.amount = clamp(0.05 + basin * 0.12 + context.shelf * 0.16 + context.coast * 0.08 + context.brokenBands * 0.035, 0, 0.25);
+}
 
-  if (normalizedBiome === "forest") {
-    identity.type = relief > 0.50 ? "forested-highland" : "canopy";
-    identity.color = moisture > 0.56 ? "#0b2e19" : "#26452a";
-    identity.amount = clamp(0.05 + moisture * 0.08 + (1 - brokenBands) * 0.04 + relief * 0.035, 0, 0.19);
-  } else if (normalizedBiome === "grassland") {
-    identity.type = dry > 0.50 ? "dry-plain" : "green-plain";
-    identity.color = dry > 0.50 ? "#9b853f" : "#3f7137";
-    identity.amount = clamp(0.04 + moisture * 0.045 + dry * 0.075 + relief * 0.05, 0, 0.18);
-  } else if (normalizedBiome === "desert") {
-    identity.type = relief > 0.46 ? "rocky-desert" : "dune-field";
+function applyForestLandformIdentity(identity, context) {
+    identity.type = context.relief > 0.50 ? "forested-highland" : "canopy";
+    identity.color = context.moisture > 0.56 ? "#0b2e19" : "#26452a";
+    identity.amount = clamp(0.05 + context.moisture * 0.08 + (1 - context.brokenBands) * 0.04 + context.relief * 0.035, 0, 0.19);
+}
+
+function applyGrasslandLandformIdentity(identity, context) {
+    identity.type = context.dry > 0.50 ? "dry-plain" : "green-plain";
+    identity.color = context.dry > 0.50 ? "#9b853f" : "#3f7137";
+    identity.amount = clamp(0.04 + context.moisture * 0.045 + context.dry * 0.075 + context.relief * 0.05, 0, 0.18);
+}
+
+function applyDesertLandformIdentity(identity, context) {
+    identity.type = context.relief > 0.46 ? "rocky-desert" : "dune-field";
     identity.color = identity.type === "rocky-desert" ? "#6b6250" : "#c0a057";
-    identity.amount = clamp(0.07 + dry * 0.10 + brokenBands * 0.07 + relief * 0.06, 0, 0.24);
-  } else if (normalizedBiome === "tundra") {
-    identity.type = polar > 0.40 ? "cold-steppe" : "scrubland";
-    identity.color = polar > 0.40 ? "#8c9a91" : "#596c60";
-    identity.amount = clamp(0.05 + polar * 0.07 + relief * 0.06 + brokenBands * 0.03, 0, 0.20);
-  } else if (normalizedBiome === "ice") {
-    identity.type = relief > 0.36 ? "ice-ridge" : "ice-sheet";
+    identity.amount = clamp(0.07 + context.dry * 0.10 + context.brokenBands * 0.07 + context.relief * 0.06, 0, 0.24);
+}
+
+function applyTundraLandformIdentity(identity, context) {
+    identity.type = context.polar > 0.40 ? "cold-steppe" : "scrubland";
+    identity.color = context.polar > 0.40 ? "#8c9a91" : "#596c60";
+    identity.amount = clamp(0.05 + context.polar * 0.07 + context.relief * 0.06 + context.brokenBands * 0.03, 0, 0.20);
+}
+
+function applyIceLandformIdentity(identity, context) {
+    identity.type = context.relief > 0.36 ? "ice-ridge" : "ice-sheet";
     identity.color = identity.type === "ice-ridge" ? "#83b9ce" : "#eaf6f8";
-    identity.amount = clamp(0.08 + polar * 0.10 + relief * 0.08 + (1 - brokenBands) * 0.035, 0, 0.26);
-  }
+    identity.amount = clamp(0.08 + context.polar * 0.10 + context.relief * 0.08 + (1 - context.brokenBands) * 0.035, 0, 0.26);
+}
 
-  if (normalizedBiome !== "ice" && relief > 0.54) {
-    identity.type = relief > 0.68 || highland > 0.62 ? "mountain-highland" : identity.type;
-    identity.color = blendHexColors(identity.color, "#777264", clamp(0.24 + relief * 0.28, 0, 0.52));
-    identity.amount = clamp(identity.amount + relief * 0.08, 0, 0.24);
-    identity.snowcap = clamp((snowSignal * 0.36 + polar * 0.18) * relief - 0.06, 0, 0.16);
+function applyHighlandLandformIdentity(identity, context) {
+  if (context.biome !== "ice" && context.relief > 0.54) {
+    identity.type = context.relief > 0.68 || context.highland > 0.62 ? "mountain-highland" : identity.type;
+    identity.color = blendHexColors(identity.color, "#777264", clamp(0.24 + context.relief * 0.28, 0, 0.52));
+    identity.amount = clamp(identity.amount + context.relief * 0.08, 0, 0.24);
+    identity.snowcap = clamp((context.snowSignal * 0.36 + context.polar * 0.18) * context.relief - 0.06, 0, 0.16);
   }
+}
 
-  if (coast > 0.42 || shelf > 0.44) {
+function applyCoastalLandformIdentity(identity, context) {
+  if (context.coast > 0.42 || context.shelf > 0.44) {
     identity.type = identity.type === "mountain-highland" ? identity.type : "coastal-" + identity.type;
-    identity.color = blendHexColors(identity.color, "#b5ab70", clamp(coast * 0.22 + shelf * 0.12, 0, 0.30));
-    identity.amount = clamp(identity.amount + coast * 0.04 + shelf * 0.035, 0, 0.25);
+    identity.color = blendHexColors(identity.color, "#b5ab70", clamp(context.coast * 0.22 + context.shelf * 0.12, 0, 0.30));
+    identity.amount = clamp(identity.amount + context.coast * 0.04 + context.shelf * 0.035, 0, 0.25);
+  }
+}
+
+function applyRiverLandformIdentity(identity, context) {
+  if (context.river > 0.40) {
+    identity.color = blendHexColors(identity.color, "#245d70", clamp(context.river * 0.38, 0, 0.42));
+    identity.amount = clamp(identity.amount + context.river * 0.04, 0, 0.25);
+  }
+}
+
+var LANDFORM_IDENTITY_HANDLERS = {
+  ocean: applyOceanLandformIdentity,
+  forest: applyForestLandformIdentity,
+  grassland: applyGrasslandLandformIdentity,
+  desert: applyDesertLandformIdentity,
+  tundra: applyTundraLandformIdentity,
+  ice: applyIceLandformIdentity
+};
+
+PS.render.surfaceLandform.getGlobeLandformIdentity = function getGlobeLandformIdentity(biome, signals, noise, surfaceMeters, normalizedLatitude) {
+  var context = makeLandformIdentityContext(biome, signals, noise, surfaceMeters, normalizedLatitude);
+  var identity = makeBaseLandformIdentity(context);
+  var handler = LANDFORM_IDENTITY_HANDLERS[context.biome];
+
+  if (handler) {
+    handler(identity, context);
   }
 
-  if (river > 0.40) {
-    identity.color = blendHexColors(identity.color, "#245d70", clamp(river * 0.38, 0, 0.42));
-    identity.amount = clamp(identity.amount + river * 0.04, 0, 0.25);
+  if (context.biome !== "ocean") {
+    applyHighlandLandformIdentity(identity, context);
+    applyCoastalLandformIdentity(identity, context);
+    applyRiverLandformIdentity(identity, context);
   }
 
   return identity;
 };
 
-PS.render.surfaceLandform.getTerrainBand = function (biome, signals, noise, normalizedLatitude) {
+function makeTerrainBandContext(biome, signals, noise, normalizedLatitude) {
   var normalizedBiome = biome || "unknown";
   var elevationValue = signals && Number.isFinite(Number(signals.elevation)) ? Number(signals.elevation) : 0;
   var moistureValue = signals && Number.isFinite(Number(signals.moisture)) ? Number(signals.moisture) : 0.8;
@@ -204,41 +308,90 @@ PS.render.surfaceLandform.getTerrainBand = function (biome, signals, noise, norm
   var bandNoise = Math.round(clamp(regional * 0.55 + fine * 0.45, 0, 1) * 6) / 6;
   var relief = clamp(highland * 0.34 + ridge * 0.28 + roughness * 0.13 + slope * 0.17 + Math.abs(hillshade - 0.5) * 0.12, 0, 1);
   var dry = clamp(1 - moisture, 0, 1);
-  var amount = clamp(0.025 + relief * 0.16 + bandNoise * 0.045, 0, 0.24);
-  var color = "#6b6a5f";
-
-  if (normalizedBiome === "ocean") {
-    amount = clamp(0.04 + shelf * 0.14 + coast * 0.07 + (1 - elevation) * 0.035, 0, 0.20);
-    color = shelf > 0.36 || coast > 0.40 ? "#69b7a6" : "#021631";
-  } else if (normalizedBiome === "forest") {
-    color = relief > 0.44 ? "#5f674b" : (moisture > 0.58 ? "#0a2516" : "#24442a");
-    amount = clamp(amount + moisture * 0.035 - dry * 0.025, 0, 0.23);
-  } else if (normalizedBiome === "grassland") {
-    color = relief > 0.50 ? "#77735a" : (dry > 0.48 ? "#a08a43" : "#47723a");
-  } else if (normalizedBiome === "desert") {
-    color = relief > 0.42 ? "#786b53" : "#c3a456";
-    amount = clamp(amount + dry * 0.05, 0, 0.27);
-  } else if (normalizedBiome === "tundra") {
-    color = relief > 0.36 || polar > 0.32 ? "#a3aca1" : "#5f7068";
-    amount = clamp(amount + polar * 0.035, 0, 0.25);
-  } else if (normalizedBiome === "ice") {
-    color = relief > 0.38 ? "#88bdd2" : "#f2fbff";
-    amount = clamp(0.04 + relief * 0.10 + polar * 0.045, 0, 0.19);
-  }
-
-  if (river > 0.36 && normalizedBiome !== "ocean" && normalizedBiome !== "ice") {
-    color = "#245d70";
-    amount = clamp(amount + river * 0.08, 0, 0.28);
-  }
 
   return {
-    color: color,
-    amount: amount,
+    biome: normalizedBiome,
+    elevation: elevation,
+    moisture: moisture,
+    highland: highland,
+    coast: coast,
+    shelf: shelf,
+    river: river,
+    polar: polar,
+    bandNoise: bandNoise,
     relief: relief,
-    bandNoise: bandNoise
+    dry: dry
   };
+}
+
+function makeBaseTerrainBand(context) {
+  return {
+    color: "#6b6a5f",
+    amount: clamp(0.025 + context.relief * 0.16 + context.bandNoise * 0.045, 0, 0.24),
+    relief: context.relief,
+    bandNoise: context.bandNoise
+  };
+}
+
+function applyOceanTerrainBand(band, context) {
+  band.amount = clamp(0.04 + context.shelf * 0.14 + context.coast * 0.07 + (1 - context.elevation) * 0.035, 0, 0.20);
+  band.color = context.shelf > 0.36 || context.coast > 0.40 ? "#69b7a6" : "#021631";
+}
+
+function applyForestTerrainBand(band, context) {
+  band.color = context.relief > 0.44 ? "#5f674b" : (context.moisture > 0.58 ? "#0a2516" : "#24442a");
+  band.amount = clamp(band.amount + context.moisture * 0.035 - context.dry * 0.025, 0, 0.23);
+}
+
+function applyGrasslandTerrainBand(band, context) {
+  band.color = context.relief > 0.50 ? "#77735a" : (context.dry > 0.48 ? "#a08a43" : "#47723a");
+}
+
+function applyDesertTerrainBand(band, context) {
+  band.color = context.relief > 0.42 ? "#786b53" : "#c3a456";
+  band.amount = clamp(band.amount + context.dry * 0.05, 0, 0.27);
+}
+
+function applyTundraTerrainBand(band, context) {
+  band.color = context.relief > 0.36 || context.polar > 0.32 ? "#a3aca1" : "#5f7068";
+  band.amount = clamp(band.amount + context.polar * 0.035, 0, 0.25);
+}
+
+function applyIceTerrainBand(band, context) {
+  band.color = context.relief > 0.38 ? "#88bdd2" : "#f2fbff";
+  band.amount = clamp(0.04 + context.relief * 0.10 + context.polar * 0.045, 0, 0.19);
+}
+
+function applyRiverTerrainBand(band, context) {
+  if (context.river > 0.36 && context.biome !== "ocean" && context.biome !== "ice") {
+    band.color = "#245d70";
+    band.amount = clamp(band.amount + context.river * 0.08, 0, 0.28);
+  }
+}
+
+var TERRAIN_BAND_HANDLERS = {
+  ocean: applyOceanTerrainBand,
+  forest: applyForestTerrainBand,
+  grassland: applyGrasslandTerrainBand,
+  desert: applyDesertTerrainBand,
+  tundra: applyTundraTerrainBand,
+  ice: applyIceTerrainBand
 };
 
-function getPlanetLandformTerrainBand(biome, signals, noise, normalizedLatitude) {
+PS.render.surfaceLandform.getTerrainBand = function getLandformTerrainBand(biome, signals, noise, normalizedLatitude) {
+  var context = makeTerrainBandContext(biome, signals, noise, normalizedLatitude);
+  var band = makeBaseTerrainBand(context);
+  var handler = TERRAIN_BAND_HANDLERS[context.biome];
+
+  if (handler) {
+    handler(band, context);
+  }
+
+  applyRiverTerrainBand(band, context);
+
+  return band;
+};
+
+export function getPlanetLandformTerrainBand(biome, signals, noise, normalizedLatitude) {
   return PS.render.surfaceLandform.getTerrainBand(biome, signals, noise, normalizedLatitude);
 }

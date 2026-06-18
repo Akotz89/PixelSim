@@ -1,3 +1,9 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getBiomeBaseHeightMeters, getBiomeReliefRangeMeters, getSurfaceMeterCoordinate } from "./planet-surface.js";
+import { getLatitudeDistanceKmPerDegree, getLongitudeDistanceKmPerDegree, getPlanetViewScale, normalizeLongitude } from "./planet-view.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceGeometry = PS.render.surfaceGeometry || {};
 
@@ -220,6 +226,13 @@ PS.render.surfaceGeometry.getRelief = function (latitude, longitude, tile, sampl
   };
 };
 
+/**
+ * @description Selects a small surface feature marker from biome, LOD noise, and relief signals for localized visual accents.
+ * @param {string} biome Normalized biome id for the sample.
+ * @param {Object} lod Level-of-detail noise signals for the sample.
+ * @param {Object} relief Slope, hillshade, and feature-relief signals.
+ * @returns {Object} Feature marker descriptor with type, intensity, color, size, and seed.
+ */
 PS.render.surfaceGeometry.getFeatureMarker = function (biome, lod, relief) {
   var type = "none";
   var intensity = 0;

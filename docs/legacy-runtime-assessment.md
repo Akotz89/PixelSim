@@ -77,7 +77,7 @@ Decision: migrated in AZR-356. `index.html` no longer loads `js/legacy/planet/*`
 Target shape:
 
 - Existing `js/render/*` modules own rendering behavior.
-- Ordered compatibility surfaces live in `js/render/planet-view.js`, `js/render/planet-surface.js`, `js/render/planet-grid.js`, `js/render/terrain-hydrology.js`, `js/render/terrain-seeding.js`, `js/render/terrain-cache-runtime.js`, `js/render/terrain-render-compat.js`, and `js/render/pipeline-compat.js`.
+- Ordered compatibility surfaces live in `js/render/planet-view.js`, `js/render/planet-surface.js`, `js/render/planet-grid.js`, `js/render/terrain-hydrology.js`, `js/render/terrain-seeding.js`, `js/render/terrain-cache-runtime.js`, and `js/render/terrain-render-compat.js`. The old `pipeline-compat.js` shim was retired when the WebGPU pipeline became the owner of `window.drawWorld`.
 - `js/core/planet-metrics.js` and `js/core/world-grid.js` continue to own shared calculations.
 - Compatibility wrappers should disappear only after render and zoom-anchor tests cover direct `PS.render.*` API use.
 

@@ -1,3 +1,10 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getPlanetView } from "./planet-view.js";
+import { world } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceRender = PS.render.surfaceRender || {};
 
@@ -24,14 +31,34 @@ PS.render.surfaceRender.createCacheState = function () {
       lastCulledChunks: 0,
       lastPendingChunks: 0,
       lastGeneratedThisPass: 0,
+      lastReadyChunks: 0,
+      lastDrawnReadyChunks: 0,
+      lastHiddenReadyChunks: 0,
       lastFallbackChunks: 0,
       lastFallbackGeneratedThisPass: 0,
       lastFallbackPendingChunks: 0,
+      lastHiddenFallbackChunks: 0,
+      lastCoveredByUnderlayChunks: 0,
+      lastVisibleCoverageComplete: true,
+      lastVisibleCoverageRatio: 1,
       lastPlaceholderChunks: 0,
       lastPreloadAttemptedChunks: 0,
       lastPreloadCacheHits: 0,
       lastPreloadedChunks: 0,
       lastPreloadZoomLevel: 0,
+      lastStableUnderlayRequired: false,
+      lastStableUnderlayDrawn: false,
+      lastStableUnderlayPolicy: "",
+      lastUnderlayRequestedLevel: 0,
+      lastUnderlaySourceLevel: 0,
+      lastUnderlayRequestedName: "orbit",
+      lastUnderlaySourceName: "orbit",
+      lastUnderlayTextureWidth: 0,
+      lastUnderlayTextureHeight: 0,
+      lastReadyChildCoverage: 1,
+      lastFallbackStaleCoverage: 0,
+      lastSmearEvidence: 0,
+      lastFlatParentEvidence: 0,
       dirtyChunks: 0,
       dirtyInvalidations: 0,
       lastChunkKey: "-"
@@ -39,11 +66,11 @@ PS.render.surfaceRender.createCacheState = function () {
   };
 };
 
-var terrainCache = null;
-var localTerrainCacheSignature = null;
-var localSurfaceRenderChunkCache = PS.render.surfaceRender.createCacheState();
+export var terrainCache = null;
+export var localTerrainCacheSignature = null;
+export var localSurfaceRenderChunkCache = PS.render.surfaceRender.createCacheState();
 
-function getLocalSurfaceRenderChunkKey(address) {
+export function getLocalSurfaceRenderChunkKey(address) {
   if (!address) {
     return "-";
   }
@@ -60,6 +87,9 @@ function getLocalSurfaceRenderChunkKey(address) {
 PS.render.surfaceRender.invalidateTerrainCache = function () {
   terrainCache = null;
   localTerrainCacheSignature = null;
+  if (PS.render.webgpuSurfaceTile && typeof PS.render.webgpuSurfaceTile.clearBatchCache === "function") {
+    PS.render.webgpuSurfaceTile.clearBatchCache();
+  }
 };
 
 PS.render.surfaceRender.getChunkCacheLimit = function () {
@@ -187,14 +217,34 @@ PS.render.surfaceRender.getCacheStats = function () {
     lastCulledChunks: localSurfaceRenderChunkCache.stats.lastCulledChunks,
     lastPendingChunks: localSurfaceRenderChunkCache.stats.lastPendingChunks,
     lastGeneratedThisPass: localSurfaceRenderChunkCache.stats.lastGeneratedThisPass,
+    lastReadyChunks: localSurfaceRenderChunkCache.stats.lastReadyChunks,
+    lastDrawnReadyChunks: localSurfaceRenderChunkCache.stats.lastDrawnReadyChunks,
+    lastHiddenReadyChunks: localSurfaceRenderChunkCache.stats.lastHiddenReadyChunks,
     lastFallbackChunks: localSurfaceRenderChunkCache.stats.lastFallbackChunks,
     lastFallbackGeneratedThisPass: localSurfaceRenderChunkCache.stats.lastFallbackGeneratedThisPass,
     lastFallbackPendingChunks: localSurfaceRenderChunkCache.stats.lastFallbackPendingChunks,
+    lastHiddenFallbackChunks: localSurfaceRenderChunkCache.stats.lastHiddenFallbackChunks,
+    lastCoveredByUnderlayChunks: localSurfaceRenderChunkCache.stats.lastCoveredByUnderlayChunks,
+    lastVisibleCoverageComplete: localSurfaceRenderChunkCache.stats.lastVisibleCoverageComplete,
+    lastVisibleCoverageRatio: localSurfaceRenderChunkCache.stats.lastVisibleCoverageRatio,
     lastPlaceholderChunks: localSurfaceRenderChunkCache.stats.lastPlaceholderChunks,
     lastPreloadAttemptedChunks: localSurfaceRenderChunkCache.stats.lastPreloadAttemptedChunks,
     lastPreloadCacheHits: localSurfaceRenderChunkCache.stats.lastPreloadCacheHits,
     lastPreloadedChunks: localSurfaceRenderChunkCache.stats.lastPreloadedChunks,
     lastPreloadZoomLevel: localSurfaceRenderChunkCache.stats.lastPreloadZoomLevel,
+    lastStableUnderlayRequired: localSurfaceRenderChunkCache.stats.lastStableUnderlayRequired,
+    lastStableUnderlayDrawn: localSurfaceRenderChunkCache.stats.lastStableUnderlayDrawn,
+    lastStableUnderlayPolicy: localSurfaceRenderChunkCache.stats.lastStableUnderlayPolicy,
+    lastUnderlayRequestedLevel: localSurfaceRenderChunkCache.stats.lastUnderlayRequestedLevel,
+    lastUnderlaySourceLevel: localSurfaceRenderChunkCache.stats.lastUnderlaySourceLevel,
+    lastUnderlayRequestedName: localSurfaceRenderChunkCache.stats.lastUnderlayRequestedName,
+    lastUnderlaySourceName: localSurfaceRenderChunkCache.stats.lastUnderlaySourceName,
+    lastUnderlayTextureWidth: localSurfaceRenderChunkCache.stats.lastUnderlayTextureWidth,
+    lastUnderlayTextureHeight: localSurfaceRenderChunkCache.stats.lastUnderlayTextureHeight,
+    lastReadyChildCoverage: localSurfaceRenderChunkCache.stats.lastReadyChildCoverage,
+    lastFallbackStaleCoverage: localSurfaceRenderChunkCache.stats.lastFallbackStaleCoverage,
+    lastSmearEvidence: localSurfaceRenderChunkCache.stats.lastSmearEvidence,
+    lastFlatParentEvidence: localSurfaceRenderChunkCache.stats.lastFlatParentEvidence,
     dirtyChunks: localSurfaceRenderChunkCache.stats.dirtyChunks,
     dirtyInvalidations: localSurfaceRenderChunkCache.stats.dirtyInvalidations,
     canvases: PS.render.surfaceRender.canvases && typeof PS.render.surfaceRender.canvases.getStats === "function"
@@ -229,37 +279,11 @@ PS.render.surfaceRender.releaseRenderCanvas = function (renderItem) {
 };
 
 PS.render.surfaceRender.releaseGpuChunkTexture = function (renderKey) {
-  if (
-    !renderKey ||
-    !PS.render.webglEngine ||
-    typeof PS.render.webglEngine.releaseCanvasTexture !== "function"
-  ) {
-    return false;
-  }
-
-  return PS.render.webglEngine.releaseCanvasTexture(
-    "surface-chunks",
-    PS.render.surfaceWebgl && PS.render.surfaceWebgl.state ? PS.render.surfaceWebgl.state.gl : null,
-    renderKey,
-    false
-  );
+  return !!renderKey && false;
 };
 
 PS.render.surfaceRender.releaseGpuMaterialTexture = function (renderKey) {
-  if (
-    !renderKey ||
-    !PS.render.webglEngine ||
-    typeof PS.render.webglEngine.releaseCanvasTexture !== "function"
-  ) {
-    return false;
-  }
-
-  return PS.render.webglEngine.releaseCanvasTexture(
-    "surface-materials",
-    PS.render.surfaceWebgl && PS.render.surfaceWebgl.state ? PS.render.surfaceWebgl.state.gl : null,
-    renderKey,
-    false
-  );
+  return !!renderKey && false;
 };
 
 PS.render.surfaceRender.storeCompletedChunk = function (address, renderChunk) {
@@ -350,7 +374,7 @@ PS.render.surfaceRender.getChunk = function (address, allowGenerate) {
   }
 
   if (allowGenerate === false) {
-    return null;
+    return PS.render.surfaceRender.findFallbackChunk(address);
   }
 
   var pendingBuilder = localSurfaceRenderChunkCache.pendingChunks[renderKey];
@@ -365,18 +389,58 @@ PS.render.surfaceRender.getChunk = function (address, allowGenerate) {
         workerPending: true,
         address: address
       };
-      return null;
+      return PS.render.surfaceRender.findFallbackChunk(address);
     }
 
     renderChunk = PS.render.surfaceRender.makeReadyChunk(address, "sync");
     if (!renderChunk) {
-      return null;
+      return PS.render.surfaceRender.findFallbackChunk(address);
     }
     return PS.render.surfaceRender.storeCompletedChunk(address, renderChunk);
   }
 
   if (pendingBuilder.workerPending) {
+    return PS.render.surfaceRender.findFallbackChunk(address);
+  }
+
+  return PS.render.surfaceRender.findFallbackChunk(address);
+};
+
+// Walk the parent lineage to find the nearest cached ancestor chunk.
+// This is the "never show black" policy: the Google Earth core principle.
+PS.render.surfaceRender.findFallbackChunk = function (address) {
+  if (!address || !PS.render.surface || typeof PS.render.surface.getChunkParentAddress !== "function") {
     return null;
+  }
+
+  for (var parentZoom = address.zoomLevel - 1; parentZoom >= 0; parentZoom--) {
+    var parentAddress = PS.render.surface.getChunkParentAddress(address, parentZoom);
+
+    if (!parentAddress) {
+      continue;
+    }
+
+    var parentKey = getLocalSurfaceRenderChunkKey(parentAddress);
+    var parentChunk = localSurfaceRenderChunkCache.chunks[parentKey];
+
+    if (parentChunk) {
+      localSurfaceRenderChunkCache.stats.lastFallbackChunks++;
+      PS.render.surfaceRender.promoteChunkKey(parentKey);
+      return {
+        readyState: "fallback",
+        isFallback: true,
+        fallbackZoomLevel: parentAddress.zoomLevel,
+        requestedZoomLevel: address.zoomLevel,
+        source: parentChunk.source || "fallback",
+        address: parentAddress,
+        requestedAddress: address,
+        width: parentChunk.width,
+        height: parentChunk.height,
+        cellCache: parentChunk.cellCache,
+        canvas: parentChunk.canvas,
+        promotedAt: parentChunk.promotedAt
+      };
+    }
   }
 
   return null;

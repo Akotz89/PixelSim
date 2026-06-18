@@ -56,11 +56,11 @@ the same unit of scheduling, caching, eviction, prefetch, and invalidation.
 Failure mode: separate render, sim, worker, and query grids produce hidden
 conversion work and stale edge behavior.
 
-### 3. WebGL2 Owns Pixel Throughput
+### 3. WebGPU Owns Pixel Throughput
 
 Planet rendering is a GPU workload. Canvas2D is not a runtime requirement or
-fallback target. Production simulation rendering should use WebGL2 data
-textures, atlases, instancing, and batched layers.
+fallback target. Production simulation rendering uses WebGPU storage buffers,
+WGSL shaders, atlases, instancing, and batched layers.
 
 The target is not "draw the same pixels faster." The target is to stop sending
 repeated CPU-side pixel work through the frame loop.
@@ -85,7 +85,7 @@ once visual richness increases.
 
 ### 5. Readiness Is A First-Class State
 
-Workers, image loading, terrain chunk generation, WebGL texture upload,
+Workers, image loading, terrain chunk generation, WebGPU buffer/texture upload,
 simulation summaries, and zoom transition prefetching must use explicit states:
 
 - requested
@@ -153,7 +153,7 @@ Before optimizing or implementing a large system, answer these questions:
 
 ### Rendering
 
-- Prioritize WebGL2 data-texture tilemap and batched layer rendering.
+- Prioritize WebGPU storage-buffer tilemap and batched layer rendering.
 - Treat Canvas2D surface caches as obsolete unloaded code until deleted; they
   must not become runtime requirements or acceptance criteria.
 - Keep layer ordering formal and batchable.

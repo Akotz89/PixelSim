@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -40,6 +41,7 @@ const context = {
 const source = [
   "js/core/namespace.js",
   "config.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/utils.js",
   "js/core/math.js",

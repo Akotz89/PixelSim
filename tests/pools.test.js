@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -46,6 +37,7 @@ const source = [
   "config.js",
   "const WORLD_WIDTH = 320; const WORLD_HEIGHT = 170;",
   "js/core/utils.js",
+  "js/core/trait-schema.js",
   "js/core/config.js",
   "js/core/world-grid.js",
   "js/systems/pool-manager.js",
@@ -121,7 +113,9 @@ assert.strictEqual(PS.pools.food.capacity, 3, "food capacity should be configura
 assert.ok(PS.poolManager.pools.organisms, "organism pool should register with pool manager");
 assert.ok(PS.poolManager.pools.food, "food pool should register with pool manager");
 assert.ok(PS.pools.organism.arrays.x instanceof Float32Array, "organism x should be typed-array backed");
-assert.strictEqual(Object.keys(PS.pools.organism.arrays).length, 36, "organism pool should expose biology identity, trait, and tile-link arrays");
+assert.strictEqual(Object.keys(PS.pools.organism.arrays).length, 40, "organism pool should expose biology identity, packed trait, compatibility trait, and tile-link arrays");
+assert.ok(PS.pools.organism.arrays.traitBuffer instanceof Float32Array, "organism traits should have a packed stride buffer");
+assert.strictEqual(PS.pools.organism.arrays.traitBuffer.length, 4 * PS.bio.TRAIT_STRIDE, "packed trait buffer should be capacity times schema stride");
 assert.strictEqual(PS.pools.organism.arrays.nextInTile[0], -1, "organism tile-grid next pointer should default to no link");
 assert.strictEqual(PS.pools.organism.arrays.prevInTile[0], -1, "organism tile-grid previous pointer should default to no link");
 
@@ -132,18 +126,27 @@ assert.strictEqual(PS.poolManager.getStats().organisms.free, 3, "pool manager sh
 assert.strictEqual(organism.x, 5, "pooled organism should expose x");
 organism.energy = 42;
 organism.traits.vision = 27;
+organism.traits.intelligence = 0.5;
+organism.traits.sociality = 0.25;
+organism.traits.carnivory = 0.75;
 organism.speciesId = 3;
 organism.populationId = 5;
 organism.representativeId = 7;
 organism.traits.bodySize = 1.5;
 organism.traits.limbCount = 6;
+organism.traits.bodyShape = 999;
 assert.strictEqual(PS.pools.organism.arrays.energy[organism.poolIndex], 42, "organism energy should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.vision[organism.poolIndex], 27, "trait writes should update typed array");
+assert.strictEqual(PS.pools.organism.arrays.traitBuffer[organism.poolIndex * PS.bio.TRAIT_STRIDE + PS.bio.TRAIT_VISION], 27, "trait writes should update packed trait buffer");
+assert.strictEqual(PS.pools.organism.arrays.intelligence[organism.poolIndex], 0.5, "intelligence should write through to typed array");
+assert.strictEqual(PS.pools.organism.arrays.sociality[organism.poolIndex], 0.25, "sociality should write through to typed array");
+assert.strictEqual(PS.pools.organism.arrays.carnivory[organism.poolIndex], 0.75, "carnivory should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.speciesId[organism.poolIndex], 3, "species id should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.populationId[organism.poolIndex], 5, "population id should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.representativeId[organism.poolIndex], 7, "representative id should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.bodySize[organism.poolIndex], 1.5, "body size should write through to typed array");
 assert.strictEqual(PS.pools.organism.arrays.limbCount[organism.poolIndex], 6, "limb count should write through to typed array");
+assert.strictEqual(organism.traits.bodyShape, CONFIG.TRAIT_BODY_SHAPE_MAX, "direct trait writes should clamp through schema bounds");
 
 organism.energy = 0;
 world.organisms = [organism];
@@ -191,6 +194,47 @@ assert.ok(memoryLabel.indexOf("MB est") > -1, "performance debug should estimate
 assert.ok(poolLabel.indexOf("org 4/4") > -1, "performance debug should report organism pool usage");
 assert.ok(poolLabel.indexOf("food 3/3") > -1, "performance debug should report food pool usage");
 assert.ok(poolLabel.indexOf("poolMB") > -1, "performance debug should report pool memory usage");
+
+var unsafePool = {
+  capacity: 2,
+  items: [{ id: 1 }, { id: 2 }],
+  freeList: [1, 0],
+  freeTop: 2,
+  activeCount: 0,
+  acquire: function() {
+    if (this.freeTop <= 0) {
+      return null;
+    }
+
+    var slot = this.items[this.freeList[--this.freeTop]];
+    this.activeCount++;
+    return slot;
+  },
+  release: function(slot) {
+    var index = this.items.indexOf(slot);
+
+    if (index < 0) {
+      return false;
+    }
+
+    this.freeList[this.freeTop++] = index;
+    this.activeCount--;
+    return true;
+  },
+  reset: function() {
+    this.freeList = [1, 0];
+    this.freeTop = 2;
+    this.activeCount = 0;
+  }
+};
+
+PS.poolManager.register("unsafe-test", unsafePool);
+var unsafeSlot = PS.poolManager.acquire("unsafe-test");
+assert.strictEqual(PS.poolManager.release("unsafe-test", unsafeSlot), true, "first release should return slot to unsafe pool");
+assert.strictEqual(PS.poolManager.release("unsafe-test", unsafeSlot), false, "pool manager should reject double-free before raw pool mutates");
+var unsafeA = PS.poolManager.acquire("unsafe-test");
+var unsafeB = PS.poolManager.acquire("unsafe-test");
+assert.notStrictEqual(unsafeA, unsafeB, "double-free guard should prevent duplicate slot acquisition");
 
 console.log("pool checks passed");
 `, context);

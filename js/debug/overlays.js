@@ -1,3 +1,7 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.debug = PS.debug || {};
 
 PS.debug.overlays = {

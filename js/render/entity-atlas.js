@@ -1,3 +1,8 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 PS.render = PS.render || {};
 
 PS.atlas = PS.atlas || {
@@ -19,6 +24,7 @@ PS.atlas = PS.atlas || {
     routeCells: 0,
     influenceCells: 0,
     worldUiCells: 0,
+    vegetationCells: 0,
     eventMarkerCells: 0,
     intentCells: 0,
     pageBytes: 0,
@@ -41,6 +47,7 @@ PS.atlas.reset = function () {
   PS.atlas.stats.routeCells = 0;
   PS.atlas.stats.influenceCells = 0;
   PS.atlas.stats.worldUiCells = 0;
+  PS.atlas.stats.vegetationCells = 0;
   PS.atlas.stats.eventMarkerCells = 0;
   PS.atlas.stats.intentCells = 0;
   PS.atlas.stats.pageBytes = 0;
@@ -435,10 +442,169 @@ PS.atlas.drawFoodCell = function (cell, variant, richness, familyBucket) {
   }
 };
 
+PS.atlas.getVegetationPalette = function (type) {
+  var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
+
+  if (type === types.ROCK) {
+    return {
+      base: [100, 106, 96, 255],
+      dark: [54, 58, 56, 255],
+      light: [156, 158, 142, 255]
+    };
+  }
+
+  if (type === types.FLOWER) {
+    return {
+      base: [102, 176, 80, 255],
+      dark: [40, 96, 46, 255],
+      light: [234, 194, 92, 255]
+    };
+  }
+
+  if (type === types.MUSHROOM) {
+    return {
+      base: [154, 94, 128, 255],
+      dark: [82, 48, 72, 255],
+      light: [222, 174, 164, 255]
+    };
+  }
+
+  if (type === types.GRASS_TUFT) {
+    return {
+      base: [78, 138, 72, 255],
+      dark: [34, 82, 42, 255],
+      light: [134, 178, 82, 255]
+    };
+  }
+
+  if (type === types.BUSH) {
+    return {
+      base: [54, 126, 58, 255],
+      dark: [24, 74, 34, 255],
+      light: [108, 174, 82, 255]
+    };
+  }
+
+  return {
+    base: [38, 116, 54, 255],
+    dark: [20, 64, 32, 255],
+    light: [96, 168, 76, 255],
+    trunk: [94, 70, 44, 255]
+  };
+};
+
+PS.atlas.drawVegetationCell = function (cell, type, variant, part) {
+  var palette = PS.atlas.getVegetationPalette(type);
+  var types = PS.vegetation && PS.vegetation.TYPES ? PS.vegetation.TYPES : {};
+  var safeVariant = clamp(Math.round(Number(variant) || 0), 0, 15);
+  var isTree = type === types.TREE_SMALL || type === types.TREE_MEDIUM || type === types.TREE_BIG;
+  var isCanopy = part === "canopy";
+  var centerX = 8 + (safeVariant % 3) - 1;
+  var centerY = isCanopy ? 6 : 9;
+  var radius = type === types.TREE_BIG ? 5 : (type === types.TREE_MEDIUM ? 4 : 3);
+  var i;
+
+  PS.atlas.fillNormalHalf(cell);
+
+  if (isTree && !isCanopy) {
+    PS.atlas.writePixel(cell, centerX, 7, palette.trunk);
+    PS.atlas.writePixel(cell, centerX, 8, palette.trunk);
+    PS.atlas.writePixel(cell, centerX - 1, 9, palette.dark);
+    PS.atlas.writePixel(cell, centerX, 9, palette.trunk);
+    PS.atlas.writePixel(cell, centerX + 1, 9, palette.dark);
+    PS.atlas.writePixel(cell, centerX - 1, 10, palette.dark);
+    PS.atlas.writePixel(cell, centerX, 10, palette.trunk);
+    PS.atlas.writePixel(cell, centerX + 1, 10, palette.dark);
+    return;
+  }
+
+  if (isTree) {
+    PS.atlas.writeDot(cell, centerX, centerY, radius, palette.base);
+    PS.atlas.writeDot(cell, centerX - 3, centerY + 2, Math.max(2, radius - 2), palette.dark);
+    PS.atlas.writeDot(cell, centerX + 3, centerY + 1, Math.max(2, radius - 2), palette.base);
+    PS.atlas.writeDot(cell, centerX - 1, centerY - 2, Math.max(1, radius - 3), palette.light);
+    return;
+  }
+
+  if (type === types.ROCK) {
+    PS.atlas.writeDot(cell, 8, 10, 4, palette.base);
+    PS.atlas.writePixel(cell, 5, 9, palette.light);
+    PS.atlas.writePixel(cell, 9, 8, palette.light);
+    PS.atlas.writePixel(cell, 11, 11, palette.dark);
+    PS.atlas.writePixel(cell, 7, 12, palette.dark);
+    return;
+  }
+
+  if (type === types.GRASS_TUFT) {
+    for (i = 0; i < 7; i += 1) {
+      PS.atlas.writePixel(cell, 5 + i, 12 - (i % 3), i % 2 === 0 ? palette.light : palette.base);
+      PS.atlas.writePixel(cell, 5 + i, 13, palette.dark);
+    }
+    return;
+  }
+
+  if (type === types.FLOWER || type === types.MUSHROOM) {
+    for (i = 0; i < 4; i += 1) {
+      var x = 5 + ((safeVariant + i * 3) % 7);
+      var y = 7 + ((safeVariant * 2 + i * 2) % 5);
+      PS.atlas.writePixel(cell, x, y + 3, palette.dark);
+      PS.atlas.writeDot(cell, x, y, 1, i % 2 ? palette.light : palette.base);
+    }
+    return;
+  }
+
+  PS.atlas.writeDot(cell, 7, 9, 3, palette.base);
+  PS.atlas.writeDot(cell, 10, 10, 3, palette.dark);
+  PS.atlas.writeDot(cell, 8, 7, 2, palette.light);
+};
+
 PS.atlas.getSettlementArchetype = function (settlement) {
   if (settlement && settlement.isColony) { return "colony"; }
   if (settlement && settlement.isOutpost) { return "outpost"; }
   return "camp";
+};
+
+PS.atlas.buildingCategories = {
+  residential: { source: "housing-room", autotile: true },
+  industrial: { source: "production-room", autotile: true },
+  military: { source: "outpost-room", autotile: true },
+  civic: { source: "assembly-room", autotile: true }
+};
+
+PS.atlas.getBuildingAutotileMask = function (neighbors) {
+  var n = neighbors || {};
+  var mask = 0;
+
+  if (n.north) { mask |= 1; }
+  if (n.east) { mask |= 2; }
+  if (n.south) { mask |= 4; }
+  if (n.west) { mask |= 8; }
+  return mask;
+};
+
+PS.atlas.getBuildingSpriteDescriptor = function (building) {
+  var category = String(building && building.category || building && building.family || "residential").toLowerCase();
+  var definition = PS.atlas.buildingCategories[category] || PS.atlas.buildingCategories.residential;
+  var lineageId = Math.max(1, Math.round(Number(building && (building.lineageId || building.factionId)) || 1));
+  var mask = PS.atlas.getBuildingAutotileMask(building && building.neighbors);
+  var variant = PS.atlas.getBitShiftedPaletteIndex
+    ? PS.atlas.getBitShiftedPaletteIndex(lineageId * 2654435761 + mask, 3, 16)
+    : mask % 16;
+  var colors = CONFIG && Array.isArray(CONFIG.LINEAGE_COLORS) && CONFIG.LINEAGE_COLORS.length > 0
+    ? CONFIG.LINEAGE_COLORS
+    : ["#72d7ff"];
+
+  return {
+    category: category,
+    sourceSheet: definition.source,
+    destinationSheet: "building." + category + "." + mask + "." + variant,
+    autotileMask: mask,
+    color: colors[(lineageId + variant) % colors.length],
+    sheetPair: {
+      source: definition.source,
+      dest: "building." + category
+    }
+  };
 };
 
 PS.atlas.getSettlementLevelBucket = function (settlement) {
@@ -546,16 +712,13 @@ PS.atlas.drawRouteCell = function (cell, shape, activityBucket, lineageId) {
 };
 
 PS.atlas.drawInfluenceCell = function (cell, strengthBucket, lineageId) {
-  var colors = CONFIG && CONFIG.LINEAGE_COLORS ? CONFIG.LINEAGE_COLORS : ["#72d7ff"];
-  var baseRgb = PS.atlas.hexToRgb(colors[(Math.max(1, lineageId) - 1) % colors.length]);
-  var base = [baseRgb[0], baseRgb[1], baseRgb[2], strengthBucket <= 0 ? 125 : (strengthBucket === 1 ? 178 : 225)];
-  var glow = [
-    Math.min(255, baseRgb[0] + 62),
-    Math.min(255, baseRgb[1] + 62),
-    Math.min(255, baseRgb[2] + 62),
-    210
-  ];
-  var shadow = [8, 14, 22, 145];
+  var base = strengthBucket <= 0
+    ? [72, 64, 56, 112]
+    : (strengthBucket === 1 ? [82, 72, 60, 150] : [92, 78, 62, 184]);
+  var glow = strengthBucket <= 1
+    ? [112, 96, 72, 150]
+    : [128, 106, 76, 178];
+  var shadow = [34, 30, 28, 132];
   var x;
 
   PS.atlas.fillNormalHalf(cell);
@@ -690,6 +853,50 @@ PS.atlas.getTerrainTilePalette = function (biome, tileDefinition) {
   };
 };
 
+PS.atlas.applyTerrainMoisturePalette = function (palette, sample) {
+  var moistureColor = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureColor === "function"
+    ? PS.render.surfaceColor.getGroundMoistureColor(sample)
+    : null;
+  var signals = sample && sample.detail && sample.detail.materialSignals ? sample.detail.materialSignals : {};
+  var workedGround = clamp(Number(signals.workedGround) || 0, 0, 1);
+  var base;
+  var lift;
+  var drop;
+  var packedEarth;
+  var pressure;
+
+  if (!moistureColor) {
+    return palette;
+  }
+
+  base = PS.atlas.hexToRgb(moistureColor);
+  if (workedGround > 0.12) {
+    packedEarth = [104, 78, 58];
+    pressure = clamp(0.48 + workedGround * 0.42, 0.48, 0.90);
+    base = [
+      Math.round(base[0] * (1 - pressure) + packedEarth[0] * pressure),
+      Math.round(base[1] * (1 - pressure) + packedEarth[1] * pressure),
+      Math.round(base[2] * (1 - pressure) + packedEarth[2] * pressure)
+    ];
+  }
+  lift = 34;
+  drop = 26;
+  return {
+    base: base,
+    accent: [
+      clamp(Math.round(base[0] + lift), 0, 255),
+      clamp(Math.round(base[1] + lift), 0, 255),
+      clamp(Math.round(base[2] + lift), 0, 255)
+    ],
+    dark: [
+      clamp(Math.round(base[0] - drop), 0, 255),
+      clamp(Math.round(base[1] - drop), 0, 255),
+      clamp(Math.round(base[2] - drop), 0, 255)
+    ],
+    pattern: palette.pattern
+  };
+};
+
 PS.atlas.getTerrainPatternForTile = function (tileDefinition, fallbackPattern) {
   var id = String(tileDefinition && tileDefinition.id || "");
   var sheet = String(tileDefinition && tileDefinition.spriteSheet || "");
@@ -710,6 +917,15 @@ PS.atlas.getTerrainPatternForTile = function (tileDefinition, fallbackPattern) {
   return fallbackPattern || "grit";
 };
 
+/**
+ * @description Scores how well an atlas tile definition matches the sampled terrain material, biome, elevation band, hydrology, and feature signals.
+ * @param {Object|null} tileDefinition Candidate atlas tile definition.
+ * @param {Object|null} sample Surface sample with detail and material signals.
+ * @param {string} biome Normalized biome id for the sample.
+ * @param {number} tileX Wrapped world tile x coordinate.
+ * @param {number} tileY Clamped world tile y coordinate.
+ * @returns {number} Match score used to choose the best terrain atlas tile.
+ */
 PS.atlas.getTerrainMaterialScore = function (tileDefinition, sample, biome, tileX, tileY) {
   var detail = sample && sample.detail ? sample.detail : {};
   var signals = detail.materialSignals || {};
@@ -826,19 +1042,39 @@ PS.atlas.getTerrainMaterialTile = function (biome, tileX, tileY, sample) {
   return best;
 };
 
-PS.atlas.mixTerrainColor = function (palette, amount) {
+PS.atlas.mixTerrainColor = function (palette, amount, alphaOverride) {
   var shade = clamp(Number(amount) || 0, -1, 1);
   var other = shade >= 0 ? palette.accent : palette.dark;
   var mix = Math.abs(shade);
+  var alpha = alphaOverride !== undefined ? Math.max(0, Math.min(255, Math.round(Number(alphaOverride) || 0))) : 255;
 
   return [
     Math.round(palette.base[0] * (1 - mix) + other[0] * mix),
     Math.round(palette.base[1] * (1 - mix) + other[1] * mix),
     Math.round(palette.base[2] * (1 - mix) + other[2] * mix),
-    255
+    alpha
   ];
 };
 
+PS.atlas.getTerrainHeightAlpha = function (sample, amount) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var tile = sample && sample.tile ? sample.tile : {};
+  var normalizedHeight = Number.isFinite(Number(detail.elevation))
+    ? Number(detail.elevation)
+    : ((Math.tanh(Number(tile.elevation) || 0) + 1) * 0.5);
+  var relief = Number.isFinite(Number(amount)) ? Number(amount) * 0.12 : 0;
+
+  return Math.round(clamp(normalizedHeight + relief, 0, 1) * 255);
+};
+
+/**
+ * @description Computes the local intensity adjustment for a named terrain pattern at an atlas-cell coordinate and deterministic variant.
+ * @param {string} pattern Terrain pattern id such as wave, stream, grass, crack, or lava.
+ * @param {number} x Cell-local x coordinate.
+ * @param {number} y Cell-local y coordinate.
+ * @param {number} variant Deterministic variant index for seeded pattern jitter.
+ * @returns {number} Signed pattern amount used to brighten, darken, or accent the material cell.
+ */
 PS.atlas.getTerrainPatternAmount = function (pattern, x, y, variant) {
   var hash = (x * 17 + y * 31 + variant * 43) & 15;
 
@@ -883,6 +1119,27 @@ PS.atlas.getTerrainPatternAmount = function (pattern, x, y, variant) {
   }
   if (pattern === "nutrient") {
     return (hash < 4 || (x + y * 2 + variant) % 9 === 0) ? 0.42 : (hash > 12 ? -0.18 : 0);
+  }
+  if (pattern === "parcel") {
+    var blockX = Math.floor((x + (variant % 3)) / 4);
+    var blockY = Math.floor((y + ((variant * 2) % 5)) / 4);
+    var parcelHash = (blockX * 29 + blockY * 37 + x * 5 + y * 7 + variant * 11) & 31;
+    if (parcelHash < 3) {
+      return 0.08;
+    }
+    if (parcelHash > 28) {
+      return -0.07;
+    }
+    return ((blockX + blockY + variant) % 5 === 0 && (x + y + variant) % 4 === 0) ? 0.05 : 0;
+  }
+  if (pattern === "roadbed") {
+    return hash < 2 ? 0.07 : (hash > 13 ? -0.06 : 0);
+  }
+  if (pattern === "settlementGround") {
+    return hash === 1 ? 0.025 : (hash === 14 ? -0.025 : 0);
+  }
+  if (pattern === "workedGround") {
+    return hash < 2 ? 0.05 : (hash > 13 ? -0.04 : ((Math.floor(x / 4) + Math.floor(y / 4) + variant) % 4 === 0 ? 0.035 : 0));
   }
   if (pattern === "grass") {
     return hash < 4 ? 0.28 : (hash > 12 ? -0.18 : 0);
@@ -1071,6 +1328,7 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
   var x;
   var y;
 
+  palette = PS.atlas.applyTerrainMoisturePalette(palette, sample);
   palette = PS.atlas.applyTerrainBiologyPalette(palette, biology);
   palette = PS.atlas.applyTerrainResourcePalette(palette, resource, biology);
   if (typeof PS.atlas.applyTerrainCivilizationPalette === "function") {
@@ -1079,16 +1337,248 @@ PS.atlas.drawTerrainCell = function (cell, biome, variant, tileDefinition, sampl
 
   for (y = 0; y < cell.h; y++) {
     for (x = 0; x < cell.w; x++) {
-      PS.atlas.writePixel(cell, x, y, PS.atlas.mixTerrainColor(
+      var patternAmount = PS.atlas.getTerrainPatternAmount(palette.pattern, x, y, variant);
+      var heightAlpha = civilization && typeof PS.atlas.getTerrainCivilizationBaseHeightAlpha === "function"
+        ? PS.atlas.getTerrainCivilizationBaseHeightAlpha(civilization, patternAmount)
+        : PS.atlas.getTerrainHeightAlpha(sample, patternAmount);
+      var terrainPixel = PS.atlas.mixTerrainColor(
         palette,
-        PS.atlas.getTerrainPatternAmount(palette.pattern, x, y, variant)
-      ));
+        patternAmount,
+        heightAlpha
+      );
+      PS.atlas.writePixel(cell, x, y, civilization && typeof PS.atlas.warmTerrainCivilizationPixel === "function"
+        ? PS.atlas.warmTerrainCivilizationPixel(terrainPixel)
+        : terrainPixel);
     }
+  }
+
+  if (
+    civilization &&
+    (civilization.type === "settlement" || civilization.type === "route" || civilization.type === "border") &&
+    typeof PS.atlas.drawTerrainCivilizationMarks === "function"
+  ) {
+    PS.atlas.drawTerrainCivilizationMarks(cell, palette, variant, sample);
+    return;
   }
 
   if (typeof PS.atlas.drawTerrainDetailOverlay === "function") {
     PS.atlas.drawTerrainDetailOverlay(cell, palette, variant, tileDefinition, biome, sample);
   }
+};
+
+PS.atlas.getImageDimension = function (image, key) {
+  var naturalKey;
+  var dimension;
+
+  if (PS.assets && typeof PS.assets.getImageDimension === "function") {
+    return PS.assets.getImageDimension(image, key);
+  }
+
+  if (!image) {
+    return 0;
+  }
+
+  naturalKey = "natural" + key.charAt(0).toUpperCase() + key.slice(1);
+  dimension = Number(image[key]) || Number(image[naturalKey]) || 0;
+  return Math.max(0, Math.round(dimension));
+};
+
+PS.atlas.addExternalPage = function (image, sourceId) {
+  var width = PS.atlas.getImageDimension(image, "width");
+  var height = PS.atlas.getImageDimension(image, "height");
+  var page;
+
+  if (width <= 0 || height <= 0) {
+    throw new Error("External atlas image must expose width and height");
+  }
+
+  page = {
+    pageIndex: PS.atlas.pages.length,
+    width: width,
+    height: height,
+    image: image,
+    externalImage: true,
+    sourceId: sourceId || "",
+    version: 1
+  };
+
+  PS.atlas.pages.push(page);
+  return page;
+};
+
+PS.atlas.addExternalCell = function (page, sourceCell, overrideExisting) {
+  var name = String(sourceCell && sourceCell.name || "");
+  var x = Math.max(0, Math.round(Number(sourceCell && sourceCell.x) || 0));
+  var y = Math.max(0, Math.round(Number(sourceCell && sourceCell.y) || 0));
+  var width = Math.max(1, Math.round(Number(sourceCell && sourceCell.w) || Number(sourceCell && sourceCell.width) || 0));
+  var height = Math.max(1, Math.round(Number(sourceCell && sourceCell.h) || Number(sourceCell && sourceCell.height) || 0));
+  var cell;
+
+  if (!name) {
+    return null;
+  }
+
+  if (PS.atlas.cells[name] && !overrideExisting) {
+    return PS.atlas.cells[name];
+  }
+
+  cell = {
+    name: name,
+    pageIndex: page.pageIndex,
+    x: x,
+    y: y,
+    w: width,
+    h: height,
+    u0: x / page.width,
+    v0: y / page.height,
+    u1: (x + width) / page.width,
+    v1: (y + height) / page.height,
+    externalImage: true,
+    sourceId: page.sourceId || ""
+  };
+
+  PS.atlas.cells[name] = cell;
+  PS.atlas.stats.generatedCells++;
+  return cell;
+};
+
+PS.atlas.getSheetCells = function (sheet) {
+  if (!sheet) {
+    return [];
+  }
+
+  if (typeof sheet.getCells === "function") {
+    return sheet.getCells();
+  }
+
+  if (sheet.sheet && typeof sheet.sheet.getCells === "function") {
+    return sheet.sheet.getCells();
+  }
+
+  if (Array.isArray(sheet.cells)) {
+    return sheet.cells;
+  }
+
+  if (sheet.cells) {
+    return Object.keys(sheet.cells).map(function (name) {
+      return sheet.cells[name];
+    });
+  }
+
+  return [];
+};
+
+PS.atlas.getSheetImage = function (sheet) {
+  if (!sheet) {
+    return null;
+  }
+
+  return sheet.image || (sheet.sheet && sheet.sheet.image) || null;
+};
+
+PS.atlas.buildFromSheets = function (sheets, options) {
+  var settings = options || {};
+  var overrideExisting = settings.overrideExisting !== false;
+  var built = [];
+
+  if (!settings.append) {
+    PS.atlas.reset();
+  }
+
+  (sheets || []).forEach(function (sheet, index) {
+    var image = PS.atlas.getSheetImage(sheet);
+    var sourceId = String(sheet && sheet.id || sheet && sheet.path || "sheet." + index);
+    var page;
+
+    if (!image) {
+      return;
+    }
+
+    page = PS.atlas.addExternalPage(image, sourceId);
+    PS.atlas.getSheetCells(sheet).forEach(function (sourceCell) {
+      var cell = PS.atlas.addExternalCell(page, sourceCell, overrideExisting);
+
+      if (cell) {
+        built.push(cell);
+      }
+    });
+  });
+
+  PS.atlas.initialized = PS.atlas.pages.length > 0;
+  return {
+    pages: PS.atlas.pages,
+    cells: PS.atlas.cells,
+    builtCells: built
+  };
+};
+
+PS.atlas.build = function (generated) {
+  var entries = generated && (generated.cells || generated.sprites || generated);
+
+  PS.atlas.reset();
+
+  if (Array.isArray(entries)) {
+    entries.forEach(function (entry) {
+      PS.atlas.allocateCell(entry.name, entry.w || entry.width, entry.h || entry.height);
+    });
+  } else {
+    Object.keys(entries || {}).forEach(function (name) {
+      var entry = entries[name] || {};
+      PS.atlas.allocateCell(entry.name || name, entry.w || entry.width, entry.h || entry.height);
+    });
+  }
+
+  PS.atlas.initialized = PS.atlas.pages.length > 0;
+  return {
+    pages: PS.atlas.pages,
+    cells: PS.atlas.cells
+  };
+};
+
+PS.atlas.buildHybrid = function (generated, sheets) {
+  PS.atlas.build(generated || {});
+  return PS.atlas.buildFromSheets(sheets || [], {
+    append: true,
+    overrideExisting: true
+  });
+};
+
+PS.atlas.uploadToGL = function (gl) {
+  if (!gl || typeof gl.createTexture !== "function") {
+    throw new Error("GPU context is required for atlas upload");
+  }
+
+  return PS.atlas.pages.map(function (page) {
+    var texture = gl.createTexture();
+
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+
+    if (typeof gl.texParameteri === "function") {
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    }
+
+    if (page.externalImage && page.image) {
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, page.image);
+    } else {
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        page.width,
+        page.height,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        page.data
+      );
+    }
+
+    page.texture = texture;
+    return texture;
+  });
 };
 
 PS.atlas.getCell = function (name) {
@@ -1127,6 +1617,23 @@ PS.atlas.getFoodCell = function (variant, food) {
     cell = PS.atlas.allocateCell(name, 32, 16);
     PS.atlas.drawFoodCell(cell, safeVariant, richness, familyBucket);
     PS.atlas.stats.foodCells++;
+    PS.atlas.pages[cell.pageIndex].version++;
+  }
+
+  return cell;
+};
+
+PS.atlas.getVegetationCell = function (type, variant, part) {
+  var safeType = clamp(Math.round(Number(type) || 0), 0, 15);
+  var safeVariant = clamp(Math.round(Number(variant) || 0), 0, 15);
+  var safePart = part === "canopy" ? "canopy" : "below";
+  var name = "entity.vegetation." + safeType + "." + safeVariant + "." + safePart;
+  var cell = PS.atlas.cells[name];
+
+  if (!cell) {
+    cell = PS.atlas.allocateCell(name, 32, 16);
+    PS.atlas.drawVegetationCell(cell, safeType, safeVariant, safePart);
+    PS.atlas.stats.vegetationCells++;
     PS.atlas.pages[cell.pageIndex].version++;
   }
 
@@ -1260,20 +1767,33 @@ PS.atlas.getTerrainCell = function (biome, tileX, tileY, sample) {
     : "civ0";
   var ecologyMicroPhase = PS.atlas.getTerrainEcologyMicroPhase(sample, tileX, tileY);
   var ecologyMicroKey = ecologyMicroPhase >= 0 ? ".ecoform." + ecologyMicroPhase : "";
+  var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
+    ? PS.render.surfaceColor.getGroundMoistureKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
+    : "gmoist.none";
+  var eraKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getEraPaletteKey === "function"
+    ? PS.render.surfaceColor.getEraPaletteKey(Object.assign({ x: tileX, y: tileY }, sample || {}))
+    : "era.none";
   var transitionKey = typeof PS.atlas.getTerrainTransitionKey === "function"
     ? PS.atlas.getTerrainTransitionKey(sample, biome)
     : "plain";
+  var drawSample = Object.assign({}, sample || {}, {
+    x: tileX,
+    y: tileY
+  });
+  var stencilKey = typeof PS.atlas.getTerrainTextureOverlayKey === "function"
+    ? PS.atlas.getTerrainTextureOverlayKey(drawSample, biome)
+    : "stencil.none";
   var featureKey = typeof PS.atlas.getTerrainFeatureKey === "function"
     ? PS.atlas.getTerrainFeatureKey(sample, biome, tileDefinition)
     : "feature0";
-  var drawSample = ecologyMicroPhase >= 0
-    ? Object.assign({}, sample, { terrainEcologyMicroPhase: ecologyMicroPhase })
-    : sample;
-  var name = "terrain." + materialId + "." + variant + "." + transitionKey + "." + featureKey + "." + biologyKey + resourceKey + "." + civilizationKey + ecologyMicroKey;
+  var name = "terrain." + materialId + "." + variant + "." + transitionKey + "." + stencilKey + "." + featureKey + "." + moistureKey + "." + eraKey + "." + biologyKey + resourceKey + "." + civilizationKey + ecologyMicroKey;
   var cell = PS.atlas.cells[name];
 
   if (!cell) {
     cell = PS.atlas.allocateCell(name, 16, 16);
+    if (ecologyMicroPhase >= 0) {
+      drawSample.terrainEcologyMicroPhase = ecologyMicroPhase;
+    }
     PS.atlas.drawTerrainCell(cell, biome, variant, tileDefinition, drawSample);
     PS.atlas.stats.terrainCells++;
     PS.atlas.pages[cell.pageIndex].version++;

@@ -1,5 +1,15 @@
+"use strict";
+import { updateEmpireLegacyState, updateEmpireSectorState, updateInterstellarFleetState } from "./civilizations-empire.js";
+import { updatePlanetarySurveyState } from "./civilizations-orbital.js";
+import { updateProbeMissionState } from "./civilizations-probes.js";
+import { updateGalacticInfluenceState, updateStarMapState } from "./civilizations-stars.js";
+import { canFoundSettlement, foundSettlementForLineage, updateSettlementOutposts } from "./settlements-founding.js";
+import { runSettlementGrowth, updateColonyNetworkState, updateSettlementMetrics, updateSpaceProgramState } from "./settlements-growth.js";
+import { refreshSettlementSummaryCache, updateSettlementRoutes, updateSuppliedOutpostGrowth } from "./settlements-routes.js";
+import { ensureSettlementState } from "./settlements-state.js";
+import { world } from "../systems/state.js";
 
-function updateSettlements() {
+export function updateSettlements() {
   ensureSettlementState();
 
   for (var i = 0; i < world.settlements.length; i++) {

@@ -1,0 +1,59 @@
+{
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 8,
+  "splitAtlas": true,
+  "albedoColumns": 8,
+  "normalColumns": 8,
+  "normalOffsetX": 256,
+  "rows": 1,
+  "names": [
+    "terrain.snow.0",
+    "terrain.snow.1",
+    "terrain.snow.2",
+    "terrain.snow.3",
+    "terrain.snow.4",
+    "terrain.snow.5",
+    "terrain.snow.6",
+    "terrain.snow.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.snow.0",
+      "role": "snow-1"
+    },
+    {
+      "id": "terrain.snow.1",
+      "role": "frozen-soil-1"
+    },
+    {
+      "id": "terrain.snow.2",
+      "role": "cracked-ice-1"
+    },
+    {
+      "id": "terrain.snow.3",
+      "role": "winter-1"
+    },
+    {
+      "id": "terrain.snow.4",
+      "role": "snow-2"
+    },
+    {
+      "id": "terrain.snow.5",
+      "role": "frozen-soil-2"
+    },
+    {
+      "id": "terrain.snow.6",
+      "role": "cracked-ice-2"
+    },
+    {
+      "id": "terrain.snow.7",
+      "role": "winter-2"
+    }
+  ]
+}

@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   console,
@@ -63,7 +54,53 @@ const context = {
         }
       }
     },
-    render: {}
+    render: {},
+    sim: {
+      foodWeb: {
+        getRole(traits) {
+          return Number(traits && traits.carnivory) > 0.5 ? "predator" : "herbivore";
+        }
+      },
+      terrainPressure: {
+        getSample() {
+          return {
+            pressure: 0.72,
+            isolation: 0.42,
+            innovationPressure: 0.58
+          };
+        }
+      },
+      massExtinction: {
+        getSummary() {
+          return {
+            activeEvent: {
+              eventType: "volcanic-winter",
+              severityScore: 0.7,
+              location: { x: 9, y: 8 }
+            },
+            latest: null,
+            recoveryWindow: {
+              startTick: 20,
+              endTick: 80,
+              durationTicks: 100
+            }
+          };
+        }
+      }
+    }
+  },
+  ensureOrganismTraits(organism) {
+    return organism.traits || {};
+  },
+  collectOrganismsInRadius() {
+    return [
+      { traits: { carnivory: 0.9 } },
+      { traits: { carnivory: 0.1 } },
+      { traits: { carnivory: 0.1 } }
+    ];
+  },
+  getTileManhattanDistance(fromX, fromY, toX, toY) {
+    return Math.abs(fromX - toX) + Math.abs(fromY - toY);
   },
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -81,18 +118,21 @@ const expectedIds = [
   "observation.temperature",
   "observation.population",
   "observation.resources",
+  "observation.foodweb",
+  "observation.selection",
+  "observation.extinction",
   "observation.atmosphere",
   "observation.microbial"
 ];
 const manifest = context.PS.render.overlays.getManifest();
-const webglGlobeSource = read("js/render/webgl-globe.js");
-const shaderSource = read("shaders/globe-sphere.frag");
+const webgpuGlobeSource = read("js/render/webgpu-globe.js");
+const shaderSource = read("shaders/globe-sphere.wgsl");
 
 expectedIds.forEach((id) => {
   const entry = manifest.find((overlay) => overlay.id === id);
 
   assert.ok(entry, `${id} should be registered`);
-  assert.ok(entry.blendMode === "screen" || entry.blendMode === "lighter", `${id} should expose WebGL blend metadata`);
+  assert.ok(entry.blendMode === "screen" || entry.blendMode === "lighter", `${id} should expose WebGPU blend metadata`);
   assert.strictEqual(entry.shortcut, "O", `${id} should expose keyboard shortcut metadata`);
 });
 
@@ -111,6 +151,9 @@ const coldSample = context.PS.render.observationOverlays.getOverlaySample("obser
 });
 const populationSample = context.PS.render.observationOverlays.getOverlaySample("observation.population", 9, 8, {});
 const resourceSample = context.PS.render.observationOverlays.getOverlaySample("observation.resources", 18, 8, {});
+const foodWebSample = context.PS.render.observationOverlays.getOverlaySample("observation.foodweb", 9, 8, {});
+const selectionSample = context.PS.render.observationOverlays.getOverlaySample("observation.selection", 9, 8, {});
+const extinctionSample = context.PS.render.observationOverlays.getOverlaySample("observation.extinction", 9, 8, {});
 const atmosphereSample = context.PS.render.observationOverlays.getOverlaySample("observation.atmosphere", 1, 1, {});
 const microbialSample = context.PS.render.observationOverlays.getOverlaySample("observation.microbial", 2, 2, {});
 const noneSample = context.PS.render.observationOverlays.getOverlaySample("none", 2, 2, {});
@@ -118,14 +161,17 @@ const noneSample = context.PS.render.observationOverlays.getOverlaySample("none"
 assert.ok(hotSample.red > coldSample.red, "temperature samples should encode warmer low-latitude tiles");
 assert.ok(populationSample.alpha > 0, "population overlay should encode organism density into texture alpha");
 assert.ok(resourceSample.alpha > 0, "resource overlay should encode food density into texture alpha");
+assert.ok(foodWebSample.red > 0 && foodWebSample.alpha > 0, "food-web overlay should encode local predator/prey pressure");
+assert.ok(selectionSample.alpha > 0 && selectionSample.red > 0, "selection overlay should encode terrain pressure");
+assert.ok(extinctionSample.alpha > 0 && extinctionSample.red > extinctionSample.green, "extinction overlay should encode devastation and recovery bloom");
 assert.ok(atmosphereSample.alpha > 0, "atmosphere overlay should encode gas composition into texture alpha");
 assert.ok(microbialSample.alpha > 0, "microbial overlay should encode bloom intensity into texture alpha");
 assert.strictEqual(noneSample.red + noneSample.green + noneSample.blue + noneSample.alpha, 0, "inactive overlay samples should be transparent");
 
-assert.ok(webglGlobeSource.indexOf("uploadObservationOverlayTexture") >= 0, "WebGL globe should upload active observation overlay texture");
-assert.ok(webglGlobeSource.indexOf('compositor = "webgl2"') >= 0, "WebGL globe should record webgl2 compositor evidence");
-assert.ok(shaderSource.indexOf("uniform sampler2D u_overlay") >= 0, "WebGL shader should accept observation overlay texture");
-assert.ok(shaderSource.indexOf("u_overlayMode") >= 0, "WebGL shader should expose overlay blend mode");
-assert.strictEqual(webglGlobeSource.indexOf("fillRect"), -1, "observation overlay upload should not depend on Canvas2D drawing");
+assert.ok(webgpuGlobeSource.indexOf("uploadObservationOverlayTexture") >= 0, "WebGPU globe should upload active observation overlay texture");
+assert.ok(webgpuGlobeSource.indexOf("lastUsedObservationOverlay") >= 0, "WebGPU globe should record overlay compositor evidence");
+assert.ok(shaderSource.indexOf("overlay_texture: texture_2d<f32>") >= 0, "WGSL globe shader should accept observation overlay texture");
+assert.ok(shaderSource.indexOf("overlay_mode") >= 0, "WGSL globe shader should expose overlay blend mode");
+assert.strictEqual(webgpuGlobeSource.indexOf("fillRect"), -1, "observation overlay upload should not depend on Canvas2D drawing");
 
 console.log("observation overlay checks passed");

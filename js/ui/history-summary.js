@@ -1,5 +1,13 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+import { ecosystemHistoryCanvas, settlementSummaryText } from "./dom-refs.js";
+import { setElementClass, setElementHtml, setElementText } from "./foundation.js";
+// fallow-ignore-next-line circular-dependency
+import { escapeSummaryText, getEarlyProgressionSummary, getProgressRatio, getSettlementSummary, makeSummaryChip } from "./summary.js";
 
-function formatSignedNumber(value, decimals) {
+export function formatSignedNumber(value, decimals) {
   var numberValue = Number(value) || 0;
   var fixedValue = Math.abs(numberValue).toFixed(decimals);
 
@@ -14,7 +22,7 @@ function formatSignedNumber(value, decimals) {
   return decimals > 0 ? "0." + "0".repeat(decimals) : "0";
 }
 
-function makeEventChip(event) {
+export function makeEventChip(event) {
   return (
     "<article class=\"event-entry event-" + escapeSummaryText(event.type || "sim") + "\">" +
     "<span class=\"event-tick\">T" + escapeSummaryText(event.tick) + "</span>" +
@@ -26,7 +34,7 @@ function makeEventChip(event) {
   );
 }
 
-function scaleHistoryValue(value, minValue, maxValue, height) {
+export function scaleHistoryValue(value, minValue, maxValue, height) {
   if (maxValue <= minValue) {
     return height / 2;
   }
@@ -34,7 +42,7 @@ function scaleHistoryValue(value, minValue, maxValue, height) {
   return height - clamp((value - minValue) / (maxValue - minValue), 0, 1) * height;
 }
 
-function getHistoryRange(samples, getValue, fallbackMax) {
+export function getHistoryRange(samples, getValue, fallbackMax) {
   var minValue = Infinity;
   var maxValue = -Infinity;
 
@@ -62,7 +70,7 @@ function getHistoryRange(samples, getValue, fallbackMax) {
   };
 }
 
-function getSymmetricHistoryRange(samples, getValue, fallbackMagnitude) {
+export function getSymmetricHistoryRange(samples, getValue, fallbackMagnitude) {
   var magnitude = Math.max(1, Math.abs(Number(fallbackMagnitude) || 1));
 
   for (var i = 0; i < samples.length; i++) {
@@ -75,7 +83,7 @@ function getSymmetricHistoryRange(samples, getValue, fallbackMagnitude) {
   };
 }
 
-function getFoodRunwayHistoryRange(samples) {
+export function getFoodRunwayHistoryRange(samples) {
   var maxRunway = 40;
 
   for (var i = 0; i < samples.length; i++) {
@@ -92,7 +100,7 @@ function getFoodRunwayHistoryRange(samples) {
   };
 }
 
-function getFoodRunwayHistoryValue(sample, range) {
+export function getFoodRunwayHistoryValue(sample, range) {
   var runwayTicks = Number(sample.foodRunwayTicks);
 
   if (Number.isFinite(runwayTicks) && runwayTicks >= 0) {
@@ -102,15 +110,15 @@ function getFoodRunwayHistoryValue(sample, range) {
   return null;
 }
 
-function drawEcosystemHistoryGuide(chart, ratio, color) {
+export function drawEcosystemHistoryGuide(chart, ratio, color) {
   return null;
 }
 
-function drawEcosystemHistoryLine(samples, getValue, color, chart, range) {
+export function drawEcosystemHistoryLine(samples, getValue, color, chart, range) {
   return null;
 }
 
-function drawEcosystemHistory() {
+export function drawEcosystemHistory() {
   var samples = Array.isArray(world.ecosystemHistory) ? world.ecosystemHistory : [];
   var latest = samples.length ? samples[samples.length - 1] : null;
 
@@ -125,7 +133,7 @@ function drawEcosystemHistory() {
     : "HISTORY: Waiting for samples";
 }
 
-function makeSummaryProgressChip(label, currentValue, targetValue, value, isReady, isComplete) {
+export function makeSummaryProgressChip(label, currentValue, targetValue, value, isReady, isComplete) {
   var ratio = getProgressRatio(currentValue, targetValue);
   var percent = Math.round(ratio * 100);
   var className = "summary-chip summary-progress-chip";
@@ -149,7 +157,7 @@ function makeSummaryProgressChip(label, currentValue, targetValue, value, isRead
   );
 }
 
-function updateSettlementSummary() {
+export function updateSettlementSummary() {
   var summary = getSettlementSummary();
 
   if (!summary) {

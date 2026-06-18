@@ -1,9 +1,20 @@
+"use strict";
+import { CONFIG } from "../config.js";
+import { PS } from "./core/namespace.js";
+import { clamp } from "./core/utils.js";
+import { reportRuntimeError } from "./main-runtime.js";
+import { drawWorld } from "./render/pipeline.js";
+import { seedWorld, setSimulationPaused, updateWorld } from "./main-simulation.js";
+import { world } from "./systems/state.js";
+import { syncControlStates, updateHud } from "./ui/foundation.js";
+// fallow-ignore-next-line circular-dependency
+import { setupControls } from "./ui/setup.js";
 
-function toggleSimulationPaused() {
+export function toggleSimulationPaused() {
   return setSimulationPaused(!world.isPaused);
 }
 
-function setSimulationSpeed(speed) {
+export function setSimulationSpeed(speed) {
   var nextSpeed = clamp(Math.round(Number(speed) || world.speed), 1, 10);
 
   if (world.speed === nextSpeed) {
@@ -14,11 +25,11 @@ function setSimulationSpeed(speed) {
   return true;
 }
 
-function adjustSimulationSpeed(delta) {
+export function adjustSimulationSpeed(delta) {
   return setSimulationSpeed(world.speed + Math.round(Number(delta) || 0));
 }
 
-function stepSimulationOnce() {
+export function stepSimulationOnce() {
   if (!world.isPaused || world.isExtinct) {
     return false;
   }
@@ -39,24 +50,24 @@ function stepSimulationOnce() {
   return true;
 }
 
-var lastFrameTime = performance.now();
-var statsTimer = performance.now();
-var hudTimer = performance.now();
-var framesSinceStatsUpdate = 0;
-var simTicksSinceStatsUpdate = 0;
-var updateMsSinceStatsUpdate = 0;
-var drawMsSinceStatsUpdate = 0;
-var measuredUpdateFrames = 0;
-var measuredDrawFrames = 0;
-var maxUpdateMsSinceStatsUpdate = 0;
-var maxDrawMsSinceStatsUpdate = 0;
-var gameLoopStarted = false;
+export var lastFrameTime = performance.now();
+export var statsTimer = performance.now();
+export var hudTimer = performance.now();
+export var framesSinceStatsUpdate = 0;
+export var simTicksSinceStatsUpdate = 0;
+export var updateMsSinceStatsUpdate = 0;
+export var drawMsSinceStatsUpdate = 0;
+export var measuredUpdateFrames = 0;
+export var measuredDrawFrames = 0;
+export var maxUpdateMsSinceStatsUpdate = 0;
+export var maxDrawMsSinceStatsUpdate = 0;
+export var gameLoopStarted = false;
 
-function getLoadingScreen() {
+export function getLoadingScreen() {
   return document.getElementById("loading-screen");
 }
 
-function updateLoadingScreen(progress, message) {
+export function updateLoadingScreen(progress, message) {
   var screen = getLoadingScreen();
   var fill = document.getElementById("loading-progress-fill");
   var text = document.getElementById("loading-progress-text");
@@ -78,7 +89,7 @@ function updateLoadingScreen(progress, message) {
   }
 }
 
-function hideLoadingScreen() {
+export function hideLoadingScreen() {
   var screen = getLoadingScreen();
 
   if (screen) {
@@ -86,7 +97,7 @@ function hideLoadingScreen() {
   }
 }
 
-function loadStartupAssets() {
+export function loadStartupAssets() {
   var startedAt = performance.now();
 
   if (!PS.assets || typeof PS.assets.AssetLoader !== "function") {
@@ -140,7 +151,7 @@ function loadStartupAssets() {
   });
 }
 
-function loadStartupData() {
+export function loadStartupData() {
   if (!PS.assets || typeof PS.assets.AssetLoader !== "function") {
     return Promise.resolve({ loaded: false, reason: "AssetLoader unavailable" });
   }
@@ -150,23 +161,31 @@ function loadStartupData() {
   PS.assets.startupLoader = loader;
 
   return Promise.all([
+    PS.core && PS.core.DataLoader && typeof PS.core.DataLoader.loadConfig === "function"
+      ? PS.core.DataLoader.loadConfig(loader)
+      : loader.loadJSON("data/config.json"),
     loader.loadJSON("data/entities.json"),
     loader.loadJSON("data/tiles.json"),
     loader.loadJSON("data/biomes.json"),
     loader.loadJSON("data/transitions.json"),
+    loader.loadJSON("data/ground-gradients.json"),
+    loader.loadJSON("data/era-palettes.json"),
     loader.loadJSON("data/particles.json"),
     loader.loadJSON("data/animations.json"),
     loader.loadJSON("data/keybindings.json"),
     loader.loadJSON("data/audio.json")
   ]).then(function (results) {
-    var entitiesData = results[0];
-    var tilesData = results[1];
-    var biomesData = results[2];
-    var transitionsData = results[3];
-    var particlesData = results[4];
-    var animationsData = results[5];
-    var keybindingsData = results[6];
-    var audioData = results[7];
+    var configStatus = results[0];
+    var entitiesData = results[1];
+    var tilesData = results[2];
+    var biomesData = results[3];
+    var transitionsData = results[4];
+    var groundGradientsData = results[5];
+    var eraPalettesData = results[6];
+    var particlesData = results[7];
+    var animationsData = results[8];
+    var keybindingsData = results[9];
+    var audioData = results[10];
     var tileCount = 0;
     var biomeCount = Array.isArray(biomesData && biomesData.biomes) ? biomesData.biomes.length : 0;
     var transitionPairs = Array.isArray(transitionsData && transitionsData.pairs) ? transitionsData.pairs.length : 0;
@@ -183,8 +202,17 @@ function loadStartupData() {
     if (PS.assets) {
       PS.assets.biomesData = biomesData;
       PS.assets.transitionsData = transitionsData;
+      PS.assets.groundGradientsData = groundGradientsData;
+      PS.assets.eraPalettesData = eraPalettesData;
       PS.assets.particlesData = particlesData;
       PS.assets.animationsData = animationsData;
+    }
+
+    if (PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.loadGroundGradientConfig === "function") {
+      PS.render.surfaceColor.loadGroundGradientConfig(groundGradientsData);
+    }
+    if (PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.loadEraPaletteConfig === "function") {
+      PS.render.surfaceColor.loadEraPaletteConfig(eraPalettesData);
     }
 
     if (PS.animation && typeof PS.animation.loadDefinitions === "function") {
@@ -208,6 +236,8 @@ function loadStartupData() {
 
     PS.assets.startupDataStatus = {
       loaded: true,
+      config: configStatus && configStatus.loaded === true,
+      configValues: configStatus && configStatus.valueCount ? configStatus.valueCount : 0,
       entities: PS.core && PS.core.EntityRegistry ? PS.core.EntityRegistry.list().length : 0,
       tiles: tileCount,
       biomes: biomeCount,
@@ -225,54 +255,90 @@ function loadStartupData() {
   });
 }
 
-function loadStartupShaders() {
-  if (!PS.render || !PS.render.shaderManager || typeof PS.render.shaderManager.loadManifest !== "function") {
-    return Promise.resolve({ loaded: false, reason: "ShaderManager unavailable" });
-  }
-
+export function loadStartupShaders() {
   var loader = PS.assets && PS.assets.startupLoader ? PS.assets.startupLoader : null;
 
-  return PS.render.shaderManager.loadManifest(PS.render.shaderManifest, loader).then(function (entries) {
-    var manifestStatus = PS.render.shaderManager.lastManifestStatus || {
-      total: PS.render.shaderManifest ? PS.render.shaderManifest.length : entries.length,
-      loaded: entries.length,
-      failed: 0
-    };
+  function registerWgslManifests() {
+    var registrars = [
+      PS.render.webgpuGlobe,
+      PS.render.webgpuSurfaceUnderlay,
+      PS.render.webgpuSurfaceTile,
+      PS.render.webgpuCompositor,
+      PS.render.webgpuTileLights,
+      PS.render.webgpuPointLights,
+      PS.render.webgpuWaterDisplacement,
+      PS.render.webgpuEntity,
+      PS.sim && PS.sim.heatDiffusion
+    ];
 
-    if (typeof PS.render.shaderManager.shouldAutoHotReload === "function" && PS.render.shaderManager.shouldAutoHotReload()) {
-      PS.render.shaderManager.enableHotReload(1500, loader);
+    for (var i = 0; i < registrars.length; i += 1) {
+      if (registrars[i] && typeof registrars[i].registerManifest === "function") {
+        registrars[i].registerManifest();
+      }
+    }
+  }
+
+  function loadRequiredWgslShaders(status) {
+    var manifest = PS.render.wgslShaderManifest || [];
+
+    if (!PS.render.wgslShaders || typeof PS.render.wgslShaders.loadManifest !== "function" || manifest.length === 0) {
+      return Promise.resolve(status);
     }
 
-    PS.assets.startupShaderStatus = {
-      loaded: manifestStatus.loaded > 0,
-      shaders: entries.length,
-      total: manifestStatus.total,
-      failed: manifestStatus.failed,
-      fallback: manifestStatus.failed > 0,
-      failedShaders: manifestStatus.failedShaders || []
-    };
+    return PS.render.wgslShaders.loadManifest(manifest, loader).then(function (entries) {
+      var manifestStatus = PS.render.wgslShaders.lastManifestStatus || {
+        total: manifest.length,
+        loaded: entries.length,
+        failed: 0,
+        failedShaders: []
+      };
 
-    if (manifestStatus.failed > 0 && PS.runtime && typeof PS.runtime.recordError === "function") {
-      PS.runtime.recordError("shader.manifest.partial", PS.assets.startupShaderStatus);
+      PS.assets.startupWgslShaderStatus = {
+        loaded: manifestStatus.loaded === manifestStatus.total && manifestStatus.failed === 0,
+        shaders: entries.length,
+        total: manifestStatus.total,
+        failed: manifestStatus.failed,
+        failedShaders: manifestStatus.failedShaders || []
+      };
+
+      if (manifestStatus.failed > 0 || manifestStatus.loaded !== manifestStatus.total) {
+        throw new Error("Required WGSL shaders failed to load");
+      }
+
+      status.wgsl = PS.assets.startupWgslShaderStatus;
+      return status;
+    });
+  }
+
+  registerWgslManifests();
+
+  PS.assets.startupShaderStatus = {
+    loaded: true,
+    shaders: 0,
+    total: 0,
+    failed: 0,
+    wgslOnly: true
+  };
+
+  return loadRequiredWgslShaders(PS.assets.startupShaderStatus).catch(function (error) {
+    var message = error && error.message ? error.message : String(error);
+
+    if (message.indexOf("Required WGSL shaders failed to load") >= 0) {
+      if (PS.runtime && typeof PS.runtime.recordError === "function") {
+        PS.runtime.recordError("wgsl.manifest.failed", PS.assets.startupWgslShaderStatus || { reason: message });
+      }
+      throw error;
     }
-
-    return PS.assets.startupShaderStatus;
-  }).catch(function (error) {
-    PS.assets.startupShaderStatus = {
-      loaded: false,
-      fallback: true,
-      reason: error && error.message ? error.message : String(error)
-    };
 
     if (PS.runtime && typeof PS.runtime.recordError === "function") {
-      PS.runtime.recordError("shader.manifest.fallback", PS.assets.startupShaderStatus);
+      PS.runtime.recordError("wgsl.manifest.failed", { reason: message });
     }
 
-    return PS.assets.startupShaderStatus;
+    throw error;
   });
 }
 
-function gameLoop() {
+export function gameLoop() {
   try {
     var frameStart = performance.now();
     var now = frameStart;
@@ -303,6 +369,10 @@ function gameLoop() {
     } else {
       PS.time.accumulator = 0;
       world.interpolation = 0;
+    }
+
+    if (PS.camera && typeof PS.camera.updateInertia === "function") {
+      PS.camera.updateInertia();
     }
 
     if (!world.isPaused || world.needsRender) {
@@ -375,10 +445,12 @@ function gameLoop() {
   }
 }
 
-function startGame() {
+export function startGame() {
   updateLoadingScreen({ total: 0, loaded: 0, failed: 0, percent: 0 }, "Loading...");
 
-  return loadStartupAssets().then(function () {
+  return PS.gpu.initialize().then(function () {
+    return loadStartupAssets();
+  }).then(function () {
     return loadStartupData();
   }).then(function () {
     return loadStartupShaders();
@@ -405,5 +477,3 @@ function startGame() {
     reportRuntimeError(error);
   });
 }
-
-window.startGame = startGame;

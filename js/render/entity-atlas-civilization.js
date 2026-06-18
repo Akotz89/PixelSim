@@ -1,3 +1,8 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 PS.atlas = PS.atlas || {};
 
 PS.atlas.getSettlementReadinessBucket = function (marker) {

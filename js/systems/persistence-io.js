@@ -1,6 +1,100 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, hashSeedText, normalizeSeedText } from "../core/utils.js";
+import { refreshEcosystemSummary } from "../main-ecosystem-summary.js";
+import { drawWorld } from "../render/pipeline.js";
+import { getPlanetZoomLevels, normalizeLongitude } from "../render/planet-view.js";
+import { rebuildEmpireSectorIndexes } from "../sim/civilizations-empire.js";
+import { rebuildPlanetaryBodyIndexes } from "../sim/civilizations-orbital.js";
+import { rebuildStarSystemIndexes } from "../sim/civilizations-probes.js";
+import { rebuildFoodPositions } from "../sim/food-runtime.js";
+import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
+import { ensureOutpostRoutes } from "../sim/settlements-routes.js";
+import { rebuildSettlementIndexes } from "../sim/settlements-state.js";
+import { clonePersistencePlainValue, openPixeldariumDatabase, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_STORE } from "./persistence-db.js";
+import { restoreFood, restoreLineages, restoreNumber, restoreOrbitalAssets, restoreSettlementRoutes, restoreSettlements, validateWorldSaveData } from "./persistence-restore-core.js";
+import { applySaveConfig, countFertileTiles, restoreBiologyAggregateState, restoreEcosystemHistory, restoreEmpireSectors, restoreInterstellarFleets, restoreOrganism, restorePlanetaryBodies, restoreProbeMissions, restoreSimulationEvents, restoreStarSystems, restoreTraitHistory } from "./persistence-restore-entities.js";
+import { createWorldSaveData } from "./persistence-save-data.js";
+import { world } from "./state.js";
+import { updateHud } from "../ui/foundation.js";
 
-function applyWorldSaveData(saveData) {
-  var readySaveData = PS.systems.saveMigration.migrate(saveData);
+export function applySubsystemSaveFallbacks(saveData) {
+  var source = saveData || {};
+  var subsystems = source.subsystems || {};
+  var meta = subsystems.meta || {};
+  var bio = subsystems.bio || {};
+  var civ = subsystems.civ || {};
+  var render = subsystems.render || {};
+  var ui = subsystems.ui || {};
+  var history = subsystems.history || {};
+
+  function fallback(key, value) {
+    if (source[key] === undefined && value !== undefined) {
+      source[key] = value;
+    }
+  }
+
+  fallback("tick", meta.tick);
+  fallback("deepTimeYears", meta.deepTimeYears);
+  fallback("timeScale", meta.timeScale);
+  fallback("speed", meta.speed);
+  fallback("era", meta.era);
+  fallback("isExtinct", meta.isExtinct);
+  fallback("extinctionTick", meta.extinctionTick);
+  fallback("seedText", meta.seedText);
+  fallback("rngState", meta.rngState);
+  fallback("nextLineageId", bio.nextLineageId);
+  fallback("nextSpeciesId", bio.nextSpeciesId);
+  fallback("nextBiologyPopulationId", bio.nextBiologyPopulationId);
+  fallback("nextBiologyRepresentativeId", bio.nextBiologyRepresentativeId);
+  fallback("organisms", bio.organisms);
+  fallback("food", bio.food);
+  fallback("lineages", bio.lineages);
+  fallback("species", bio.species);
+  fallback("speciationEvents", bio.speciationEvents);
+  fallback("massExtinction", bio.massExtinction);
+  fallback("extinctionEvents", bio.extinctionEvents);
+  fallback("biologyPopulations", bio.biologyPopulations);
+  fallback("biologyRepresentatives", bio.biologyRepresentatives);
+  fallback("trackedLineage", bio.trackedLineage);
+  fallback("abiogenesis", bio.abiogenesis);
+  fallback("microbial", bio.microbial);
+  fallback("microbialReady", bio.microbialReady);
+  fallback("nextSettlementId", civ.nextSettlementId);
+  fallback("nextSettlementRouteId", civ.nextSettlementRouteId);
+  fallback("nextOrbitalAssetId", civ.nextOrbitalAssetId);
+  fallback("nextPlanetaryBodyId", civ.nextPlanetaryBodyId);
+  fallback("nextProbeMissionId", civ.nextProbeMissionId);
+  fallback("nextStarSystemId", civ.nextStarSystemId);
+  fallback("nextInterstellarFleetId", civ.nextInterstellarFleetId);
+  fallback("nextEmpireSectorId", civ.nextEmpireSectorId);
+  fallback("colonyNetworkScore", civ.colonyNetworkScore);
+  fallback("colonyNetworkColonies", civ.colonyNetworkColonies);
+  fallback("colonyNetworkActiveRoutes", civ.colonyNetworkActiveRoutes);
+  fallback("colonyNetworkClaimedTiles", civ.colonyNetworkClaimedTiles);
+  fallback("settlements", civ.settlements);
+  fallback("settlementRoutes", civ.settlementRoutes);
+  fallback("orbitalAssets", civ.orbitalAssets);
+  fallback("planetaryBodies", civ.planetaryBodies);
+  fallback("probeMissions", civ.probeMissions);
+  fallback("starSystems", civ.starSystems);
+  fallback("interstellarFleets", civ.interstellarFleets);
+  fallback("empireSectors", civ.empireSectors);
+  fallback("camera", render.camera);
+  fallback("eventLog", ui.eventLog);
+  fallback("timelineEvents", ui.timelineEvents);
+  fallback("traitHistory", history.traitHistory);
+  fallback("ecosystemHistory", history.ecosystemHistory);
+  fallback("bookmarks", history.bookmarks);
+  fallback("nextBookmarkId", history.nextBookmarkId);
+  fallback("milestonesReached", history.milestonesReached);
+
+  return source;
+}
+
+export function applyWorldSaveData(saveData) {
+  var readySaveData = applySubsystemSaveFallbacks(PS.systems.saveMigration.migrate(saveData));
 
   validateWorldSaveData(readySaveData);
   saveData = readySaveData;
@@ -9,13 +103,14 @@ function applyWorldSaveData(saveData) {
   world.tick = Number(saveData.tick);
   world.deepTimeYears = Math.max(0, restoreNumber(saveData.deepTimeYears, 0));
   if (PS.time && saveData.timeScale) {
-    PS.time.timeScale = JSON.parse(JSON.stringify(saveData.timeScale));
+    PS.time.timeScale = clonePersistencePlainValue(saveData.timeScale);
   }
   world.speed = clamp(Math.round(Number(saveData.speed)), 1, 10);
   world.era = String(saveData.era || "Organisms");
   if (PS.epochs) {
     PS.epochs.activeId = world.era;
   }
+  world.epochScaling = saveData.epochScaling ? clonePersistencePlainValue(saveData.epochScaling) : null;
   world.isExtinct = Boolean(saveData.isExtinct);
   world.extinctionTick = Math.max(0, Math.round(restoreNumber(saveData.extinctionTick, 0)));
   world.birthsThisTick = 0;
@@ -84,13 +179,26 @@ function applyWorldSaveData(saveData) {
   world.empireLegacyReady = Boolean(saveData.empireLegacyReady);
   world.empireLegacyComplete = Boolean(saveData.empireLegacyComplete);
   world.lastEmpireLegacyTick = Math.max(0, Math.round(restoreNumber(saveData.lastEmpireLegacyTick, 0)));
-  world.geology = saveData.geology ? JSON.parse(JSON.stringify(saveData.geology)) : null;
-  world.atmosphere = saveData.atmosphere ? JSON.parse(JSON.stringify(saveData.atmosphere)) : null;
-  world.abiogenesis = saveData.abiogenesis ? JSON.parse(JSON.stringify(saveData.abiogenesis)) : null;
-  world.microbial = saveData.microbial ? JSON.parse(JSON.stringify(saveData.microbial)) : null;
+  world.geology = saveData.geology ? clonePersistencePlainValue(saveData.geology) : null;
+  world.atmosphere = saveData.atmosphere ? clonePersistencePlainValue(saveData.atmosphere) : null;
+  world.abiogenesis = saveData.abiogenesis ? clonePersistencePlainValue(saveData.abiogenesis) : null;
+  world.microbial = saveData.microbial ? clonePersistencePlainValue(saveData.microbial) : null;
   world.microbialReady = Boolean(saveData.microbialReady || (world.microbial && world.microbial.totalDensity > 0.1));
   restoreBiologyAggregateState(saveData);
+  world.trackedLineage = saveData.trackedLineage ? clonePersistencePlainValue(saveData.trackedLineage) : null;
   world.lineages = restoreLineages(saveData.lineages);
+  world.species = Array.isArray(saveData.species) ? clonePersistencePlainValue(saveData.species) : [];
+  world.speciesById = {};
+  for (var speciesIndex = 0; speciesIndex < world.species.length; speciesIndex++) {
+    var speciesRecord = world.species[speciesIndex] || {};
+    var speciesId = Math.max(1, Math.round(restoreNumber(speciesRecord.id, speciesIndex + 1)));
+    speciesRecord.id = speciesId;
+    world.speciesById[String(speciesId)] = speciesRecord;
+    world.nextSpeciesId = Math.max(world.nextSpeciesId, speciesId + 1);
+  }
+  world.speciationEvents = Array.isArray(saveData.speciationEvents) ? clonePersistencePlainValue(saveData.speciationEvents) : [];
+  world.massExtinction = saveData.massExtinction ? clonePersistencePlainValue(saveData.massExtinction) : null;
+  world.extinctionEvents = Array.isArray(saveData.extinctionEvents) ? clonePersistencePlainValue(saveData.extinctionEvents) : [];
   world.settlements = restoreSettlements(saveData.settlements);
   world.settlementRoutes = restoreSettlementRoutes(saveData.settlementRoutes);
   rebuildSettlementIndexes();
@@ -127,52 +235,22 @@ function applyWorldSaveData(saveData) {
     ensureOutpostRoutes();
   }
 
-  if (typeof updateColonyNetworkState === "function") {
-    var networkSummary = updateColonyNetworkState();
-
-    if (typeof updateSpaceProgramReadiness === "function") {
-      updateSpaceProgramReadiness(networkSummary);
-    }
-  }
-
-  if (typeof updateOrbitalInfrastructureState === "function") {
-    updateOrbitalInfrastructureState();
-  }
-
-  if (typeof updatePlanetarySurveyReadiness === "function") {
-    updatePlanetarySurveyReadiness();
-  }
-
-  if (typeof updateProbeMissionReadiness === "function") {
-    updateProbeMissionReadiness();
-  }
-
-  if (typeof updateStarMapReadiness === "function") {
-    updateStarMapReadiness();
-  }
-
-  if (typeof updateGalacticInfluenceReadiness === "function") {
-    updateGalacticInfluenceReadiness();
-  }
-
-  if (typeof updateInterstellarFleetReadiness === "function") {
-    updateInterstellarFleetReadiness();
-  }
-
-  if (typeof updateEmpireSectorReadiness === "function") {
-    updateEmpireSectorReadiness();
-  }
-
-  if (typeof updateEmpireLegacyReadiness === "function") {
-    updateEmpireLegacyReadiness();
-  }
-
   world.traitHistory = restoreTraitHistory(saveData.traitHistory);
   world.ecosystemHistory = restoreEcosystemHistory(saveData.ecosystemHistory);
+  if (PS.ui && PS.ui.bookmarks && typeof PS.ui.bookmarks.restore === "function") {
+    PS.ui.bookmarks.restore(saveData.bookmarks, saveData.nextBookmarkId);
+  } else {
+    world.bookmarks = Array.isArray(saveData.bookmarks) ? clonePersistencePlainValue(saveData.bookmarks) : [];
+    world.nextBookmarkId = Math.max(1, Math.round(restoreNumber(saveData.nextBookmarkId, world.bookmarks.length + 1)));
+  }
   world.eventLog = restoreSimulationEvents(saveData.eventLog);
   world.timelineEvents = restoreSimulationEvents(saveData.timelineEvents, 0);
-  world.milestonesReached = saveData.milestonesReached ? JSON.parse(JSON.stringify(saveData.milestonesReached)) : {};
+  world.milestonesReached = saveData.milestonesReached ? clonePersistencePlainValue(saveData.milestonesReached) : {};
   world.ecosystemSummary = null;
+
+  if (PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
+    PS.sim.lineageTracking.update(true);
+  }
 
   if (typeof refreshEcosystemSummary === "function") {
     refreshEcosystemSummary();
@@ -186,16 +264,12 @@ function applyWorldSaveData(saveData) {
   world.maxUpdateMs = 0;
   world.maxDrawMs = 0;
 
-  if (typeof buildTerrainCache === "function") {
-    buildTerrainCache();
-  }
-
   drawWorld();
   updateHud();
   return saveData;
 }
 
-function restoreCameraState(cameraState) {
+export function restoreCameraState(cameraState) {
   var maxZoom = typeof getPlanetZoomLevels === "function" ? getPlanetZoomLevels().length - 1 : 0;
   var camera = cameraState || {};
 
@@ -208,7 +282,7 @@ function restoreCameraState(cameraState) {
   };
 }
 
-function loadWorldFromIndexedDB() {
+export function loadWorldFromIndexedDB() {
   return openPixeldariumDatabase().then(function(db) {
     return new Promise(function(resolve, reject) {
       var transaction = db.transaction(PIXELDARIUM_SAVE_STORE, "readonly");
@@ -235,7 +309,7 @@ function loadWorldFromIndexedDB() {
   });
 }
 
-function exportWorldToJsonFile() {
+export function exportWorldToJsonFile() {
   var saveData = createWorldSaveData();
   var json = JSON.stringify(saveData, null, 2);
   var blob = new Blob([json], { type: "application/json" });
@@ -255,7 +329,7 @@ function exportWorldToJsonFile() {
   return saveData;
 }
 
-function importWorldFromJsonFile(file) {
+export function importWorldFromJsonFile(file) {
   return new Promise(function(resolve, reject) {
     if (!file) {
       reject(new Error("No JSON file selected"));

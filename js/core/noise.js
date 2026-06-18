@@ -1,3 +1,7 @@
+"use strict";
+import { PS } from "./namespace.js";
+import { clamp, hashSeedText } from "./utils.js";
+
 PS.core = PS.core || {};
 
 PS.core.createNoisePrng = function (seedValue) {
@@ -67,20 +71,40 @@ PS.core.Noise2D.prototype.gradient = function (hash, x, y) {
 };
 
 PS.core.Noise2D.prototype.perlin = function (x, y) {
-  var xi = Math.floor(Number(x) || 0) & 255;
-  var yi = Math.floor(Number(y) || 0) & 255;
-  var xf = (Number(x) || 0) - Math.floor(Number(x) || 0);
-  var yf = (Number(y) || 0) - Math.floor(Number(y) || 0);
-  var u = this.fade(xf);
-  var v = this.fade(yf);
-  var aa = this.permutation[this.permutation[xi] + yi];
-  var ab = this.permutation[this.permutation[xi] + yi + 1];
-  var ba = this.permutation[this.permutation[xi + 1] + yi];
-  var bb = this.permutation[this.permutation[xi + 1] + yi + 1];
-  var top = this.lerp(this.gradient(aa, xf, yf), this.gradient(ba, xf - 1, yf), u);
-  var bottom = this.lerp(this.gradient(ab, xf, yf - 1), this.gradient(bb, xf - 1, yf - 1), u);
+  var px = Number(x) || 0;
+  var py = Number(y) || 0;
+  var x0 = Math.floor(px);
+  var y0 = Math.floor(py);
+  var xi = x0 & 255;
+  var yi = y0 & 255;
+  var xf = px - x0;
+  var yf = py - y0;
+  var u = xf * xf * xf * (xf * (xf * 6 - 15) + 10);
+  var v = yf * yf * yf * (yf * (yf * 6 - 15) + 10);
+  var permutation = this.permutation;
+  var aa = permutation[permutation[xi] + yi];
+  var ab = permutation[permutation[xi] + yi + 1];
+  var ba = permutation[permutation[xi + 1] + yi];
+  var bb = permutation[permutation[xi + 1] + yi + 1];
+  var xf1 = xf - 1;
+  var yf1 = yf - 1;
+  var gaaH = aa & 7;
+  var gabH = ab & 7;
+  var gbaH = ba & 7;
+  var gbbH = bb & 7;
+  var gaa = ((gaaH & 1) ? -(gaaH < 4 ? xf : yf) : (gaaH < 4 ? xf : yf)) +
+    ((gaaH & 2) ? -2 * (gaaH < 4 ? yf : xf) : 2 * (gaaH < 4 ? yf : xf));
+  var gba = ((gbaH & 1) ? -(gbaH < 4 ? xf1 : yf) : (gbaH < 4 ? xf1 : yf)) +
+    ((gbaH & 2) ? -2 * (gbaH < 4 ? yf : xf1) : 2 * (gbaH < 4 ? yf : xf1));
+  var gab = ((gabH & 1) ? -(gabH < 4 ? xf : yf1) : (gabH < 4 ? xf : yf1)) +
+    ((gabH & 2) ? -2 * (gabH < 4 ? yf1 : xf) : 2 * (gabH < 4 ? yf1 : xf));
+  var gbb = ((gbbH & 1) ? -(gbbH < 4 ? xf1 : yf1) : (gbbH < 4 ? xf1 : yf1)) +
+    ((gbbH & 2) ? -2 * (gbbH < 4 ? yf1 : xf1) : 2 * (gbbH < 4 ? yf1 : xf1));
+  var top = gaa + (gba - gaa) * u;
+  var bottom = gab + (gbb - gab) * u;
+  var value = (top + (bottom - top) * v) * 0.5;
 
-  return PS.math.clamp(this.lerp(top, bottom, v) * 0.5, -1, 1);
+  return value < -1 ? -1 : (value > 1 ? 1 : value);
 };
 
 PS.core.Noise2D.prototype.simplex = function (x, y) {
@@ -154,7 +178,7 @@ PS.core.Noise2D.prototype.worley = function (x, y) {
   return PS.math.clamp(best / Math.SQRT2, 0, 1);
 };
 
-PS.core.Noise2D.prototype.fbm = function (x, y, octaves, lacunarity, gain) {
+PS.core.Noise2D.prototype.fractalSum = function (sampleFn, x, y, octaves, lacunarity, gain, fallback) {
   var total = 0;
   var amplitude = 1;
   var frequency = 1;
@@ -164,13 +188,17 @@ PS.core.Noise2D.prototype.fbm = function (x, y, octaves, lacunarity, gain) {
   var normalizedGain = PS.math.clamp(Number(gain) || 0.5, 0.05, 0.95);
 
   for (var i = 0; i < count; i++) {
-    total += this.perlin(x * frequency, y * frequency) * amplitude;
+    total += sampleFn.call(this, x * frequency, y * frequency) * amplitude;
     amplitudeTotal += amplitude;
     amplitude *= normalizedGain;
     frequency *= lac;
   }
 
-  return amplitudeTotal > 0 ? total / amplitudeTotal : 0;
+  return amplitudeTotal > 0 ? total / amplitudeTotal : fallback;
+};
+
+PS.core.Noise2D.prototype.fbm = function (x, y, octaves, lacunarity, gain) {
+  return this.fractalSum(this.perlin, x, y, octaves, lacunarity, gain, 0);
 };
 
 PS.core.Noise2D.prototype.ridged = function (x, y, octaves) {
@@ -218,22 +246,7 @@ PS.core.Noise2D.prototype.value = function (x, y) {
 };
 
 PS.core.Noise2D.prototype.valueFbm = function (x, y, octaves, lacunarity, gain) {
-  var total = 0;
-  var amplitude = 1;
-  var frequency = 1;
-  var amplitudeTotal = 0;
-  var count = Math.max(1, Math.round(Number(octaves) || 1));
-  var lac = Math.max(1.01, Number(lacunarity) || 2);
-  var normalizedGain = PS.math.clamp(Number(gain) || 0.5, 0.05, 0.95);
-
-  for (var i = 0; i < count; i++) {
-    total += this.value(x * frequency, y * frequency) * amplitude;
-    amplitudeTotal += amplitude;
-    amplitude *= normalizedGain;
-    frequency *= lac;
-  }
-
-  return amplitudeTotal > 0 ? total / amplitudeTotal : 0.5;
+  return this.fractalSum(this.value, x, y, octaves, lacunarity, gain, 0.5);
 };
 
 PS.core.Noise2D.prototype.continents = function (x, y) {

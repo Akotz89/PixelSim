@@ -1,7 +1,14 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+// fallow-ignore-next-line circular-dependency
+import { getDistanceLabel } from "../ui/summary.js";
+
 // Pixeldarium - planet.js
 // Earth-scale projection helpers for the planet-sized simulation map.
 
-var planetSurfaceChunkCache = {
+export var planetSurfaceChunkCache = {
   chunks: {},
   order: [],
   stats: {
@@ -14,7 +21,7 @@ var planetSurfaceChunkCache = {
   }
 };
 
-var planetGroundFeatureBlockCache = {
+export var planetGroundFeatureBlockCache = {
   blocks: {},
   order: [],
   stats: {
@@ -25,284 +32,298 @@ var planetGroundFeatureBlockCache = {
   }
 };
 
-function getPlanetRadiusKm() {
+export function getPlanetRadiusKm() {
   return PS.planet.metrics.getRadiusKm();
 }
 
-function getPlanetCircumferenceKm() {
+export function getPlanetCircumferenceKm() {
   return PS.planet.metrics.getCircumferenceKm();
 }
 
-function getPlanetPoleToPoleKm() {
+export function getPlanetPoleToPoleKm() {
   return PS.planet.metrics.getPoleToPoleKm();
 }
 
-function getPlanetEquatorKmPerTile() {
+export function getPlanetEquatorKmPerTile() {
   return PS.planet.metrics.getEquatorKmPerTile();
 }
 
-function getPlanetMeridianKmPerTile() {
+export function getPlanetMeridianKmPerTile() {
   return PS.planet.metrics.getMeridianKmPerTile();
 }
 
-function getPlanetLatitudeForTile(y) {
+export function getPlanetLatitudeForTile(y) {
   return PS.planet.metrics.getLatitudeForTile(y);
 }
 
-function getPlanetLongitudeForTile(x) {
+export function getPlanetLongitudeForTile(x) {
   return PS.planet.metrics.getLongitudeForTile(x);
 }
 
-function getPlanetTileLatitudeStepDeg() {
+export function getPlanetTileLatitudeStepDeg() {
   return PS.planet.metrics.getTileLatitudeStepDeg();
 }
 
-function getPlanetTileLongitudeStepDeg() {
+export function getPlanetTileLongitudeStepDeg() {
   return PS.planet.metrics.getTileLongitudeStepDeg();
 }
 
-function getPlanetLatitudeScale(latitude) {
+export function getPlanetLatitudeScale(latitude) {
   return PS.planet.metrics.getLatitudeScale(latitude);
 }
 
-function isGlobeRenderMode() {
+export function isGlobeRenderMode() {
   return CONFIG.PLANET_RENDER_MODE === "globe";
 }
 
-function getPlanetZoomLevels() {
+export function getPlanetZoomLevels() {
   return PS.camera.getZoomLevels();
 }
 
-function getPlanetZoomLevel(index) {
+export function getPlanetZoomLevel(index) {
   return PS.camera.getZoomLevel(index);
 }
 
-function interpolatePlanetScaleValue(fromValue, toValue, amount) {
+export function interpolatePlanetScaleValue(fromValue, toValue, amount) {
   return PS.camera.interpolateScaleValue(fromValue, toValue, amount);
 }
 
-function getPlanetZoomAnchorIndex(zoomLevel) {
+export function getPlanetZoomAnchorIndex(zoomLevel) {
   return PS.camera.getZoomAnchorIndex(zoomLevel);
 }
 
-function getPlanetSurfaceLodZoomIndex(zoomLevel) {
+export function getPlanetSurfaceLodZoomIndex(zoomLevel) {
   return PS.camera.getSurfaceLodZoomIndex(zoomLevel);
 }
 
-function getPlanetInterpolatedZoomLevel(zoomLevel) {
+export function getPlanetInterpolatedZoomLevel(zoomLevel) {
   return PS.camera.getInterpolatedZoomLevel(zoomLevel);
 }
 
-function getPlanetZoomFactor() {
+export function getPlanetZoomFactor() {
   return PS.camera.getZoomFactor();
 }
 
-function getPlanetView() {
+export function getPlanetView() {
   return PS.camera.getView();
 }
 
-function focusPlanetViewOnTile(x, y) {
+export function focusPlanetViewOnTile(x, y) {
   return PS.camera.focusTile(x, y);
 }
 
-function focusPlanetViewOnLatLon(latitude, longitude) {
+export function focusPlanetViewOnLatLon(latitude, longitude) {
   return PS.camera.focusLatLon(latitude, longitude);
 }
 
-function getPlanetViewPanVector() {
+export function getPlanetViewPanVector() {
   return PS.camera.getPanVector();
 }
 
-function invalidatePlanetRenderCache() {
-  if (typeof invalidateTerrainCache === "function") {
-    invalidateTerrainCache();
+export function invalidatePlanetRenderCache() {
+  if (PS.render && PS.render.terrain && typeof PS.render.terrain.invalidateCache === "function") {
+    PS.render.terrain.invalidateCache();
   }
 
   world.needsRender = true;
 }
 
-function setPlanetZoomLevel(zoomLevel) {
+export function setPlanetZoomLevel(zoomLevel) {
   return PS.camera.setZoom(zoomLevel);
 }
 
-function focusPlanetViewOnLatLonAtCanvasPoint(latitude, longitude, canvasX, canvasY) {
+export function focusPlanetViewOnLatLonAtCanvasPoint(latitude, longitude, canvasX, canvasY) {
   return PS.camera.focusLatLonAtCanvasPoint(latitude, longitude, canvasX, canvasY);
 }
 
-function setPlanetZoomLevelAtCanvasPoint(zoomLevel, canvasX, canvasY) {
-  return PS.camera.setZoomAtCanvasPoint(zoomLevel, canvasX, canvasY);
+export function setPlanetZoomLevelAtCanvasPoint(zoomLevel, canvasX, canvasY) {
+  return PS.camera.setIntegerZoomAtCanvasPoint(zoomLevel, canvasX, canvasY);
 }
 
-function adjustPlanetZoom(delta) {
+export function adjustPlanetZoom(delta) {
   return PS.camera.adjustZoom(delta);
 }
 
-function adjustPlanetZoomAtCanvasPoint(delta, canvasX, canvasY) {
+export function adjustPlanetZoomAtCanvasPoint(delta, canvasX, canvasY) {
   return PS.camera.adjustZoomAtCanvasPoint(delta, canvasX, canvasY);
 }
 
-function getPlanetViewScale() {
+export function adjustPlanetTouchPinchZoomAtCanvasPoint(delta, canvasX, canvasY) {
+  return PS.camera.adjustTouchPinchZoomAtCanvasPoint(delta, canvasX, canvasY);
+}
+
+export function setPlanetTouchPinchZoomTargetAtCanvasPoint(zoomLevel, canvasX, canvasY) {
+  return PS.camera.setTouchPinchZoomTargetAtCanvasPoint(zoomLevel, canvasX, canvasY);
+}
+
+export function getPlanetViewScale() {
   return PS.camera.getScale();
 }
 
-function getPlanetLodTier(zoomLevel) {
+export function getPlanetLodTier(zoomLevel) {
   return PS.render.lod.getTier(
     typeof zoomLevel === "number" ? zoomLevel : getPlanetView().zoomLevel
   );
 }
 
-function getPlanetScaleLabel() {
+export function getPlanetScaleLabel() {
   return PS.camera.getScaleLabel();
 }
 
-function getPlanetViewFootprintKm() {
+export function getPlanetViewFootprintKm() {
   var scale = getPlanetViewScale();
   var sampleCount = Math.max(WORLD_WIDTH, WORLD_HEIGHT);
 
   return (scale.metersPerSample * sampleCount) / 1000;
 }
 
-function isPlanetLocalView() {
-  return getPlanetView().zoomLevel >= 1;
+export function isPlanetLocalView() {
+  var view = getPlanetView();
+
+  if (PS.camera && PS.camera.unified && typeof PS.camera.unified.isLocalView === "function") {
+    return PS.camera.unified.isLocalView();
+  }
+
+  return view.zoomLevel >= 1.4;
 }
 
-function getPlanetLocalViewFootprint() {
+export function getPlanetLocalViewFootprint() {
   return PS.camera.getLocalViewFootprint();
 }
 
-function getPlanetDistanceLabel(meters) {
+export function getPlanetDistanceLabel(meters) {
   return PS.camera.getDistanceLabel(meters);
 }
 
-function getPlanetCameraScaleInfo() {
+export function getPlanetCameraScaleInfo() {
   return PS.camera.getInfo();
 }
 
-function getNicePlanetDistanceMeters(targetMeters) {
+export function getNicePlanetDistanceMeters(targetMeters) {
   return PS.camera.getNiceDistanceMeters(targetMeters);
 }
 
-function getPlanetScaleBar(targetPixels) {
+export function getPlanetScaleBar(targetPixels) {
   return PS.camera.getScaleBar(targetPixels);
 }
 
-function getPlanetSurfaceChunkSampleCount() {
+export function getPlanetSurfaceChunkSampleCount() {
   return PS.render.surface.getChunkSampleCount();
 }
 
-function getPlanetSurfaceChunkCacheLimit() {
+export function getPlanetSurfaceChunkCacheLimit() {
   return PS.render.surface.getChunkCacheLimit();
 }
 
-function getPlanetSurfaceVisibleChunkLimit() {
+export function getPlanetSurfaceVisibleChunkLimit() {
   return PS.render.surface.getVisibleChunkLimit();
 }
 
-function getPositiveModulo(value, divisor) {
+export function getPositiveModulo(value, divisor) {
   var normalizedDivisor = Math.max(1, Math.round(Number(divisor) || 1));
   return ((Math.round(Number(value) || 0) % normalizedDivisor) + normalizedDivisor) % normalizedDivisor;
 }
 
-function resetPlanetSurfaceChunkCache() {
+export function resetPlanetSurfaceChunkCache() {
   return PS.render.surface.resetChunkCache();
 }
 
-function getPlanetSurfaceCacheStats() {
+export function getPlanetSurfaceCacheStats() {
   return PS.render.surface.getCacheStats();
 }
 
-function getLongitudeDistanceKmPerDegree(latitude) {
+export function getLongitudeDistanceKmPerDegree(latitude) {
   return PS.render.globe.getLongitudeDistanceKmPerDegree(latitude);
 }
 
-function getLatitudeDistanceKmPerDegree() {
+export function getLatitudeDistanceKmPerDegree() {
   return PS.render.globe.getLatitudeDistanceKmPerDegree();
 }
 
-function normalizeLongitude(longitude) {
+export function normalizeLongitude(longitude) {
   return PS.render.globe.normalizeLongitude(longitude);
 }
 
-function getLatLonFromLocalOffset(eastKm, northKm) {
+export function getLatLonFromLocalOffset(eastKm, northKm) {
   return PS.render.globe.getLatLonFromLocalOffset(eastKm, northKm);
 }
 
-function getLatLonFromSurfaceMeterCoordinate(eastMeters, northMeters) {
+export function getLatLonFromSurfaceMeterCoordinate(eastMeters, northMeters) {
   return PS.render.globe.getLatLonFromSurfaceMeters(eastMeters, northMeters);
 }
 
-function getPlanetLocalLatLonFromCanvasPoint(canvasX, canvasY) {
+export function getPlanetLocalLatLonFromCanvasPoint(canvasX, canvasY) {
   return PS.render.globe.getLocalLatLonFromCanvasPoint(canvasX, canvasY);
 }
 
-function getPlanetLatLonFromCanvasPoint(canvasX, canvasY) {
+export function getPlanetLatLonFromCanvasPoint(canvasX, canvasY) {
   return PS.render.globe.getLatLonFromCanvasPoint(canvasX, canvasY);
 }
 
-function focusPlanetViewOnCanvasPoint(canvasX, canvasY) {
+export function focusPlanetViewOnCanvasPoint(canvasX, canvasY) {
   return PS.camera.focusCanvasPoint(canvasX, canvasY);
 }
 
-function panPlanetViewByKm(eastKm, northKm) {
+export function panPlanetViewByKm(eastKm, northKm) {
   return PS.camera.panKm(eastKm, northKm);
 }
 
-function panPlanetViewByScreenDelta(deltaX, deltaY) {
+export function panPlanetViewByScreenDelta(deltaX, deltaY) {
   return PS.camera.panScreen(deltaX, deltaY);
 }
 
-function panPlanetViewBySamples(eastSamples, northSamples) {
+export function panPlanetViewBySamples(eastSamples, northSamples) {
   return PS.camera.panSamples(eastSamples, northSamples);
 }
 
-function getTileFromLatLon(latitude, longitude) {
+export function getTileFromLatLon(latitude, longitude) {
   return PS.render.globe.getTileFromLatLon(latitude, longitude);
 }
 
-function getPlanetSurfaceTileBlend(latitude, longitude) {
+export function getPlanetSurfaceTileBlend(latitude, longitude) {
   return PS.render.surface.getTileBlend(latitude, longitude);
 }
 
-function getPlanetTileCenterLatLon(x, y) {
+export function getPlanetTileCenterLatLon(x, y) {
   return PS.render.globe.getTileLatLon(x, y);
 }
 
-function getRandomLatLonInTile(x, y) {
+export function getRandomLatLonInTile(x, y) {
   return PS.render.globe.getRandomLatLonInTile(x, y);
 }
 
-function getEntitySurfacePosition(entity) {
+export function getEntitySurfacePosition(entity) {
   return PS.render.globe.getEntitySurfacePosition(entity);
 }
 
-function setEntitySurfacePosition(entity, latitude, longitude) {
+export function setEntitySurfacePosition(entity, latitude, longitude) {
   return PS.render.globe.setEntitySurfacePosition(entity, latitude, longitude);
 }
 
-function assignRandomSurfacePositionInTile(entity) {
+export function assignRandomSurfacePositionInTile(entity) {
   return PS.render.globe.assignRandomEntitySurfacePositionInTile(entity);
 }
 
-function ensureEntitySurfacePosition(entity) {
+export function ensureEntitySurfacePosition(entity) {
   return PS.render.globe.ensureEntitySurfacePosition(entity);
 }
 
-function syncEntityTileFromSurfacePosition(entity) {
+export function syncEntityTileFromSurfacePosition(entity) {
   return PS.render.globe.syncEntityTileFromSurfacePosition(entity);
 }
 
-function interpolateLongitudeDeg(fromLongitude, toLongitude, amount) {
+export function interpolateLongitudeDeg(fromLongitude, toLongitude, amount) {
   return PS.render.globe.interpolateLongitude(fromLongitude, toLongitude, amount);
 }
 
-function getPlanetLocalSurfaceAddress(gridX, gridY) {
+export function getPlanetLocalSurfaceAddress(gridX, gridY) {
   return PS.render.surface.getLocalAddress(gridX, gridY);
 }
 
-function makePlanetSurfaceChunkAddress(zoomLevelIndex, chunkX, chunkY) {
+export function makePlanetSurfaceChunkAddress(zoomLevelIndex, chunkX, chunkY) {
   return PS.render.surface.makeChunkAddress(zoomLevelIndex, chunkX, chunkY);
 }
 
-function getPlanetSurfaceChunkCenterLatLon(address) {
+export function getPlanetSurfaceChunkCenterLatLon(address) {
   return PS.render.surface.getChunkCenterLatLon(address);
 }

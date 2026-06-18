@@ -4,7 +4,7 @@
   "reviewIssue": "AZR-795",
   "generatedAt": "2026-06-06T09:32:18.958Z",
   "runtimeUse": true,
-  "acceptedSheetCount": 15,
+  "acceptedSheetCount": 23,
   "rejected": [
     "creature_npc_original_v0"
   ],
@@ -113,6 +113,70 @@
       "path": "assets/pixeldarium-equivalence/overlays/source_reviewed_overlays_v0.png",
       "meta": "assets/pixeldarium-equivalence/overlays/source_reviewed_overlays_v0.json",
       "frameCount": 17
+    },
+    {
+      "id": "equivalence_terrain_transition_grass_sand_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/grass-sand.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-sand.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_grass_water_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/grass-water.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-water.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_grass_rock_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/grass-rock.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-rock.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_sand_water_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/sand-water.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/sand-water.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_rock_snow_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/rock-snow.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/rock-snow.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_grass_forest_floor_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/grass-forest-floor.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/grass-forest-floor.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_mud_water_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/mud-water.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/mud-water.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
+    },
+    {
+      "id": "equivalence_terrain_transition_volcanic_rock_v1",
+      "family": "transitions",
+      "path": "assets/pixeldarium-equivalence/transitions/volcanic-rock.png",
+      "meta": "assets/pixeldarium-equivalence/transitions/volcanic-rock.json",
+      "frameCount": 46,
+      "sourceIssue": "AZR-1141"
     }
   ]
 }

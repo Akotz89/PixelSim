@@ -1,0 +1,59 @@
+PS.assets.registerJSON("assets/terrain/ice.json", {
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 8,
+  "splitAtlas": true,
+  "albedoColumns": 8,
+  "normalColumns": 8,
+  "normalOffsetX": 256,
+  "rows": 1,
+  "names": [
+    "terrain.ice.0",
+    "terrain.ice.1",
+    "terrain.ice.2",
+    "terrain.ice.3",
+    "terrain.ice.4",
+    "terrain.ice.5",
+    "terrain.ice.6",
+    "terrain.ice.7"
+  ],
+  "authored": true,
+  "sourceIssue": "AZR-511",
+  "sourceKind": "accepted-runtime-art",
+  "fallback": "Regenerate with scripts/build-terrain-biomes.js if an accepted PNG is missing.",
+  "variantRoles": [
+    {
+      "id": "terrain.ice.0",
+      "role": "snow-1"
+    },
+    {
+      "id": "terrain.ice.1",
+      "role": "frozen-soil-1"
+    },
+    {
+      "id": "terrain.ice.2",
+      "role": "cracked-ice-1"
+    },
+    {
+      "id": "terrain.ice.3",
+      "role": "winter-1"
+    },
+    {
+      "id": "terrain.ice.4",
+      "role": "snow-2"
+    },
+    {
+      "id": "terrain.ice.5",
+      "role": "frozen-soil-2"
+    },
+    {
+      "id": "terrain.ice.6",
+      "role": "cracked-ice-2"
+    },
+    {
+      "id": "terrain.ice.7",
+      "role": "winter-2"
+    }
+  ]
+});

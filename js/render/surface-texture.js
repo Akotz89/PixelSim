@@ -1,35 +1,85 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { createDeterministicSwatches } from "./surface-base.js";
+import { blendHexColors, getPlanetVisualSeedOffset, shadeHexColor } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceTexture = PS.render.surfaceTexture || {};
 
-PS.render.surfaceTexture.getMicrotextureAccent = function (sample, baseColor, amount) {
+var SURFACE_TEXTURE_GROUPS = {
+  "open water": "water",
+  "deep water": "water",
+  whitecap: "whitecap",
+  "dense canopy": "canopy",
+  woodland: "canopy",
+  grass: "grass",
+  brush: "grass",
+  meadow: "grass",
+  clearing: "grass",
+  rock: "rock",
+  stone: "rock",
+  sand: "sand",
+  dune: "sand",
+  snow: "snow",
+  ice: "snow",
+  "ridge ice": "snow",
+  scrub: "scrub",
+  moss: "scrub"
+};
+
+var MICROTEXTURE_ACCENT_SPECS = {
+  water: { threshold: 0, high: "#86c8df", low: "#86c8df" },
+  whitecap: { threshold: 0, high: "#e9fbff", low: "#e9fbff" },
+  canopy: { threshold: 0.58, high: "#1b5630", low: "#071f12" },
+  grass: { threshold: 0.55, high: "#80a84b", low: "#244c28" },
+  rock: { threshold: 0.50, high: "#9b998a", low: "#343632" },
+  sand: { threshold: 0.50, high: "#d0b36c", low: "#6a572a" },
+  snow: { threshold: 0.50, high: "#f5fdff", low: "#8bbfd1" },
+  scrub: { threshold: 0.50, high: "#708764", low: "#26352c" },
+  default: { threshold: 0.50, high: "#d7e4d8", low: "#1f2b24" }
+};
+
+var SILHOUETTE_ACCENT_SPECS = {
+  water: { threshold: 0.52, high: "#8bd4e8", low: "#021124" },
+  whitecap: { threshold: 0.52, high: "#8bd4e8", low: "#021124" },
+  canopy: { threshold: 0.52, high: "#2b6a38", low: "#03140a" },
+  grass: { threshold: 0.52, high: "#83ad4e", low: "#102819" },
+  rock: { threshold: 0.52, high: "#a9a592", low: "#252722" },
+  sand: { threshold: 0.52, high: "#d2b66f", low: "#5e4b22" },
+  snow: { threshold: 0.52, high: "#ffffff", low: "#88b9cb" },
+  scrub: { threshold: 0.52, high: "#738b66", low: "#253428" },
+  default: { threshold: 0.52, high: "#dfeadf", low: "#101713" }
+};
+
+function getSurfaceTextureGroup(surface, biome) {
+  if (biome === "ocean") {
+    return "water";
+  }
+
+  return SURFACE_TEXTURE_GROUPS[surface] || "default";
+}
+
+function getTextureSpecColor(specs, surface, biome, amount) {
+  var normalizedAmount = clamp(Number(amount) || 0, 0, 1);
+  var spec = specs[getSurfaceTextureGroup(surface, biome)] || specs.default;
+
+  return normalizedAmount > spec.threshold ? spec.high : spec.low;
+}
+
+PS.render.surfaceTexture.getMicrotextureAccent = function getMicrotextureAccent(sample, baseColor, amount) {
   var detail = sample && sample.detail ? sample.detail : {};
   var biome = sample && sample.biome ? sample.biome : "unknown";
   var surface = detail.surface || "ground";
   var normalizedAmount = clamp(Number(amount) || 0, 0, 1);
-  var accent = "#ffffff";
-
-  if (biome === "ocean" || surface === "open water" || surface === "deep water" || surface === "whitecap") {
-    accent = surface === "whitecap" ? "#e9fbff" : "#86c8df";
-  } else if (surface === "dense canopy" || surface === "woodland") {
-    accent = normalizedAmount > 0.58 ? "#1b5630" : "#071f12";
-  } else if (surface === "grass" || surface === "brush" || surface === "meadow" || surface === "clearing") {
-    accent = normalizedAmount > 0.55 ? "#80a84b" : "#244c28";
-  } else if (surface === "rock" || surface === "stone") {
-    accent = normalizedAmount > 0.50 ? "#9b998a" : "#343632";
-  } else if (surface === "sand" || surface === "dune") {
-    accent = normalizedAmount > 0.50 ? "#d0b36c" : "#6a572a";
-  } else if (surface === "snow" || surface === "ice" || surface === "ridge ice") {
-    accent = normalizedAmount > 0.50 ? "#f5fdff" : "#8bbfd1";
-  } else if (surface === "scrub" || surface === "moss") {
-    accent = normalizedAmount > 0.50 ? "#708764" : "#26352c";
-  } else {
-    accent = normalizedAmount > 0.50 ? "#d7e4d8" : "#1f2b24";
-  }
+  var accent = getTextureSpecColor(MICROTEXTURE_ACCENT_SPECS, surface, biome, normalizedAmount);
 
   return blendHexColors(baseColor, accent, clamp(0.14 + normalizedAmount * 0.22, 0, 0.42));
 };
 
-PS.render.surfaceTexture.getTextureStrength = function (sample) {
+PS.render.surfaceTexture.getTextureStrength = function getTextureStrength(sample) {
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
   var featureRelief = detail.featureRelief || {};
@@ -51,7 +101,7 @@ PS.render.surfaceTexture.getTextureStrength = function (sample) {
   );
 };
 
-PS.render.surfaceTexture.getTextureSwatchCount = function (sample, strength) {
+PS.render.surfaceTexture.getTextureSwatchCount = function getTextureSwatchCount(sample, strength) {
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
   var normalizedStrength = clamp(Number(strength) || 0, 0, 1);
@@ -67,7 +117,7 @@ PS.render.surfaceTexture.getTextureSwatchCount = function (sample, strength) {
   );
 };
 
-PS.render.surfaceTexture.getTextureSwatchShape = function (sample, noise, index) {
+PS.render.surfaceTexture.getTextureSwatchShape = function getTextureSwatchShape(sample, noise, index) {
   var detail = sample && sample.detail ? sample.detail : {};
   var surface = detail.surface || "ground";
   var normalizedNoise = clamp(Number(noise) || 0, 0, 1);
@@ -110,46 +160,41 @@ PS.render.surfaceTexture.getTextureSwatchShape = function (sample, noise, index)
   };
 };
 
-PS.render.surfaceTexture.getMicrotextureSwatches = function (sample, baseColor) {
+PS.render.surfaceTexture.getMicrotextureSwatches = function getMicrotextureSwatches(sample, baseColor) {
   var strength = PS.render.surfaceTexture.getTextureStrength(sample);
   var swatchCount = PS.render.surfaceTexture.getTextureSwatchCount(sample, strength);
-  var swatches = [];
-  var seedEast = Math.round(Number(sample && sample.surfaceSampleX) || 0);
-  var seedNorth = Math.round(Number(sample && sample.surfaceSampleY) || 0);
 
   if (swatchCount <= 0) {
-    return swatches;
+    return [];
   }
 
-  for (var i = 0; i < swatchCount; i++) {
-    var noise = getDeterministicUnitNoise(seedEast + i * 13, seedNorth - i * 17, getPlanetVisualSeedOffset() + i * 29 + swatchCount);
-    var shape;
-    var maxX;
-    var maxY;
-
-    if (i > 0 && noise > strength + 0.38) {
-      continue;
+  return createDeterministicSwatches({
+    sample: sample,
+    count: swatchCount,
+    seedExtra: swatchCount,
+    noiseBase: 0,
+    noiseEastStep: 13,
+    noiseNorthStep: -17,
+    noiseSeedStep: 29,
+    xBase: 701,
+    yBase: 811,
+    includeVisualSeedForPosition: false,
+    shouldSkip: function(noise) {
+      return noise > strength + 0.38;
+    },
+    getShape: function(noise, index) {
+      return PS.render.surfaceTexture.getTextureSwatchShape(sample, noise, index);
+    },
+    getColor: function(noise) {
+      return PS.render.surfaceTexture.getMicrotextureAccent(sample, baseColor, noise);
+    },
+    getAlpha: function(noise) {
+      return clamp(0.14 + strength * 0.42 + noise * 0.16, 0.16, 0.68);
     }
-
-    shape = PS.render.surfaceTexture.getTextureSwatchShape(sample, noise, i);
-    maxX = Math.max(1, CONFIG.TILE_SIZE - shape.width + 1);
-    maxY = Math.max(1, CONFIG.TILE_SIZE - shape.height + 1);
-
-    swatches.push({
-      x: Math.floor(getDeterministicUnitNoise(seedEast, seedNorth, 701 + i) * maxX),
-      y: Math.floor(getDeterministicUnitNoise(seedEast, seedNorth, 811 + i) * maxY),
-      size: Math.max(shape.width, shape.height),
-      width: shape.width,
-      height: shape.height,
-      color: PS.render.surfaceTexture.getMicrotextureAccent(sample, baseColor, noise),
-      alpha: clamp(0.14 + strength * 0.42 + noise * 0.16, 0.16, 0.68)
-    });
-  }
-
-  return swatches;
+  });
 };
 
-PS.render.surfaceTexture.getFinePixelStrength = function (sample) {
+PS.render.surfaceTexture.getFinePixelStrength = function getFinePixelStrength(sample) {
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
   var featureRelief = detail.featureRelief || {};
@@ -174,7 +219,7 @@ PS.render.surfaceTexture.getFinePixelStrength = function (sample) {
   );
 };
 
-PS.render.surfaceTexture.getFinePixelCount = function (sample, strength) {
+PS.render.surfaceTexture.getFinePixelCount = function getFinePixelCount(sample, strength) {
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
   var normalizedStrength = clamp(Number(strength) || 0, 0, 1);
@@ -187,7 +232,7 @@ PS.render.surfaceTexture.getFinePixelCount = function (sample, strength) {
   return clamp(Math.round(baseCount + normalizedStrength * (sampleMeters <= 1 ? 6 : 4)), 1, sampleMeters <= 1 ? 11 : 7);
 };
 
-PS.render.surfaceTexture.getFinePixelAccent = function (sample, baseColor, noise) {
+PS.render.surfaceTexture.getFinePixelAccent = function getFinePixelAccent(sample, baseColor, noise) {
   var detail = sample && sample.detail ? sample.detail : {};
   var surface = detail.surface || "ground";
   var normalizedNoise = clamp(Number(noise) || 0, 0, 1);
@@ -210,7 +255,7 @@ PS.render.surfaceTexture.getFinePixelAccent = function (sample, baseColor, noise
   return accent;
 };
 
-PS.render.surfaceTexture.getFinePixelSwatches = function (sample, baseColor) {
+PS.render.surfaceTexture.getFinePixelSwatches = function getFinePixelSwatches(sample, baseColor) {
   var strength = PS.render.surfaceTexture.getFinePixelStrength(sample);
   var swatchCount = PS.render.surfaceTexture.getFinePixelCount(sample, strength);
   var swatches = [];
@@ -246,32 +291,17 @@ PS.render.surfaceTexture.getFinePixelSwatches = function (sample, baseColor) {
   return swatches;
 };
 
-PS.render.surfaceTexture.getSilhouetteAccent = function (sample, baseColor, noise) {
+PS.render.surfaceTexture.getSilhouetteAccent = function getSilhouetteAccent(sample, baseColor, noise) {
   var detail = sample && sample.detail ? sample.detail : {};
+  var biome = sample && sample.biome ? sample.biome : "unknown";
   var surface = detail.surface || "ground";
   var normalizedNoise = clamp(Number(noise) || 0, 0, 1);
-  var target = normalizedNoise > 0.52 ? "#dfeadf" : "#101713";
-
-  if (surface === "open water" || surface === "deep water" || surface === "whitecap") {
-    target = normalizedNoise > 0.52 ? "#8bd4e8" : "#021124";
-  } else if (surface === "dense canopy" || surface === "woodland") {
-    target = normalizedNoise > 0.52 ? "#2b6a38" : "#03140a";
-  } else if (surface === "grass" || surface === "brush" || surface === "meadow" || surface === "clearing") {
-    target = normalizedNoise > 0.52 ? "#83ad4e" : "#102819";
-  } else if (surface === "rock" || surface === "stone") {
-    target = normalizedNoise > 0.52 ? "#a9a592" : "#252722";
-  } else if (surface === "sand" || surface === "dune") {
-    target = normalizedNoise > 0.52 ? "#d2b66f" : "#5e4b22";
-  } else if (surface === "snow" || surface === "ice" || surface === "ridge ice") {
-    target = normalizedNoise > 0.52 ? "#ffffff" : "#88b9cb";
-  } else if (surface === "scrub" || surface === "moss") {
-    target = normalizedNoise > 0.52 ? "#738b66" : "#253428";
-  }
+  var target = getTextureSpecColor(SILHOUETTE_ACCENT_SPECS, surface, biome, normalizedNoise);
 
   return blendHexColors(baseColor, target, clamp(0.16 + normalizedNoise * 0.24, 0.16, 0.46));
 };
 
-PS.render.surfaceTexture.getSilhouetteStrength = function (sample) {
+PS.render.surfaceTexture.getSilhouetteStrength = function getSilhouetteStrength(sample) {
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
   var featureInfluence = detail.groundFeature ? clamp(Number(detail.groundFeature.influence) || 0, 0, 1) : 0;
@@ -297,7 +327,7 @@ PS.render.surfaceTexture.getSilhouetteStrength = function (sample) {
   );
 };
 
-PS.render.surfaceTexture.getSilhouetteSwatches = function (sample, baseColor) {
+PS.render.surfaceTexture.getSilhouetteSwatches = function getSilhouetteSwatches(sample, baseColor) {
   var strength = PS.render.surfaceTexture.getSilhouetteStrength(sample);
   var swatches = [];
   var seedEast = Math.round(Number(sample && sample.surfaceSampleX) || 0);

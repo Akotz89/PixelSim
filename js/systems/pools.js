@@ -1,6 +1,10 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+
 PS.systems = PS.systems || {};
 
-function definePooledNumber(target, name, arrays, key, index) {
+export function definePooledNumber(target, name, arrays, key, index) {
   Object.defineProperty(target, name, {
     enumerable: true,
     configurable: false,
@@ -13,22 +17,29 @@ function definePooledNumber(target, name, arrays, key, index) {
   });
 }
 
-function definePooledTrait(target, name, arrays, key, index) {
+export function definePooledTrait(target, name, arrays, key, index) {
+  var offset = PS.core.traitSchema.getOffset(key);
+  var stride = PS.core.traitSchema.getStride();
+
   Object.defineProperty(target, name, {
     enumerable: true,
     configurable: false,
     get: function() {
-      return arrays[key][index];
+      return arrays.traitBuffer[index * stride + offset];
     },
     set: function(value) {
-      arrays[key][index] = Number(value) || 0;
+      var normalized = PS.core.traitSchema.normalizeTraitValue(key, value);
+
+      arrays.traitBuffer[index * stride + offset] = normalized;
+      arrays[key][index] = normalized;
     }
   });
 }
 
-function makeOrganismArrays(capacity) {
-  return {
+export function makeOrganismArrays(capacity) {
+  var arrays = {
     active: new Uint8Array(capacity),
+    traitBuffer: new Float32Array(capacity * PS.core.traitSchema.getStride()),
     x: new Float32Array(capacity),
     y: new Float32Array(capacity),
     prevX: new Float32Array(capacity),
@@ -49,6 +60,9 @@ function makeOrganismArrays(capacity) {
     reproductionEnergy: new Float32Array(capacity),
     movementTendency: new Float32Array(capacity),
     terrainAffinity: new Float32Array(capacity),
+    intelligence: new Float32Array(capacity),
+    sociality: new Float32Array(capacity),
+    carnivory: new Float32Array(capacity),
     bodySize: new Float32Array(capacity),
     limbCount: new Uint8Array(capacity),
     bodyShape: new Uint8Array(capacity),
@@ -74,7 +88,7 @@ function makeOrganismArrays(capacity) {
   return arrays;
 }
 
-function createOrganismFacade(index, arrays) {
+export function createOrganismFacade(index, arrays) {
   var traits = {};
   var organism = {
     poolIndex: index,
@@ -87,6 +101,7 @@ function createOrganismFacade(index, arrays) {
   ];
   var traitFields = [
     "vision", "metabolism", "reproductionEnergy", "movementTendency", "terrainAffinity",
+    "intelligence", "sociality", "carnivory",
     "bodySize", "limbCount", "bodyShape", "appendageType", "camouflage", "thermalTolerance", "waterDependency"
   ];
 
@@ -106,10 +121,23 @@ function createOrganismFacade(index, arrays) {
     },
     set: function(values) {
       values = values || {};
+      var aliases = PS.core.traitSchema.getAliases();
+
       for (var traitIndex = 0; traitIndex < traitFields.length; traitIndex++) {
         var trait = traitFields[traitIndex];
-        if (typeof values[trait] === "number") {
-          arrays[trait][index] = values[trait];
+        var value = values[trait];
+
+        if (value === undefined) {
+          for (var alias in aliases) {
+            if (Object.prototype.hasOwnProperty.call(aliases, alias) && aliases[alias] === trait && values[alias] !== undefined) {
+              value = values[alias];
+              break;
+            }
+          }
+        }
+
+        if (value !== undefined) {
+          traits[trait] = value;
         }
       }
     }
@@ -118,7 +146,7 @@ function createOrganismFacade(index, arrays) {
   return organism;
 }
 
-function createFoodParticle(index) {
+export function createFoodParticle(index) {
   return {
     poolIndex: index,
     active: false,
@@ -129,7 +157,7 @@ function createFoodParticle(index) {
   };
 }
 
-function createFreeList(capacity) {
+export function createFreeList(capacity) {
   var freeList = new Int32Array(capacity);
 
   for (var i = 0; i < capacity; i++) {
@@ -139,7 +167,7 @@ function createFreeList(capacity) {
   return freeList;
 }
 
-function createOrganismPool(capacity) {
+export function createOrganismPool(capacity) {
   var arrays = makeOrganismArrays(capacity);
   var facades = [];
 
@@ -178,6 +206,7 @@ function createOrganismPool(capacity) {
     },
     reset: function() {
       this.arrays.active.fill(0);
+      this.arrays.traitBuffer.fill(0);
       this.arrays.nextInTile.fill(-1);
       this.arrays.prevInTile.fill(-1);
       this.freeList = createFreeList(this.capacity);
@@ -187,7 +216,7 @@ function createOrganismPool(capacity) {
   };
 }
 
-function estimateOrganismPoolBytes(pool) {
+export function estimateOrganismPoolBytes(pool) {
   var arrays = pool && pool.arrays ? pool.arrays : {};
   var keys = Object.keys(arrays);
   var bytes = 0;
@@ -201,7 +230,7 @@ function estimateOrganismPoolBytes(pool) {
   return bytes;
 }
 
-function createFoodPool(capacity) {
+export function createFoodPool(capacity) {
   var particles = [];
   var freeList = createFreeList(capacity);
 

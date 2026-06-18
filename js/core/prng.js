@@ -1,3 +1,7 @@
+"use strict";
+import { PS } from "./namespace.js";
+import { clamp, hashSeedText } from "./utils.js";
+
 PS.core = PS.core || {};
 
 PS.core.PRNG_MASK_64 = (1n << 64n) - 1n;

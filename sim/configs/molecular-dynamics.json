@@ -1,0 +1,22 @@
+{
+  "box_size": 256,
+  "target_tick_ms_1000": 33.33,
+  "target_tick_ms_2000": 16,
+  "dt": 0.002,
+  "cutoff": 14,
+  "lattice_spacing": 8,
+  "pixel_size": 4,
+  "thermostat_probability": 0,
+  "hydration_strength": 42,
+  "cooling_lattice_strength": 0.08,
+  "species": [
+    { "id": "h2o", "color": "#4A90D9", "epsilon": 0.65, "sigma": 3.1, "mass": 18, "charge": 0, "channel": 0 },
+    { "id": "na", "color": "#F5A623", "epsilon": 0.20, "sigma": 2.4, "mass": 23, "charge": 1, "channel": 1 },
+    { "id": "cl", "color": "#7ED321", "epsilon": 0.35, "sigma": 3.8, "mass": 35.5, "charge": -1, "channel": 2 },
+    { "id": "co2", "color": "#9B9B9B", "epsilon": 0.24, "sigma": 3.3, "mass": 44, "charge": 0, "channel": 3 },
+    { "id": "o2", "color": "#BD10E0", "epsilon": 0.12, "sigma": 3.0, "mass": 32, "charge": 0, "channel": 4 },
+    { "id": "sio4", "color": "#FF3300", "epsilon": 2.00, "sigma": 4.2, "mass": 92, "charge": -4, "channel": 5 },
+    { "id": "ch4", "color": "#F8E71C", "epsilon": 0.13, "sigma": 3.7, "mass": 16, "charge": 0, "channel": 6 },
+    { "id": "ca", "color": "#D0021B", "epsilon": 0.40, "sigma": 3.0, "mass": 40, "charge": 2, "channel": 7 }
+  ]
+}

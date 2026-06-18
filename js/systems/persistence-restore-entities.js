@@ -1,5 +1,14 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { normalizeLongitude } from "../render/planet-view.js";
+import { ensureOrganismLineage, makeOrganism } from "../sim/organisms-traits.js";
+import { clonePersistencePlainValue } from "./persistence-db.js";
+import { getRestoredSurfacePosition, restoreNumber, restoreOrganismTraits, restorePlanetaryBody } from "./persistence-restore-core.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
 
-function restorePlanetaryBodies(bodies) {
+export function restorePlanetaryBodies(bodies) {
   if (!Array.isArray(bodies)) {
     return [];
   }
@@ -7,7 +16,7 @@ function restorePlanetaryBodies(bodies) {
   return bodies.map(restorePlanetaryBody);
 }
 
-function restoreProbeMission(mission) {
+export function restoreProbeMission(mission) {
   mission = mission || {};
 
   var restoredMission = {
@@ -30,7 +39,7 @@ function restoreProbeMission(mission) {
   return restoredMission;
 }
 
-function restoreProbeMissions(missions) {
+export function restoreProbeMissions(missions) {
   if (!Array.isArray(missions)) {
     return [];
   }
@@ -38,7 +47,7 @@ function restoreProbeMissions(missions) {
   return missions.map(restoreProbeMission);
 }
 
-function restoreStarSystem(system) {
+export function restoreStarSystem(system) {
   system = system || {};
 
   var id = Math.max(1, Math.round(restoreNumber(system.id, world.nextStarSystemId)));
@@ -62,7 +71,7 @@ function restoreStarSystem(system) {
   return restoredSystem;
 }
 
-function restoreStarSystems(systems) {
+export function restoreStarSystems(systems) {
   if (!Array.isArray(systems)) {
     return [];
   }
@@ -70,7 +79,7 @@ function restoreStarSystems(systems) {
   return systems.map(restoreStarSystem);
 }
 
-function restoreInterstellarFleet(fleet) {
+export function restoreInterstellarFleet(fleet) {
   fleet = fleet || {};
 
   var restoredFleet = {
@@ -94,7 +103,7 @@ function restoreInterstellarFleet(fleet) {
   return restoredFleet;
 }
 
-function restoreInterstellarFleets(fleets) {
+export function restoreInterstellarFleets(fleets) {
   if (!Array.isArray(fleets)) {
     return [];
   }
@@ -102,7 +111,7 @@ function restoreInterstellarFleets(fleets) {
   return fleets.map(restoreInterstellarFleet);
 }
 
-function restoreEmpireSector(sector) {
+export function restoreEmpireSector(sector) {
   sector = sector || {};
 
   var restoredSector = {
@@ -121,7 +130,7 @@ function restoreEmpireSector(sector) {
   return restoredSector;
 }
 
-function restoreEmpireSectors(sectors) {
+export function restoreEmpireSectors(sectors) {
   if (!Array.isArray(sectors)) {
     return [];
   }
@@ -129,12 +138,12 @@ function restoreEmpireSectors(sectors) {
   return sectors.map(restoreEmpireSector);
 }
 
-function restoreBiologyAggregateState(saveData) {
+export function restoreBiologyAggregateState(saveData) {
   world.biologyPopulations = Array.isArray(saveData.biologyPopulations)
-    ? JSON.parse(JSON.stringify(saveData.biologyPopulations))
+    ? clonePersistencePlainValue(saveData.biologyPopulations)
     : [];
   world.biologyRepresentatives = Array.isArray(saveData.biologyRepresentatives)
-    ? JSON.parse(JSON.stringify(saveData.biologyRepresentatives))
+    ? clonePersistencePlainValue(saveData.biologyRepresentatives)
     : [];
   world.biologyPopulationById = {};
   world.biologyRepresentativeById = {};
@@ -164,7 +173,7 @@ function restoreBiologyAggregateState(saveData) {
   }
 }
 
-function restoreOrganism(organism) {
+export function restoreOrganism(organism) {
   var tileX = clamp(Math.round(restoreNumber(organism.x, 0)), 0, WORLD_WIDTH - 1);
   var tileY = clamp(Math.round(restoreNumber(organism.y, 0)), 0, WORLD_HEIGHT - 1);
   var previousTileX = clamp(Math.round(restoreNumber(organism.prevX, tileX)), 0, WORLD_WIDTH - 1);
@@ -207,49 +216,23 @@ function restoreOrganism(organism) {
     1,
     Math.round(restoreNumber(organism.representativeId, restoredOrganism.representativeId || 1))
   );
+  restoredOrganism.ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.restore === "function"
+    ? PS.sim.organismAi.restore(organism.ai)
+    : clonePersistencePlainValue(organism.ai || null);
 
   ensureOrganismLineage(restoredOrganism);
   return restoredOrganism;
 }
 
-function restoreTraitHistorySample(sample) {
-  return {
-    tick: Math.max(0, Math.round(restoreNumber(sample.tick, 0))),
-    population: Math.max(0, Math.round(restoreNumber(sample.population, 0))),
-    vision: restoreClampedNumber(
-      sample.vision,
-      CONFIG.TRAIT_VISION_DEFAULT,
-      CONFIG.TRAIT_VISION_MIN,
-      CONFIG.TRAIT_VISION_MAX
-    ),
-    metabolism: restoreClampedNumber(
-      sample.metabolism,
-      CONFIG.TRAIT_METABOLISM_DEFAULT,
-      CONFIG.TRAIT_METABOLISM_MIN,
-      CONFIG.TRAIT_METABOLISM_MAX
-    ),
-    reproductionEnergy: restoreClampedNumber(
-      sample.reproductionEnergy,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX
-    ),
-    movementTendency: restoreClampedNumber(
-      sample.movementTendency,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX
-    ),
-    terrainAffinity: restoreClampedNumber(
-      sample.terrainAffinity,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
-    )
-  };
+export function restoreTraitHistorySample(sample) {
+  sample = sample || {};
+  var traits = restoreOrganismTraits(sample);
+  traits.tick = Math.max(0, Math.round(restoreNumber(sample.tick, 0)));
+  traits.population = Math.max(0, Math.round(restoreNumber(sample.population, 0)));
+  return traits;
 }
 
-function restoreTraitHistory(traitHistory) {
+export function restoreTraitHistory(traitHistory) {
   if (!Array.isArray(traitHistory)) {
     return [];
   }
@@ -259,7 +242,7 @@ function restoreTraitHistory(traitHistory) {
     .map(restoreTraitHistorySample);
 }
 
-function restoreSimulationEvent(event) {
+export function restoreSimulationEvent(event) {
   event = event || {};
 
   return {
@@ -273,11 +256,36 @@ function restoreSimulationEvent(event) {
     source: event.source || null,
     category: event.category || null,
     severity: event.severity || null,
+    terrainDriver: event.terrainDriver || null,
+    trait: event.trait || null,
+    lineageId: event.lineageId == null ? null : Math.max(0, Math.round(restoreNumber(event.lineageId, 0))),
+    speciesId: event.speciesId == null ? null : Math.max(0, Math.round(restoreNumber(event.speciesId, 0))),
+    populationId: event.populationId == null ? null : Math.max(0, Math.round(restoreNumber(event.populationId, 0))),
+    pressure: event.pressure == null ? null : clamp(restoreNumber(event.pressure, 0), 0, 1),
+    effect: event.effect || null,
+    id: event.id == null ? null : Math.max(0, Math.round(restoreNumber(event.id, 0))),
+    parentId: event.parentId == null ? null : Math.max(0, Math.round(restoreNumber(event.parentId, 0))),
+    cause: event.cause || null,
+    divergence: event.divergence == null ? null : clamp(restoreNumber(event.divergence, 0), 0, 1),
+    traits: event.traits ? restoreOrganismTraits(event.traits) : null,
+    eventType: event.eventType || null,
+    severityScore: event.severityScore == null ? null : clamp(restoreNumber(event.severityScore, 0), 0, 1),
+    killRate: event.killRate == null ? null : clamp(restoreNumber(event.killRate, 0), 0, 1),
+    prePopulation: event.prePopulation == null ? null : Math.max(0, Math.round(restoreNumber(event.prePopulation, 0))),
+    postPopulation: event.postPopulation == null ? null : Math.max(0, Math.round(restoreNumber(event.postPopulation, 0))),
+    affectedSpecies: event.affectedSpecies || null,
+    affectedPopulations: event.affectedPopulations || null,
+    survivors: event.survivors || null,
+    losses: event.losses || null,
+    recoveryWindow: event.recoveryWindow || null,
+    survivorPopulationIds: event.survivorPopulationIds || null,
+    radiationCandidateIds: event.radiationCandidateIds || null,
+    durationTicks: event.durationTicks == null ? null : Math.max(0, Math.round(restoreNumber(event.durationTicks, 0))),
     inspectTarget: event.inspectTarget || null
   };
 }
 
-function restoreSimulationEvents(eventLog, limit) {
+export function restoreSimulationEvents(eventLog, limit) {
   if (!Array.isArray(eventLog)) {
     return [];
   }
@@ -290,7 +298,7 @@ function restoreSimulationEvents(eventLog, limit) {
   return source.map(restoreSimulationEvent);
 }
 
-function restoreEcosystemHistorySample(sample) {
+export function restoreEcosystemHistorySample(sample) {
   sample = sample || {};
 
   return {
@@ -308,7 +316,7 @@ function restoreEcosystemHistorySample(sample) {
   };
 }
 
-function restoreEcosystemHistory(ecosystemHistory) {
+export function restoreEcosystemHistory(ecosystemHistory) {
   if (!Array.isArray(ecosystemHistory)) {
     return [];
   }
@@ -318,7 +326,7 @@ function restoreEcosystemHistory(ecosystemHistory) {
     .map(restoreEcosystemHistorySample);
 }
 
-function countFertileTiles() {
+export function countFertileTiles() {
   var fertileTiles = 0;
 
   for (var i = 0; i < world.terrain.length; i++) {
@@ -330,160 +338,6 @@ function countFertileTiles() {
   return fertileTiles;
 }
 
-function applySaveConfig(saveConfig) {
-  if (!saveConfig) {
-    return;
-  }
-
-  var numericConfigMappings = [
-    ["startingFood", "STARTING_FOOD", function(value) { return value; }],
-    ["maxFood", "MAX_FOOD", function(value) { return value; }],
-    ["maxOrganisms", "MAX_ORGANISMS", function(value) { return value; }],
-    ["organismDrawSize", "ORGANISM_DRAW_SIZE", function(value) { return value; }],
-    ["foodDrawSize", "FOOD_DRAW_SIZE", function(value) { return value; }],
-    ["fertileFoodGrowthChance", "FERTILE_FOOD_GROWTH_CHANCE", function(value) { return value; }],
-    ["barrenFoodGrowthChance", "BARREN_FOOD_GROWTH_CHANCE", function(value) { return value; }],
-    ["simUpdateIntervalMs", "SIM_UPDATE_INTERVAL_MS", function(value) { return Math.max(1, value); }],
-    ["maxSimUpdatesPerFrame", "MAX_SIM_UPDATES_PER_FRAME", function(value) { return Math.max(1, Math.round(value)); }],
-    ["hudUpdateIntervalMs", "HUD_UPDATE_INTERVAL_MS", function(value) { return Math.max(50, value); }],
-    ["traitMutationChance", "TRAIT_MUTATION_CHANCE", function(value) { return value; }],
-    ["traitVisionMin", "TRAIT_VISION_MIN", function(value) { return value; }],
-    ["traitVisionMax", "TRAIT_VISION_MAX", function(value) { return value; }],
-    ["traitVisionDefault", "TRAIT_VISION_DEFAULT", function(value) { return value; }],
-    ["traitVisionMutationStep", "TRAIT_VISION_MUTATION_STEP", function(value) { return value; }],
-    ["traitMetabolismMin", "TRAIT_METABOLISM_MIN", function(value) { return value; }],
-    ["traitMetabolismMax", "TRAIT_METABOLISM_MAX", function(value) { return value; }],
-    ["traitMetabolismDefault", "TRAIT_METABOLISM_DEFAULT", function(value) { return value; }],
-    ["traitMetabolismMutationStep", "TRAIT_METABOLISM_MUTATION_STEP", function(value) { return value; }],
-    ["traitReproductionEnergyMin", "TRAIT_REPRODUCTION_ENERGY_MIN", function(value) { return value; }],
-    ["traitReproductionEnergyMax", "TRAIT_REPRODUCTION_ENERGY_MAX", function(value) { return value; }],
-    ["traitReproductionEnergyDefault", "TRAIT_REPRODUCTION_ENERGY_DEFAULT", function(value) { return value; }],
-    ["traitReproductionEnergyMutationStep", "TRAIT_REPRODUCTION_ENERGY_MUTATION_STEP", function(value) { return value; }],
-    ["traitMovementTendencyMin", "TRAIT_MOVEMENT_TENDENCY_MIN", function(value) { return value; }],
-    ["traitMovementTendencyMax", "TRAIT_MOVEMENT_TENDENCY_MAX", function(value) { return value; }],
-    ["traitMovementTendencyDefault", "TRAIT_MOVEMENT_TENDENCY_DEFAULT", function(value) { return value; }],
-    ["traitMovementTendencyMutationStep", "TRAIT_MOVEMENT_TENDENCY_MUTATION_STEP", function(value) { return value; }],
-    ["traitTerrainAffinityMin", "TRAIT_TERRAIN_AFFINITY_MIN", function(value) { return value; }],
-    ["traitTerrainAffinityMax", "TRAIT_TERRAIN_AFFINITY_MAX", function(value) { return value; }],
-    ["traitTerrainAffinityDefault", "TRAIT_TERRAIN_AFFINITY_DEFAULT", function(value) { return value; }],
-    ["traitTerrainAffinityMutationStep", "TRAIT_TERRAIN_AFFINITY_MUTATION_STEP", function(value) { return value; }],
-    ["terrainMismatchMaxEnergyCost", "TERRAIN_MISMATCH_MAX_ENERGY_COST", function(value) { return value; }],
-    ["traitHistorySampleInterval", "TRAIT_HISTORY_SAMPLE_INTERVAL", function(value) { return value; }],
-    ["traitHistoryMaxSamples", "TRAIT_HISTORY_MAX_SAMPLES", function(value) { return value; }],
-    ["ecosystemHistorySampleInterval", "ECOSYSTEM_HISTORY_SAMPLE_INTERVAL", function(value) { return Math.max(1, Math.round(value)); }],
-    ["ecosystemHistoryMaxSamples", "ECOSYSTEM_HISTORY_MAX_SAMPLES", function(value) { return Math.max(1, Math.round(value)); }],
-    ["eventLogMaxEntries", "EVENT_LOG_MAX_ENTRIES", function(value) { return Math.max(1, Math.round(value)); }],
-    ["eventLogVisibleEntries", "EVENT_LOG_VISIBLE_ENTRIES", function(value) { return Math.max(1, Math.round(value)); }],
-    ["lineageDivergenceScoreForNewLineage", "LINEAGE_DIVERGENCE_SCORE_FOR_NEW_LINEAGE", function(value) { return value; }],
-    ["settlementMinLineagePopulation", "SETTLEMENT_MIN_LINEAGE_POPULATION", function(value) { return value; }],
-    ["settlementMinLineagePeakPopulation", "SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION", function(value) { return value; }],
-    ["settlementRadius", "SETTLEMENT_RADIUS", function(value) { return value; }],
-    ["settlementGrowthInterval", "SETTLEMENT_GROWTH_INTERVAL", function(value) { return value; }],
-    ["settlementFoodHarvestPerGrowth", "SETTLEMENT_FOOD_HARVEST_PER_GROWTH", function(value) { return value; }],
-    ["settlementDevelopmentPerPopulation", "SETTLEMENT_DEVELOPMENT_PER_POPULATION", function(value) { return value; }],
-    ["settlementDevelopmentPerStoredFood", "SETTLEMENT_DEVELOPMENT_PER_STORED_FOOD", function(value) { return value; }],
-    ["settlementLevelDevelopment", "SETTLEMENT_LEVEL_DEVELOPMENT", function(value) { return value; }],
-    ["settlementInfluenceBaseRadius", "SETTLEMENT_INFLUENCE_BASE_RADIUS", function(value) { return value; }],
-    ["settlementInfluenceRadiusPerLevel", "SETTLEMENT_INFLUENCE_RADIUS_PER_LEVEL", function(value) { return value; }],
-    ["settlementOutpostMinLevel", "SETTLEMENT_OUTPOST_MIN_LEVEL", function(value) { return value; }],
-    ["settlementOutpostMinStoredFood", "SETTLEMENT_OUTPOST_MIN_STORED_FOOD", function(value) { return value; }],
-    ["settlementOutpostMinDevelopment", "SETTLEMENT_OUTPOST_MIN_DEVELOPMENT", function(value) { return value; }],
-    ["settlementOutpostFoodCost", "SETTLEMENT_OUTPOST_FOOD_COST", function(value) { return value; }],
-    ["settlementOutpostDevelopmentCost", "SETTLEMENT_OUTPOST_DEVELOPMENT_COST", function(value) { return value; }],
-    ["settlementOutpostCooldown", "SETTLEMENT_OUTPOST_COOLDOWN", function(value) { return value; }],
-    ["settlementOutpostSearchRadius", "SETTLEMENT_OUTPOST_SEARCH_RADIUS", function(value) { return value; }],
-    ["settlementOutpostMinDistance", "SETTLEMENT_OUTPOST_MIN_DISTANCE", function(value) { return value; }],
-    ["settlementOutpostMaxChildren", "SETTLEMENT_OUTPOST_MAX_CHILDREN", function(value) { return value; }],
-    ["settlementRouteTransferInterval", "SETTLEMENT_ROUTE_TRANSFER_INTERVAL", function(value) { return value; }],
-    ["settlementRouteFoodTransfer", "SETTLEMENT_ROUTE_FOOD_TRANSFER", function(value) { return value; }],
-    ["settlementRouteMinParentStoredFood", "SETTLEMENT_ROUTE_MIN_PARENT_STORED_FOOD", function(value) { return value; }],
-    ["settlementSupplyGrowthInterval", "SETTLEMENT_SUPPLY_GROWTH_INTERVAL", function(value) { return value; }],
-    ["settlementSupplyGrowthFoodCost", "SETTLEMENT_SUPPLY_GROWTH_FOOD_COST", function(value) { return value; }],
-    ["settlementDevelopmentPerSuppliedFood", "SETTLEMENT_DEVELOPMENT_PER_SUPPLIED_FOOD", function(value) { return value; }],
-    ["settlementColonyLevel", "SETTLEMENT_COLONY_LEVEL", function(value) { return value; }],
-    ["colonyNetworkEraScore", "COLONY_NETWORK_ERA_SCORE", function(value) { return value; }],
-    ["colonyNetworkRouteScore", "COLONY_NETWORK_ROUTE_SCORE", function(value) { return value; }],
-    ["colonyNetworkStoredFoodScore", "COLONY_NETWORK_STORED_FOOD_SCORE", function(value) { return value; }],
-    ["colonyNetworkTransferredFoodScore", "COLONY_NETWORK_TRANSFERRED_FOOD_SCORE", function(value) { return value; }],
-    ["colonyNetworkClaimedTileScore", "COLONY_NETWORK_CLAIMED_TILE_SCORE", function(value) { return value; }],
-    ["spaceProgramMinNetworkScore", "SPACE_PROGRAM_MIN_NETWORK_SCORE", function(value) { return value; }],
-    ["spaceProgramMinColonies", "SPACE_PROGRAM_MIN_COLONIES", function(value) { return value; }],
-    ["spaceProgramMinActiveRoutes", "SPACE_PROGRAM_MIN_ACTIVE_ROUTES", function(value) { return value; }],
-    ["spaceProgramProgressInterval", "SPACE_PROGRAM_PROGRESS_INTERVAL", function(value) { return value; }],
-    ["spaceProgramColonyFoodCost", "SPACE_PROGRAM_COLONY_FOOD_COST", function(value) { return value; }],
-    ["spaceProgramProgressPerNetworkScore", "SPACE_PROGRAM_PROGRESS_PER_NETWORK_SCORE", function(value) { return value; }],
-    ["spaceProgramProgressPerActiveRoute", "SPACE_PROGRAM_PROGRESS_PER_ACTIVE_ROUTE", function(value) { return value; }],
-    ["spaceProgramLaunchThreshold", "SPACE_PROGRAM_LAUNCH_THRESHOLD", function(value) { return value; }],
-    ["orbitalAssetScore", "ORBITAL_ASSET_SCORE", function(value) { return value; }],
-    ["orbitalPlatformScore", "ORBITAL_PLATFORM_SCORE", function(value) { return value; }],
-    ["planetarySurveyMinInfrastructure", "PLANETARY_SURVEY_MIN_INFRASTRUCTURE", function(value) { return value; }],
-    ["planetarySurveyInterval", "PLANETARY_SURVEY_INTERVAL", function(value) { return value; }],
-    ["planetarySurveyProgressPerInfrastructure", "PLANETARY_SURVEY_PROGRESS_PER_INFRASTRUCTURE", function(value) { return value; }],
-    ["planetarySurveyProgressPerOrbitalAsset", "PLANETARY_SURVEY_PROGRESS_PER_ORBITAL_ASSET", function(value) { return value; }],
-    ["planetaryDiscoveryThreshold", "PLANETARY_DISCOVERY_THRESHOLD", function(value) { return value; }],
-    ["planetarySurveyMaxBodies", "PLANETARY_SURVEY_MAX_BODIES", function(value) { return value; }],
-    ["interplanetaryBodyCount", "INTERPLANETARY_BODY_COUNT", function(value) { return value; }],
-    ["probeMissionMinBodies", "PROBE_MISSION_MIN_BODIES", function(value) { return value; }],
-    ["probeMissionInterval", "PROBE_MISSION_INTERVAL", function(value) { return value; }],
-    ["probeMissionProgressPerBody", "PROBE_MISSION_PROGRESS_PER_BODY", function(value) { return value; }],
-    ["probeMissionProgressPerInfrastructure", "PROBE_MISSION_PROGRESS_PER_INFRASTRUCTURE", function(value) { return value; }],
-    ["probeMissionThreshold", "PROBE_MISSION_THRESHOLD", function(value) { return value; }],
-    ["probeMissionCompleteTicks", "PROBE_MISSION_COMPLETE_TICKS", function(value) { return value; }],
-    ["stellarCartographyMissionCount", "STELLAR_CARTOGRAPHY_MISSION_COUNT", function(value) { return value; }],
-    ["starMapMinCompletedProbes", "STAR_MAP_MIN_COMPLETED_PROBES", function(value) { return value; }],
-    ["starMapInterval", "STAR_MAP_INTERVAL", function(value) { return value; }],
-    ["starMapProgressPerCompletedProbe", "STAR_MAP_PROGRESS_PER_COMPLETED_PROBE", function(value) { return value; }],
-    ["starMapProgressPerInfrastructure", "STAR_MAP_PROGRESS_PER_INFRASTRUCTURE", function(value) { return value; }],
-    ["starSystemDiscoveryThreshold", "STAR_SYSTEM_DISCOVERY_THRESHOLD", function(value) { return value; }],
-    ["starMapMaxSystems", "STAR_MAP_MAX_SYSTEMS", function(value) { return value; }],
-    ["galacticMapSystemCount", "GALACTIC_MAP_SYSTEM_COUNT", function(value) { return value; }],
-    ["galacticInfluenceMinSystems", "GALACTIC_INFLUENCE_MIN_SYSTEMS", function(value) { return value; }],
-    ["galacticInfluenceInterval", "GALACTIC_INFLUENCE_INTERVAL", function(value) { return value; }],
-    ["galacticInfluenceProgressPerMapValue", "GALACTIC_INFLUENCE_PROGRESS_PER_MAP_VALUE", function(value) { return value; }],
-    ["galacticInfluenceProgressPerCompletedProbe", "GALACTIC_INFLUENCE_PROGRESS_PER_COMPLETED_PROBE", function(value) { return value; }],
-    ["galacticInfluenceProgressPerInfrastructure", "GALACTIC_INFLUENCE_PROGRESS_PER_INFRASTRUCTURE", function(value) { return value; }],
-    ["galacticSystemClaimThreshold", "GALACTIC_SYSTEM_CLAIM_THRESHOLD", function(value) { return value; }],
-    ["protoEmpireSystemCount", "PROTO_EMPIRE_SYSTEM_COUNT", function(value) { return value; }],
-    ["interstellarFleetMinClaimedSystems", "INTERSTELLAR_FLEET_MIN_CLAIMED_SYSTEMS", function(value) { return value; }],
-    ["interstellarFleetBuildInterval", "INTERSTELLAR_FLEET_BUILD_INTERVAL", function(value) { return value; }],
-    ["interstellarFleetProgressPerClaimedSystem", "INTERSTELLAR_FLEET_PROGRESS_PER_CLAIMED_SYSTEM", function(value) { return value; }],
-    ["interstellarFleetProgressPerCompletedProbe", "INTERSTELLAR_FLEET_PROGRESS_PER_COMPLETED_PROBE", function(value) { return value; }],
-    ["interstellarFleetProgressPerInfrastructure", "INTERSTELLAR_FLEET_PROGRESS_PER_INFRASTRUCTURE", function(value) { return value; }],
-    ["interstellarFleetBuildThreshold", "INTERSTELLAR_FLEET_BUILD_THRESHOLD", function(value) { return value; }],
-    ["interstellarFleetTravelTicks", "INTERSTELLAR_FLEET_TRAVEL_TICKS", function(value) { return value; }],
-    ["interstellarFleetMaxMissions", "INTERSTELLAR_FLEET_MAX_MISSIONS", function(value) { return value; }],
-    ["empireNetworkCompletedFleets", "EMPIRE_NETWORK_COMPLETED_FLEETS", function(value) { return value; }],
-    ["empireSectorMinCompletedFleets", "EMPIRE_SECTOR_MIN_COMPLETED_FLEETS", function(value) { return value; }],
-    ["empireSectorBuildInterval", "EMPIRE_SECTOR_BUILD_INTERVAL", function(value) { return value; }],
-    ["empireSectorProgressPerCompletedFleet", "EMPIRE_SECTOR_PROGRESS_PER_COMPLETED_FLEET", function(value) { return value; }],
-    ["empireSectorProgressPerClaimedSystem", "EMPIRE_SECTOR_PROGRESS_PER_CLAIMED_SYSTEM", function(value) { return value; }],
-    ["empireSectorProgressPerInfrastructure", "EMPIRE_SECTOR_PROGRESS_PER_INFRASTRUCTURE", function(value) { return value; }],
-    ["empireSectorBuildThreshold", "EMPIRE_SECTOR_BUILD_THRESHOLD", function(value) { return value; }],
-    ["empireSectorMaxSectors", "EMPIRE_SECTOR_MAX_SECTORS", function(value) { return value; }],
-    ["galacticEmpireSectorCount", "GALACTIC_EMPIRE_SECTOR_COUNT", function(value) { return value; }],
-    ["empireLegacyMinSectors", "EMPIRE_LEGACY_MIN_SECTORS", function(value) { return value; }],
-    ["empireLegacyInterval", "EMPIRE_LEGACY_INTERVAL", function(value) { return value; }],
-    ["empireLegacyProgressPerSector", "EMPIRE_LEGACY_PROGRESS_PER_SECTOR", function(value) { return value; }],
-    ["empireLegacyProgressPerCompletedFleet", "EMPIRE_LEGACY_PROGRESS_PER_COMPLETED_FLEET", function(value) { return value; }],
-    ["empireLegacyProgressPerClaimedSystem", "EMPIRE_LEGACY_PROGRESS_PER_CLAIMED_SYSTEM", function(value) { return value; }],
-    ["empireLegacyThreshold", "EMPIRE_LEGACY_THRESHOLD", function(value) { return value; }],
-    ["ascendantEmpireLegacyLevel", "ASCENDANT_EMPIRE_LEGACY_LEVEL", function(value) { return value; }]
-  ];
-  var stringConfigMappings = [
-    ["defaultSeed", "DEFAULT_SEED", function(value) { return normalizeSeedText(value); }]
-  ];
-
-  for (var stringIndex = 0; stringIndex < stringConfigMappings.length; stringIndex++) {
-    var stringMapping = stringConfigMappings[stringIndex];
-    if (typeof saveConfig[stringMapping[0]] === "string") {
-      CONFIG[stringMapping[1]] = stringMapping[2](saveConfig[stringMapping[0]]);
-    }
-  }
-
-  for (var numericIndex = 0; numericIndex < numericConfigMappings.length; numericIndex++) {
-    var numericMapping = numericConfigMappings[numericIndex];
-    if (typeof saveConfig[numericMapping[0]] === "number") {
-      CONFIG[numericMapping[1]] = numericMapping[2](saveConfig[numericMapping[0]]);
-    }
-  }
+export function applySaveConfig(saveConfig) {
+  PS.systems.persistenceConfig.apply(saveConfig);
 }

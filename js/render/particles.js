@@ -1,3 +1,10 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 
 PS.render.ParticleEmitter = function (system, effectId, config) {
@@ -49,6 +56,9 @@ PS.render.ParticleSystem = function (maxParticles) {
   this.size = new Float32Array(this.maxParticles);
   this.fadeIn = new Float32Array(this.maxParticles);
   this.fadeOut = new Float32Array(this.maxParticles);
+  this.wobbleAmplitude = new Float32Array(this.maxParticles);
+  this.wobbleFrequency = new Float32Array(this.maxParticles);
+  this.wobblePhase = new Float32Array(this.maxParticles);
   this.red = new Float32Array(this.maxParticles);
   this.green = new Float32Array(this.maxParticles);
   this.blue = new Float32Array(this.maxParticles);
@@ -63,7 +73,7 @@ PS.render.ParticleSystem = function (maxParticles) {
   this.program = null;
   this.quadBuffer = null;
   this.instanceBuffer = null;
-  this.instanceData = new Float32Array(this.maxParticles * 7);
+  this.instanceData = new Float32Array(this.maxParticles * 8);
   this.locations = null;
   this.stats = {
     active: 0,
@@ -73,6 +83,7 @@ PS.render.ParticleSystem = function (maxParticles) {
     visible: 0,
     culled: 0,
     emitted: 0,
+    fallingLeafEmitted: 0,
     dropped: 0,
     updateMs: 0,
     renderMs: 0,
@@ -103,6 +114,7 @@ PS.render.ParticleSystem.prototype.reset = function (seed) {
   this.stats.visible = 0;
   this.stats.culled = 0;
   this.stats.emitted = 0;
+  this.stats.fallingLeafEmitted = 0;
   this.stats.dropped = 0;
   this.stats.updateMs = 0;
   this.stats.renderMs = 0;
@@ -167,6 +179,9 @@ PS.render.ParticleSystem.prototype.mergeConfig = function (effectId, override) {
   config.fadeIn = Math.max(0, Number(config.fadeIn) || 0);
   config.fadeOut = Math.max(0, Number(config.fadeOut) || 0);
   config.gravity = Number(config.gravity) || 0;
+  config.wobbleAmplitude = config.wobbleAmplitude || 0;
+  config.wobbleFrequency = config.wobbleFrequency || 0;
+  config.windInfluence = Math.max(0, Number(config.windInfluence) || 0);
   config.position = config.position || { x: canvas ? canvas.width / 2 : 0, y: canvas ? canvas.height / 2 : 0 };
   config.bounds = config.bounds || { x: 0, y: 0, width: canvas ? canvas.width : 1, height: canvas ? canvas.height : 1 };
   return config;
@@ -244,6 +259,9 @@ PS.render.ParticleSystem.prototype.emitOne = function (config) {
   this.size[index] = this.randomRange(config.size, 1);
   this.fadeIn[index] = config.fadeIn;
   this.fadeOut[index] = config.fadeOut;
+  this.wobbleAmplitude[index] = this.randomRange(config.wobbleAmplitude, 0);
+  this.wobbleFrequency[index] = this.randomRange(config.wobbleFrequency, 0);
+  this.wobblePhase[index] = this.random() * Math.PI * 2;
   this.red[index] = color.red;
   this.green[index] = color.green;
   this.blue[index] = color.blue;
@@ -299,6 +317,9 @@ PS.render.ParticleSystem.prototype.update = function (dt) {
 
     this.vy[i] += this.gravity[i] * step;
     this.x[i] += this.vx[i] * step;
+    if (this.wobbleAmplitude[i] > 0 && this.wobbleFrequency[i] > 0) {
+      this.x[i] += Math.sin(this.age[i] * this.wobbleFrequency[i] * Math.PI * 2 + this.wobblePhase[i]) * this.wobbleAmplitude[i] * step;
+    }
     this.y[i] += this.vy[i] * step;
   }
 
@@ -321,72 +342,24 @@ PS.render.ParticleSystem.prototype.getAlpha = function (index) {
 };
 
 PS.render.ParticleSystem.prototype.ensureRenderResources = function () {
-  var gl;
-  var stride;
-
-  this.target = PS.render.webglEngine && PS.render.webglEngine.ensureTarget
-    ? PS.render.webglEngine.ensureTarget("particles", canvas.width, canvas.height, { alpha: false })
-    : null;
-  if (!this.target || !this.target.gl) {
-    return false;
-  }
-
-  gl = this.target.gl;
-  if (!this.program) {
-    this.program = PS.render.shaderManager.getProgram(gl, "particle");
-    this.quadBuffer = PS.render.webglEngine.ensureBuffer(this.target, "particle-quad");
-    this.instanceBuffer = PS.render.webglEngine.ensureBuffer(this.target, "particle-instances");
-    PS.render.webglEngine.updateBuffer(this.target, "particle-quad", new Float32Array([
-      -0.5, -0.5,
-      0.5, -0.5,
-      -0.5, 0.5,
-      0.5, 0.5
-    ]), gl.STATIC_DRAW);
-    stride = 7 * Float32Array.BYTES_PER_ELEMENT;
-    this.locations = {
-      corner: gl.getAttribLocation(this.program, "a_corner"),
-      center: gl.getAttribLocation(this.program, "a_center"),
-      size: gl.getAttribLocation(this.program, "a_size"),
-      color: gl.getAttribLocation(this.program, "a_color"),
-      canvasSize: gl.getUniformLocation(this.program, "u_canvasSize"),
-      stride: stride
-    };
-  }
-
-  return !!this.program;
+  return Boolean(
+    PS.render.webgpuEntity &&
+    typeof PS.render.webgpuEntity.drawParticleRects === "function"
+  );
 };
 
 PS.render.ParticleSystem.prototype.configureAttributes = function () {
-  var gl = this.target.gl;
-  var loc = this.locations;
-  var floatSize = Float32Array.BYTES_PER_ELEMENT;
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuffer);
-  gl.enableVertexAttribArray(loc.corner);
-  gl.vertexAttribPointer(loc.corner, 2, gl.FLOAT, false, 2 * floatSize, 0);
-  gl.vertexAttribDivisor(loc.corner, 0);
-
-  gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer);
-  gl.enableVertexAttribArray(loc.center);
-  gl.vertexAttribPointer(loc.center, 2, gl.FLOAT, false, loc.stride, 0);
-  gl.vertexAttribDivisor(loc.center, 1);
-  gl.enableVertexAttribArray(loc.size);
-  gl.vertexAttribPointer(loc.size, 1, gl.FLOAT, false, loc.stride, 2 * floatSize);
-  gl.vertexAttribDivisor(loc.size, 1);
-  gl.enableVertexAttribArray(loc.color);
-  gl.vertexAttribPointer(loc.color, 4, gl.FLOAT, false, loc.stride, 3 * floatSize);
-  gl.vertexAttribDivisor(loc.color, 1);
+  return false;
 };
 
 PS.render.ParticleSystem.prototype.render = function () {
   var startedAt = performance.now();
   var visible = 0;
-  var gl;
   var i;
   var offset;
 
   if (!this.ensureRenderResources()) {
-    this.stats.lastError = "Particle WebGL resources unavailable";
+    this.stats.lastError = "Particle WebGPU renderer unavailable";
     return false;
   }
 
@@ -403,14 +376,15 @@ PS.render.ParticleSystem.prototype.render = function () {
       this.stats.culled++;
       continue;
     }
-    offset = visible * 7;
-    this.instanceData[offset] = this.x[i];
-    this.instanceData[offset + 1] = this.y[i];
+    offset = visible * 8;
+    this.instanceData[offset] = this.x[i] - this.size[i] / 2;
+    this.instanceData[offset + 1] = this.y[i] - this.size[i] / 2;
     this.instanceData[offset + 2] = this.size[i];
-    this.instanceData[offset + 3] = this.red[i];
-    this.instanceData[offset + 4] = this.green[i];
-    this.instanceData[offset + 5] = this.blue[i];
-    this.instanceData[offset + 6] = this.getAlpha(i);
+    this.instanceData[offset + 3] = this.size[i];
+    this.instanceData[offset + 4] = this.red[i];
+    this.instanceData[offset + 5] = this.green[i];
+    this.instanceData[offset + 6] = this.blue[i];
+    this.instanceData[offset + 7] = this.getAlpha(i);
     visible++;
   }
 
@@ -420,23 +394,13 @@ PS.render.ParticleSystem.prototype.render = function () {
     return false;
   }
 
-  gl = this.target.gl;
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  gl.viewport(0, 0, canvas.width, canvas.height);
-  gl.disable(gl.DEPTH_TEST);
-  gl.enable(gl.BLEND);
-  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-  gl.useProgram(this.program);
-  gl.uniform2f(this.locations.canvasSize, canvas.width, canvas.height);
-  this.configureAttributes();
-  PS.render.webglEngine.updateBuffer(
-    this.target,
-    "particle-instances",
-    this.instanceData.subarray(0, visible * 7),
-    gl.STREAM_DRAW
-  );
-  gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, visible);
   this.stats.visible = visible;
+  if (!PS.render.webgpuEntity.drawParticleRects(this.instanceData.subarray(0, visible * 8))) {
+    this.stats.lastError = "Particle WebGPU draw returned no visible instances";
+    this.stats.renderMs = performance.now() - startedAt;
+    this.stats.lastFrameMs = this.stats.updateMs + this.stats.renderMs;
+    return false;
+  }
   this.stats.drawCalls++;
   this.stats.renderMs = performance.now() - startedAt;
   this.stats.lastFrameMs = this.stats.updateMs + this.stats.renderMs;
@@ -474,6 +438,186 @@ PS.render.ParticleSystem.prototype.emitBirthSparkle = function (organism) {
   }
 
   return this.birthEmitter.setPosition(x, y).burst(12);
+};
+
+PS.render.ParticleSystem.prototype.hash = function (x, y, salt) {
+  var mixed = (Math.round(Number(x) || 0) * 374761393) ^
+    (Math.round(Number(y) || 0) * 668265263) ^
+    (Math.round(Number(salt) || 0) * 2246822519);
+
+  mixed = Math.imul(mixed ^ (mixed >>> 13), 1274126177);
+  return (mixed ^ (mixed >>> 16)) >>> 0;
+};
+
+PS.render.ParticleSystem.prototype.getSeasonLeafDensity = function () {
+  var currentWorld = typeof world !== "undefined" ? world : null;
+  var source = currentWorld && (currentWorld.season || currentWorld.seasonName || currentWorld.currentSeason ||
+    currentWorld.weather && currentWorld.weather.season);
+  var text = String(source || "").toLowerCase();
+  var growth;
+
+  if (text.indexOf("winter") >= 0) { return 0; }
+  if (text.indexOf("autumn") >= 0 || text.indexOf("fall") >= 0) { return 1; }
+  if (text.indexOf("spring") >= 0) { return 0.25; }
+  if (text.indexOf("summer") >= 0) { return 0.4; }
+
+  growth = currentWorld && Number.isFinite(Number(currentWorld.seasonGrowth))
+    ? Number(currentWorld.seasonGrowth)
+    : currentWorld && Number.isFinite(Number(currentWorld.growth))
+      ? Number(currentWorld.growth)
+      : NaN;
+  if (Number.isFinite(growth)) {
+    return Math.max(0, Math.min(1, 1 - Math.abs(Math.max(0, Math.min(1, growth)) - 0.78) / 0.78));
+  }
+
+  return 0.55;
+};
+
+PS.render.ParticleSystem.prototype.getWind = function () {
+  var currentWorld = typeof world !== "undefined" ? world : null;
+  var wind = currentWorld && currentWorld.weather && currentWorld.weather.wind ? currentWorld.weather.wind : null;
+  var x = wind ? Number(wind.x !== undefined ? wind.x : wind.dx) : 0;
+  var y = wind ? Number(wind.y !== undefined ? wind.y : wind.dy) : 0;
+  var speed = wind ? Number(wind.speed !== undefined ? wind.speed : 1) : 1;
+
+  return {
+    x: Number.isFinite(x) ? x : 0,
+    y: Number.isFinite(y) ? y : 0,
+    speed: Number.isFinite(speed) ? speed : 1
+  };
+};
+
+PS.render.ParticleSystem.prototype.getLeafCycleTick = function () {
+  if (typeof world !== "undefined" && world && Number.isFinite(Number(world.tick))) {
+    return Math.max(0, Math.round(Number(world.tick))) & 127;
+  }
+  if (typeof performance !== "undefined" && performance.now) {
+    return Math.floor(performance.now() / (1000 / 60)) & 127;
+  }
+  return 0;
+};
+
+PS.render.ParticleSystem.prototype.getVegetationGrid = function () {
+  if (PS.render.vegetation && typeof PS.render.vegetation.getGrid === "function") {
+    return PS.render.vegetation.getGrid();
+  }
+  if (PS.vegetation && PS.vegetation.data) {
+    return PS.vegetation;
+  }
+  return null;
+};
+
+PS.render.ParticleSystem.prototype.isTreeType = function (type) {
+  if (PS.render.vegetation && typeof PS.render.vegetation.isTreeType === "function") {
+    return PS.render.vegetation.isTreeType(type);
+  }
+  if (PS.vegetation && PS.vegetation.TYPES) {
+    return type === PS.vegetation.TYPES.TREE_SMALL ||
+      type === PS.vegetation.TYPES.TREE_MEDIUM ||
+      type === PS.vegetation.TYPES.TREE_BIG;
+  }
+  return type >= 1 && type <= 3;
+};
+
+PS.render.ParticleSystem.prototype.getLeafSpawnPoint = function (tileX, tileY, slot) {
+  var tileSize = Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8);
+  var point = PS.render.vegetation && typeof PS.render.vegetation.getTilePoint === "function"
+    ? PS.render.vegetation.getTilePoint(tileX, tileY)
+    : null;
+  var ran = this.hash(tileX, tileY, 300 + slot);
+  var baseX = point && Number.isFinite(Number(point.x)) ? Number(point.x) : tileX * tileSize + tileSize * 0.5;
+  var baseY = point && Number.isFinite(Number(point.y)) ? Number(point.y) : tileY * tileSize + tileSize * 0.5;
+
+  return {
+    x: baseX + ((ran & 15) / 15 - 0.5) * tileSize * 0.85,
+    y: baseY - tileSize * (0.25 + ((ran >>> 4) & 7) / 16)
+  };
+};
+
+PS.render.ParticleSystem.prototype.emitFallingLeaves = function (lodState) {
+  var policy = lodState && lodState.visualPolicy
+    ? lodState.visualPolicy
+    : PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+      ? PS.render.lod.getVisualPolicy()
+      : { fallingLeavesPerTree: 4 };
+  var perTreePolicy = Math.max(0, Math.min(4, Math.round(Number(policy.fallingLeavesPerTree) || 0)));
+  var density = this.getSeasonLeafDensity();
+  var grid = this.getVegetationGrid();
+  var rect;
+  var width;
+  var height;
+  var minX;
+  var maxX;
+  var minY;
+  var maxY;
+  var cycleTick;
+  var cycleKey;
+  var wind;
+  var emitted = 0;
+  var maxPerFrame = 96;
+
+  if (perTreePolicy <= 0 || density <= 0 || !grid || !grid.data) {
+    return 0;
+  }
+
+  rect = PS.render.vegetation && typeof PS.render.vegetation.getVisibleTileRect === "function"
+    ? PS.render.vegetation.getVisibleTileRect()
+    : {
+      minX: 0,
+      minY: 0,
+      maxX: Math.max(0, (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : grid.width || 1) - 1),
+      maxY: Math.max(0, (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : grid.height || 1) - 1)
+    };
+  width = Math.max(1, Number(grid.width) || (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1));
+  height = Math.max(1, Number(grid.height) || (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1));
+  minX = Math.max(0, Math.min(width - 1, Math.floor(Number(rect.minX) || 0)));
+  maxX = Math.max(0, Math.min(width - 1, Math.ceil(Number(rect.maxX) || 0)));
+  minY = Math.max(0, Math.min(height - 1, Math.floor(Number(rect.minY) || 0)));
+  maxY = Math.max(0, Math.min(height - 1, Math.ceil(Number(rect.maxY) || 0)));
+  cycleTick = this.getLeafCycleTick();
+  cycleKey = [cycleTick, minX, minY, maxX, maxY, perTreePolicy, density.toFixed(2)].join(":");
+  if (this.lastLeafCycleKey === cycleKey) {
+    return 0;
+  }
+  this.lastLeafCycleKey = cycleKey;
+  wind = this.getWind();
+
+  for (var y = minY; y <= maxY && emitted < maxPerFrame; y += 1) {
+    var rowOffset = y * width;
+    for (var x = minX; x <= maxX && emitted < maxPerFrame; x += 1) {
+      var packed = grid.data[rowOffset + x] || 0;
+      var type = packed & 15;
+      var baseSlots;
+      var slots;
+
+      if (!this.isTreeType(type)) {
+        continue;
+      }
+
+      baseSlots = 2 + (this.hash(x, y, 211) % 3);
+      slots = Math.max(0, Math.min(perTreePolicy, Math.round(baseSlots * density)));
+      for (var slot = 0; slot < slots && emitted < maxPerFrame; slot += 1) {
+        if (((this.hash(x, y, 229 + slot) >>> 1) & 127) !== cycleTick) {
+          continue;
+        }
+        var point = this.getLeafSpawnPoint(x, y, slot);
+        var config = this.mergeConfig("falling_leaves", {
+          id: "vegetation.falling_leaves",
+          position: point,
+          velocity: {
+            x: [-10 + wind.x * wind.speed * 14, 10 + wind.x * wind.speed * 14],
+            y: [18 + wind.y * wind.speed * 4, 34 + wind.y * wind.speed * 4]
+          }
+        });
+        if (this.emitOne(config)) {
+          emitted += 1;
+        }
+      }
+    }
+  }
+
+  this.stats.fallingLeafEmitted += emitted;
+  return emitted;
 };
 
 PS.render.ParticleSystem.prototype.getStats = function () {

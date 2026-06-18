@@ -1,3 +1,6 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.render = PS.render || {};
 
 PS.render.Renderer = function (name) {
@@ -20,7 +23,6 @@ PS.render.Renderer = function (name) {
     overBudget: false,
     rendererOverBudget: false,
     directPresentsThisFrame: 0,
-    webglPresenterActive: false,
     singleVisibleCanvas: false,
     directSingleCanvas: false,
     lodTier: "galaxy",
@@ -38,6 +40,9 @@ PS.render.Renderer = function (name) {
     stockpileEntityDraws: 0,
     workStatusEntityDraws: 0,
     effectEntityDraws: 0,
+    pointLightDraws: 0,
+    pointLightsSubmitted: 0,
+    pointLightsCulled: 0,
     orbitEventMarkerDraws: 0,
     intentEntityDraws: 0,
     settlementReadinessEntityDraws: 0,
@@ -46,6 +51,7 @@ PS.render.Renderer = function (name) {
     observationOverlaySamples: 0,
     observationOverlayFrameMs: 0,
     observationOverlayCompositor: "",
+    zoomFrame: null,
     foodEntityDraws: 0,
     organismEntityDraws: 0,
     equivalenceTerrainDraws: 0,

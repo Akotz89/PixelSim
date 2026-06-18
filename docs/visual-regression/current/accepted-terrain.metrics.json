@@ -1,0 +1,18 @@
+{
+  "name": "accepted-terrain",
+  "source": "webgpu-readback",
+  "band": "local",
+  "scene": {
+    "width": 1016,
+    "height": 540,
+    "opaqueCoverage": 1,
+    "nonblankCoverage": 1,
+    "coarseColorCount": 66,
+    "luminanceMin": 15.88,
+    "luminanceMax": 255,
+    "luminanceMean": 53.81,
+    "contrastRange": 239.12
+  },
+  "screenshot": null,
+  "screenshotDiffSkipped": "webgpu-readback-gate"
+}

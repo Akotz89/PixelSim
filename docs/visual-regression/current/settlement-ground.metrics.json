@@ -1,0 +1,18 @@
+{
+  "name": "settlement-ground",
+  "source": "webgpu-readback",
+  "band": "settlement",
+  "scene": {
+    "width": 1016,
+    "height": 540,
+    "opaqueCoverage": 1,
+    "nonblankCoverage": 1,
+    "coarseColorCount": 159,
+    "luminanceMin": 16.88,
+    "luminanceMax": 200.09,
+    "luminanceMean": 63.02,
+    "contrastRange": 183.21
+  },
+  "screenshot": null,
+  "screenshotDiffSkipped": "webgpu-readback-gate"
+}

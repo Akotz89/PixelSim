@@ -1,4 +1,24 @@
-function updateHud() {
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, normalizeSeedText } from "../core/utils.js";
+import { getWrappedWorldX } from "../render/planet-grid.js";
+import { getPlanetSurfaceChunkLineage } from "../render/planet-surface.js";
+import { getPlanetCameraScaleInfo, getPlanetDistanceLabel, getPlanetLocalSurfaceAddress, getPlanetScaleLabel, getPlanetSurfaceCacheStats } from "../render/planet-view.js";
+import { drawWorld } from "../render/pipeline.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { getNearestOrganismInRadius, getOrganismTravelKmPerTick } from "../sim/organisms-indexes.js";
+import { getNearestInfluencingSettlement } from "../sim/settlements-founding.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { controlsPanel, eraText, foodGrowthSlider, foodGrowthValue, foodSizeSlider, foodSizeValue, foodText, gameWrap, menuBackdrop, menuTabs, menuToggleButton, menuToggleText, organismSizeSlider, organismSizeValue, pauseButton, populationText, restartButton, seedInput, speedDownButton, speedLabel, speedSlider, speedUpButton, speedValue, startingFoodSlider, startingFoodValue, stepButton, timeScaleSlider, timeScaleValue, uiMenu } from "./dom-refs.js";
+// fallow-ignore-next-line circular-dependency
+import { updateSettlementSummary } from "./history-summary.js";
+// fallow-ignore-next-line circular-dependency
+import { updateEventLog, updateInspectPanel } from "./inspect-history.js";
+// fallow-ignore-next-line circular-dependency
+import { escapeSummaryText, updateEcosystemSummary, updateLineageSummary, updateSimulationAlerts, updateTraitSummary } from "./summary.js";
+
+export function updateHud() {
   var fertilePercent = world.planetSummary
     ? Math.round(world.planetSummary.fertileLandPercent)
     : Math.round((world.fertileTiles / (WORLD_WIDTH * WORLD_HEIGHT)) * 100);
@@ -8,8 +28,19 @@ function updateHud() {
   var estimatedIndividuals = world.organisms.length * Math.max(1, Math.round(Number(CONFIG.ORGANISM_POPULATION_UNIT) || 1));
   var lifecycleState = world.isExtinct ? "extinct" : (world.isPaused ? "paused" : "running");
   var planetScaleInfo = getPlanetCameraScaleInfo();
+  var planetScaleBar = PS.camera && typeof PS.camera.getScaleBar === "function"
+    ? PS.camera.getScaleBar(180)
+    : { label: "-", pixelWidth: 0, metersPerCanvasPixel: planetScaleInfo.metersPerCanvasPixel };
   var planetCacheStats = getPlanetSurfaceCacheStats();
-  var renderCacheStats = getLocalSurfaceRenderCacheStats();
+  var renderCacheStats = PS.render && PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function"
+    ? PS.render.surfaceRender.getCacheStats()
+    : {
+      chunks: 0,
+      lastVisibleChunks: 0,
+      lastPendingChunks: 0,
+      lastGeneratedThisPass: 0,
+      lastFallbackChunks: 0
+    };
   var centerPyramidLineage = getPlanetSurfaceChunkLineage(
     getPlanetLocalSurfaceAddress(Math.floor(WORLD_WIDTH / 2), Math.floor(WORLD_HEIGHT / 2)).address
   );
@@ -27,8 +58,10 @@ function updateHud() {
     makeHudMetric("Day", getSimulationDayLabel()),
     makeHudMetric("Food", world.food.length),
     makeHudMetric("Time Scale", PS.time ? PS.time.getTimeScaleLabel() : "-"),
+    makeHudMetric("Compression", PS.time ? PS.time.getTimeCompressionLabel() : "-"),
     makeHudMetric("Water", waterPercent + "%"),
     makeHudMetric("Fertile Land", fertilePercent + "%"),
+    makeHudScaleCue(planetScaleInfo, planetScaleBar),
     makeHudMetric("Zoom", getPlanetScaleLabel()),
     makeHudMetric("Cache LOD", planetScaleInfo.anchorName + " " + planetScaleInfo.anchorLevel),
     makeHudMetric("Ground Px", getPlanetDistanceLabel(planetScaleInfo.metersPerCanvasPixel) + "/px"),
@@ -45,7 +78,7 @@ function updateHud() {
     makeHudMetric("Max", world.maxUpdateMs.toFixed(2) + "/" + world.maxDrawMs.toFixed(2) + "ms")
   ].join(""));
 
-  setElementText(speedLabel, "Speed: " + world.speed + "x");
+  setElementHtml(speedLabel, makeTimeCompressionControl());
   syncTuningControls();
   syncControlStates();
   updateEcosystemSummary();
@@ -84,12 +117,12 @@ function updateHud() {
   }
 }
 
-function getSimulationDay() {
+export function getSimulationDay() {
   return Math.max(0, Math.round(Number(world.tick) || 0)) *
     Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0);
 }
 
-function getSimulationDayLabel() {
+export function getSimulationDayLabel() {
   var day = getSimulationDay();
   var year = Math.floor(day / 365);
   var dayOfYear = Math.floor(day % 365);
@@ -97,25 +130,32 @@ function getSimulationDayLabel() {
   return "Y" + year + " D" + dayOfYear;
 }
 
-function setElementText(element, text) {
+export function setElementText(element, text) {
   if (element.textContent !== text) {
     element.textContent = text;
   }
 }
 
-function setElementHtml(element, html) {
-  if (element.innerHTML !== html) {
-    element.innerHTML = html;
+export function setElementHtml(element, html) {
+  var range;
+
+  if (element && typeof element.replaceChildren === "function" && typeof document !== "undefined" && typeof document.createRange === "function") {
+    range = document.createRange();
+    range.selectNodeContents(element);
+    element.replaceChildren(range.createContextualFragment(html));
+    return;
   }
+
+  setElementText(element, html);
 }
 
-function setElementClass(element, className) {
+export function setElementClass(element, className) {
   if (element.className !== className) {
     element.className = className;
   }
 }
 
-function setInputValue(input, value) {
+export function setInputValue(input, value) {
   var stringValue = String(value);
 
   if (input.value !== stringValue) {
@@ -123,7 +163,7 @@ function setInputValue(input, value) {
   }
 }
 
-function makeHudMetric(label, value) {
+export function makeHudMetric(label, value) {
   return (
     "<span class=\"hud-metric\">" +
     "<b>" + escapeSummaryText(label) + "</b>" +
@@ -132,7 +172,29 @@ function makeHudMetric(label, value) {
   );
 }
 
-function makeHudPrimary(label, value, detail) {
+export function makeHudScaleCue(scaleInfo, scaleBar) {
+  var safeInfo = scaleInfo || {};
+  var safeBar = scaleBar || {};
+  var pixelWidth = clamp(Math.round(Number(safeBar.pixelWidth) || 0), 48, 220);
+  var scaleName = safeInfo.scaleName || safeInfo.surfaceLodName || "-";
+  var groundPixel = getPlanetDistanceLabel(Number(safeInfo.metersPerCanvasPixel) || 0) + "/px";
+  var label = safeBar.label || "-";
+
+  return (
+    "<span class=\"hud-scale-cue\" aria-label=\"Map scale\">" +
+    "<b>" + escapeSummaryText(scaleName) + "</b>" +
+    "<span class=\"hud-scale-bar\" aria-hidden=\"true\">" +
+    "<i style=\"width:" + pixelWidth + "px\"></i>" +
+    "</span>" +
+    "<span class=\"hud-scale-meta\">" +
+    "<strong>" + escapeSummaryText(label) + "</strong>" +
+    "<em>" + escapeSummaryText(groundPixel) + "</em>" +
+    "</span>" +
+    "</span>"
+  );
+}
+
+export function makeHudPrimary(label, value, detail) {
   return (
     "<span class=\"hud-primary-label\">" + escapeSummaryText(label) + "</span>" +
     "<strong>" + escapeSummaryText(value) + "</strong>" +
@@ -140,7 +202,23 @@ function makeHudPrimary(label, value, detail) {
   );
 }
 
-function getTuningInputNumber(input, fallbackValue) {
+export function makeTimeCompressionControl() {
+  var compression = PS.time && typeof PS.time.getTimeCompressionLabel === "function"
+    ? PS.time.getTimeCompressionLabel()
+    : "-";
+  var scale = PS.time && typeof PS.time.getTimeScaleLabel === "function"
+    ? PS.time.getTimeScaleLabel()
+    : "-";
+  var state = world.isExtinct ? "extinct" : (world.isPaused ? "paused" : "running");
+
+  return (
+    "<b>" + escapeSummaryText("Speed " + world.speed + "x") + "</b>" +
+    "<span>" + escapeSummaryText(compression) + "</span>" +
+    "<small>" + escapeSummaryText(scale + " / " + state) + "</small>"
+  );
+}
+
+export function getTuningInputNumber(input, fallbackValue) {
   if (!input) {
     return fallbackValue;
   }
@@ -149,14 +227,14 @@ function getTuningInputNumber(input, fallbackValue) {
   return Number.isFinite(value) ? value : fallbackValue;
 }
 
-function syncTuningControls() {
+export function syncTuningControls() {
   var growthPercent = Math.round(CONFIG.FERTILE_FOOD_GROWTH_CHANCE * 100);
 
   setInputValue(speedSlider, world.speed);
   setElementText(speedValue, world.speed + "x");
   if (PS.time) {
     setInputValue(timeScaleSlider, PS.time.timeScale.targetIndex);
-    setElementText(timeScaleValue, PS.time.getTimeScaleLabel());
+    setElementText(timeScaleValue, PS.time.getTimeCompressionLabel());
   }
   setInputValue(organismSizeSlider, CONFIG.ORGANISM_DRAW_SIZE);
   setElementText(organismSizeValue, CONFIG.ORGANISM_DRAW_SIZE + "px");
@@ -169,17 +247,17 @@ function syncTuningControls() {
   setInputValue(seedInput, world.seedText);
 }
 
-function setButtonPressed(button, isPressed) {
+export function setButtonPressed(button, isPressed) {
   button.setAttribute("aria-pressed", isPressed ? "true" : "false");
   button.classList.toggle("active", Boolean(isPressed));
 }
 
-function setButtonDisabled(button, isDisabled) {
+export function setButtonDisabled(button, isDisabled) {
   button.disabled = Boolean(isDisabled);
   button.setAttribute("aria-disabled", isDisabled ? "true" : "false");
 }
 
-function syncControlStates() {
+export function syncControlStates() {
   setElementClass(
     controlsPanel,
     "controls-state " + (world.isExtinct ? "controls-extinct" : (world.isPaused ? "controls-paused" : "controls-running"))
@@ -204,7 +282,7 @@ function syncControlStates() {
   restartButton.setAttribute("aria-keyshortcuts", "R");
 }
 
-function syncMenuState() {
+export function syncMenuState() {
   setElementClass(gameWrap, world.isMenuOpen ? "menu-open" : "menu-closed");
   menuToggleButton.setAttribute("aria-expanded", world.isMenuOpen ? "true" : "false");
   uiMenu.setAttribute("aria-hidden", world.isMenuOpen ? "false" : "true");
@@ -221,7 +299,7 @@ function syncMenuState() {
   menuToggleButton.setAttribute("aria-label", world.isMenuOpen ? "Close simulation menu" : "Open simulation menu");
 }
 
-function setMenuOpen(isOpen) {
+export function setMenuOpen(isOpen) {
   var nextOpen = Boolean(isOpen);
 
   if (world.isMenuOpen === nextOpen) {
@@ -233,11 +311,11 @@ function setMenuOpen(isOpen) {
   return true;
 }
 
-function toggleMenuOpen() {
+export function toggleMenuOpen() {
   return setMenuOpen(!world.isMenuOpen);
 }
 
-function syncMenuPage() {
+export function syncMenuPage() {
   var activePage = world.menuPage || "controls";
   var pages = uiMenu.querySelectorAll("[data-menu-page]");
   var tabs = menuTabs.querySelectorAll("[data-menu-target]");
@@ -264,7 +342,7 @@ function syncMenuPage() {
   }
 }
 
-function setMenuPage(pageName) {
+export function setMenuPage(pageName) {
   var nextPage = String(pageName || "controls");
 
   if (!/^(controls|status|ecosystem|log)$/.test(nextPage)) {
@@ -281,7 +359,7 @@ function setMenuPage(pageName) {
   return true;
 }
 
-function applyTuningFromControls(redraw) {
+export function applyTuningFromControls(redraw) {
   world.speed = clamp(Math.round(getTuningInputNumber(speedSlider, world.speed)), 1, 10);
   CONFIG.ORGANISM_DRAW_SIZE = clamp(Math.round(getTuningInputNumber(organismSizeSlider, CONFIG.ORGANISM_DRAW_SIZE)), 2, 14);
   CONFIG.FOOD_DRAW_SIZE = clamp(Math.round(getTuningInputNumber(foodSizeSlider, CONFIG.FOOD_DRAW_SIZE)), 1, 8);
@@ -297,21 +375,21 @@ function applyTuningFromControls(redraw) {
   updateHud();
 }
 
-function getNearestOrganismToTile(tileX, tileY) {
+export function getNearestOrganismToTile(tileX, tileY) {
   return getNearestOrganismInRadius(tileX, tileY, 1);
 }
 
-function getNearestSettlementToTile(tileX, tileY) {
+export function getNearestSettlementToTile(tileX, tileY) {
   return typeof getNearestInfluencingSettlement === "function"
     ? getNearestInfluencingSettlement(tileX, tileY)
     : null;
 }
 
-function getInspectContextRadius() {
+export function getInspectContextRadius() {
   return Math.max(4, Math.round(Number(CONFIG.SETTLEMENT_RADIUS) / 2 || 6));
 }
 
-function countFertileTilesInRadius(tileX, tileY, radius) {
+export function countFertileTilesInRadius(tileX, tileY, radius) {
   var normalizedRadius = Math.max(0, Math.round(Number(radius) || 0));
   var fertileTiles = 0;
   var sampledTiles = 0;

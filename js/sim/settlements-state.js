@@ -1,4 +1,13 @@
-function ensureSettlementState() {
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getWrappedDeltaX } from "../render/planet-grid.js";
+import { countFoodInRadius } from "./food-runtime.js";
+import { getIndexedOrganismsForLineage } from "./organisms-indexes.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
+export function ensureSettlementState() {
   if (!Array.isArray(world.settlements)) {
     world.settlements = [];
   }
@@ -28,20 +37,20 @@ function ensureSettlementState() {
   }
 }
 
-function getSettlementRouteKey(parentSettlementId, childSettlementId) {
+export function getSettlementRouteKey(parentSettlementId, childSettlementId) {
   return parentSettlementId + ":" + childSettlementId;
 }
 
-function getSettlementBucketSize() {
+export function getSettlementBucketSize() {
   return Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_SPATIAL_BUCKET_SIZE) || 18));
 }
 
-function getSettlementBucketKey(x, y) {
+export function getSettlementBucketKey(x, y) {
   var bucketSize = getSettlementBucketSize();
   return Math.floor(x / bucketSize) + ":" + Math.floor(y / bucketSize);
 }
 
-function registerSettlementInIndexes(settlement) {
+export function registerSettlementInIndexes(settlement) {
   if (!settlement) {
     return;
   }
@@ -101,7 +110,7 @@ function registerSettlementInIndexes(settlement) {
   }
 }
 
-function registerSettlementRouteInIndex(route) {
+export function registerSettlementRouteInIndex(route) {
   if (!route) {
     return;
   }
@@ -114,7 +123,7 @@ function registerSettlementRouteInIndex(route) {
   world.settlementRoutesByKey[route._indexKey] = route;
 }
 
-function makeSettlementRouteStats() {
+export function makeSettlementRouteStats() {
   return {
     routeCount: 0,
     activeRoutes: 0,
@@ -122,7 +131,7 @@ function makeSettlementRouteStats() {
   };
 }
 
-function getMutableSettlementRouteStats(settlementId) {
+export function getMutableSettlementRouteStats(settlementId) {
   if (!world.settlementRouteStatsById) {
     world.settlementRouteStatsById = {};
   }
@@ -136,7 +145,7 @@ function getMutableSettlementRouteStats(settlementId) {
   return world.settlementRouteStatsById[key];
 }
 
-function addRouteToSettlementRouteStats(route, settlementId) {
+export function addRouteToSettlementRouteStats(route, settlementId) {
   var stats = getMutableSettlementRouteStats(settlementId);
   stats.routeCount++;
   stats.foodTransferred += Math.max(0, Number(route.foodTransferred) || 0);
@@ -146,7 +155,7 @@ function addRouteToSettlementRouteStats(route, settlementId) {
   }
 }
 
-function registerSettlementRouteStats(route) {
+export function registerSettlementRouteStats(route) {
   if (!route) {
     return;
   }
@@ -158,7 +167,7 @@ function registerSettlementRouteStats(route) {
   }
 }
 
-function rebuildSettlementRouteStats() {
+export function rebuildSettlementRouteStats() {
   world.settlementRouteStatsById = {};
 
   for (var i = 0; i < world.settlementRoutes.length; i++) {
@@ -166,7 +175,7 @@ function rebuildSettlementRouteStats() {
   }
 }
 
-function getSettlementRouteStats(settlementId) {
+export function getSettlementRouteStats(settlementId) {
   ensureSettlementState();
 
   var stats = world.settlementRouteStatsById[String(settlementId)];
@@ -178,7 +187,7 @@ function getSettlementRouteStats(settlementId) {
   return stats;
 }
 
-function rebuildSettlementIndexes() {
+export function rebuildSettlementIndexes() {
   world.settlementsById = {};
   world.settlementBuckets = {};
   world.settlementByLineage = {};
@@ -197,7 +206,7 @@ function rebuildSettlementIndexes() {
   }
 }
 
-function allocateSettlementId() {
+export function allocateSettlementId() {
   ensureSettlementState();
 
   var settlementId = world.nextSettlementId;
@@ -205,7 +214,7 @@ function allocateSettlementId() {
   return settlementId;
 }
 
-function allocateSettlementRouteId() {
+export function allocateSettlementRouteId() {
   ensureSettlementState();
 
   var routeId = world.nextSettlementRouteId;
@@ -213,66 +222,111 @@ function allocateSettlementRouteId() {
   return routeId;
 }
 
-function getSettlementById(settlementId) {
+export function getSettlementById(settlementId) {
   ensureSettlementState();
   return world.settlementsById[String(settlementId)] || null;
 }
 
-function getSettlementForLineage(lineageId) {
+export function getSettlementForLineage(lineageId) {
   ensureSettlementState();
   return world.settlementByLineage[String(lineageId)] || null;
 }
 
-function getRootSettlementForLineage(lineageId) {
+export function getRootSettlementForLineage(lineageId) {
   ensureSettlementState();
   return world.rootSettlementByLineage[String(lineageId)] || null;
 }
 
-function getOrganismsForLineage(lineageId) {
+export function getOrganismsForLineage(lineageId) {
   return getIndexedOrganismsForLineage(lineageId);
 }
 
-function getLineageCenter(organisms) {
-  var totalX = 0;
+export function getSettlementWrappedX(x) {
+  return PS.worldGrid && typeof PS.worldGrid.getWrappedX === "function"
+    ? PS.worldGrid.getWrappedX(x)
+    : clamp(Math.round(Number(x) || 0), 0, WORLD_WIDTH - 1);
+}
+
+export function getSettlementClampedY(y) {
+  return PS.worldGrid && typeof PS.worldGrid.getClampedY === "function"
+    ? PS.worldGrid.getClampedY(y)
+    : clamp(Math.round(Number(y) || 0), 0, WORLD_HEIGHT - 1);
+}
+
+export function getSettlementWrappedDeltaX(fromX, toX) {
+  if (PS.worldGrid && typeof PS.worldGrid.getWrappedDeltaX === "function") {
+    return PS.worldGrid.getWrappedDeltaX(fromX, toX);
+  }
+
+  var width = Math.max(1, WORLD_WIDTH);
+  var delta = getSettlementWrappedX(toX) - getSettlementWrappedX(fromX);
+
+  if (delta > width / 2) {
+    delta -= width;
+  } else if (delta < -width / 2) {
+    delta += width;
+  }
+
+  return delta;
+}
+
+export function getSettlementWrappedManhattanDistance(fromX, fromY, toX, toY) {
+  return Math.abs(getSettlementWrappedDeltaX(fromX, toX)) +
+    Math.abs(getSettlementClampedY(toY) - getSettlementClampedY(fromY));
+}
+
+export function getLineageCenter(organisms) {
+  var angle;
+  var averageAngle;
+  var sumSinX = 0;
+  var sumCosX = 0;
   var totalY = 0;
+  var width = Math.max(1, WORLD_WIDTH);
 
   for (var i = 0; i < organisms.length; i++) {
-    totalX += organisms[i].x;
+    angle = getSettlementWrappedX(organisms[i].x) / width * Math.PI * 2;
+    sumSinX += Math.sin(angle);
+    sumCosX += Math.cos(angle);
     totalY += organisms[i].y;
   }
 
+  averageAngle = Math.atan2(sumSinX / organisms.length, sumCosX / organisms.length);
+  if (averageAngle < 0) {
+    averageAngle += Math.PI * 2;
+  }
+
   return {
-    x: clamp(Math.round(totalX / organisms.length), 0, WORLD_WIDTH - 1),
-    y: clamp(Math.round(totalY / organisms.length), 0, WORLD_HEIGHT - 1)
+    x: getSettlementWrappedX(Math.round(averageAngle / (Math.PI * 2) * width)),
+    y: getSettlementClampedY(Math.round(totalY / organisms.length))
   };
 }
 
-function getDistanceToSettlement(settlement, x, y) {
-  return Math.abs(settlement.x - x) + Math.abs(settlement.y - y);
+export function getDistanceToSettlement(settlement, x, y) {
+  return getSettlementWrappedManhattanDistance(settlement.x, settlement.y, x, y);
 }
 
-function getDistanceBetweenSettlements(a, b) {
-  return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+export function getDistanceBetweenSettlements(a, b) {
+  return getSettlementWrappedManhattanDistance(a.x, a.y, b.x, b.y);
 }
 
-function restoreSettlementGrowthNumber(value, fallback) {
+export function restoreSettlementGrowthNumber(value, fallback) {
   var numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
-function getSettlementLevelForDevelopment(development) {
+export function getSettlementLevelForDevelopment(development) {
   var threshold = Math.max(1, Number(CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT) || 1);
   return Math.max(1, Math.floor(Math.max(0, development) / threshold) + 1);
 }
 
-function getSettlementInfluenceRadius(settlement) {
+export function getSettlementInfluenceRadius(settlement) {
   var level = Math.max(1, Math.round(restoreSettlementGrowthNumber(settlement.level, 1)));
   var baseRadius = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_INFLUENCE_BASE_RADIUS) || 1));
   var radiusPerLevel = Math.max(0, Math.round(Number(CONFIG.SETTLEMENT_INFLUENCE_RADIUS_PER_LEVEL) || 0));
   return baseRadius + (level - 1) * radiusPerLevel;
 }
 
-function countSettlementClaimedTiles(settlement) {
+export function countSettlementClaimedTiles(settlement) {
   var claimedTiles = 0;
   var radius = Math.max(1, Math.round(settlement.influenceRadius || getSettlementInfluenceRadius(settlement)));
   var minY = Math.max(0, settlement.y - radius);
@@ -281,20 +335,19 @@ function countSettlementClaimedTiles(settlement) {
   for (var y = minY; y <= maxY; y++) {
     var rowDistance = Math.abs(settlement.y - y);
     var rowRadius = radius - rowDistance;
-    var minX = Math.max(0, settlement.x - rowRadius);
-    var maxX = Math.min(WORLD_WIDTH - 1, settlement.x + rowRadius);
-    claimedTiles += maxX - minX + 1;
+    var rowWidth = Math.min(WORLD_WIDTH, rowRadius * 2 + 1);
+    claimedTiles += rowWidth;
   }
 
   return Math.min(claimedTiles, WORLD_WIDTH * WORLD_HEIGHT);
 }
 
-function countSettlementClaimedFood(settlement) {
+export function countSettlementClaimedFood(settlement) {
   var radius = Math.max(1, Math.round(settlement.influenceRadius || getSettlementInfluenceRadius(settlement)));
   return countFoodInRadius(settlement.x, settlement.y, radius);
 }
 
-function updateSettlementInfluence(settlement) {
+export function updateSettlementInfluence(settlement) {
   settlement.influenceRadius = getSettlementInfluenceRadius(settlement);
   settlement.claimedTiles = countSettlementClaimedTiles(settlement);
   settlement.claimedFood = countSettlementClaimedFood(settlement);

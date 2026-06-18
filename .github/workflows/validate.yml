@@ -18,6 +18,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium
 
       - name: Validate JS syntax
         run: |
@@ -41,7 +48,7 @@ jobs:
           if [ -d "js" ]; then
             echo ""
             echo "--- JS Subdirectory Syntax Check ---"
-            find js -name "*.js" | sort | while read f; do
+            while read -r f; do
               printf "%s: " "$f"
               if node --check "$f" 2>&1; then
                 echo "OK"
@@ -49,7 +56,7 @@ jobs:
                 echo "FAIL"
                 FAIL=1
               fi
-            done
+            done < <(find js -name "*.js" | sort)
           fi
 
           if [ "$FAIL" -ne 0 ]; then
@@ -57,6 +64,31 @@ jobs:
             exit 1
           fi
           echo "=== All syntax checks passed ==="
+
+      - name: Validate strict mode
+        run: |
+          echo "=== Pixeldarium Strict Mode Validation ==="
+          FAIL=0
+          while read -r f; do
+            FIRST_LINE="$(head -n 1 "$f")"
+            if [ "$FIRST_LINE" != '"use strict";' ]; then
+              echo "::error file=$f::Missing first-line strict mode directive"
+              FAIL=1
+            fi
+          done < <(find js -name "*.js" | sort)
+
+          if [ "$FAIL" -ne 0 ]; then
+            exit 1
+          fi
+          echo "=== All js/ files declare strict mode ==="
+
+      - name: Run test suite
+        run: |
+          echo "=== Pixeldarium Test Suite ==="
+          START=$(date +%s)
+          npm test
+          END=$(date +%s)
+          echo "=== Tests completed in $((END - START))s ==="
 
       - name: Check whitespace
         run: |

@@ -1,3 +1,6 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.notifications = {
@@ -14,6 +17,8 @@ PS.ui.notifications = {
   },
   show: function(label, detail, level) {
     var toast = this.getElement();
+    var title;
+    var message;
 
     if (!toast) {
       return null;
@@ -21,7 +26,17 @@ PS.ui.notifications = {
 
     toast.hidden = false;
     toast.className = "notification-toast toast-" + (level || "info");
-    toast.innerHTML = "<b>" + escapeSummaryText(label || "Notice") + "</b><span>" + escapeSummaryText(detail || "") + "</span>";
+    title = document.createElement("b");
+    title.textContent = label || "Notice";
+    message = document.createElement("span");
+    message.textContent = detail || "";
+    if (typeof toast.replaceChildren === "function") {
+      toast.replaceChildren(title, message);
+    } else {
+      toast.textContent = "";
+      toast.appendChild(title);
+      toast.appendChild(message);
+    }
 
     if (this.timeoutId && typeof window.clearTimeout === "function") {
       window.clearTimeout(this.timeoutId);

@@ -1,3 +1,13 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { setSimulationSpeed } from "../main-loop.js";
+import { focusPlanetViewOnLatLon } from "../render/planet-view.js";
+import { world } from "../systems/state.js";
+import { spotlightDetail, spotlightDismissButton, spotlightInvestigateButton, spotlightPanel, spotlightTitle } from "./dom-refs.js";
+import { setElementText } from "./foundation.js";
+import { inspectTile } from "./inspect.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.spotlight = {

@@ -1,3 +1,6 @@
+"use strict";
+import { PS } from "./namespace.js";
+
 PS.log = function (category, level, message, details) {
   var normalizedCategory = String(category || "core");
   var normalizedLevel = String(level || "INFO").toUpperCase();

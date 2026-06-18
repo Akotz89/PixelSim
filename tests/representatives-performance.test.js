@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -36,8 +27,10 @@ const context = {
 const source = [
   "js/core/namespace.js",
   "config.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/utils.js",
+  "js/core/trait-schema.js",
   "js/core/config.js",
   "js/core/world-grid.js",
   "js/systems/pool-manager.js",

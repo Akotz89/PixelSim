@@ -3,6 +3,7 @@ PS.assets.registerJSON("data/transitions.json", {
   "layout": {
     "columns": 4,
     "rows": 4,
+    "canonicalJoinPatternCount": 46,
     "sprites": [
       "edge_n", "edge_e", "edge_s", "edge_w",
       "corner_ne", "corner_se", "corner_sw", "corner_nw",

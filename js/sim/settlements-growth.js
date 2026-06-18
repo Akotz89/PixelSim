@@ -1,5 +1,16 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { recordFoodHarvested } from "../main-ecosystem-summary.js";
+import { updateOrbitalInfrastructureState } from "./civilizations-orbital.js";
+import { removeFoodInRadius } from "./food-growth.js";
+import { countFoodInRadius } from "./food-runtime.js";
+import { countOrganismsInRadiusForLineage } from "./organisms-indexes.js";
+import { ensureSettlementState, getSettlementById, getSettlementInfluenceRadius, getSettlementLevelForDevelopment, getSettlementRouteStats, restoreSettlementGrowthNumber, updateSettlementInfluence } from "./settlements-state.js";
+import { world } from "../systems/state.js";
 
-function normalizeSettlementGrowth(settlement) {
+export function normalizeSettlementGrowth(settlement) {
   settlement.storedFood = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.storedFood, 0)));
   settlement.development = Math.max(0, restoreSettlementGrowthNumber(settlement.development, 0));
   settlement.level = Math.max(
@@ -21,15 +32,26 @@ function normalizeSettlementGrowth(settlement) {
     0,
     Math.round(restoreSettlementGrowthNumber(settlement.lastSupplyGrowthTick, settlement.foundedTick || 0))
   );
+  settlement.declineTicks = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.declineTicks, 0)));
+  settlement.lastDeclineTick = Math.max(
+    0,
+    Math.round(restoreSettlementGrowthNumber(settlement.lastDeclineTick, 0))
+  );
+  settlement.declinePressure = clamp(restoreSettlementGrowthNumber(settlement.declinePressure, 0), 0, 1);
+  settlement.isAbandoned = Boolean(settlement.isAbandoned);
   settlement.influenceRadius = Math.max(
     1,
     Math.round(restoreSettlementGrowthNumber(settlement.influenceRadius, getSettlementInfluenceRadius(settlement)))
   );
   settlement.claimedTiles = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.claimedTiles, 0)));
   settlement.claimedFood = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.claimedFood, 0)));
+
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.normalizeSettlement === "function") {
+    PS.sim.resources.normalizeSettlement(settlement);
+  }
 }
 
-function updateSettlementLevel(settlement) {
+export function updateSettlementLevel(settlement) {
   settlement.level = getSettlementLevelForDevelopment(settlement.development);
 
   if (settlement.isOutpost && settlement.level >= CONFIG.SETTLEMENT_COLONY_LEVEL) {
@@ -39,19 +61,22 @@ function updateSettlementLevel(settlement) {
   updateSettlementInfluence(settlement);
 }
 
-function countSettlementFoodStock(settlement) {
+export function countSettlementFoodStock(settlement) {
   return countFoodInRadius(settlement.x, settlement.y, settlement.radius);
 }
 
-function countSettlementPopulation(settlement) {
+export function countSettlementPopulation(settlement) {
   return countOrganismsInRadiusForLineage(settlement.x, settlement.y, settlement.radius, settlement.lineageId);
 }
 
-function updateSettlementMetrics(settlement) {
+export function updateSettlementMetrics(settlement) {
   normalizeSettlementGrowth(settlement);
   settlement.population = countSettlementPopulation(settlement);
   settlement.foodStock = countSettlementFoodStock(settlement);
   settlement.isActive = settlement.population > 0;
+  if (settlement.isActive) {
+    settlement.isAbandoned = false;
+  }
   updateSettlementLevel(settlement);
   updateSettlementInfluence(settlement);
 
@@ -60,11 +85,14 @@ function updateSettlementMetrics(settlement) {
   }
 }
 
-function harvestSettlementFood(settlement) {
+export function harvestSettlementFood(settlement) {
   var harvestLimit = Math.max(0, Math.round(Number(CONFIG.SETTLEMENT_FOOD_HARVEST_PER_GROWTH) || 0));
   var harvestedFood = removeFoodInRadius(settlement.x, settlement.y, settlement.radius, harvestLimit);
 
   settlement.storedFood += harvestedFood;
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
+    PS.sim.resources.recordFlow(settlement, "food", "produced", harvestedFood);
+  }
   settlement.foodStock = countSettlementFoodStock(settlement);
 
   if (typeof recordFoodHarvested === "function") {
@@ -74,12 +102,60 @@ function harvestSettlementFood(settlement) {
   return harvestedFood;
 }
 
-function runSettlementGrowth(settlement) {
-  normalizeSettlementGrowth(settlement);
+export function getSettlementMaintenancePopulation(settlement) {
+  var populationPerLevel = Math.max(
+    0,
+    Number(CONFIG.SETTLEMENT_MAINTENANCE_POPULATION_PER_LEVEL) || 0
+  );
+
+  return Math.max(0, Math.round(Math.max(1, Number(settlement.level) || 1) * populationPerLevel));
+}
+
+export function applySettlementDevelopmentDecay(settlement) {
+  var beforeDevelopment = Math.max(0, Number(settlement.development) || 0);
+  var maintenancePopulation = getSettlementMaintenancePopulation(settlement);
+  var decay = 1;
+  var pressure = 0;
+
+  if (beforeDevelopment <= 0) {
+    settlement.declinePressure = 0;
+    settlement.isAbandoned = !settlement.isActive;
+    return false;
+  }
+
+  if (maintenancePopulation > 0 && settlement.population < maintenancePopulation) {
+    decay *= clamp(Number(CONFIG.SETTLEMENT_UNDERPOPULATED_DEVELOPMENT_DECAY) || 1, 0, 1);
+    pressure = Math.max(
+      pressure,
+      clamp((maintenancePopulation - settlement.population) / maintenancePopulation, 0, 1)
+    );
+  }
+
+  if (settlement.storedFood <= 0) {
+    decay *= clamp(Number(CONFIG.SETTLEMENT_FAMINE_DEVELOPMENT_DECAY) || 1, 0, 1);
+    pressure = Math.max(pressure, 0.5);
+  }
 
   if (!settlement.isActive) {
-    return;
+    decay *= clamp(Number(CONFIG.SETTLEMENT_ABANDONED_DEVELOPMENT_DECAY) || 1, 0, 1);
+    pressure = 1;
   }
+
+  if (decay >= 1) {
+    settlement.declinePressure = 0;
+    return false;
+  }
+
+  settlement.development = Math.max(0, beforeDevelopment * decay);
+  settlement.declineTicks++;
+  settlement.lastDeclineTick = world.tick;
+  settlement.declinePressure = pressure;
+  settlement.isAbandoned = !settlement.isActive && settlement.development < 1;
+  return settlement.development < beforeDevelopment;
+}
+
+export function runSettlementGrowth(settlement) {
+  normalizeSettlementGrowth(settlement);
 
   var growthInterval = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_GROWTH_INTERVAL) || 1));
 
@@ -87,16 +163,25 @@ function runSettlementGrowth(settlement) {
     return;
   }
 
-  harvestSettlementFood(settlement);
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.applySpoilage === "function") {
+    PS.sim.resources.applySpoilage(settlement, world.tick);
+  }
 
-  settlement.development +=
-    settlement.population * CONFIG.SETTLEMENT_DEVELOPMENT_PER_POPULATION +
-    settlement.storedFood * CONFIG.SETTLEMENT_DEVELOPMENT_PER_STORED_FOOD;
+  applySettlementDevelopmentDecay(settlement);
+
+  if (settlement.isActive) {
+    harvestSettlementFood(settlement);
+
+    settlement.development +=
+      settlement.population * CONFIG.SETTLEMENT_DEVELOPMENT_PER_POPULATION +
+      settlement.storedFood * CONFIG.SETTLEMENT_DEVELOPMENT_PER_STORED_FOOD;
+  }
+
   settlement.lastGrowthTick = world.tick;
   updateSettlementLevel(settlement);
 }
 
-function countChildOutposts(settlement) {
+export function countChildOutposts(settlement) {
   if (!settlement) {
     return 0;
   }
@@ -109,15 +194,15 @@ function countChildOutposts(settlement) {
   );
 }
 
-function countRoutesForSettlement(settlementId) {
+export function countRoutesForSettlement(settlementId) {
   return getSettlementRouteStats(settlementId).routeCount;
 }
 
-function countActiveRoutesForSettlement(settlementId) {
+export function countActiveRoutesForSettlement(settlementId) {
   return getSettlementRouteStats(settlementId).activeRoutes;
 }
 
-function getColonyNetworkSummary() {
+export function getColonyNetworkSummary() {
   ensureSettlementState();
 
   var colonies = 0;
@@ -182,7 +267,7 @@ function getColonyNetworkSummary() {
   };
 }
 
-function updateColonyNetworkState() {
+export function updateColonyNetworkState() {
   var summary = getColonyNetworkSummary();
 
   world.colonyNetworkScore = summary.score;
@@ -204,7 +289,7 @@ function updateColonyNetworkState() {
   return summary;
 }
 
-function getSpaceProgramInvestmentColonies(foodCost) {
+export function getSpaceProgramInvestmentColonies(foodCost) {
   var colonies = [];
 
   for (var i = 0; i < world.settlements.length; i++) {
@@ -218,7 +303,7 @@ function getSpaceProgramInvestmentColonies(foodCost) {
   return colonies;
 }
 
-function updateSpaceProgramReadiness(networkSummary) {
+export function updateSpaceProgramReadiness(networkSummary) {
   networkSummary = networkSummary || getColonyNetworkSummary();
 
   world.spaceProgramProgress = Math.max(0, restoreSettlementGrowthNumber(world.spaceProgramProgress, 0));
@@ -246,7 +331,7 @@ function updateSpaceProgramReadiness(networkSummary) {
   return world.spaceProgramReady;
 }
 
-function updateSpaceProgramState(networkSummary) {
+export function updateSpaceProgramState(networkSummary) {
   var isReady = updateSpaceProgramReadiness(networkSummary);
 
   if (!isReady) {
@@ -272,7 +357,11 @@ function updateSpaceProgramState(networkSummary) {
   }
 
   for (var i = 0; i < investmentColonies.length; i++) {
-    investmentColonies[i].storedFood = Math.max(0, investmentColonies[i].storedFood - foodCost);
+    if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
+      PS.sim.resources.recordFlow(investmentColonies[i], "food", "consumed", foodCost);
+    } else {
+      investmentColonies[i].storedFood = Math.max(0, investmentColonies[i].storedFood - foodCost);
+    }
   }
 
   world.spaceProgramProgress +=
@@ -293,7 +382,7 @@ function updateSpaceProgramState(networkSummary) {
   }
 }
 
-function ensureOrbitalState() {
+export function ensureOrbitalState() {
   if (!Array.isArray(world.orbitalAssets)) {
     world.orbitalAssets = [];
   }

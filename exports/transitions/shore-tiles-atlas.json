@@ -1,0 +1,282 @@
+{
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 4,
+  "rows": 4,
+  "image": "shore-tiles.png",
+  "names": [
+    "grass-water.edge.n",
+    "grass-water.edge.e",
+    "grass-water.edge.s",
+    "grass-water.edge.w",
+    "grass-water.corner.ne",
+    "grass-water.corner.se",
+    "grass-water.corner.sw",
+    "grass-water.corner.nw",
+    "grass-water.inner-corner.ne",
+    "grass-water.inner-corner.se",
+    "grass-water.inner-corner.sw",
+    "grass-water.inner-corner.nw",
+    "grass-water.special.narrow-channel",
+    "grass-water.special.peninsula-tip",
+    "grass-water.special.island-nub",
+    "grass-water.special.full-surrounded"
+  ],
+  "variants": [
+    {
+      "id": "grass-water.edge.n",
+      "label": "North straight shore",
+      "kind": "edge",
+      "mask": "north",
+      "rect": [
+        0,
+        0,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.edge.e",
+      "label": "East straight shore",
+      "kind": "edge",
+      "mask": "east",
+      "rect": [
+        32,
+        0,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.edge.s",
+      "label": "South straight shore",
+      "kind": "edge",
+      "mask": "south",
+      "rect": [
+        64,
+        0,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.edge.w",
+      "label": "West straight shore",
+      "kind": "edge",
+      "mask": "west",
+      "rect": [
+        96,
+        0,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.corner.ne",
+      "label": "Outer corner northeast",
+      "kind": "outer-corner",
+      "mask": "outer_ne",
+      "rect": [
+        0,
+        32,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.corner.se",
+      "label": "Outer corner southeast",
+      "kind": "outer-corner",
+      "mask": "outer_se",
+      "rect": [
+        32,
+        32,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.corner.sw",
+      "label": "Outer corner southwest",
+      "kind": "outer-corner",
+      "mask": "outer_sw",
+      "rect": [
+        64,
+        32,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.corner.nw",
+      "label": "Outer corner northwest",
+      "kind": "outer-corner",
+      "mask": "outer_nw",
+      "rect": [
+        96,
+        32,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.inner-corner.ne",
+      "label": "Inner corner northeast",
+      "kind": "inner-corner",
+      "mask": "inner_ne",
+      "rect": [
+        0,
+        64,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.inner-corner.se",
+      "label": "Inner corner southeast",
+      "kind": "inner-corner",
+      "mask": "inner_se",
+      "rect": [
+        32,
+        64,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.inner-corner.sw",
+      "label": "Inner corner southwest",
+      "kind": "inner-corner",
+      "mask": "inner_sw",
+      "rect": [
+        64,
+        64,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.inner-corner.nw",
+      "label": "Inner corner northwest",
+      "kind": "inner-corner",
+      "mask": "inner_nw",
+      "rect": [
+        96,
+        64,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.special.narrow-channel",
+      "label": "Narrow water channel",
+      "kind": "special",
+      "mask": "narrow_channel",
+      "rect": [
+        0,
+        96,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.special.peninsula-tip",
+      "label": "Grass peninsula tip",
+      "kind": "special",
+      "mask": "peninsula_tip",
+      "rect": [
+        32,
+        96,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.special.island-nub",
+      "label": "Small grass island nub",
+      "kind": "special",
+      "mask": "island_nub",
+      "rect": [
+        64,
+        96,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    },
+    {
+      "id": "grass-water.special.full-surrounded",
+      "label": "Grass island fully surrounded",
+      "kind": "special",
+      "mask": "full_surrounded",
+      "rect": [
+        96,
+        96,
+        32,
+        32
+      ],
+      "sandBankPx": 5
+    }
+  ],
+  "palette": {
+    "water": [
+      58,
+      107,
+      140,
+      255
+    ],
+    "waterDeep": [
+      26,
+      58,
+      92,
+      255
+    ],
+    "waterFoam": [
+      90,
+      155,
+      184,
+      255
+    ],
+    "sand": [
+      184,
+      151,
+      106,
+      255
+    ],
+    "wetSand": [
+      139,
+      115,
+      85,
+      255
+    ],
+    "grass": [
+      74,
+      140,
+      42,
+      255
+    ],
+    "grassDark": [
+      45,
+      90,
+      30,
+      255
+    ]
+  },
+  "sourceIssue": "AZR-531",
+  "notes": "Standalone candidate export for 16 grass-to-water shore transition tiles. Runtime integration remains separate."
+}

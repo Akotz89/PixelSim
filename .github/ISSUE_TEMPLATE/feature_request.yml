@@ -51,3 +51,35 @@ body:
     attributes:
       label: Additional Context
       description: Mockups, reference games, screenshots, or links
+
+  - type: textarea
+    id: proof_scene
+    attributes:
+      label: Proof Scene
+      description: Required for gameplay, simulation, entity, VFX, camera, overlay, and interaction changes. Source-video inspiration is not local proof.
+      placeholder: |
+        Affected zoom band:
+        Initial state:
+        Trigger:
+        Visible tell:
+        Behavior:
+        Consequence:
+        Termination condition:
+        Pass/fail observation:
+        Evidence artifact:
+        Verification command:
+
+  - type: textarea
+    id: readability_gate
+    attributes:
+      label: Actor / VFX Readability Gate
+      description: Required when organisms, hazards, factions, resources, or VFX communicate simulation state.
+      placeholder: |
+        Actor type or VFX state:
+        Primary verb or communicated state:
+        Visible tell:
+        Simulation consequence:
+        Mitigation/adaptation/counterplay:
+        Dense-prop or overlap stress case:
+        Affected zoom bands:
+        Verification command:

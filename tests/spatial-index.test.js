@@ -1,9 +1,30 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
+const spatialSource = fs.readFileSync(path.join(root, "js/systems/spatial.js"), "utf8");
+
+[
+  "return getWrappedWorldX(",
+  "return getClampedWorldY(",
+  "return getTileManhattanDistance(",
+  "return getWrappedBucketIndexes(",
+  "return getClampedBucketIndexes("
+].forEach(function(legacyHelperCall) {
+  assert.strictEqual(
+    spatialSource.indexOf(legacyHelperCall),
+    -1,
+    "PS.spatial should route world-grid math through PS.worldGrid instead of legacy helper call " + legacyHelperCall
+  );
+});
+assert.strictEqual(
+  spatialSource.indexOf(".splice("),
+  -1,
+  "PS.spatial chunk removal should use swap-and-pop instead of O(n) splice removal"
+);
 
 const context = {
   assert,

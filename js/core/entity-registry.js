@@ -1,3 +1,6 @@
+"use strict";
+import { PS } from "./namespace.js";
+
 PS.core = PS.core || {};
 
 PS.core.EntityRegistry = PS.core.EntityRegistry || {

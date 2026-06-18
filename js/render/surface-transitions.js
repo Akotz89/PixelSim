@@ -1,3 +1,11 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { createDeterministicSwatches } from "./surface-base.js";
+import { blendHexColors, getPlanetVisualSeedOffset } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceTransitions = PS.render.surfaceTransitions || {};
 
@@ -110,40 +118,45 @@ PS.render.surfaceTransitions.getTransitionShape = function (transitionType, nois
 PS.render.surfaceTransitions.getSwatches = function (sample, baseColor) {
   var neighbor = PS.render.surfaceTransitions.getNeighborBiome(sample);
   var strength = PS.render.surfaceTransitions.getTransitionStrength(sample);
-  var swatches = [];
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
-  var seedEast = Math.round(Number(sample && sample.surfaceSampleX) || 0);
-  var seedNorth = Math.round(Number(sample && sample.surfaceSampleY) || 0);
   var count = strength <= 0.08 ? 0 : clamp(Math.round(1 + strength * (sampleMeters <= 5 ? 7 : 4)), 1, sampleMeters <= 5 ? 8 : 5);
   var transitionType = PS.render.surfaceTransitions.getTransitionType(sample, neighbor.biome);
 
   if (count <= 0) {
-    return swatches;
+    return [];
   }
 
-  for (var i = 0; i < count; i++) {
-    var noise = getDeterministicUnitNoise(seedEast + i * 71, seedNorth - i * 73, getPlanetVisualSeedOffset() + 9101 + i * 41);
-    var shape = PS.render.surfaceTransitions.getTransitionShape(transitionType, noise, i);
-    var maxX = Math.max(1, CONFIG.TILE_SIZE - shape.width + 1);
-    var maxY = Math.max(1, CONFIG.TILE_SIZE - shape.height + 1);
-
-    if (i > 0 && noise > strength + 0.54) {
-      continue;
+  return createDeterministicSwatches({
+    sample: sample,
+    count: count,
+    noiseBase: 9101,
+    noiseEastStep: 71,
+    noiseNorthStep: -73,
+    noiseSeedStep: 41,
+    xBase: 9203,
+    xEastStep: -31,
+    xNorthStep: 37,
+    yBase: 9311,
+    yEastStep: 43,
+    yNorthStep: -47,
+    shouldSkip: function(noise) {
+      return noise > strength + 0.54;
+    },
+    getShape: function(noise, index) {
+      return PS.render.surfaceTransitions.getTransitionShape(transitionType, noise, index);
+    },
+    getColor: function(noise) {
+      return PS.render.surfaceTransitions.getTransitionColor(sample, baseColor, neighbor.biome, transitionType, noise);
+    },
+    getAlpha: function(noise) {
+      return clamp(0.10 + strength * 0.28 + noise * 0.08, 0.10, 0.48);
+    },
+    getExtraProperties: function() {
+      return {
+        transitionType: transitionType,
+        transitionBiome: neighbor.biome
+      };
     }
-
-    swatches.push({
-      x: Math.floor(getDeterministicUnitNoise(seedEast - i * 31, seedNorth + i * 37, getPlanetVisualSeedOffset() + 9203 + i) * maxX),
-      y: Math.floor(getDeterministicUnitNoise(seedEast + i * 43, seedNorth - i * 47, getPlanetVisualSeedOffset() + 9311 + i) * maxY),
-      width: shape.width,
-      height: shape.height,
-      size: Math.max(shape.width, shape.height),
-      color: PS.render.surfaceTransitions.getTransitionColor(sample, baseColor, neighbor.biome, transitionType, noise),
-      alpha: clamp(0.10 + strength * 0.28 + noise * 0.08, 0.10, 0.48),
-      transitionType: transitionType,
-      transitionBiome: neighbor.biome
-    });
-  }
-
-  return swatches;
+  });
 };

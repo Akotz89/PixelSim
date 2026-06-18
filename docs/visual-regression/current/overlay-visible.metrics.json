@@ -1,0 +1,18 @@
+{
+  "name": "overlay-visible",
+  "source": "webgpu-readback",
+  "band": "orbit",
+  "scene": {
+    "width": 1016,
+    "height": 540,
+    "opaqueCoverage": 1,
+    "nonblankCoverage": 0.438,
+    "coarseColorCount": 141,
+    "luminanceMin": 3.08,
+    "luminanceMax": 189.62,
+    "luminanceMean": 26.57,
+    "contrastRange": 186.54
+  },
+  "screenshot": null,
+  "screenshotDiffSkipped": "webgpu-readback-gate"
+}

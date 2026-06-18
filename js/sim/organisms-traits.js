@@ -1,8 +1,16 @@
-function varyTraitValue(defaultValue, minValue, maxValue, stepValue) {
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { chance, clamp, randomInt } from "../core/utils.js";
+import { getClampedWorldY, getWrappedWorldX } from "../render/planet-grid.js";
+import { getRandomLatLonInTile } from "../render/planet-view.js";
+import { world } from "../systems/state.js";
+
+export function varyTraitValue(defaultValue, minValue, maxValue, stepValue) {
   return clamp(defaultValue + (randomInt(3) - 1) * stepValue, minValue, maxValue);
 }
 
-function inheritTraitValue(parentValue, minValue, maxValue, stepValue) {
+export function inheritTraitValue(parentValue, minValue, maxValue, stepValue) {
   var nextValue = parentValue;
 
   if (chance(CONFIG.TRAIT_MUTATION_CHANCE)) {
@@ -12,7 +20,7 @@ function inheritTraitValue(parentValue, minValue, maxValue, stepValue) {
   return clamp(nextValue, minValue, maxValue);
 }
 
-function makeInitialOrganismTraits(typeId) {
+export function makeInitialOrganismTraits(typeId) {
   // Use trait registry when available (AZR-493)
   var typeDefaults = PS.core && PS.core.EntityRegistry && typeof PS.core.EntityRegistry.getTraitDefaults === "function"
     ? PS.core.EntityRegistry.getTraitDefaults(typeId || "herbivore_basic")
@@ -56,6 +64,24 @@ function makeInitialOrganismTraits(typeId) {
       CONFIG.TRAIT_TERRAIN_AFFINITY_MAX,
       CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
     ),
+    intelligence: varyTraitValue(
+      CONFIG.TRAIT_INTELLIGENCE_DEFAULT,
+      CONFIG.TRAIT_INTELLIGENCE_MIN,
+      CONFIG.TRAIT_INTELLIGENCE_MAX,
+      CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP
+    ),
+    sociality: varyTraitValue(
+      CONFIG.TRAIT_SOCIALITY_DEFAULT,
+      CONFIG.TRAIT_SOCIALITY_MIN,
+      CONFIG.TRAIT_SOCIALITY_MAX,
+      CONFIG.TRAIT_SOCIALITY_MUTATION_STEP
+    ),
+    carnivory: varyTraitValue(
+      CONFIG.TRAIT_CARNIVORY_DEFAULT,
+      CONFIG.TRAIT_CARNIVORY_MIN,
+      CONFIG.TRAIT_CARNIVORY_MAX,
+      CONFIG.TRAIT_CARNIVORY_MUTATION_STEP
+    ),
     bodySize: CONFIG.TRAIT_BODY_SIZE_DEFAULT,
     limbCount: CONFIG.TRAIT_LIMB_COUNT_DEFAULT,
     bodyShape: CONFIG.TRAIT_BODY_SHAPE_DEFAULT,
@@ -68,100 +94,61 @@ function makeInitialOrganismTraits(typeId) {
   return normalizeOrganismTraits(Object.assign(traits, typeDefaults));
 }
 
-function inheritOrganismTraits(parentTraits) {
+export function inheritOrganismTraits(parentTraits) {
   parentTraits = normalizeOrganismTraits(parentTraits);
+  var definitions;
+  var traits;
+  var i;
 
   // Use trait registry when available (AZR-493)
   if (PS.traitRegistry && PS.traitRegistry.definitionOrder.length > 0) {
     return PS.traitRegistry.inherit(parentTraits);
   }
 
-  // Fallback: original CONFIG-based inheritance
-  return {
-    vision: inheritTraitValue(
-      parentTraits.vision,
-      CONFIG.TRAIT_VISION_MIN,
-      CONFIG.TRAIT_VISION_MAX,
-      CONFIG.TRAIT_VISION_MUTATION_STEP
-    ),
-    metabolism: inheritTraitValue(
-      parentTraits.metabolism,
-      CONFIG.TRAIT_METABOLISM_MIN,
-      CONFIG.TRAIT_METABOLISM_MAX,
-      CONFIG.TRAIT_METABOLISM_MUTATION_STEP
-    ),
-    reproductionEnergy: inheritTraitValue(
-      parentTraits.reproductionEnergy,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MUTATION_STEP
-    ),
-    movementTendency: inheritTraitValue(
-      parentTraits.movementTendency,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MUTATION_STEP
-    ),
-    terrainAffinity: inheritTraitValue(
-      parentTraits.terrainAffinity,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MAX,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
-    ),
-    bodySize: parentTraits.bodySize,
-    limbCount: parentTraits.limbCount,
-    bodyShape: parentTraits.bodyShape,
-    appendageType: parentTraits.appendageType,
-    camouflage: parentTraits.camouflage,
-    thermalTolerance: parentTraits.thermalTolerance,
-    waterDependency: parentTraits.waterDependency
-  };
+  definitions = PS.core.traitSchema.getDefinitions();
+  traits = {};
+
+  for (i = 0; i < definitions.length; i++) {
+    traits[definitions[i].key] = inheritTraitValue(
+      parentTraits[definitions[i].key],
+      CONFIG[definitions[i].configPrefix + "_MIN"],
+      CONFIG[definitions[i].configPrefix + "_MAX"],
+      Number(CONFIG[definitions[i].configPrefix + "_MUTATION_STEP"]) || 0
+    );
+  }
+
+  return normalizeOrganismTraits(traits);
 }
 
-function copyTraitsForLineage(traits) {
-  traits = normalizeOrganismTraits(traits);
-
-  return {
-    vision: traits.vision,
-    metabolism: traits.metabolism,
-    reproductionEnergy: traits.reproductionEnergy,
-    movementTendency: traits.movementTendency,
-    terrainAffinity: traits.terrainAffinity,
-    bodySize: traits.bodySize,
-    limbCount: traits.limbCount,
-    bodyShape: traits.bodyShape,
-    appendageType: traits.appendageType,
-    camouflage: traits.camouflage,
-    thermalTolerance: traits.thermalTolerance,
-    waterDependency: traits.waterDependency
-  };
+export function copyTraitsForLineage(traits) {
+  return PS.core.traitSchema.copy(traits);
 }
 
-function allocateLineageId() {
+export function allocateLineageId() {
   var lineageId = world.nextLineageId;
   world.nextLineageId++;
   return lineageId;
 }
 
-function allocateSpeciesId() {
+export function allocateSpeciesId() {
   var speciesId = Math.max(1, Math.round(Number(world.nextSpeciesId) || 1));
   world.nextSpeciesId = speciesId + 1;
   return speciesId;
 }
 
-function allocateBiologyPopulationId() {
+export function allocateBiologyPopulationId() {
   var populationId = Math.max(1, Math.round(Number(world.nextBiologyPopulationId) || 1));
   world.nextBiologyPopulationId = populationId + 1;
   return populationId;
 }
 
-function allocateBiologyRepresentativeId() {
+export function allocateBiologyRepresentativeId() {
   var representativeId = Math.max(1, Math.round(Number(world.nextBiologyRepresentativeId) || 1));
   world.nextBiologyRepresentativeId = representativeId + 1;
   return representativeId;
 }
 
-function ensureLineageRegistry() {
+export function ensureLineageRegistry() {
   if (!world.lineages) {
     world.lineages = {};
   }
@@ -169,7 +156,7 @@ function ensureLineageRegistry() {
   return world.lineages;
 }
 
-function makeLineageRecord(lineageId, parentId, founderGeneration, founderTraits, createdTick) {
+export function makeLineageRecord(lineageId, parentId, founderGeneration, founderTraits, createdTick) {
   return {
     id: lineageId,
     parentId: Math.max(0, Math.round(parentId || 0)),
@@ -183,7 +170,7 @@ function makeLineageRecord(lineageId, parentId, founderGeneration, founderTraits
   };
 }
 
-function registerLineage(lineageId, parentId, founderGeneration, founderTraits, createdTick) {
+export function registerLineage(lineageId, parentId, founderGeneration, founderTraits, createdTick) {
   var lineages = ensureLineageRegistry();
   var lineageKey = String(lineageId);
   var record = lineages[lineageKey];
@@ -229,7 +216,7 @@ function registerLineage(lineageId, parentId, founderGeneration, founderTraits, 
   return record;
 }
 
-function ensureOrganismLineage(organism) {
+export function ensureOrganismLineage(organism) {
   if (typeof organism.lineageId !== "number" || organism.lineageId < 1) {
     organism.lineageId = allocateLineageId();
   }
@@ -281,20 +268,27 @@ function ensureOrganismLineage(organism) {
   return organism.lineageId;
 }
 
-function getTraitDivergenceScore(parentTraits, childTraits) {
+export function getTraitDivergenceScore(parentTraits, childTraits) {
   parentTraits = normalizeOrganismTraits(parentTraits);
   childTraits = normalizeOrganismTraits(childTraits);
+  var definitions = PS.core.traitSchema.getDefinitions();
+  var score = 0;
 
-  return (
-    Math.abs(childTraits.vision - parentTraits.vision) / CONFIG.TRAIT_VISION_MUTATION_STEP +
-    Math.abs(childTraits.metabolism - parentTraits.metabolism) / CONFIG.TRAIT_METABOLISM_MUTATION_STEP +
-    Math.abs(childTraits.reproductionEnergy - parentTraits.reproductionEnergy) / CONFIG.TRAIT_REPRODUCTION_ENERGY_MUTATION_STEP +
-    Math.abs(childTraits.movementTendency - parentTraits.movementTendency) / CONFIG.TRAIT_MOVEMENT_TENDENCY_MUTATION_STEP +
-    Math.abs(childTraits.terrainAffinity - parentTraits.terrainAffinity) / CONFIG.TRAIT_TERRAIN_AFFINITY_MUTATION_STEP
-  );
+  for (var i = 0; i < definitions.length; i++) {
+    var definition = definitions[i];
+    var mutationStep = Number(CONFIG[definition.configPrefix + "_MUTATION_STEP"]) || 0;
+
+    if (mutationStep <= 0) {
+      continue;
+    }
+
+    score += Math.abs(childTraits[definition.key] - parentTraits[definition.key]) / mutationStep;
+  }
+
+  return score;
 }
 
-function assignChildLineage(child, parent, parentTraits) {
+export function assignChildLineage(child, parent, parentTraits) {
   var childTraits = ensureOrganismTraits(child);
   var divergenceScore = getTraitDivergenceScore(parentTraits, childTraits);
   var parentLineageId = ensureOrganismLineage(parent);
@@ -311,98 +305,25 @@ function assignChildLineage(child, parent, parentTraits) {
   }
 }
 
-function ensureOrganismTraits(organism) {
+export function ensureOrganismTraits(organism) {
   if (!organism.traits) {
     organism.traits = makeInitialOrganismTraits();
+    organism.traitsNormalized = true;
   }
 
-  return normalizeOrganismTraits(organism.traits);
+  if (organism.traitsNormalized !== true) {
+    organism.traits = normalizeOrganismTraits(organism.traits);
+    organism.traitsNormalized = true;
+  }
+
+  return organism.traits;
 }
 
-function normalizeOrganismTraits(traits) {
-  traits = traits || {};
-
-  if (typeof traits.vision !== "number") {
-    traits.vision = CONFIG.TRAIT_VISION_DEFAULT;
-  }
-
-  if (typeof traits.metabolism !== "number") {
-    traits.metabolism = CONFIG.TRAIT_METABOLISM_DEFAULT;
-  }
-
-  if (typeof traits.reproductionEnergy !== "number") {
-    traits.reproductionEnergy = CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT;
-  }
-
-  if (typeof traits.movementTendency !== "number") {
-    traits.movementTendency = CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT;
-  }
-
-  if (typeof traits.terrainAffinity !== "number") {
-    traits.terrainAffinity = CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT;
-  }
-
-  if (typeof traits.bodySize !== "number") {
-    traits.bodySize = CONFIG.TRAIT_BODY_SIZE_DEFAULT;
-  }
-
-  if (typeof traits.limbCount !== "number") {
-    traits.limbCount = CONFIG.TRAIT_LIMB_COUNT_DEFAULT;
-  }
-
-  if (typeof traits.bodyShape !== "number") {
-    traits.bodyShape = CONFIG.TRAIT_BODY_SHAPE_DEFAULT;
-  }
-
-  if (typeof traits.appendageType !== "number") {
-    traits.appendageType = CONFIG.TRAIT_APPENDAGE_TYPE_DEFAULT;
-  }
-
-  if (typeof traits.camouflage !== "number") {
-    traits.camouflage = CONFIG.TRAIT_CAMOUFLAGE_DEFAULT;
-  }
-
-  if (typeof traits.thermalTolerance !== "number") {
-    traits.thermalTolerance = CONFIG.TRAIT_THERMAL_TOLERANCE_DEFAULT;
-  }
-
-  if (typeof traits.waterDependency !== "number") {
-    traits.waterDependency = CONFIG.TRAIT_WATER_DEPENDENCY_DEFAULT;
-  }
-
-  traits.vision = clamp(traits.vision, CONFIG.TRAIT_VISION_MIN, CONFIG.TRAIT_VISION_MAX);
-  traits.metabolism = clamp(traits.metabolism, CONFIG.TRAIT_METABOLISM_MIN, CONFIG.TRAIT_METABOLISM_MAX);
-  traits.reproductionEnergy = clamp(
-    traits.reproductionEnergy,
-    CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-    CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX
-  );
-  traits.movementTendency = clamp(
-    traits.movementTendency,
-    CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-    CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX
-  );
-  traits.terrainAffinity = clamp(
-    traits.terrainAffinity,
-    CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-    CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
-  );
-  traits.bodySize = clamp(traits.bodySize, CONFIG.TRAIT_BODY_SIZE_MIN, CONFIG.TRAIT_BODY_SIZE_MAX);
-  traits.limbCount = clamp(Math.round(traits.limbCount), CONFIG.TRAIT_LIMB_COUNT_MIN, CONFIG.TRAIT_LIMB_COUNT_MAX);
-  traits.bodyShape = clamp(Math.round(traits.bodyShape), CONFIG.TRAIT_BODY_SHAPE_MIN, CONFIG.TRAIT_BODY_SHAPE_MAX);
-  traits.appendageType = clamp(Math.round(traits.appendageType), CONFIG.TRAIT_APPENDAGE_TYPE_MIN, CONFIG.TRAIT_APPENDAGE_TYPE_MAX);
-  traits.camouflage = clamp(traits.camouflage, CONFIG.TRAIT_CAMOUFLAGE_MIN, CONFIG.TRAIT_CAMOUFLAGE_MAX);
-  traits.thermalTolerance = clamp(
-    traits.thermalTolerance,
-    CONFIG.TRAIT_THERMAL_TOLERANCE_MIN,
-    CONFIG.TRAIT_THERMAL_TOLERANCE_MAX
-  );
-  traits.waterDependency = clamp(traits.waterDependency, CONFIG.TRAIT_WATER_DEPENDENCY_MIN, CONFIG.TRAIT_WATER_DEPENDENCY_MAX);
-
-  return traits;
+export function normalizeOrganismTraits(traits) {
+  return PS.core.traitSchema.normalize(traits);
 }
 
-function makeOrganism(x, y, lineageId, typeId) {
+export function makeOrganism(x, y, lineageId, typeId) {
   var tileX = getWrappedWorldX(x);
   var tileY = getClampedWorldY(y);
   var surfacePosition = getRandomLatLonInTile(tileX, tileY);
@@ -428,6 +349,8 @@ function makeOrganism(x, y, lineageId, typeId) {
   organism.age = 0;
   organism.directionX = randomInt(3) - 1;
   organism.directionY = randomInt(3) - 1;
+  organism.facing = organism.directionY < 0 ? 3 : (organism.directionY > 0 ? 0 : (organism.directionX < 0 ? 1 : 2));
+  organism.animFrame = 0;
   organism.velocityX = 0;
   organism.velocityY = 0;
   organism.travelKm = 0;
@@ -437,6 +360,7 @@ function makeOrganism(x, y, lineageId, typeId) {
   organism.diet = entityType && entityType.diet ? entityType.diet : "herbivore";
   organism.maxAge = entityType && Number.isFinite(Number(entityType.maxAge)) ? Number(entityType.maxAge) : CONFIG.ORGANISM_MAX_AGE;
   organism.traits = makeInitialOrganismTraits(organism.typeId);
+  organism.traitsNormalized = true;
   organism.lineageId = lineageId || allocateLineageId();
   organism.lineageParentId = 0;
   organism.generation = 0;
@@ -448,7 +372,7 @@ function makeOrganism(x, y, lineageId, typeId) {
   return organism;
 }
 
-function createOrganism(typeId, position) {
+export function createOrganism(typeId, position) {
   position = position || {};
   return makeOrganism(
     Number(position.x) || 0,

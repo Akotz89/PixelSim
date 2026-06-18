@@ -1,19 +1,9 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const animationData = JSON.parse(read("data/animations.json"));
 const animationSource = read("js/core/animation.js");
 const namespaceSource = read("js/core/namespace.js");
 const mainLoopSource = read("js/main-loop.js");
-const entityWebglSource = read("js/render/entity-webgl.js");
 
 assert.ok(animationData.animations.organism, "animation data should define organism states");
 assert.strictEqual(animationData.animations.organism.walk_right.fps, 8, "walk_right should run at 8fps");
@@ -22,10 +12,10 @@ assert.ok(animationData.animations.vegetation, "animation data should define veg
 assert.ok(namespaceSource.indexOf("js/core/animation.js") >= 0, "runtime manifest should load animation core");
 assert.ok(mainLoopSource.indexOf('loader.loadJSON("data/animations.json")') >= 0, "startup should load animation data");
 assert.ok(mainLoopSource.indexOf("PS.animation.loadDefinitions") >= 0, "startup should register animation definitions");
-assert.ok(entityWebglSource.indexOf("getAnimatedOrganismCell") >= 0, "entity WebGL path should resolve animated organism cells");
-assert.ok(entityWebglSource.indexOf("getVisibleOrganismFrame") >= 0, "entity WebGL path should use the visible batch animator");
-assert.ok(entityWebglSource.indexOf("updateVisibleOrganismFrames") >= 0, "entity WebGL path should update animation frames in a batch");
-assert.ok(entityWebglSource.indexOf("maxVisibleControllers") >= 0, "entity WebGL path should cap visible animation updates");
+assert.ok(animationSource.indexOf("getVisibleOrganismFrame") >= 0, "animation runtime should expose visible organism frame resolution");
+assert.ok(animationSource.indexOf("updateVisibleOrganismFrames") >= 0, "animation runtime should update visible animation frames in a batch");
+assert.ok(animationSource.indexOf("maxVisibleControllers") >= 0, "animation runtime should cap visible animation updates");
+assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
 assert.strictEqual(animationSource.indexOf("getContext(\"2d\""), -1, "animation runtime must not use Canvas2D");
 
 const context = {

@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -107,6 +98,9 @@ var first = PS.debug.performance.recordFrame({
 
 assert.strictEqual(first.overBudget, true, "frame monitor should flag over-budget frames");
 assert.strictEqual(first.drawCalls, 7, "frame monitor should include renderer draw call count");
+assert.strictEqual(first.targetSpeed, PS.time.targetSpeed, "frame monitor should expose target simulation speed");
+assert.strictEqual(first.effectiveSpeed, PS.time.effectiveSpeed, "frame monitor should expose effective simulation speed");
+assert.strictEqual(first.governorActive, PS.time.speedGovernor.active, "frame monitor should expose governor active state");
 
 PS.debug.performance.recordFrame({
   simMs: 1,
@@ -130,8 +124,9 @@ PS.debug.performance.visible = true;
 PS.debug.performance.render();
 assert.ok(
   PS.debug.performance.element.textContent.indexOf("Frame") >= 0 &&
-    PS.debug.performance.element.textContent.indexOf("draw calls") >= 0,
-  "performance overlay should render frame breakdown and draw calls"
+    PS.debug.performance.element.textContent.indexOf("draw calls") >= 0 &&
+    PS.debug.performance.element.textContent.indexOf("effective") >= 0,
+  "performance overlay should render frame breakdown, draw calls, and speed governor diagnostics"
 );
 
 console.log("frame budget monitor checks passed");

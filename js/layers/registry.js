@@ -1,3 +1,6 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+
 PS.layers = {
   entries: {},
   order: [],

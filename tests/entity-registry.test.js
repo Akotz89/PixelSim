@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const entitiesData = JSON.parse(read("data/entities.json"));
 const sidecarSource = read("data/entities.json.js");
@@ -94,8 +85,10 @@ const organismSource = [
   "js/core/namespace.js",
   "config.js",
   "js/core/entity-registry.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/utils.js",
+  "js/core/trait-schema.js",
   "js/core/config.js",
   "js/core/world-grid.js",
   "js/systems/pool-manager.js",
@@ -156,6 +149,7 @@ assert.strictEqual(predator.energy, 220, "predator should use registry base ener
 assert.strictEqual(predator.traits.vision, 18, "predator should use registry vision default");
 assert.strictEqual(predator.traits.metabolism, 2, "predator should use registry metabolism default");
 assert.ok(Math.abs(predator.traits.bodySize - 0.7) < 0.0001, "predator should use registry body size default");
+assert.ok(predator.traits.carnivory > CONFIG.PREDATION_CARNIVORY_THRESHOLD, "predator should use registry carnivory default");
 
 var fish = PS.sim.organisms.make(2, 3, null, "fish_basic");
 assert.strictEqual(fish.typeId, "fish_basic", "make should accept optional entity type id");

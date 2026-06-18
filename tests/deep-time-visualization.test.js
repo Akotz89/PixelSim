@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 function makeButton(filter) {
   return {
@@ -25,6 +16,11 @@ const context = {
     systems: {},
     ui: {},
     render: {
+      surfaceRender: {
+        invalidateTerrainCache() {
+          context.cacheInvalidated = true;
+        }
+      },
       terrain: {
         invalidateCache() {
           context.cacheInvalidated = true;
@@ -83,9 +79,6 @@ const context = {
   },
   setElementClass(element, className) {
     element.className = className;
-  },
-  invalidateTerrainCache() {
-    context.cacheInvalidated = true;
   },
   clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));

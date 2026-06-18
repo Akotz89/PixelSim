@@ -34,8 +34,7 @@ h1 {
   text-shadow: 0 0 18px rgba(114, 215, 255, 0.38);
 }
 
-#game,
-#game-webgl {
+#game-webgpu {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -52,32 +51,22 @@ h1 {
   box-sizing: border-box;
   box-shadow:
     inset 0 0 30px rgba(0, 0, 0, 0.78);
-  image-rendering: pixelated;
   cursor: grab;
   touch-action: none;
 }
 
-#game {
-  z-index: 0;
-}
-
-#game-webgl {
+#game-webgpu {
   z-index: 1;
   background: transparent;
   box-shadow: none;
   pointer-events: auto;
 }
 
-.webgl-presenter-active #game {
-  opacity: 0;
-}
-
-.webgl-presenter-active #game-webgl {
+.webgpu-presenter-active #game-webgpu {
   opacity: 1;
 }
 
-#game.dragging,
-#game-webgl.dragging {
+#game-webgpu.dragging {
   cursor: grabbing;
 }
 
@@ -678,12 +667,77 @@ h1 {
   border-color: rgba(255, 120, 120, 0.46);
 }
 
+.export-capture-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.95fr) minmax(0, 0.7fr) minmax(0, 0.9fr);
+  gap: 6px;
+  grid-column: 1 / -1;
+}
+
+.export-capture-controls select,
+.export-capture-controls label {
+  min-width: 0;
+  min-height: 34px;
+  padding: 7px 8px;
+  color: #dce5ff;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  box-sizing: border-box;
+}
+
+.export-capture-controls label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.export-capture-controls input {
+  margin: 0;
+}
+
 .speed-label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
   padding: 9px 12px;
   color: #dce5ff;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
+  font-weight: 800;
+  min-width: 0;
+}
+
+.speed-label b,
+.speed-label span,
+.speed-label small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.speed-label b {
+  color: #f4f7ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.speed-label span {
+  color: #72d7ff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.speed-label small {
+  color: #aeb7d9;
+  font-size: 10px;
   font-weight: 800;
 }
 
@@ -852,6 +906,68 @@ h1 {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.hud-scale-cue {
+  display: grid;
+  grid-column: span 2;
+  grid-template-columns: minmax(54px, 0.7fr) minmax(72px, 1fr) minmax(64px, 0.8fr);
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 4px 7px;
+  background: rgba(112, 240, 208, 0.08);
+  border: 1px solid rgba(112, 240, 208, 0.24);
+  border-radius: 6px;
+}
+
+.hud-scale-cue b {
+  color: #aeb7d9;
+  font-size: 10px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hud-scale-bar {
+  display: block;
+  min-width: 64px;
+  height: 16px;
+  position: relative;
+}
+
+.hud-scale-bar i {
+  display: block;
+  max-width: 100%;
+  height: 8px;
+  margin-top: 4px;
+  border-left: 2px solid #f4f7ff;
+  border-right: 2px solid #f4f7ff;
+  border-bottom: 2px solid #f4f7ff;
+  box-sizing: border-box;
+}
+
+.hud-scale-meta {
+  display: grid;
+  gap: 1px;
+  justify-items: end;
+  min-width: 0;
+}
+
+.hud-scale-meta strong,
+.hud-scale-meta em {
+  color: #f4f7ff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hud-scale-meta em {
+  color: #aeb7d9;
+  font-size: 9px;
 }
 
 #inspect-panel {
@@ -1144,6 +1260,160 @@ h1 {
   text-align: left;
 }
 
+#evolution-tree-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(160, 175, 255, 0.18);
+  border-radius: 12px;
+}
+
+.evolution-tree-toolbar {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) repeat(3, auto);
+  gap: 6px;
+}
+
+.evolution-tree-toolbar button {
+  min-width: 0;
+  min-height: 32px;
+  padding: 7px 8px;
+  color: #dce5ff;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  box-sizing: border-box;
+}
+
+.evolution-tree-toolbar button:hover,
+.evolution-tree-toolbar button:focus-visible,
+.evolution-node:hover,
+.evolution-node:focus-visible {
+  border-color: rgba(114, 215, 255, 0.64);
+  outline: none;
+}
+
+.evolution-tree-toolbar button.active {
+  color: #051016;
+  background: #70f0d0;
+  border-color: rgba(255, 255, 255, 0.56);
+}
+
+.evolution-tree-view {
+  position: relative;
+  min-height: 268px;
+  overflow: auto;
+  color: #dce5ff;
+  background: rgba(5, 6, 10, 0.58);
+  border: 1px solid rgba(114, 215, 255, 0.22);
+  border-radius: 10px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.evolution-tree-canvas {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
+  transform-origin: 0 0;
+}
+
+.evolution-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.evolution-links line {
+  stroke: rgba(114, 215, 255, 0.35);
+  stroke-width: 2;
+}
+
+.evolution-node {
+  position: absolute;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  width: 148px;
+  min-height: 74px;
+  padding: 7px 8px;
+  color: #dce5ff;
+  background: rgba(255, 255, 255, 0.065);
+  border: 1px solid rgba(160, 175, 255, 0.22);
+  border-left: 4px solid rgba(112, 240, 208, 0.72);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.evolution-node b,
+.evolution-node span,
+.evolution-node small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evolution-node b {
+  color: #f4f7ff;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.evolution-node span,
+.evolution-node small {
+  color: #aeb7d9;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.evolution-active {
+  border-left-color: rgba(112, 240, 208, 0.76);
+}
+
+.evolution-endangered {
+  border-left-color: rgba(255, 242, 107, 0.86);
+}
+
+.evolution-extinct {
+  border-left-color: rgba(255, 111, 111, 0.86);
+  opacity: 0.78;
+}
+
+.evolution-selected {
+  border-color: rgba(114, 215, 255, 0.78);
+  border-left-color: #72d7ff;
+  box-shadow: 0 0 0 1px rgba(114, 215, 255, 0.28);
+}
+
+.evolution-hidden {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 5px 7px;
+  color: #c7d0f6;
+  background: rgba(5, 6, 10, 0.72);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 #ecosystem-summary.ecosystem-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(124px, 1fr));
@@ -1378,6 +1648,171 @@ h1 {
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(160, 175, 255, 0.18);
   border-radius: 12px;
+}
+
+#bookmark-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 0;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(160, 175, 255, 0.18);
+  border-radius: 12px;
+}
+
+.bookmark-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+  gap: 6px;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.bookmark-editor input,
+.bookmark-editor textarea,
+.bookmark-editor button {
+  min-width: 0;
+  color: #dce5ff;
+  background: rgba(5, 6, 10, 0.54);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.bookmark-editor input,
+.bookmark-editor textarea {
+  padding: 8px;
+}
+
+.bookmark-editor textarea {
+  resize: vertical;
+}
+
+.bookmark-editor button,
+.bookmark-actions button,
+.bookmark-jump {
+  cursor: pointer;
+}
+
+.bookmark-editor button:hover,
+.bookmark-editor button:focus-visible,
+.bookmark-actions button:hover,
+.bookmark-actions button:focus-visible,
+.bookmark-jump:hover,
+.bookmark-jump:focus-visible {
+  border-color: rgba(114, 215, 255, 0.64);
+  outline: none;
+}
+
+.bookmark-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  max-height: 248px;
+  overflow: auto;
+  text-align: left;
+}
+
+.bookmark-list.empty {
+  color: #c7d0f6;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bookmark-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 8px;
+  align-items: start;
+  min-width: 0;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-left: 4px solid rgba(112, 240, 208, 0.72);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.bookmark-stale,
+.bookmark-extinct {
+  border-left-color: rgba(255, 166, 96, 0.86);
+}
+
+.bookmark-jump {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  text-align: left;
+}
+
+.bookmark-jump b,
+.bookmark-jump span,
+.bookmark-item p,
+.bookmark-item small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-jump b {
+  color: #f4f7ff;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.bookmark-jump span {
+  color: #aeb7d9;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bookmark-item p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #c7d0f6;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.bookmark-item small {
+  grid-column: 1 / -1;
+  color: #72d7ff;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.bookmark-actions {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 5px;
+}
+
+.bookmark-actions button {
+  min-width: 0;
+  min-height: 28px;
+  padding: 5px 7px;
+  color: #dce5ff;
+  background: rgba(5, 6, 10, 0.42);
+  border: 1px solid rgba(160, 175, 255, 0.20);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .timeline-filters {
@@ -1939,8 +2374,7 @@ h1 {
     grid-template-rows: 34px repeat(14, auto);
   }
 
-  #game,
-  #game-webgl {
+  #game-webgpu {
     height: auto;
     aspect-ratio: 32 / 17;
     min-height: 240px;
@@ -2016,8 +2450,7 @@ body {
   overflow: hidden;
 }
 
-#game,
-#game-webgl {
+#game-webgpu {
   position: fixed;
   top: 50%;
   left: 50%;

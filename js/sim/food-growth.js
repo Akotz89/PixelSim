@@ -1,5 +1,14 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { chance, clamp, randomInt } from "../core/utils.js";
+import { recordFoodSpawned } from "../main-ecosystem-summary.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { randomFertilePosition } from "../render/terrain-seeding.js";
+import { addFoodAt, collectFoodInRadius, ensureFoodPositions, getFoodPositionKey, removeFood } from "./food-runtime.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
-function removeFoodInRadius(x, y, radius, limit) {
+export function removeFoodInRadius(x, y, radius, limit) {
   var foods = collectFoodInRadius(x, y, radius, limit);
 
   for (var i = 0; i < foods.length; i++) {
@@ -9,7 +18,7 @@ function removeFoodInRadius(x, y, radius, limit) {
   return foods.length;
 }
 
-function randomFoodPosition() {
+export function randomFoodPosition() {
   if (chance(CONFIG.INITIAL_FOOD_FERTILE_CHANCE)) {
     return randomFertilePosition();
   }
@@ -20,11 +29,11 @@ function randomFoodPosition() {
   };
 }
 
-function foodExistsAt(x, y) {
+export function foodExistsAt(x, y) {
   return Math.max(0, Math.round(Number(ensureFoodPositions()[getFoodPositionKey(x, y)]) || 0)) > 0;
 }
 
-function spawnFoodAtPosition(position) {
+export function spawnFoodAtPosition(position) {
   if (!position || world.food.length >= CONFIG.MAX_FOOD) {
     return false;
   }
@@ -42,7 +51,7 @@ function spawnFoodAtPosition(position) {
   return true;
 }
 
-function tryGrowFoodAtPosition(position, growthChance) {
+export function tryGrowFoodAtPosition(position, growthChance) {
   if (world.food.length >= CONFIG.MAX_FOOD || !chance(growthChance)) {
     return false;
   }
@@ -50,7 +59,7 @@ function tryGrowFoodAtPosition(position, growthChance) {
   return spawnFoodAtPosition(position);
 }
 
-function getFoodRecoveryPressure() {
+export function getFoodRecoveryPressure() {
   var population = Array.isArray(world.organisms) ? world.organisms.length : 0;
 
   if (
@@ -73,7 +82,7 @@ function getFoodRecoveryPressure() {
   return clamp(deficit / Math.max(1, targetFood), 0, 1);
 }
 
-function getFoodRecoveryAttemptCount(pressure) {
+export function getFoodRecoveryAttemptCount(pressure) {
   if (pressure <= 0) {
     return 0;
   }
@@ -89,9 +98,9 @@ function getFoodRecoveryAttemptCount(pressure) {
 // Instead of random position sampling every tick, use a tile worker
 // to sweep all tiles over N frames. Each visited tile gets a growth check.
 
-var foodGrowthWorker = null;
+export var foodGrowthWorker = null;
 
-function ensureFoodGrowthWorker() {
+export function ensureFoodGrowthWorker() {
   if (foodGrowthWorker) { return foodGrowthWorker; }
 
   var cycleFrames = Math.max(1, Math.round(
@@ -126,11 +135,11 @@ function ensureFoodGrowthWorker() {
   return foodGrowthWorker;
 }
 
-function resetFoodGrowthWorker() {
+export function resetFoodGrowthWorker() {
   foodGrowthWorker = null;
 }
 
-function growFood() {
+export function growFood() {
   world.foodRecoveryPressure = 0;
   world.foodRecoveryAttemptsThisTick = 0;
 

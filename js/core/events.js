@@ -1,8 +1,15 @@
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "./namespace.js";
+import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
+import { world } from "../systems/state.js";
+
 PS.events = PS.events || {};
 
 PS.events.listeners = PS.events.listeners || {};
 PS.events.history = PS.events.history || [];
 PS.events.historyLimit = PS.events.historyLimit || 256;
+PS.events.historyCursor = PS.events.historyCursor || 0;
 PS.events.types = PS.eventTypes || PS.events.types || {};
 PS.events.payloads = PS.eventPayloads || PS.events.payloads || {};
 PS.events.emitCounts = PS.events.emitCounts || {};
@@ -16,7 +23,45 @@ PS.events.categories = {
   extinction: { label: "Extinction", sources: ["extinction", "lifecycle"] }
 };
 PS.events.contract = {
-  payloadFields: ["type", "label", "detail", "details", "tick", "deepTime", "location", "source", "category", "severity", "inspectTarget", "watcher"],
+  payloadFields: [
+    "type",
+    "label",
+    "detail",
+    "details",
+    "tick",
+    "deepTime",
+    "location",
+    "source",
+    "category",
+    "severity",
+    "inspectTarget",
+    "watcher",
+    "terrainDriver",
+    "trait",
+    "lineageId",
+    "speciesId",
+    "populationId",
+    "pressure",
+    "effect",
+    "id",
+    "parentId",
+    "cause",
+    "divergence",
+    "traits",
+    "eventType",
+    "severityScore",
+    "killRate",
+    "prePopulation",
+    "postPopulation",
+    "affectedSpecies",
+    "affectedPopulations",
+    "survivors",
+    "losses",
+    "recoveryWindow",
+    "survivorPopulationIds",
+    "radiationCandidateIds",
+    "durationTicks"
+  ],
   watcherRoutes: ["eventLog", "timeline", "notification", "spotlight", "overlays"],
   timelineModel: "world.timelineEvents",
   eventLogModel: "world.eventLog"
@@ -67,10 +112,11 @@ PS.events.emit = function (name, payload) {
 
   PS.events.emitCounts[name] = (PS.events.emitCounts[name] || 0) + 1;
 
-  PS.events.history.push(entry);
-
-  if (PS.events.history.length > PS.events.historyLimit) {
-    PS.events.history.shift();
+  if (PS.events.history.length < PS.events.historyLimit) {
+    PS.events.history.push(entry);
+  } else if (PS.events.historyLimit > 0) {
+    PS.events.history[PS.events.historyCursor] = entry;
+    PS.events.historyCursor = (PS.events.historyCursor + 1) % PS.events.historyLimit;
   }
 
   var handlers = PS.events.listeners[name] || [];
@@ -149,6 +195,7 @@ PS.events.clearStats = function () {
 
 PS.events.clearHistory = function () {
   PS.events.history.length = 0;
+  PS.events.historyCursor = 0;
 };
 
 PS.events.getMilestoneContract = function() {
@@ -189,6 +236,11 @@ PS.events.inferCategory = function(payload) {
   return "biology";
 };
 
+/**
+ * @description Normalizes raw milestone/event payloads into the canonical event shape used by logs, timeline summaries, and persistence.
+ * @param {Object|null} payload Raw event payload from simulation, UI, or migration code.
+ * @returns {Object} Canonical milestone payload with type, label, detail, time, category, and severity fields.
+ */
 PS.events.normalizeMilestonePayload = function (payload) {
   payload = payload || {};
 
@@ -204,6 +256,31 @@ PS.events.normalizeMilestonePayload = function (payload) {
     category: PS.events.inferCategory(payload),
     severity: String(payload.severity || "info"),
     inspectTarget: payload.inspectTarget || null,
+    terrainDriver: payload.terrainDriver == null ? null : String(payload.terrainDriver),
+    trait: payload.trait == null ? null : String(payload.trait),
+    lineageId: payload.lineageId == null ? null : Math.max(0, Math.round(Number(payload.lineageId) || 0)),
+    speciesId: payload.speciesId == null ? null : Math.max(0, Math.round(Number(payload.speciesId) || 0)),
+    populationId: payload.populationId == null ? null : Math.max(0, Math.round(Number(payload.populationId) || 0)),
+    pressure: payload.pressure == null ? null : Math.max(0, Math.min(1, Number(payload.pressure) || 0)),
+    effect: payload.effect == null ? null : String(payload.effect),
+    id: payload.id == null ? null : Math.max(0, Math.round(Number(payload.id) || 0)),
+    parentId: payload.parentId == null ? null : Math.max(0, Math.round(Number(payload.parentId) || 0)),
+    cause: payload.cause == null ? null : String(payload.cause),
+    divergence: payload.divergence == null ? null : Math.max(0, Math.min(1, Number(payload.divergence) || 0)),
+    traits: payload.traits || null,
+    eventType: payload.eventType == null ? null : String(payload.eventType),
+    severityScore: payload.severityScore == null ? null : Math.max(0, Math.min(1, Number(payload.severityScore) || 0)),
+    killRate: payload.killRate == null ? null : Math.max(0, Math.min(1, Number(payload.killRate) || 0)),
+    prePopulation: payload.prePopulation == null ? null : Math.max(0, Math.round(Number(payload.prePopulation) || 0)),
+    postPopulation: payload.postPopulation == null ? null : Math.max(0, Math.round(Number(payload.postPopulation) || 0)),
+    affectedSpecies: payload.affectedSpecies || null,
+    affectedPopulations: payload.affectedPopulations || null,
+    survivors: payload.survivors || null,
+    losses: payload.losses || null,
+    recoveryWindow: payload.recoveryWindow || null,
+    survivorPopulationIds: payload.survivorPopulationIds || null,
+    radiationCandidateIds: payload.radiationCandidateIds || null,
+    durationTicks: payload.durationTicks == null ? null : Math.max(0, Math.round(Number(payload.durationTicks) || 0)),
     watcher: {
       eventLog: payload.watcher && payload.watcher.eventLog === false ? false : true,
       timeline: payload.watcher && payload.watcher.timeline === false ? false : true,
@@ -233,6 +310,31 @@ PS.events.makeMilestoneLogEntry = function(payload) {
     source: payload.source,
     category: payload.category,
     severity: payload.severity,
+    terrainDriver: payload.terrainDriver,
+    trait: payload.trait,
+    lineageId: payload.lineageId,
+    speciesId: payload.speciesId,
+    populationId: payload.populationId,
+    pressure: payload.pressure,
+    effect: payload.effect,
+    id: payload.id,
+    parentId: payload.parentId,
+    cause: payload.cause,
+    divergence: payload.divergence,
+    traits: payload.traits,
+    eventType: payload.eventType,
+    severityScore: payload.severityScore,
+    killRate: payload.killRate,
+    prePopulation: payload.prePopulation,
+    postPopulation: payload.postPopulation,
+    affectedSpecies: payload.affectedSpecies,
+    affectedPopulations: payload.affectedPopulations,
+    survivors: payload.survivors,
+    losses: payload.losses,
+    recoveryWindow: payload.recoveryWindow,
+    survivorPopulationIds: payload.survivorPopulationIds,
+    radiationCandidateIds: payload.radiationCandidateIds,
+    durationTicks: payload.durationTicks,
     inspectTarget: payload.inspectTarget
   };
 };
@@ -323,14 +425,6 @@ PS.events.milestoneDetectors = {
       value: value
     };
   },
-  populationAtLeast: function(definition) {
-    var value = Array.isArray(world.organisms) ? world.organisms.length : 0;
-
-    return {
-      passed: value >= definition.threshold,
-      value: value
-    };
-  },
   settlementDevelopmentAtLeast: function(definition) {
     var value = 0;
 
@@ -368,6 +462,8 @@ PS.events.milestoneDetectors = {
     };
   }
 };
+
+PS.events.milestoneDetectors.populationAtLeast = PS.events.milestoneDetectors.organismsAtLeast;
 
 PS.events.getMilestoneDefinitions = function() {
   return Array.isArray(PS.config.milestones) ? PS.config.milestones : [];

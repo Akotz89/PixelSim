@@ -1,5 +1,12 @@
+"use strict";
+import { CONFIG } from "../config.js";
+import { PS } from "./core/namespace.js";
+import { clamp } from "./core/utils.js";
+import { getActiveLineageCount, getEcosystemMomentum, getEcosystemPressure, getEcosystemStabilityProfile, getEcosystemTrend, getLatestEcosystemHistorySample } from "./main-ecosystem-stability.js";
+import { ensureOrganismTraits } from "./sim/organisms-traits.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./systems/state.js";
 
-function getEcosystemRecoveryAction(summary) {
+export function getEcosystemRecoveryAction(summary) {
   if (!summary || !summary.stabilityProfile) {
     return "observe";
   }
@@ -37,7 +44,7 @@ function getEcosystemRecoveryAction(summary) {
   return "stabilize";
 }
 
-function getPopulationBalance(populationDelta, population) {
+export function getPopulationBalance(populationDelta, population) {
   if (population <= 0) {
     return "extinct";
   }
@@ -64,7 +71,7 @@ function getPopulationBalance(populationDelta, population) {
   return magnitude === 0 ? "steady" : "shifting";
 }
 
-function getResourceBalance(foodNet, foodStock) {
+export function getResourceBalance(foodNet, foodStock) {
   var largeSwing = Math.max(3, Math.ceil(Math.max(1, foodStock) * 0.025));
 
   if (foodNet >= largeSwing) {
@@ -86,7 +93,7 @@ function getResourceBalance(foodNet, foodStock) {
   return "steady";
 }
 
-function getFoodRunwayTicks(foodStock, foodNet) {
+export function getFoodRunwayTicks(foodStock, foodNet) {
   var stock = Math.max(0, Math.round(Number(foodStock) || 0));
   var net = Math.round(Number(foodNet) || 0);
 
@@ -101,7 +108,7 @@ function getFoodRunwayTicks(foodStock, foodNet) {
   return Math.max(1, Math.ceil(stock / Math.abs(net)));
 }
 
-function formatFoodRunway(runwayTicks) {
+export function formatFoodRunway(runwayTicks) {
   if (runwayTicks < 0) {
     return "stable";
   }
@@ -109,7 +116,7 @@ function formatFoodRunway(runwayTicks) {
   return Math.max(0, Math.round(Number(runwayTicks) || 0)) + " ticks";
 }
 
-function refreshEcosystemSummary() {
+export function refreshEcosystemSummary() {
   var population = world.organisms.length;
   var totalEnergy = 0;
   var totalAge = 0;
@@ -181,7 +188,7 @@ function refreshEcosystemSummary() {
   return world.ecosystemSummary;
 }
 
-function makeEcosystemHistorySample(summary) {
+export function makeEcosystemHistorySample(summary) {
   summary = summary || refreshEcosystemSummary();
 
   return {
@@ -199,7 +206,7 @@ function makeEcosystemHistorySample(summary) {
   };
 }
 
-function recordEcosystemHistorySample(force) {
+export function recordEcosystemHistorySample(force) {
   if (!Array.isArray(world.ecosystemHistory)) {
     world.ecosystemHistory = [];
   }
@@ -221,14 +228,14 @@ function recordEcosystemHistorySample(force) {
   }
 }
 
-function resetPopulationFlowCounters() {
+export function resetPopulationFlowCounters() {
   world.birthsThisTick = 0;
   world.deathsThisTick = 0;
   world.populationDeltaThisTick = 0;
   world.reproductionScarcityPressure = 0;
 }
 
-function resetFoodFlowCounters() {
+export function resetFoodFlowCounters() {
   world.foodSpawnedThisTick = 0;
   world.foodConsumedThisTick = 0;
   world.foodHarvestedThisTick = 0;
@@ -236,7 +243,7 @@ function resetFoodFlowCounters() {
   world.foodRecoveryAttemptsThisTick = 0;
 }
 
-function recordOrganismBirth(count) {
+export function recordOrganismBirth(count) {
   var birthCount = Math.max(0, Math.round(Number(count) || 0));
 
   if (birthCount <= 0) {
@@ -247,7 +254,7 @@ function recordOrganismBirth(count) {
   world.totalBirths += birthCount;
 }
 
-function recordOrganismDeath(count) {
+export function recordOrganismDeath(count) {
   var deathCount = Math.max(0, Math.round(Number(count) || 0));
 
   if (deathCount <= 0) {
@@ -258,7 +265,7 @@ function recordOrganismDeath(count) {
   world.totalDeaths += deathCount;
 }
 
-function recordFoodSpawned(count) {
+export function recordFoodSpawned(count) {
   var foodCount = Math.max(0, Math.round(Number(count) || 0));
 
   if (foodCount <= 0) {
@@ -269,7 +276,7 @@ function recordFoodSpawned(count) {
   world.totalFoodSpawned += foodCount;
 }
 
-function recordFoodConsumed(count) {
+export function recordFoodConsumed(count) {
   var foodCount = Math.max(0, Math.round(Number(count) || 0));
 
   if (foodCount <= 0) {
@@ -280,7 +287,7 @@ function recordFoodConsumed(count) {
   world.totalFoodConsumed += foodCount;
 }
 
-function recordFoodHarvested(count) {
+export function recordFoodHarvested(count) {
   var foodCount = Math.max(0, Math.round(Number(count) || 0));
 
   if (foodCount <= 0) {
@@ -292,7 +299,7 @@ function recordFoodHarvested(count) {
   recordFoodConsumed(foodCount);
 }
 
-function makeSimulationAlert(severity, label, detail, priority) {
+export function makeSimulationAlert(severity, label, detail, priority) {
   return {
     severity: String(severity || "info"),
     label: String(label || "Simulation"),
@@ -301,7 +308,7 @@ function makeSimulationAlert(severity, label, detail, priority) {
   };
 }
 
-function getSimulationAlertSeverityRank(severity) {
+export function getSimulationAlertSeverityRank(severity) {
   if (severity === "danger") {
     return 0;
   }

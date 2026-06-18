@@ -1,5 +1,11 @@
+"use strict";
+import { CONFIG } from "../config.js";
+import { clamp } from "./core/utils.js";
+// fallow-ignore-next-line circular-dependency
+import { formatMilestoneSignedNumber, getSimulationMilestoneSnapshot, recordCountMilestone, recordEcosystemMilestones, recordSimulationEvent } from "./main-runtime.js";
+import { world } from "./systems/state.js";
 
-function recordBalanceTransition(previousSnapshot, currentSnapshot, key, target, label, valueKey) {
+export function recordBalanceTransition(previousSnapshot, currentSnapshot, key, target, label, valueKey) {
   if (
     previousSnapshot[key] !== "unknown" &&
     previousSnapshot[key] !== target &&
@@ -13,7 +19,7 @@ function recordBalanceTransition(previousSnapshot, currentSnapshot, key, target,
   }
 }
 
-function recordBalanceMilestones(previousSnapshot, currentSnapshot) {
+export function recordBalanceMilestones(previousSnapshot, currentSnapshot) {
   recordBalanceTransition(
     previousSnapshot,
     currentSnapshot,
@@ -48,7 +54,7 @@ function recordBalanceMilestones(previousSnapshot, currentSnapshot) {
   );
 }
 
-function recordLifecycleMilestones(previousSnapshot, currentSnapshot) {
+export function recordLifecycleMilestones(previousSnapshot, currentSnapshot) {
   if (!previousSnapshot.isExtinct && currentSnapshot.isExtinct) {
     recordSimulationEvent("lifecycle", "Extinction", "population 0");
   }
@@ -58,7 +64,7 @@ function recordLifecycleMilestones(previousSnapshot, currentSnapshot) {
   }
 }
 
-function recordSimulationMilestones(previousSnapshot) {
+export function recordSimulationMilestones(previousSnapshot) {
   var currentSnapshot = getSimulationMilestoneSnapshot();
 
   if (currentSnapshot.era !== previousSnapshot.era) {
@@ -87,7 +93,7 @@ function recordSimulationMilestones(previousSnapshot) {
   }
 }
 
-function getActiveLineageCount() {
+export function getActiveLineageCount() {
   var activeLineages = 0;
   var lineages = world.lineages || {};
 
@@ -103,7 +109,7 @@ function getActiveLineageCount() {
   return activeLineages;
 }
 
-function getEcosystemPressure(population, averageEnergy, foodPerOrganism) {
+export function getEcosystemPressure(population, averageEnergy, foodPerOrganism) {
   if (population <= 0) {
     return "extinct";
   }
@@ -127,7 +133,7 @@ function getEcosystemPressure(population, averageEnergy, foodPerOrganism) {
   return "balanced";
 }
 
-function getLatestEcosystemHistorySample() {
+export function getLatestEcosystemHistorySample() {
   if (!Array.isArray(world.ecosystemHistory) || world.ecosystemHistory.length === 0) {
     return null;
   }
@@ -135,7 +141,7 @@ function getLatestEcosystemHistorySample() {
   return world.ecosystemHistory[world.ecosystemHistory.length - 1];
 }
 
-function getEcosystemTrend(summary) {
+export function getEcosystemTrend(summary) {
   var sample = getLatestEcosystemHistorySample();
 
   if (!sample || sample.tick === world.tick) {
@@ -165,7 +171,7 @@ function getEcosystemTrend(summary) {
   };
 }
 
-function getEcosystemMomentum(trend) {
+export function getEcosystemMomentum(trend) {
   trend = trend || {};
 
   if ((Number(trend.stabilityDelta) || 0) >= 8 && (Number(trend.foodNetDelta) || 0) >= 0) {
@@ -187,7 +193,7 @@ function getEcosystemMomentum(trend) {
   return "steady";
 }
 
-function formatEcosystemTrendDelta(trend, key) {
+export function formatEcosystemTrendDelta(trend, key) {
   if (!trend) {
     return "0";
   }
@@ -195,7 +201,7 @@ function formatEcosystemTrendDelta(trend, key) {
   return formatMilestoneSignedNumber(trend[key]);
 }
 
-function getLowestStabilityFactor(componentScores) {
+export function getLowestStabilityFactor(componentScores) {
   var lowestKey = "population";
   var lowestScore = componentScores.population;
 
@@ -212,7 +218,7 @@ function getLowestStabilityFactor(componentScores) {
   return lowestKey;
 }
 
-function getEcosystemStabilityProfile(population, averageEnergy, foodPerOrganism, activeLineages, matureRatio) {
+export function getEcosystemStabilityProfile(population, averageEnergy, foodPerOrganism, activeLineages, matureRatio) {
   if (population <= 0) {
     return {
       stabilityScore: 0,
@@ -267,7 +273,7 @@ function getEcosystemStabilityProfile(population, averageEnergy, foodPerOrganism
   };
 }
 
-function getEcosystemStabilityScore(population, averageEnergy, foodPerOrganism, activeLineages, matureRatio) {
+export function getEcosystemStabilityScore(population, averageEnergy, foodPerOrganism, activeLineages, matureRatio) {
   return getEcosystemStabilityProfile(
     population,
     averageEnergy,
@@ -277,7 +283,7 @@ function getEcosystemStabilityScore(population, averageEnergy, foodPerOrganism, 
   ).stabilityScore;
 }
 
-function formatEcosystemStabilityFactor(factor) {
+export function formatEcosystemStabilityFactor(factor) {
   if (factor === "crowding") {
     return "crowding";
   }
@@ -289,7 +295,7 @@ function formatEcosystemStabilityFactor(factor) {
   return String(factor || "stability");
 }
 
-function formatEcosystemStabilityFactorScore(profile) {
+export function formatEcosystemStabilityFactorScore(profile) {
   if (!profile) {
     return "stability";
   }

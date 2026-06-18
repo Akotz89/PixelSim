@@ -1,8 +1,17 @@
-function makeFood(x, y) {
+"use strict";
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getClampedBucketIndexes, getClampedWorldY, getTileManhattanDistance, getWrappedBucketIndexes, getWrappedWorldX } from "../render/planet-grid.js";
+import { getRandomLatLonInTile } from "../render/planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
+export function makeFood(x, y) {
   var tileX = getWrappedWorldX(x);
   var tileY = getClampedWorldY(y);
   var surfacePosition = getRandomLatLonInTile(tileX, tileY);
-  var food = PS.pools && PS.pools.ensure() && PS.poolManager.acquire("food");
+  var food = PS.pools && PS.pools.ensure && PS.pools.ensure() && PS.poolManager
+    ? PS.poolManager.acquire("food")
+    : {};
 
   food.x = tileX;
   food.y = tileY;
@@ -13,26 +22,26 @@ function makeFood(x, y) {
   return food;
 }
 
-function releaseFoodParticle(food) {
+export function releaseFoodParticle(food) {
   if (PS.pools && PS.pools.food && PS.poolManager) {
     PS.poolManager.release("food", food);
   }
 }
 
-function getFoodPositionKey(x, y) {
+export function getFoodPositionKey(x, y) {
   return getWrappedWorldX(x) + ":" + getClampedWorldY(y);
 }
 
-function getFoodBucketSize() {
+export function getFoodBucketSize() {
   return Math.max(1, Math.round(Number(CONFIG.FOOD_SPATIAL_BUCKET_SIZE) || 16));
 }
 
-function getFoodBucketKey(x, y) {
+export function getFoodBucketKey(x, y) {
   var bucketSize = getFoodBucketSize();
   return Math.floor(getWrappedWorldX(x) / bucketSize) + ":" + Math.floor(getClampedWorldY(y) / bucketSize);
 }
 
-function rebuildFoodPositions() {
+export function rebuildFoodPositions() {
   world.foodPositions = {};
   world.foodBuckets = {};
 
@@ -44,7 +53,7 @@ function rebuildFoodPositions() {
   return world.foodPositions;
 }
 
-function ensureFoodPositions() {
+export function ensureFoodPositions() {
   if (!world.foodPositions) {
     return rebuildFoodPositions();
   }
@@ -52,7 +61,7 @@ function ensureFoodPositions() {
   return world.foodPositions;
 }
 
-function ensureFoodBuckets() {
+export function ensureFoodBuckets() {
   if (!world.foodBuckets) {
     rebuildFoodPositions();
   }
@@ -60,13 +69,13 @@ function ensureFoodBuckets() {
   return world.foodBuckets;
 }
 
-function registerFoodPosition(food) {
+export function registerFoodPosition(food) {
   var positions = ensureFoodPositions();
   var key = getFoodPositionKey(food.x, food.y);
   positions[key] = (positions[key] || 0) + 1;
 }
 
-function unregisterFoodPosition(food) {
+export function unregisterFoodPosition(food) {
   var positions = ensureFoodPositions();
   var key = getFoodPositionKey(food.x, food.y);
   var count = Math.max(0, Math.round(Number(positions[key]) || 0));
@@ -78,7 +87,7 @@ function unregisterFoodPosition(food) {
   }
 }
 
-function registerFoodBucket(food) {
+export function registerFoodBucket(food) {
   var buckets = ensureFoodBuckets();
   var key = getFoodBucketKey(food.x, food.y);
 
@@ -89,7 +98,7 @@ function registerFoodBucket(food) {
   buckets[key].push(food);
 }
 
-function unregisterFoodBucket(food) {
+export function unregisterFoodBucket(food) {
   var buckets = ensureFoodBuckets();
   var key = getFoodBucketKey(food.x, food.y);
   var bucket = buckets[key];
@@ -110,17 +119,17 @@ function unregisterFoodBucket(food) {
   }
 }
 
-function registerFood(food) {
+export function registerFood(food) {
   registerFoodPosition(food);
   registerFoodBucket(food);
 }
 
-function unregisterFood(food) {
+export function unregisterFood(food) {
   unregisterFoodPosition(food);
   unregisterFoodBucket(food);
 }
 
-function addFoodAt(x, y) {
+export function addFoodAt(x, y) {
   var food = makeFood(x, y);
   food.foodIndex = world.food.length;
   world.food.push(food);
@@ -128,7 +137,7 @@ function addFoodAt(x, y) {
   return food;
 }
 
-function removeFoodAtIndex(index) {
+export function removeFoodAtIndex(index) {
   var rawIndex = Number(index);
 
   if (!Number.isFinite(rawIndex)) {
@@ -161,7 +170,7 @@ function removeFoodAtIndex(index) {
   return food;
 }
 
-function removeFood(food) {
+export function removeFood(food) {
   if (!food) {
     return null;
   }
@@ -174,7 +183,7 @@ function removeFood(food) {
   return index >= 0 ? removeFoodAtIndex(index) : null;
 }
 
-function findFoodAt(x, y) {
+export function findFoodAt(x, y) {
   var tileX = getWrappedWorldX(x);
   var tileY = getClampedWorldY(y);
   var bucket = ensureFoodBuckets()[getFoodBucketKey(tileX, tileY)];
@@ -192,11 +201,11 @@ function findFoodAt(x, y) {
   return null;
 }
 
-function removeFoodAtPosition(x, y) {
+export function removeFoodAtPosition(x, y) {
   return removeFood(findFoodAt(x, y));
 }
 
-function findNearestFoodInBuckets(x, y, searchRadius) {
+export function findNearestFoodInBuckets(x, y, searchRadius) {
   var currentTileFood = findFoodAt(x, y);
 
   if (currentTileFood) {
@@ -236,7 +245,7 @@ function findNearestFoodInBuckets(x, y, searchRadius) {
   return nearest;
 }
 
-function collectFoodInRadius(x, y, radius, limit) {
+export function collectFoodInRadius(x, y, radius, limit) {
   var buckets = ensureFoodBuckets();
   var bucketSize = getFoodBucketSize();
   var normalizedRadius = Math.max(0, Math.round(Number(radius) || 0));
@@ -277,7 +286,7 @@ function collectFoodInRadius(x, y, radius, limit) {
   return foods;
 }
 
-function countFoodInRadius(x, y, radius) {
+export function countFoodInRadius(x, y, radius) {
   var buckets = ensureFoodBuckets();
   var bucketSize = getFoodBucketSize();
   var normalizedRadius = Math.max(0, Math.round(Number(radius) || 0));

@@ -1,5 +1,16 @@
+"use strict";
+// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
+// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
-function updateInterstellarFleetReadiness() {
+import { CONFIG } from "../../config.js";
+// fallow-ignore-next-line circular-dependency
+import { getClaimedStarSystemCount, getCompletedProbeMissionCount } from "./civilizations-probes.js";
+// fallow-ignore-next-line circular-dependency
+import { ensureInterstellarFleetState, getClaimedStarSystems, getCompletedInterstellarFleetCount, getInterstellarFleetEndpoints, makeInterstellarFleet, updateInterstellarFleetEra, updateInterstellarFleetTravel } from "./civilizations-stars.js";
+import { restoreSettlementGrowthNumber } from "./settlements-state.js";
+import { world } from "../systems/state.js";
+
+export function updateInterstellarFleetReadiness() {
   ensureInterstellarFleetState();
   updateInterstellarFleetTravel();
 
@@ -14,7 +25,7 @@ function updateInterstellarFleetReadiness() {
   return world.interstellarFleetReady;
 }
 
-function updateInterstellarFleetState() {
+export function updateInterstellarFleetState() {
   if (!updateInterstellarFleetReadiness()) {
     return;
   }
@@ -48,7 +59,7 @@ function updateInterstellarFleetState() {
   updateInterstellarFleetReadiness();
 }
 
-function ensureEmpireSectorState() {
+export function ensureEmpireSectorState() {
   if (!Array.isArray(world.empireSectors)) {
     world.empireSectors = [];
   }
@@ -67,7 +78,7 @@ function ensureEmpireSectorState() {
   world.lastEmpireSectorTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.lastEmpireSectorTick, 0)));
 }
 
-function allocateEmpireSectorId() {
+export function allocateEmpireSectorId() {
   ensureEmpireSectorState();
 
   var sectorId = world.nextEmpireSectorId;
@@ -75,7 +86,7 @@ function allocateEmpireSectorId() {
   return sectorId;
 }
 
-function normalizeEmpireSector(sector) {
+export function normalizeEmpireSector(sector) {
   sector.id = Math.max(1, Math.round(restoreSettlementGrowthNumber(sector.id, world.nextEmpireSectorId)));
   sector.systemId = Math.max(1, Math.round(restoreSettlementGrowthNumber(sector.systemId, 1)));
   sector.foundedTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(sector.foundedTick, world.tick)));
@@ -88,7 +99,7 @@ function normalizeEmpireSector(sector) {
   }
 }
 
-function registerEmpireSectorInIndex(sector) {
+export function registerEmpireSectorInIndex(sector) {
   if (!sector) {
     return;
   }
@@ -100,7 +111,7 @@ function registerEmpireSectorInIndex(sector) {
   world.empireSectorBySystemId[String(sector.systemId)] = sector;
 }
 
-function rebuildEmpireSectorIndexes() {
+export function rebuildEmpireSectorIndexes() {
   world.empireSectorBySystemId = {};
 
   if (!Array.isArray(world.empireSectors)) {
@@ -114,7 +125,7 @@ function rebuildEmpireSectorIndexes() {
   return world.empireSectorBySystemId;
 }
 
-function normalizeEmpireSectors() {
+export function normalizeEmpireSectors() {
   ensureEmpireSectorState();
   world.empireSectorBySystemId = {};
 
@@ -126,12 +137,12 @@ function normalizeEmpireSectors() {
   world.empireSectorCount = world.empireSectors.length;
 }
 
-function getEmpireSectorCount() {
+export function getEmpireSectorCount() {
   normalizeEmpireSectors();
   return world.empireSectorCount;
 }
 
-function hasEmpireSectorForSystem(systemId) {
+export function hasEmpireSectorForSystem(systemId) {
   ensureEmpireSectorState();
   var systemKey = String(systemId);
 
@@ -143,7 +154,7 @@ function hasEmpireSectorForSystem(systemId) {
   return Boolean(world.empireSectorBySystemId[systemKey]);
 }
 
-function getNextSectorSystem() {
+export function getNextSectorSystem() {
   var claimedSystems = getClaimedStarSystems();
   var bestSystem = null;
 
@@ -162,7 +173,7 @@ function getNextSectorSystem() {
   return bestSystem;
 }
 
-function makeEmpireSector(system) {
+export function makeEmpireSector(system) {
   var sectorId = allocateEmpireSectorId();
 
   return {
@@ -175,7 +186,7 @@ function makeEmpireSector(system) {
   };
 }
 
-function updateEmpireSectorEra() {
+export function updateEmpireSectorEra() {
   normalizeEmpireSectors();
 
   if (getEmpireLegacyLevel() >= CONFIG.ASCENDANT_EMPIRE_LEGACY_LEVEL) {
@@ -189,7 +200,7 @@ function updateEmpireSectorEra() {
   }
 }
 
-function updateEmpireSectorReadiness() {
+export function updateEmpireSectorReadiness() {
   normalizeEmpireSectors();
 
   var maxSectors = Math.max(1, Math.round(Number(CONFIG.EMPIRE_SECTOR_MAX_SECTORS) || 1));
@@ -203,7 +214,7 @@ function updateEmpireSectorReadiness() {
   return world.empireSectorReady;
 }
 
-function updateEmpireSectorState() {
+export function updateEmpireSectorState() {
   if (!updateEmpireSectorReadiness()) {
     return;
   }
@@ -239,7 +250,7 @@ function updateEmpireSectorState() {
   updateEmpireSectorReadiness();
 }
 
-function ensureEmpireLegacyState() {
+export function ensureEmpireLegacyState() {
   world.empireLegacyProgress = Math.max(0, restoreSettlementGrowthNumber(world.empireLegacyProgress, 0));
   world.empireLegacyLevel = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.empireLegacyLevel, 0)));
   world.empireLegacyReady = Boolean(world.empireLegacyReady);
@@ -252,12 +263,12 @@ function ensureEmpireLegacyState() {
   }
 }
 
-function getEmpireLegacyLevel() {
+export function getEmpireLegacyLevel() {
   ensureEmpireLegacyState();
   return world.empireLegacyLevel;
 }
 
-function updateEmpireLegacyEra() {
+export function updateEmpireLegacyEra() {
   ensureEmpireLegacyState();
 
   if (world.empireLegacyLevel >= CONFIG.ASCENDANT_EMPIRE_LEGACY_LEVEL) {
@@ -268,7 +279,7 @@ function updateEmpireLegacyEra() {
   }
 }
 
-function updateEmpireLegacyReadiness() {
+export function updateEmpireLegacyReadiness() {
   ensureEmpireLegacyState();
 
   world.empireLegacyReady = Boolean(
@@ -280,7 +291,7 @@ function updateEmpireLegacyReadiness() {
   return world.empireLegacyReady;
 }
 
-function updateEmpireLegacyState() {
+export function updateEmpireLegacyState() {
   if (!updateEmpireLegacyReadiness()) {
     return;
   }

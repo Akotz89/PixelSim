@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const runtimeErrors = [];
 const context = {
@@ -67,12 +58,22 @@ assert.strictEqual(stats.totalEmits, 1, "stats should track total event frequenc
 assert.strictEqual(stats.listenerCounts[PS.eventTypes.CONFIG_CHANGED], 3, "stats should expose listener counts");
 assert.strictEqual(stats.handlerErrors.length, 1, "stats should expose isolated handler errors");
 assert.strictEqual(runtimeErrors[0].kind, "event.handler.error", "handler error should be logged");
+
+PS.events.clearHistory();
+PS.events.historyLimit = 2;
+PS.events.emit("history.first", {});
+PS.events.emit("history.second", {});
+PS.events.emit("history.third", {});
+assert.strictEqual(PS.events.history.length, 2, "history should remain bounded");
+assert.ok(PS.events.history.some(function(item) {
+  return item.name === "history.third";
+}), "bounded history should retain the newest entry");
 `, context);
 
 const runtimeFiles = [
   "js/core/events.js",
   "js/epochs/primordial.js",
-  "js/render/gl.js",
+  "js/render/gpu.js",
   "js/ui/spotlight.js"
 ];
 
@@ -80,5 +81,12 @@ for (const file of runtimeFiles) {
   const sourceText = read(file);
   assert.ok(!/PS\.events\.(?:on|emit)\(\s*["']/.test(sourceText), `${file} should use event constants, not raw event strings`);
 }
+
+const eventsSource = read("js/core/events.js");
+assert.strictEqual(eventsSource.indexOf("PS.events.history.shift("), -1, "event history should not use O(n) shift trimming");
+assert.ok(
+  eventsSource.indexOf("PS.events.milestoneDetectors.populationAtLeast = PS.events.milestoneDetectors.organismsAtLeast") >= 0,
+  "populationAtLeast should alias organismsAtLeast instead of duplicating detector logic"
+);
 
 console.log("event system checks passed");

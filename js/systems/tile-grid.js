@@ -1,3 +1,10 @@
+"use strict";
+import { PS } from "../core/namespace.js";
+import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
+import { getOrganismsForLineage } from "../sim/settlements-state.js";
+import { getSpatialDistance } from "./spatial.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
+
 // ── Spatial Tile Grid (AZR-491) ────────────────────────────────────
 // Intrusive doubly-linked list per tile. O(1) insert/remove/move.
 // Replaces the string-keyed hash-bucket spatial index.

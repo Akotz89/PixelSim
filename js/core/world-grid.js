@@ -1,3 +1,11 @@
+"use strict";
+import { PS } from "./namespace.js";
+import { clamp } from "./utils.js";
+import { getClampedBucketIndexes, getDirectionXToTile, getDirectionYToTile, getTileGreatCircleDistanceKm, getTileManhattanDistance, getWrappedBucketIndexes, getWrappedDeltaX } from "../render/planet-grid.js";
+import { wrapPlanetLongitudeDelta } from "../render/planet-surface.js";
+import { getPlanetLatitudeForTile, getPlanetLongitudeForTile, getPlanetRadiusKm } from "../render/planet-view.js";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.worldGrid = PS.worldGrid || {};
 
 PS.worldGrid.getWrappedX = function (x) {
