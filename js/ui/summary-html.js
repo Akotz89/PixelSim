@@ -1,3 +1,4 @@
+"use strict";
 export function escapeSummaryText(value) {
   return String(value)
     .replace(/&/g, "&amp;")

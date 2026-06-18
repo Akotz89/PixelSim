@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { canvas, lineageSummaryText } from "../ui/dom-refs.js";
 

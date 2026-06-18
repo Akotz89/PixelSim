@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { getClampedBucketIndexes, getTileManhattanDistance, getWrappedBucketIndexes } from "../render/planet-grid.js";

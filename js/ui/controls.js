@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { markCameraInteracting, panPlanetViewFromKeyboard, zoomPlanetView } from "./camera-input.js";
 import { applyTuningFromControls, syncControlStates } from "./foundation.js";

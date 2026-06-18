@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getPlanetTile } from "./planet-grid.js";
@@ -17,13 +18,30 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     uniformBuffer: null,
     bindGroup: null,
     terrainTexture: null,
+    terrainPyramid: {
+      signature: null,
+      textures: {},
+      metrics: {}
+    },
     overlayTexture: null,
     textureSignature: null,
     overlaySignature: null,
     drawCount: 0,
     textureUploadCount: 0,
+    underlayPyramidUploadCount: 0,
     overlayUploadCount: 0,
     lastTextureUploadMs: 0,
+    lastUnderlayPyramidUploadMs: 0,
+    lastUnderlayRequestedLevel: 0,
+    lastUnderlaySourceLevel: 0,
+    lastUnderlayRequestedName: "orbit",
+    lastUnderlaySourceName: "orbit",
+    lastUnderlayTextureWidth: 0,
+    lastUnderlayTextureHeight: 0,
+    lastReadyChildCoverage: 1,
+    lastFallbackStaleCoverage: 0,
+    lastSmearEvidence: 0,
+    lastFlatParentEvidence: 0,
     lastOverlayUploadMs: 0,
     lastUsedObservationOverlay: "none",
     lastFrameMs: 0,
@@ -49,6 +67,63 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
       sourceWidth: worldWidth,
       sourceHeight: worldHeight
     };
+  },
+
+  getUnderlayPyramidLevels: function () {
+    var sourceWidth = Math.max(1, typeof WORLD_WIDTH !== "undefined" ? Math.round(Number(WORLD_WIDTH) || 1) : 1);
+    var sourceHeight = Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? Math.round(Number(WORLD_HEIGHT) || 1) : 1);
+
+    return [
+      { level: 0, name: "orbit", band: "orbit", width: 512, height: 256, sourceWidth: sourceWidth, sourceHeight: sourceHeight, detailStrength: 0.10 },
+      { level: 1, name: "continent", band: "continent", width: 1024, height: 512, sourceWidth: sourceWidth, sourceHeight: sourceHeight, detailStrength: 0.22 },
+      { level: 2, name: "region", band: "region", width: 1536, height: 768, sourceWidth: sourceWidth, sourceHeight: sourceHeight, detailStrength: 0.34 },
+      { level: 3, name: "local", band: "local", width: 2048, height: 1024, sourceWidth: sourceWidth, sourceHeight: sourceHeight, detailStrength: 0.46 }
+    ];
+  },
+
+  getUnderlayPyramidLevel: function (level) {
+    var levels = this.getUnderlayPyramidLevels();
+    var requested = Math.max(0, Math.min(levels.length - 1, Math.round(Number(level) || 0)));
+
+    return levels[requested] || levels[0];
+  },
+
+  getRequestedUnderlayLevel: function (options) {
+    var spec = options || {};
+    var explicitLevel = Number(spec.underlayLevel);
+    var zoomLevel = Number(spec.zoomLevel);
+    var band = String(spec.zoomBand || "").toLowerCase();
+
+    if (Number.isFinite(explicitLevel)) {
+      return this.getUnderlayPyramidLevel(explicitLevel).level;
+    }
+
+    if (band === "settlement" || band === "local") {
+      return 3;
+    }
+    if (band === "region") {
+      return 2;
+    }
+    if (band === "continent") {
+      return 1;
+    }
+    if (band === "orbit" || band === "planet" || band === "globe") {
+      return 0;
+    }
+
+    if (Number.isFinite(zoomLevel)) {
+      if (zoomLevel >= 4.2) {
+        return 3;
+      }
+      if (zoomLevel >= 2.4) {
+        return 2;
+      }
+      if (zoomLevel >= 1.35) {
+        return 1;
+      }
+    }
+
+    return 0;
   },
 
   buildTerrainSourceRgb: function () {
@@ -131,6 +206,89 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var south = this.mixRgb(southWest, southEast, tx);
 
     return this.mixRgb(north, south, ty);
+  },
+
+  hashTerrainValue: function (a, b, seed) {
+    var value = Math.sin((Number(a) || 0) * 127.1 + (Number(b) || 0) * 311.7 + (Number(seed) || 0) * 74.7) * 43758.5453123;
+
+    return value - Math.floor(value);
+  },
+
+  getTileSignal: function (tile, key, fallback) {
+    var value = tile && Number(tile[key]);
+
+    return Number.isFinite(value) ? value : fallback;
+  },
+
+  getUnderlayTerrainRgb: function (u, v, sourceRgb, levelSpec) {
+    var base = this.sampleTerrainRgb(u, v, sourceRgb);
+    var level = levelSpec || this.getUnderlayPyramidLevel(0);
+    var sourceWidth = sourceRgb ? sourceRgb.width : Math.max(1, typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1);
+    var sourceHeight = sourceRgb ? sourceRgb.height : Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1);
+    var tileX = ((Math.floor(Math.max(0, Math.min(0.999999, Number(u) || 0)) * sourceWidth) % sourceWidth) + sourceWidth) % sourceWidth;
+    var tileY = Math.max(0, Math.min(sourceHeight - 1, Math.floor(Math.max(0, Math.min(0.999999, Number(v) || 0)) * sourceHeight)));
+    var tile = typeof getPlanetTile === "function" ? getPlanetTile(tileX, tileY) : null;
+    var detail = Math.max(0, Math.min(1, Number(level.detailStrength) || 0));
+    var longitude = (Number(u) || 0) * 360 - 180;
+    var latitude = 90 - (Number(v) || 0) * 180;
+    var elevation = this.getTileSignal(tile, "elevation", 0);
+    var moisture = this.getTileSignal(tile, "moisture", 0.65);
+    var coast = Math.max(
+      this.getTileSignal(tile, "coastFactor", 0),
+      this.getTileSignal(tile, "shallowWater", 0)
+    );
+    var river = Math.max(
+      this.getTileSignal(tile, "riverStrength", 0),
+      this.getTileSignal(tile, "riverMouth", 0)
+    );
+    var ridge = Math.max(
+      this.getTileSignal(tile, "ridgeStrength", 0),
+      this.getTileSignal(tile, "roughness", 0),
+      Math.abs(this.getTileSignal(tile, "terrainSlope", 0))
+    );
+    var hillshade = this.getTileSignal(tile, "terrainHillshade", 0.55);
+    var broad = this.hashTerrainValue(Math.floor(longitude * 7), Math.floor(latitude * 7), level.level + 11) - 0.5;
+    var regional = this.hashTerrainValue(Math.floor(longitude * 23), Math.floor(latitude * 23), level.level + 29) - 0.5;
+    var material = this.hashTerrainValue(Math.floor(longitude * 97), Math.floor(latitude * 97), level.level + 47) - 0.5;
+    var water = base.blue > Math.max(base.red, base.green) * 1.12 ? 1 : 0;
+    var relief = (elevation * 0.28 + ridge * 0.22 + (hillshade - 0.5) * 0.42 + broad * 0.18 + regional * 0.12 + material * 0.07) * detail;
+    var wetness = (moisture - 0.5) * detail;
+    var coastLine = coast * detail;
+    var riverLine = river * detail;
+    var red = base.red * (1 + relief - water * 0.05) +
+      (broad * 30 + regional * 18 + material * 10) * detail +
+      coastLine * 10 - wetness * 6 + ridge * detail * 8;
+    var green = base.green * (1 + relief * 0.82 + wetness * 0.12) +
+      (regional * 24 + material * 14 - broad * 8) * detail +
+      coastLine * 8 + riverLine * 8;
+    var blue = base.blue * (1 + relief * 0.56 + water * wetness * 0.08) +
+      (material * 26 - regional * 10 + broad * 8) * detail +
+      riverLine * 16 - ridge * detail * 4;
+
+    return {
+      red: Math.max(0, Math.min(255, red)),
+      green: Math.max(0, Math.min(255, green)),
+      blue: Math.max(0, Math.min(255, blue))
+    };
+  },
+
+  resetTerrainPyramidTextures: function () {
+    var state = this.state;
+    var pyramid = state.terrainPyramid || { textures: {}, metrics: {} };
+    var textures = pyramid.textures || {};
+    var key;
+
+    for (key in textures) {
+      if (Object.prototype.hasOwnProperty.call(textures, key) && textures[key] && typeof textures[key].destroy === "function") {
+        textures[key].destroy();
+      }
+    }
+
+    state.terrainPyramid = {
+      signature: this.getTextureSignature(),
+      textures: {},
+      metrics: {}
+    };
   },
 
   registerManifest: function () {
@@ -265,6 +423,107 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     state.textureUploadCount += 1;
     state.lastTextureUploadMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
     return state.terrainTexture;
+  },
+
+  uploadTerrainPyramidTexture: function (device, options) {
+    var state = this.state;
+    var targetDevice = this.getDevice(device);
+    var spec = options || {};
+    var requestedLevel = this.getRequestedUnderlayLevel(spec);
+    var levelSpec = this.getUnderlayPyramidLevel(requestedLevel);
+    var signature = this.getTextureSignature();
+    var pyramid = state.terrainPyramid || { signature: null, textures: {}, metrics: {} };
+    var textureKey = String(levelSpec.level);
+    var startedAt;
+    var data;
+    var sourceRgb;
+    var x;
+    var y;
+    var index;
+    var rgb;
+    var luma;
+    var minLuma = 255;
+    var maxLuma = 0;
+    var bucket;
+    var buckets = {};
+    var bucketCount = 0;
+
+    if (pyramid.signature !== signature) {
+      this.resetTerrainPyramidTextures();
+      pyramid = state.terrainPyramid;
+    }
+
+    if (pyramid.textures && pyramid.textures[textureKey]) {
+      this.publishUnderlayPyramidSelection(levelSpec, levelSpec, spec, pyramid.metrics[textureKey]);
+      return pyramid.textures[textureKey];
+    }
+
+    if (!targetDevice || !levelSpec.width || !levelSpec.height) {
+      throw new Error("WebGPU globe underlay pyramid upload requires world dimensions");
+    }
+
+    startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+    data = new Uint8Array(levelSpec.width * levelSpec.height * 4);
+    sourceRgb = this.buildTerrainSourceRgb();
+
+    for (y = 0; y < levelSpec.height; y += 1) {
+      for (x = 0; x < levelSpec.width; x += 1) {
+        index = (y * levelSpec.width + x) * 4;
+        rgb = this.getUnderlayTerrainRgb((x + 0.5) / levelSpec.width, (y + 0.5) / levelSpec.height, sourceRgb, levelSpec);
+        data[index] = Math.max(0, Math.min(255, Math.round(rgb.red)));
+        data[index + 1] = Math.max(0, Math.min(255, Math.round(rgb.green)));
+        data[index + 2] = Math.max(0, Math.min(255, Math.round(rgb.blue)));
+        data[index + 3] = 255;
+        luma = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
+        minLuma = Math.min(minLuma, luma);
+        maxLuma = Math.max(maxLuma, luma);
+        bucket = [
+          Math.floor(data[index] / 32),
+          Math.floor(data[index + 1] / 32),
+          Math.floor(data[index + 2] / 32)
+        ].join(":");
+        if (!buckets[bucket]) {
+          buckets[bucket] = true;
+          bucketCount += 1;
+        }
+      }
+    }
+
+    pyramid.textures[textureKey] = this.createRgbaTexture(
+      targetDevice,
+      "globe-underlay-pyramid." + levelSpec.name,
+      levelSpec.width,
+      levelSpec.height,
+      data
+    );
+    pyramid.metrics[textureKey] = {
+      contrastRange: maxLuma - minLuma,
+      coarseColorCount: bucketCount,
+      flatParentEvidence: maxLuma - minLuma < 18 || bucketCount < 12 ? 1 : 0
+    };
+    state.underlayPyramidUploadCount += 1;
+    state.lastUnderlayPyramidUploadMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
+    this.publishUnderlayPyramidSelection(levelSpec, levelSpec, spec, pyramid.metrics[textureKey]);
+    return pyramid.textures[textureKey];
+  },
+
+  publishUnderlayPyramidSelection: function (requestedLevelSpec, activeLevelSpec, options, metrics) {
+    var spec = options || {};
+    var readyChildCoverage = Math.max(0, Math.min(1, Number(spec.readyChildCoverage)));
+    var readyCoverage = Number.isFinite(readyChildCoverage) ? readyChildCoverage : 1;
+    var requested = requestedLevelSpec || this.getUnderlayPyramidLevel(0);
+    var active = activeLevelSpec || requested;
+
+    this.state.lastUnderlayRequestedLevel = requested.level;
+    this.state.lastUnderlaySourceLevel = active.level;
+    this.state.lastUnderlayRequestedName = requested.name;
+    this.state.lastUnderlaySourceName = active.name;
+    this.state.lastUnderlayTextureWidth = active.width;
+    this.state.lastUnderlayTextureHeight = active.height;
+    this.state.lastReadyChildCoverage = readyCoverage;
+    this.state.lastFallbackStaleCoverage = Math.max(0, Math.min(1, Number(spec.fallbackStaleCoverage) || (1 - readyCoverage)));
+    this.state.lastSmearEvidence = active.level < requested.level ? 1 : 0;
+    this.state.lastFlatParentEvidence = metrics ? Number(metrics.flatParentEvidence) || 0 : 0;
   },
 
   uploadObservationOverlayTexture: function (device) {
@@ -535,8 +794,20 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     return {
       drawCount: this.state.drawCount,
       textureUploadCount: this.state.textureUploadCount,
+      underlayPyramidUploadCount: this.state.underlayPyramidUploadCount,
       overlayUploadCount: this.state.overlayUploadCount,
       lastTextureUploadMs: this.state.lastTextureUploadMs,
+      lastUnderlayPyramidUploadMs: this.state.lastUnderlayPyramidUploadMs,
+      underlayRequestedLevel: this.state.lastUnderlayRequestedLevel,
+      underlaySourceLevel: this.state.lastUnderlaySourceLevel,
+      underlayRequestedName: this.state.lastUnderlayRequestedName,
+      underlaySourceName: this.state.lastUnderlaySourceName,
+      underlayTextureWidth: this.state.lastUnderlayTextureWidth,
+      underlayTextureHeight: this.state.lastUnderlayTextureHeight,
+      readyChildCoverage: this.state.lastReadyChildCoverage,
+      fallbackStaleCoverage: this.state.lastFallbackStaleCoverage,
+      smearEvidence: this.state.lastSmearEvidence,
+      flatParentEvidence: this.state.lastFlatParentEvidence,
       lastOverlayUploadMs: this.state.lastOverlayUploadMs,
       lastUsedObservationOverlay: this.state.lastUsedObservationOverlay,
       lastFrameMs: this.state.lastFrameMs,

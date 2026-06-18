@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { clamp, hashSeedText, randomInt } from "../core/utils.js";
 import { getPlanetTileAreaKm2, makePlanetTile, refreshPlanetSummary } from "./planet-grid.js";

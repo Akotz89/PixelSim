@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "./namespace.js";
 import { clamp } from "./utils.js";
 import { updateOrganism } from "../sim/organisms-behavior.js";

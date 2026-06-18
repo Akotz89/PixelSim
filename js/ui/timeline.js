@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
 import { world } from "../systems/state.js";

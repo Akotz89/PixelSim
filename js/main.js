@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "./core/namespace.js";
 import { startGame } from "./main-loop.js";
 

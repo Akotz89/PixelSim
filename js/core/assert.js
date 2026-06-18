@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "./namespace.js";
 import { world } from "../systems/state.js";
 

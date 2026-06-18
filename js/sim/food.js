@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { foodExistsAt, growFood, removeFoodInRadius } from "./food-growth.js";
 import { addFoodAt, collectFoodInRadius, countFoodInRadius, findFoodAt, findNearestFoodInBuckets, makeFood, rebuildFoodPositions, removeFood, removeFoodAtIndex, removeFoodAtPosition } from "./food-runtime.js";

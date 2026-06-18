@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { canFoundSettlement, foundSettlementForLineage, makeSettlement, makeSettlementAt } from "./settlements-founding.js";
 import { updateSettlementMetrics } from "./settlements-growth.js";

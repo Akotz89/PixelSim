@@ -7,10 +7,10 @@
     "height": 540,
     "opaqueCoverage": 1,
     "nonblankCoverage": 1,
-    "coarseColorCount": 62,
+    "coarseColorCount": 63,
     "luminanceMin": 14.95,
     "luminanceMax": 246.94,
-    "luminanceMean": 31.7,
+    "luminanceMean": 31.56,
     "contrastRange": 231.99
   },
   "screenshot": null,

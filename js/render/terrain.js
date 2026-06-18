@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { clamp, getTileIndex, hashSeedText } from "../core/utils.js";
 import { getClampedWorldY, getPlanetTile, getWrappedWorldX } from "./planet-grid.js";
@@ -571,27 +572,86 @@ PS.render.terrain.getUnderlayDegreesPerPixel = function () {
   };
 };
 
+PS.render.terrain.publishStableUnderlayStats = function () {
+  if (!localSurfaceRenderChunkCache || !localSurfaceRenderChunkCache.stats) {
+    return;
+  }
+
+  var underlayStats = PS.render.webgpuSurfaceUnderlay && typeof PS.render.webgpuSurfaceUnderlay.getStats === "function"
+    ? PS.render.webgpuSurfaceUnderlay.getStats()
+    : (PS.render.webgpuGlobe && typeof PS.render.webgpuGlobe.getStats === "function" ? PS.render.webgpuGlobe.getStats() : {});
+
+  localSurfaceRenderChunkCache.stats.lastUnderlayRequestedLevel = Number(underlayStats.underlayRequestedLevel) || 0;
+  localSurfaceRenderChunkCache.stats.lastUnderlaySourceLevel = Number(underlayStats.underlaySourceLevel) || 0;
+  localSurfaceRenderChunkCache.stats.lastUnderlayRequestedName = underlayStats.underlayRequestedName || "orbit";
+  localSurfaceRenderChunkCache.stats.lastUnderlaySourceName = underlayStats.underlaySourceName || "orbit";
+  localSurfaceRenderChunkCache.stats.lastUnderlayTextureWidth = Number(underlayStats.underlayTextureWidth) || 0;
+  localSurfaceRenderChunkCache.stats.lastUnderlayTextureHeight = Number(underlayStats.underlayTextureHeight) || 0;
+  localSurfaceRenderChunkCache.stats.lastReadyChildCoverage = Number(underlayStats.readyChildCoverage);
+  if (!Number.isFinite(localSurfaceRenderChunkCache.stats.lastReadyChildCoverage)) {
+    localSurfaceRenderChunkCache.stats.lastReadyChildCoverage = 1;
+  }
+  localSurfaceRenderChunkCache.stats.lastFallbackStaleCoverage = Number(underlayStats.fallbackStaleCoverage) || 0;
+  localSurfaceRenderChunkCache.stats.lastSmearEvidence = Number(underlayStats.smearEvidence) || 0;
+  localSurfaceRenderChunkCache.stats.lastFlatParentEvidence = Number(underlayStats.flatParentEvidence) || 0;
+};
+
 PS.render.terrain.drawStableUnderlay = function (options) {
   var device = PS.gpu && PS.gpu.device;
   var spec = options || {};
+  var pipelineStats = PS.render.pipeline && typeof PS.render.pipeline.getStats === "function"
+    ? PS.render.pipeline.getStats()
+    : {};
+  var zoomLevel = spec.zoomLevel !== undefined
+    ? Number(spec.zoomLevel) || 0
+    : (world && world.planetView ? Number(world.planetView.zoomLevel) || 0 : 0);
+  var zoomBand = spec.zoomBand || pipelineStats.zoomBand || (
+    PS.render.pipeline && typeof PS.render.pipeline.getZoomBand === "function"
+      ? PS.render.pipeline.getZoomBand(zoomLevel)
+      : ""
+  );
+  var terrainTexture;
+  var drawn;
 
   if (
     !PS.render.webgpuSurfaceUnderlay ||
     !PS.render.webgpuGlobe ||
     typeof PS.render.webgpuSurfaceUnderlay.draw !== "function" ||
-    typeof PS.render.webgpuGlobe.uploadTerrainTexture !== "function" ||
+    (
+      typeof PS.render.webgpuGlobe.uploadTerrainPyramidTexture !== "function" &&
+      typeof PS.render.webgpuGlobe.uploadTerrainTexture !== "function"
+    ) ||
     !device
   ) {
     return false;
   }
 
-  return PS.render.webgpuSurfaceUnderlay.draw({
-    terrainTexture: PS.render.webgpuGlobe.uploadTerrainTexture(device),
+  terrainTexture = typeof PS.render.webgpuGlobe.uploadTerrainPyramidTexture === "function"
+    ? PS.render.webgpuGlobe.uploadTerrainPyramidTexture(device, {
+      zoomLevel: zoomLevel,
+      zoomBand: zoomBand,
+      readyChildCoverage: spec.readyChildCoverage,
+      fallbackStaleCoverage: spec.fallbackStaleCoverage
+    })
+    : PS.render.webgpuGlobe.uploadTerrainTexture(device);
+
+  drawn = PS.render.webgpuSurfaceUnderlay.draw({
+    terrainTexture: terrainTexture,
     view: typeof getPlanetView === "function" ? getPlanetView() : null,
     degreesPerPixel: PS.render.terrain.getUnderlayDegreesPerPixel(),
+    zoomLevel: zoomLevel,
+    zoomBand: zoomBand,
+    readyChildCoverage: spec.readyChildCoverage,
+    fallbackStaleCoverage: spec.fallbackStaleCoverage,
     loadOp: spec.loadOp,
     clearColor: spec.clearColor
   });
+
+  if (drawn) {
+    PS.render.terrain.publishStableUnderlayStats();
+  }
+
+  return drawn;
 };
 
 /**
@@ -731,7 +791,11 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
     if (typeof PS.render.terrain.drawStableUnderlay === "function") {
       hiddenCoverageUnderlayDrawn = PS.render.terrain.drawStableUnderlay({
         loadOp: options && options.loadOp ? options.loadOp : "load",
-        clearColor: options && options.clearColor ? options.clearColor : null
+        clearColor: options && options.clearColor ? options.clearColor : null,
+        zoomLevel: currentZoomLevel,
+        zoomBand: zoomBand,
+        readyChildCoverage: visibleCoverageRatio,
+        fallbackStaleCoverage: 1 - visibleCoverageRatio
       });
       if (localSurfaceRenderChunkCache && localSurfaceRenderChunkCache.stats) {
         localSurfaceRenderChunkCache.stats.lastStableUnderlayDrawn = hiddenCoverageUnderlayDrawn ||
@@ -832,7 +896,13 @@ PS.render.terrain.draw = function (lodState) {
   if (underlayRequired) {
     underlayDrawn = PS.render.terrain.drawStableUnderlay({
       loadOp: "clear",
-      clearColor: interactiveUnderlay ? { r: 36 / 255, g: 46 / 255, b: 54 / 255, a: 1 } : null
+      clearColor: interactiveUnderlay ? { r: 36 / 255, g: 46 / 255, b: 54 / 255, a: 1 } : null,
+      zoomLevel: zoomLevel,
+      zoomBand: PS.render.pipeline && typeof PS.render.pipeline.getZoomBand === "function"
+        ? PS.render.pipeline.getZoomBand(zoomLevel)
+        : "",
+      readyChildCoverage: 1,
+      fallbackStaleCoverage: 0
     });
     if (localSurfaceRenderChunkCache && localSurfaceRenderChunkCache.stats) {
       localSurfaceRenderChunkCache.stats.lastStableUnderlayDrawn = underlayDrawn;
@@ -847,7 +917,14 @@ PS.render.terrain.draw = function (lodState) {
   }
 
   if (!underlayDrawn && !globeDrawn && layerAlphas.tiles > 0.01) {
-    underlayDrawn = PS.render.terrain.drawStableUnderlay();
+    underlayDrawn = PS.render.terrain.drawStableUnderlay({
+      zoomLevel: zoomLevel,
+      zoomBand: PS.render.pipeline && typeof PS.render.pipeline.getZoomBand === "function"
+        ? PS.render.pipeline.getZoomBand(zoomLevel)
+        : "",
+      readyChildCoverage: 0,
+      fallbackStaleCoverage: 1
+    });
     if (localSurfaceRenderChunkCache && localSurfaceRenderChunkCache.stats) {
       localSurfaceRenderChunkCache.stats.lastStableUnderlayDrawn = underlayDrawn;
     }

@@ -268,6 +268,9 @@ assert.ok(context.PS.render.wgslShaderManifest.some(function(entry) { return ent
 assert.ok(context.PS.render.wgslShaderManifest.some(function(entry) { return entry.name === "surface-chunk"; }), "surface chunk shader should be in manifest");
 assert.ok(globeSource.indexOf("terrainDigest") >= 0, "globe texture signature should include the generated terrain digest");
 assert.ok(globeSource.indexOf("getTerrainTextureSize") >= 0, "globe texture upload should derive a higher-resolution terrain texture size");
+assert.ok(globeSource.indexOf("getUnderlayPyramidLevels") >= 0, "globe renderer should define multi-resolution underlay pyramid levels");
+assert.ok(globeSource.indexOf("uploadTerrainPyramidTexture") >= 0, "globe renderer should expose underlay pyramid texture uploads");
+assert.ok(underlaySource.indexOf("uploadTerrainPyramidTexture") >= 0, "surface underlay should request pyramid textures when drawing parent coverage");
 
 const derivedTextureSize = globe.getTerrainTextureSize();
 assert.strictEqual(derivedTextureSize.width, 512, "test world should upscale raw simulation tiles into a stable globe texture width");
@@ -319,6 +322,40 @@ assert.strictEqual(firstUploadedTerrain.destroyed, true, "old globe terrain text
 assert.strictEqual(globe.state.textureUploadCount, 2, "new terrain digest should count one terrain re-upload");
 assert.strictEqual(queueTextureWrites.length, 2, "terrain texture writes should happen only on initial upload and digest refresh");
 assert.notStrictEqual(queueTextureWrites[0].data[2], queueTextureWrites[1].data[2], "refreshed terrain upload should reflect changed simulated tile colors");
+
+assert.strictEqual(globe.getRequestedUnderlayLevel({ zoomBand: "orbit" }), 0, "orbit underlay should use the coarsest pyramid source");
+assert.strictEqual(globe.getRequestedUnderlayLevel({ zoomBand: "continent" }), 1, "continent underlay should use the continent pyramid source");
+assert.strictEqual(globe.getRequestedUnderlayLevel({ zoomBand: "region" }), 2, "region underlay should use the region pyramid source");
+assert.strictEqual(globe.getRequestedUnderlayLevel({ zoomBand: "local" }), 3, "local underlay should use the local pyramid source");
+assert.strictEqual(globe.getRequestedUnderlayLevel({ zoomBand: "settlement" }), 3, "settlement underlay should use the local pyramid source");
+const underlayLevels = globe.getUnderlayPyramidLevels();
+assert.strictEqual(
+  underlayLevels.map(function(level) { return level.width; }).join(","),
+  "512,1024,1536,2048",
+  "underlay pyramid should publish increasing source texture widths"
+);
+const pyramidWritesBefore = queueTextureWrites.length;
+const localUnderlayTexture = globe.uploadTerrainPyramidTexture(fakeDevice, {
+  zoomBand: "local",
+  zoomLevel: 5.3,
+  readyChildCoverage: 0.25,
+  fallbackStaleCoverage: 0.75
+});
+const underlayStats = globe.getStats();
+assert.strictEqual(localUnderlayTexture.descriptor.label, "globe-underlay-pyramid.local", "local underlay upload should label the active pyramid source");
+assert.strictEqual(localUnderlayTexture.descriptor.size.width, 2048, "local underlay should use the highest-resolution pyramid width");
+assert.strictEqual(localUnderlayTexture.descriptor.size.height, 1024, "local underlay should use the highest-resolution pyramid height");
+assert.strictEqual(queueTextureWrites.length, pyramidWritesBefore + 1, "first local underlay request should upload one pyramid texture");
+assert.strictEqual(globe.uploadTerrainPyramidTexture(fakeDevice, { zoomBand: "local", zoomLevel: 5.3 }), localUnderlayTexture, "same pyramid level should reuse the uploaded underlay texture");
+assert.strictEqual(queueTextureWrites.length, pyramidWritesBefore + 1, "cached local underlay request should not re-upload");
+assert.strictEqual(underlayStats.underlayRequestedLevel, 3, "underlay stats should expose requested source level");
+assert.strictEqual(underlayStats.underlaySourceLevel, 3, "underlay stats should expose active source level");
+assert.strictEqual(underlayStats.underlayRequestedName, "local", "underlay stats should expose requested source name");
+assert.strictEqual(underlayStats.underlaySourceName, "local", "underlay stats should expose active source name");
+assert.strictEqual(underlayStats.readyChildCoverage, 0.25, "underlay stats should expose ready child coverage");
+assert.strictEqual(underlayStats.fallbackStaleCoverage, 0.75, "underlay stats should expose fallback/stale coverage");
+assert.strictEqual(underlayStats.smearEvidence, 0, "active requested pyramid level should report no source-level smear fallback");
+assert.strictEqual(underlayStats.flatParentEvidence, 0, "terrain-derived local underlay should not report flat-parent evidence");
 
 const terrainTexture = makeTexture("terrain");
 const overlayTexture = makeTexture("overlay");

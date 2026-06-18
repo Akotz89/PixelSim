@@ -1,3 +1,4 @@
+"use strict";
 import { updateEmpireLegacyState, updateEmpireSectorState, updateInterstellarFleetState } from "./civilizations-empire.js";
 import { updatePlanetarySurveyState } from "./civilizations-orbital.js";
 import { updateProbeMissionState } from "./civilizations-probes.js";

@@ -721,6 +721,30 @@ async function runMobilePanNonblankRegression(page) {
     "stable-parent-underlay-before-detail-tile",
     "mobile pan should publish the active no-blank underlay policy; metrics=" + JSON.stringify(metrics.cacheStats)
   );
+  assert.strictEqual(
+    metrics.cacheStats.lastUnderlayRequestedLevel,
+    3,
+    "mobile pan should request the local-resolution underlay source; metrics=" + JSON.stringify(metrics.cacheStats)
+  );
+  assert.strictEqual(
+    metrics.cacheStats.lastUnderlaySourceLevel,
+    metrics.cacheStats.lastUnderlayRequestedLevel,
+    "mobile pan should draw the requested underlay source level without falling back to a smeared parent; metrics=" + JSON.stringify(metrics.cacheStats)
+  );
+  assert.ok(
+    metrics.cacheStats.lastUnderlayTextureWidth >= 2048,
+    "mobile pan should use the highest-resolution underlay texture; metrics=" + JSON.stringify(metrics.cacheStats)
+  );
+  assert.strictEqual(
+    metrics.cacheStats.lastSmearEvidence,
+    0,
+    "mobile pan should not report source-level smear fallback; metrics=" + JSON.stringify(metrics.cacheStats)
+  );
+  assert.strictEqual(
+    metrics.cacheStats.lastFlatParentEvidence,
+    0,
+    "mobile pan should not report a flat parent underlay; metrics=" + JSON.stringify(metrics.cacheStats)
+  );
   assert.ok(
     metrics.scene.coarseColorCount >= 24,
     "mobile pan frame should retain terrain color variation; metrics=" + JSON.stringify(metrics)
@@ -744,7 +768,15 @@ async function runMobilePanNonblankRegression(page) {
       visible: metrics.cacheStats.lastVisibleChunks,
       stableUnderlayRequired: metrics.cacheStats.lastStableUnderlayRequired,
       stableUnderlayDrawn: metrics.cacheStats.lastStableUnderlayDrawn,
-      stableUnderlayPolicy: metrics.cacheStats.lastStableUnderlayPolicy
+      stableUnderlayPolicy: metrics.cacheStats.lastStableUnderlayPolicy,
+      underlayRequestedLevel: metrics.cacheStats.lastUnderlayRequestedLevel,
+      underlaySourceLevel: metrics.cacheStats.lastUnderlaySourceLevel,
+      underlaySourceName: metrics.cacheStats.lastUnderlaySourceName,
+      underlayTextureWidth: metrics.cacheStats.lastUnderlayTextureWidth,
+      readyChildCoverage: metrics.cacheStats.lastReadyChildCoverage,
+      fallbackStaleCoverage: metrics.cacheStats.lastFallbackStaleCoverage,
+      smearEvidence: metrics.cacheStats.lastSmearEvidence,
+      flatParentEvidence: metrics.cacheStats.lastFlatParentEvidence
     }
   };
 }
@@ -764,6 +796,10 @@ async function runContinuousZoomSweep(page) {
     const frames = [];
     const bands = {};
     const preloadTargets = {};
+    const underlaySourceLevels = {};
+    const underlayRequestedLevels = {};
+    let maxUnderlaySmearEvidence = 0;
+    let maxFlatParentEvidence = 0;
     const previousView = {
       zoomLevel: world.planetView.zoomLevel,
       latitude: world.planetView.latitude,
@@ -815,6 +851,9 @@ async function runContinuousZoomSweep(page) {
       const afterLocal = isPlanetLocalView();
       const cameraStats = PS.camera.getZoomTransitionStats();
       const pipelineStats = PS.render.pipeline.getStats();
+      const cacheStats = PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function"
+        ? PS.render.surfaceRender.getCacheStats()
+        : {};
       const after = getPlanetLatLonFromCanvasPoint(cursorX, cursorY);
       const lonDelta = ((after.longitude - before.longitude + 540) % 360) - 180;
       const measuredError = Math.abs(after.latitude - before.latitude) + Math.abs(lonDelta);
@@ -822,6 +861,12 @@ async function runContinuousZoomSweep(page) {
       frames.push(performance.now() - startedAt);
       bands[pipelineStats.zoomBand] = true;
       preloadTargets[String(pipelineStats.preloadSurfaceLodIndex)] = true;
+      if (cacheStats.lastStableUnderlayDrawn) {
+        underlaySourceLevels[String(cacheStats.lastUnderlaySourceLevel)] = true;
+        underlayRequestedLevels[String(cacheStats.lastUnderlayRequestedLevel)] = true;
+      }
+      maxUnderlaySmearEvidence = Math.max(maxUnderlaySmearEvidence, Number(cacheStats.lastSmearEvidence) || 0);
+      maxFlatParentEvidence = Math.max(maxFlatParentEvidence, Number(cacheStats.lastFlatParentEvidence) || 0);
       if (beforeLocal && afterLocal) {
         localAnchoredFrames++;
         maxAnchorErrorDeg = Math.max(maxAnchorErrorDeg, measuredError, Number(cameraStats.lastZoomAnchorErrorDeg) || 0);
@@ -858,6 +903,10 @@ async function runContinuousZoomSweep(page) {
       endZoom: finalZoom,
       bands: Object.keys(bands).sort(),
       preloadTargets: Object.keys(preloadTargets).sort(),
+      underlaySourceLevels: Object.keys(underlaySourceLevels).sort(),
+      underlayRequestedLevels: Object.keys(underlayRequestedLevels).sort(),
+      maxUnderlaySmearEvidence,
+      maxFlatParentEvidence,
       maxAnchorErrorDeg,
       localAnchoredFrames,
       maxTransitionAlpha,
@@ -878,6 +927,30 @@ async function runContinuousZoomSweep(page) {
   assert.ok(sweep.bands.includes("local"), "continuous zoom sweep should cross local band");
   assert.ok(sweep.bands.includes("settlement"), "continuous zoom sweep should cross settlement band");
   assert.ok(sweep.preloadTargets.length > 1, "continuous zoom sweep should update preload LOD targets");
+  assert.ok(
+    sweep.underlayRequestedLevels.includes("3") && sweep.underlaySourceLevels.includes("3"),
+    "continuous zoom sweep should request and draw the local underlay pyramid source; metrics=" + JSON.stringify({
+      underlayRequestedLevels: sweep.underlayRequestedLevels,
+      underlaySourceLevels: sweep.underlaySourceLevels,
+      bands: sweep.bands
+    })
+  );
+  assert.strictEqual(
+    sweep.maxUnderlaySmearEvidence,
+    0,
+    "continuous zoom sweep should not report underlay source-level smear fallback; metrics=" + JSON.stringify({
+      underlayRequestedLevels: sweep.underlayRequestedLevels,
+      underlaySourceLevels: sweep.underlaySourceLevels
+    })
+  );
+  assert.strictEqual(
+    sweep.maxFlatParentEvidence,
+    0,
+    "continuous zoom sweep should not report a flat parent underlay; metrics=" + JSON.stringify({
+      underlayRequestedLevels: sweep.underlayRequestedLevels,
+      underlaySourceLevels: sweep.underlaySourceLevels
+    })
+  );
   assert.ok(
     sweep.maxTransitionAlpha > 0,
     "continuous zoom sweep should exercise LOD transition alpha; metrics=" + JSON.stringify({

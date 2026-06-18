@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { clamp } from "../core/utils.js";
 import { world } from "../systems/state.js";

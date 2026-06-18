@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getPlanetSurfaceSnowSignal, getSurfaceMeterCoordinate } from "./planet-surface.js";

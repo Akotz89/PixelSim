@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "./namespace.js";
 import { chance, clamp, hashSeedText, normalizeSeedText, randomInt, randomUnit, setWorldSeed } from "./utils.js";
 import { world } from "../systems/state.js";

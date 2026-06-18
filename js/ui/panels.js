@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { updateSettlements } from "../sim/settlements-runtime.js";
 import { uiMenu } from "./dom-refs.js";

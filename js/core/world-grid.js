@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "./namespace.js";
 import { clamp } from "./utils.js";
 import { getClampedBucketIndexes, getDirectionXToTile, getDirectionYToTile, getTileGreatCircleDistanceKm, getTileManhattanDistance, getWrappedBucketIndexes, getWrappedDeltaX } from "../render/planet-grid.js";

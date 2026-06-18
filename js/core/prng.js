@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "./namespace.js";
 import { clamp, hashSeedText } from "./utils.js";
 

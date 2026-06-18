@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { normalizeSeedText } from "../core/utils.js";
 import { adjustSimulationSpeed, stepSimulationOnce, toggleSimulationPaused } from "../main-loop.js";

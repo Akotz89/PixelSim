@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { openPixeldariumDatabase } from "./persistence-db.js";
 import { applyWorldSaveData, exportWorldToJsonFile, importWorldFromJsonFile, loadWorldFromIndexedDB } from "./persistence-io.js";

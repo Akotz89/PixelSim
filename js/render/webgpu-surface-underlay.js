@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { canvas } from "../ui/dom-refs.js";
@@ -16,6 +17,16 @@ PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
     bindGroup: null,
     terrainTexture: null,
     drawCount: 0,
+    lastUnderlayRequestedLevel: 0,
+    lastUnderlaySourceLevel: 0,
+    lastUnderlayRequestedName: "orbit",
+    lastUnderlaySourceName: "orbit",
+    lastUnderlayTextureWidth: 0,
+    lastUnderlayTextureHeight: 0,
+    lastReadyChildCoverage: 1,
+    lastFallbackStaleCoverage: 0,
+    lastSmearEvidence: 0,
+    lastFlatParentEvidence: 0,
     lastFrameMs: 0,
     lastError: ""
   },
@@ -137,9 +148,14 @@ PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
     var device = this.getDevice(spec.device);
     var context = spec.context || (PS.gpu && PS.gpu.context);
     var textureView = spec.textureView || (context && typeof context.getCurrentTexture === "function" ? context.getCurrentTexture().createView() : null);
-    var terrainTexture = spec.terrainTexture || this.state.terrainTexture;
+    var terrainTexture = spec.terrainTexture || (
+      PS.render.webgpuGlobe && typeof PS.render.webgpuGlobe.uploadTerrainPyramidTexture === "function"
+        ? PS.render.webgpuGlobe.uploadTerrainPyramidTexture(device, spec)
+        : this.state.terrainTexture
+    );
     var view = spec.view || (PS.camera && typeof PS.camera.getView === "function" ? PS.camera.getView() : null);
     var degreesPerPixel = spec.degreesPerPixel || { longitude: 0, latitude: 0 };
+    var globeStats;
     var pipeline;
     var encoder;
     var pass;
@@ -159,6 +175,7 @@ PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
 
     pipeline = this.ensurePipeline(device);
     device.queue.writeBuffer(this.ensureUniformBuffer(device), 0, this.makeUniformData(view, degreesPerPixel));
+    this.state.terrainTexture = terrainTexture;
     this.state.bindGroup = this.createBindGroup(device, pipeline, terrainTexture);
     encoder = spec.commandEncoder || device.createCommandEncoder({ label: "surface-underlay.encoder" });
     pass = encoder.beginRenderPass({
@@ -181,6 +198,22 @@ PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
     }
 
     this.state.drawCount += 1;
+    globeStats = PS.render.webgpuGlobe && typeof PS.render.webgpuGlobe.getStats === "function"
+      ? PS.render.webgpuGlobe.getStats()
+      : {};
+    this.state.lastUnderlayRequestedLevel = Number(globeStats.underlayRequestedLevel) || 0;
+    this.state.lastUnderlaySourceLevel = Number(globeStats.underlaySourceLevel) || 0;
+    this.state.lastUnderlayRequestedName = globeStats.underlayRequestedName || "orbit";
+    this.state.lastUnderlaySourceName = globeStats.underlaySourceName || "orbit";
+    this.state.lastUnderlayTextureWidth = Number(globeStats.underlayTextureWidth) || 0;
+    this.state.lastUnderlayTextureHeight = Number(globeStats.underlayTextureHeight) || 0;
+    this.state.lastReadyChildCoverage = Number(globeStats.readyChildCoverage);
+    if (!Number.isFinite(this.state.lastReadyChildCoverage)) {
+      this.state.lastReadyChildCoverage = 1;
+    }
+    this.state.lastFallbackStaleCoverage = Number(globeStats.fallbackStaleCoverage) || 0;
+    this.state.lastSmearEvidence = Number(globeStats.smearEvidence) || 0;
+    this.state.lastFlatParentEvidence = Number(globeStats.flatParentEvidence) || 0;
     this.state.lastFrameMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
     this.state.lastError = "";
     return true;
@@ -189,6 +222,16 @@ PS.render.webgpuSurfaceUnderlay = PS.render.webgpuSurfaceUnderlay || {
   getStats: function () {
     return {
       drawCount: this.state.drawCount,
+      underlayRequestedLevel: this.state.lastUnderlayRequestedLevel,
+      underlaySourceLevel: this.state.lastUnderlaySourceLevel,
+      underlayRequestedName: this.state.lastUnderlayRequestedName,
+      underlaySourceName: this.state.lastUnderlaySourceName,
+      underlayTextureWidth: this.state.lastUnderlayTextureWidth,
+      underlayTextureHeight: this.state.lastUnderlayTextureHeight,
+      readyChildCoverage: this.state.lastReadyChildCoverage,
+      fallbackStaleCoverage: this.state.lastFallbackStaleCoverage,
+      smearEvidence: this.state.lastSmearEvidence,
+      flatParentEvidence: this.state.lastFlatParentEvidence,
       lastFrameMs: this.state.lastFrameMs,
       lastError: this.state.lastError
     };

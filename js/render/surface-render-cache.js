@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { getPlanetView } from "./planet-view.js";
@@ -48,6 +49,16 @@ PS.render.surfaceRender.createCacheState = function () {
       lastStableUnderlayRequired: false,
       lastStableUnderlayDrawn: false,
       lastStableUnderlayPolicy: "",
+      lastUnderlayRequestedLevel: 0,
+      lastUnderlaySourceLevel: 0,
+      lastUnderlayRequestedName: "orbit",
+      lastUnderlaySourceName: "orbit",
+      lastUnderlayTextureWidth: 0,
+      lastUnderlayTextureHeight: 0,
+      lastReadyChildCoverage: 1,
+      lastFallbackStaleCoverage: 0,
+      lastSmearEvidence: 0,
+      lastFlatParentEvidence: 0,
       dirtyChunks: 0,
       dirtyInvalidations: 0,
       lastChunkKey: "-"
@@ -224,6 +235,16 @@ PS.render.surfaceRender.getCacheStats = function () {
     lastStableUnderlayRequired: localSurfaceRenderChunkCache.stats.lastStableUnderlayRequired,
     lastStableUnderlayDrawn: localSurfaceRenderChunkCache.stats.lastStableUnderlayDrawn,
     lastStableUnderlayPolicy: localSurfaceRenderChunkCache.stats.lastStableUnderlayPolicy,
+    lastUnderlayRequestedLevel: localSurfaceRenderChunkCache.stats.lastUnderlayRequestedLevel,
+    lastUnderlaySourceLevel: localSurfaceRenderChunkCache.stats.lastUnderlaySourceLevel,
+    lastUnderlayRequestedName: localSurfaceRenderChunkCache.stats.lastUnderlayRequestedName,
+    lastUnderlaySourceName: localSurfaceRenderChunkCache.stats.lastUnderlaySourceName,
+    lastUnderlayTextureWidth: localSurfaceRenderChunkCache.stats.lastUnderlayTextureWidth,
+    lastUnderlayTextureHeight: localSurfaceRenderChunkCache.stats.lastUnderlayTextureHeight,
+    lastReadyChildCoverage: localSurfaceRenderChunkCache.stats.lastReadyChildCoverage,
+    lastFallbackStaleCoverage: localSurfaceRenderChunkCache.stats.lastFallbackStaleCoverage,
+    lastSmearEvidence: localSurfaceRenderChunkCache.stats.lastSmearEvidence,
+    lastFlatParentEvidence: localSurfaceRenderChunkCache.stats.lastFlatParentEvidence,
     dirtyChunks: localSurfaceRenderChunkCache.stats.dirtyChunks,
     dirtyInvalidations: localSurfaceRenderChunkCache.stats.dirtyInvalidations,
     canvases: PS.render.surfaceRender.canvases && typeof PS.render.surfaceRender.canvases.getStats === "function"

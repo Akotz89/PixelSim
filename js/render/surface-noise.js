@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { clamp, hashSeedText } from "../core/utils.js";
 import { getDeterministicUnitNoise } from "./planet-surface.js";

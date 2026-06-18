@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clonePersistencePlainValue, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_VERSION } from "./persistence-db.js";

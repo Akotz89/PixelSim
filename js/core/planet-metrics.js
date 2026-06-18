@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { PS } from "./namespace.js";
 import { clamp } from "./utils.js";

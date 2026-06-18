@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { getTraitAdjustedMetabolismCost } from "./organisms-behavior.js";
 import { ensureOrganismTraits } from "./organisms-traits.js";

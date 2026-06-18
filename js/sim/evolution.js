@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { refreshLineageRegistry } from "./organisms-indexes.js";
 import { assignChildLineage, getTraitDivergenceScore, inheritOrganismTraits, inheritTraitValue, makeInitialOrganismTraits, normalizeOrganismTraits, varyTraitValue } from "./organisms-traits.js";

@@ -1,3 +1,4 @@
+"use strict";
 import { PS } from "../core/namespace.js";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { canvas } from "../ui/dom-refs.js";
@@ -133,6 +134,19 @@ function assignGlobeFrameStats(renderer, globeState, globeMs) {
     : 0;
   stats.observationOverlayFrameMs = globeState ? Number(globeState.lastOverlayUploadMs) || 0 : 0;
   stats.observationOverlayCompositor = "webgpu";
+  stats.underlayRequestedLevel = globeState ? Number(globeState.lastUnderlayRequestedLevel) || 0 : 0;
+  stats.underlaySourceLevel = globeState ? Number(globeState.lastUnderlaySourceLevel) || 0 : 0;
+  stats.underlayRequestedName = globeState && globeState.lastUnderlayRequestedName ? globeState.lastUnderlayRequestedName : "orbit";
+  stats.underlaySourceName = globeState && globeState.lastUnderlaySourceName ? globeState.lastUnderlaySourceName : "orbit";
+  stats.underlayTextureWidth = globeState ? Number(globeState.lastUnderlayTextureWidth) || 0 : 0;
+  stats.underlayTextureHeight = globeState ? Number(globeState.lastUnderlayTextureHeight) || 0 : 0;
+  stats.readyChildCoverage = globeState ? Number(globeState.lastReadyChildCoverage) : 1;
+  if (!Number.isFinite(stats.readyChildCoverage)) {
+    stats.readyChildCoverage = 1;
+  }
+  stats.fallbackStaleCoverage = globeState ? Number(globeState.lastFallbackStaleCoverage) || 0 : 0;
+  stats.smearEvidence = globeState ? Number(globeState.lastSmearEvidence) || 0 : 0;
+  stats.flatParentEvidence = globeState ? Number(globeState.lastFlatParentEvidence) || 0 : 0;
 }
 
 function assignContextFrameStats(stats, clearSubmitted) {

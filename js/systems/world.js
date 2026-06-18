@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";

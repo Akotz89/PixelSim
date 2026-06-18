@@ -1,3 +1,4 @@
+"use strict";
 import { CONFIG } from "../config.js";
 import { clamp } from "./core/utils.js";
 // fallow-ignore-next-line circular-dependency
