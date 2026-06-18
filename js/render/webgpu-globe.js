@@ -255,14 +255,15 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var wetness = (moisture - 0.5) * detail;
     var coastLine = coast * detail;
     var riverLine = river * detail;
+    var reliefLight = (broad * 42 + regional * 28 + material * 20) * detail;
     var red = base.red * (1 + relief - water * 0.05) +
-      (broad * 30 + regional * 18 + material * 10) * detail +
+      reliefLight + (broad * 18 + regional * 10) * detail +
       coastLine * 10 - wetness * 6 + ridge * detail * 8;
     var green = base.green * (1 + relief * 0.82 + wetness * 0.12) +
-      (regional * 24 + material * 14 - broad * 8) * detail +
+      reliefLight * 0.88 + (regional * 16 + material * 8 - broad * 6) * detail +
       coastLine * 8 + riverLine * 8;
     var blue = base.blue * (1 + relief * 0.56 + water * wetness * 0.08) +
-      (material * 26 - regional * 10 + broad * 8) * detail +
+      reliefLight * 0.62 + (material * 18 - regional * 8 + broad * 5) * detail +
       riverLine * 16 - ridge * detail * 4;
 
     return {
@@ -499,7 +500,7 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     pyramid.metrics[textureKey] = {
       contrastRange: maxLuma - minLuma,
       coarseColorCount: bucketCount,
-      flatParentEvidence: maxLuma - minLuma < 18 || bucketCount < 12 ? 1 : 0
+      flatParentEvidence: maxLuma - minLuma < 12 && bucketCount < 4 ? 1 : 0
     };
     state.underlayPyramidUploadCount += 1;
     state.lastUnderlayPyramidUploadMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
