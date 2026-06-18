@@ -1,7 +1,10 @@
+import { PS } from "../core/namespace.js";
+import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 // ── RANMAP: Deterministic Per-Tile Random (AZR-499) ────────────────
 // Precomputed random value per tile for visual variety.
-// SoS uses this for sprite variant selection, sub-pixel jitter,
-// rotation/flip, and particle seeding.
+// Used for sprite variant selection, sub-pixel jitter, rotation/flip, and
+// particle seeding.
 //
 // Usage:
 //   PS.ranmap.init(WORLD_WIDTH, WORLD_HEIGHT, seed);

@@ -1,5 +1,12 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getCompletedProbeMissionCount } from "./civilizations-probes.js";
+import { ensureSettlementRoute, normalizeSettlementRoute } from "./settlements-founding.js";
+import { countActiveRoutesForSettlement, normalizeSettlementGrowth, updateSettlementLevel } from "./settlements-growth.js";
+import { ensureSettlementState, getDistanceBetweenSettlements, getSettlementById, rebuildSettlementRouteStats } from "./settlements-state.js";
+import { world } from "../systems/state.js";
 
-function transferSettlementRouteFood(route, parentSettlement, childSettlement) {
+export function transferSettlementRouteFood(route, parentSettlement, childSettlement) {
   var transferInterval = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_ROUTE_TRANSFER_INTERVAL) || 1));
 
   if (world.tick - route.lastTransferTick < transferInterval) {
@@ -17,13 +24,18 @@ function transferSettlementRouteFood(route, parentSettlement, childSettlement) {
     return 0;
   }
 
-  parentSettlement.storedFood -= transferAmount;
-  childSettlement.storedFood += transferAmount;
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
+    PS.sim.resources.recordFlow(parentSettlement, "food", "consumed", transferAmount);
+    PS.sim.resources.recordFlow(childSettlement, "food", "traded", transferAmount);
+  } else {
+    parentSettlement.storedFood -= transferAmount;
+    childSettlement.storedFood += transferAmount;
+  }
   route.foodTransferred += transferAmount;
   return transferAmount;
 }
 
-function updateSettlementRoute(route) {
+export function updateSettlementRoute(route) {
   normalizeSettlementRoute(route);
 
   var parentSettlement = getSettlementById(route.parentSettlementId);
@@ -40,7 +52,7 @@ function updateSettlementRoute(route) {
   transferSettlementRouteFood(route, parentSettlement, childSettlement);
 }
 
-function ensureOutpostRoutes() {
+export function ensureOutpostRoutes() {
   ensureSettlementState();
 
   for (var i = 0; i < world.settlements.length; i++) {
@@ -58,7 +70,7 @@ function ensureOutpostRoutes() {
   }
 }
 
-function updateSettlementRoutes() {
+export function updateSettlementRoutes() {
   ensureOutpostRoutes();
 
   for (var i = 0; i < world.settlementRoutes.length; i++) {
@@ -68,7 +80,7 @@ function updateSettlementRoutes() {
   rebuildSettlementRouteStats();
 }
 
-function runSuppliedOutpostGrowth(settlement) {
+export function runSuppliedOutpostGrowth(settlement) {
   normalizeSettlementGrowth(settlement);
 
   if (!settlement.isOutpost || countActiveRoutesForSettlement(settlement.id) === 0) {
@@ -89,18 +101,26 @@ function runSuppliedOutpostGrowth(settlement) {
     return;
   }
 
-  settlement.storedFood -= foodCost;
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
+    PS.sim.resources.recordFlow(settlement, "food", "consumed", foodCost);
+  } else {
+    settlement.storedFood -= foodCost;
+  }
   settlement.development += foodCost * CONFIG.SETTLEMENT_DEVELOPMENT_PER_SUPPLIED_FOOD;
   updateSettlementLevel(settlement);
 }
 
-function updateSuppliedOutpostGrowth() {
+export function updateSuppliedOutpostGrowth() {
   for (var i = 0; i < world.settlements.length; i++) {
     runSuppliedOutpostGrowth(world.settlements[i]);
   }
 }
 
-function refreshSettlementSummaryCache() {
+/**
+ * @description Recomputes the settlement summary cache from active settlements, outposts, supply routes, population totals, influence, and progression signals.
+ * @returns {Object|null} Cached settlement summary, or null when no settlements exist.
+ */
+export function refreshSettlementSummaryCache() {
   if (!Array.isArray(world.settlements) || world.settlements.length === 0) {
     world.settlementSummary = null;
     return world.settlementSummary;
@@ -221,7 +241,7 @@ function refreshSettlementSummaryCache() {
   return world.settlementSummary;
 }
 
-function refreshEarlyProgressionSummaryCache() {
+export function refreshEarlyProgressionSummaryCache() {
   if (Array.isArray(world.settlements) && world.settlements.length > 0) {
     world.earlyProgressionSummary = null;
     return world.earlyProgressionSummary;

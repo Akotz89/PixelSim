@@ -1,40 +1,200 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getDeterministicUnitNoise, getSurfaceMeterCoordinate, normalizePlanetLineAngleRadians } from "./planet-surface.js";
+import { createDeterministicSwatches, getStringSeed } from "./surface-base.js";
+import { blendHexColors, getPlanetVisualSeedOffset } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceStrata = PS.render.surfaceStrata || {};
 
-PS.render.surfaceStrata.getSwatchAccent = function (sample, baseColor, noise) {
+var STRATA_ACCENT_TARGETS = {
+  water: {
+    defaultPair: ["#5f8fb0", "#05162d"],
+    secondary: {
+      "shelf-sediment": ["#87b8a8", "#18394d"]
+    }
+  },
+  sand: {
+    defaultPair: ["#d4bd79", "#77602d"],
+    secondary: {
+      gravel: ["#c8ad71", "#675129"]
+    }
+  },
+  bedrock: {
+    defaultPair: ["#8f8e82", "#272923"],
+    secondary: {
+      "mineral-vein": ["#bbb6a2", "#373933"]
+    }
+  },
+  ice: {
+    defaultPair: ["#f5fdff", "#83b8cc"]
+  },
+  organic: {
+    defaultPair: ["#566339", "#1b2115"]
+  },
+  topsoil: {
+    defaultPair: ["#756b4d", "#2f2b20"],
+    secondary: {
+      "root-mat": ["#718046", "#26321e"]
+    }
+  },
+  default: {
+    defaultPair: ["#8b8062", "#302a22"]
+  }
+};
+
+function getStrataMaterialGroup(primary) {
+  if (primary === "water") {
+    return "water";
+  }
+  if (primary === "sand" || primary === "sandy-soil") {
+    return "sand";
+  }
+  if (primary === "bedrock" || primary === "scree") {
+    return "bedrock";
+  }
+  if (primary === "ice" || primary === "frost") {
+    return "ice";
+  }
+  if (primary === "humus" || primary === "peat") {
+    return "organic";
+  }
+  if (primary === "topsoil" || primary === "loam") {
+    return "topsoil";
+  }
+  return "default";
+}
+
+function getStrataAccentTarget(strata, normalizedNoise) {
+  var primary = strata && strata.primary ? strata.primary : "soil";
+  var secondary = strata && strata.secondary ? strata.secondary : "";
+  var spec = STRATA_ACCENT_TARGETS[getStrataMaterialGroup(primary)] || STRATA_ACCENT_TARGETS.default;
+  var pair = spec.secondary && spec.secondary[secondary] ? spec.secondary[secondary] : spec.defaultPair;
+
+  return normalizedNoise > 0.52 ? pair[0] : pair[1];
+}
+
+function makeStrataMaterialContext(latitude, longitude, biome, material, lod, relief) {
+  var sampleMeters = Math.max(1, Number(lod && lod.sampleMeters) || 1);
+  var surface = material && material.surface ? material.surface : "ground";
+  var signals = material && material.signals ? material.signals : {};
+  var meters = getSurfaceMeterCoordinate(latitude, longitude);
+  var layerNoise = PS.render.surfaceNoise.getLayerNoise(meters, Math.max(1, sampleMeters * 7), 109);
+  var grainNoise = PS.render.surfaceNoise.getPixelNoise(meters, Math.max(1, sampleMeters * 2), 127);
+  var wetness = clamp(Number(signals.wetness) || 0, 0, 1);
+  var dryness = clamp(Number(signals.dryness) || 0, 0, 1);
+  var roughness = clamp(Number(signals.surfaceRoughness) || Number(lod && lod.roughness) || 0, 0, 1);
+  var slope = clamp(Number(relief && relief.slope) || 0, 0, 1);
+  var canopy = clamp(Number(signals.canopyDensity) || 0, 0, 1);
+
+  return {
+    biome: biome,
+    surface: surface,
+    signals: signals,
+    layerNoise: layerNoise,
+    grainNoise: grainNoise,
+    wetness: wetness,
+    dryness: dryness,
+    roughness: roughness,
+    canopy: canopy,
+    snow: clamp(Number(signals.snow) || 0, 0, 1),
+    shallowWater: clamp(Number(signals.shallowWater) || 0, 0, 1),
+    coast: clamp(Number(signals.coast) || 0, 0, 1),
+    primary: "loam",
+    secondary: layerNoise > 0.56 ? "clay" : "silt",
+    organicCover: clamp(canopy * 0.46 + wetness * 0.18 + (biome === "forest" ? 0.28 : 0) + (surface === "moss" ? 0.18 : 0), 0, 1),
+    rockExposure: clamp(roughness * 0.44 + slope * 0.36 + (Number(signals.ridge) || 0) * 0.24, 0, 1),
+    granularity: clamp(0.22 + roughness * 0.34 + dryness * 0.18 + grainNoise * 0.22, 0, 1),
+    depthMix: clamp(layerNoise * 0.64 + grainNoise * 0.36, 0, 1)
+  };
+}
+
+function applyWaterStrataMaterial(context) {
+  context.primary = "water";
+  context.secondary = context.shallowWater > 0.36 || context.coast > 0.34 ? "shelf-sediment" : "basalt-silt";
+  context.organicCover = 0;
+  context.rockExposure = clamp(context.shallowWater * 0.22 + context.roughness * 0.18, 0, 0.42);
+  context.granularity = clamp(0.10 + context.shallowWater * 0.30 + context.grainNoise * 0.18, 0, 0.48);
+  context.wetness = 1;
+}
+
+function applySandStrataMaterial(context) {
+  context.primary = "sand";
+  context.secondary = context.rockExposure > 0.46 || context.layerNoise > 0.68 ? "gravel" : "silt";
+  context.organicCover = clamp(context.organicCover * 0.22, 0, 0.24);
+  context.granularity = clamp(0.54 + context.dryness * 0.22 + context.grainNoise * 0.20 + context.rockExposure * 0.10, 0, 1);
+}
+
+function applyRockStrataMaterial(context) {
+  context.primary = context.surface === "ridge ice" ? "ice" : (context.rockExposure > 0.62 ? "bedrock" : "scree");
+  context.secondary = context.surface === "ridge ice" ? "frost" : (context.layerNoise > 0.54 ? "mineral-vein" : "weathered-soil");
+  context.organicCover = clamp(context.organicCover * 0.18, 0, 0.20);
+  context.rockExposure = clamp(0.50 + context.rockExposure * 0.48, 0, 1);
+  context.granularity = clamp(0.38 + context.roughness * 0.28 + context.grainNoise * 0.22, 0, 1);
+}
+
+function applyFrozenStrataMaterial(context) {
+  context.primary = context.surface === "snow" ? "frost" : "ice";
+  context.secondary = context.snow > 0.66 ? "snowpack" : "permafrost";
+  context.organicCover = 0;
+  context.rockExposure = clamp(context.rockExposure * (context.surface === "snow" ? 0.18 : 0.36), 0, 0.42);
+  context.granularity = clamp(0.12 + context.roughness * 0.16 + context.grainNoise * 0.18, 0, 0.48);
+}
+
+function applyCanopyStrataMaterial(context) {
+  context.primary = "humus";
+  context.secondary = context.canopy > 0.62 ? "leaf-litter" : "topsoil";
+  context.organicCover = clamp(0.46 + context.canopy * 0.42 + context.wetness * 0.08, 0, 1);
+  context.rockExposure = clamp(context.rockExposure * 0.38, 0, 0.46);
+  context.granularity = clamp(0.18 + context.roughness * 0.18 + context.grainNoise * 0.18, 0, 0.62);
+}
+
+function applyMossStrataMaterial(context) {
+  context.primary = context.biome === "tundra" ? "peat" : "topsoil";
+  context.secondary = context.biome === "tundra" || context.snow > 0.28 ? "permafrost" : "root-mat";
+  context.organicCover = clamp(0.30 + context.wetness * 0.26 + context.canopy * 0.18, 0, 0.82);
+  context.rockExposure = clamp(context.rockExposure * 0.62, 0, 0.72);
+}
+
+function applyGrassStrataMaterial(context) {
+  context.primary = context.wetness > 0.62 ? "loam" : (context.dryness > 0.58 ? "sandy-soil" : "topsoil");
+  context.secondary = context.wetness > 0.62 ? "clay" : (context.rockExposure > 0.42 ? "gravel" : "root-mat");
+  context.organicCover = clamp(0.24 + context.wetness * 0.24 + context.canopy * 0.16 + (context.surface === "meadow" ? 0.18 : 0), 0, 0.86);
+  context.rockExposure = clamp(context.rockExposure * (context.surface === "brush" ? 0.82 : 0.56), 0, 0.76);
+}
+
+var STRATA_SURFACE_HANDLERS = {
+  "open water": applyWaterStrataMaterial,
+  "deep water": applyWaterStrataMaterial,
+  whitecap: applyWaterStrataMaterial,
+  sand: applySandStrataMaterial,
+  dune: applySandStrataMaterial,
+  rock: applyRockStrataMaterial,
+  stone: applyRockStrataMaterial,
+  "ridge ice": applyRockStrataMaterial,
+  snow: applyFrozenStrataMaterial,
+  ice: applyFrozenStrataMaterial,
+  "dense canopy": applyCanopyStrataMaterial,
+  woodland: applyCanopyStrataMaterial,
+  moss: applyMossStrataMaterial,
+  scrub: applyMossStrataMaterial,
+  grass: applyGrassStrataMaterial,
+  brush: applyGrassStrataMaterial,
+  meadow: applyGrassStrataMaterial,
+  clearing: applyGrassStrataMaterial
+};
+
+PS.render.surfaceStrata.getSwatchAccent = function getStrataSwatchAccent(sample, baseColor, noise) {
   var detail = sample && sample.detail ? sample.detail : {};
   var strata = detail.materialStrata || {};
-  var primary = strata.primary || "soil";
-  var secondary = strata.secondary || "";
   var normalizedNoise = clamp(Number(noise) || 0, 0, 1);
-  var target = normalizedNoise > 0.52 ? "#8b8062" : "#302a22";
-
-  if (primary === "water") {
-    target = secondary === "shelf-sediment"
-      ? (normalizedNoise > 0.52 ? "#87b8a8" : "#18394d")
-      : (normalizedNoise > 0.52 ? "#5f8fb0" : "#05162d");
-  } else if (primary === "sand" || primary === "sandy-soil") {
-    target = secondary === "gravel"
-      ? (normalizedNoise > 0.52 ? "#c8ad71" : "#675129")
-      : (normalizedNoise > 0.52 ? "#d4bd79" : "#77602d");
-  } else if (primary === "bedrock" || primary === "scree") {
-    target = secondary === "mineral-vein"
-      ? (normalizedNoise > 0.52 ? "#bbb6a2" : "#373933")
-      : (normalizedNoise > 0.52 ? "#8f8e82" : "#272923");
-  } else if (primary === "ice" || primary === "frost") {
-    target = normalizedNoise > 0.52 ? "#f5fdff" : "#83b8cc";
-  } else if (primary === "humus" || primary === "peat") {
-    target = normalizedNoise > 0.52 ? "#566339" : "#1b2115";
-  } else if (primary === "topsoil" || primary === "loam") {
-    target = secondary === "root-mat"
-      ? (normalizedNoise > 0.52 ? "#718046" : "#26321e")
-      : (normalizedNoise > 0.52 ? "#756b4d" : "#2f2b20");
-  }
+  var target = getStrataAccentTarget(strata, normalizedNoise);
 
   return blendHexColors(baseColor, target, clamp(0.16 + normalizedNoise * 0.18, 0.16, 0.38));
 };
 
-PS.render.surfaceStrata.getSwatchShape = function (strata, noise, index) {
+PS.render.surfaceStrata.getSwatchShape = function getStrataSwatchShape(strata, noise, index) {
   var primary = strata && strata.primary ? strata.primary : "soil";
   var secondary = strata && strata.secondary ? strata.secondary : "";
   var normalizedNoise = clamp(Number(noise) || 0, 0, 1);
@@ -76,7 +236,7 @@ PS.render.surfaceStrata.getSwatchShape = function (strata, noise, index) {
   };
 };
 
-PS.render.surfaceStrata.getSwatchRotation = function (sample, strata, noise, index) {
+PS.render.surfaceStrata.getSwatchRotation = function getStrataSwatchRotation(sample, strata, noise, index) {
   var detail = sample && sample.detail ? sample.detail : {};
   var primary = strata && strata.primary ? strata.primary : "soil";
   var base = Number.isFinite(Number(detail.aspect))
@@ -95,7 +255,7 @@ PS.render.surfaceStrata.getSwatchRotation = function (sample, strata, noise, ind
   return 0;
 };
 
-PS.render.surfaceStrata.getTintColor = function (primary, secondary, surface) {
+PS.render.surfaceStrata.getTintColor = function getStrataTintColor(primary, secondary, surface) {
   var normalizedPrimary = primary || "soil";
   var normalizedSecondary = secondary || "";
 
@@ -126,95 +286,36 @@ PS.render.surfaceStrata.getTintColor = function (primary, secondary, surface) {
   return "#6c6552";
 };
 
-PS.render.surfaceStrata.getMaterial = function (latitude, longitude, biome, material, lod, relief) {
-  var sampleMeters = Math.max(1, Number(lod && lod.sampleMeters) || 1);
-  var surface = material && material.surface ? material.surface : "ground";
-  var signals = material && material.signals ? material.signals : {};
-  var meters = getSurfaceMeterCoordinate(latitude, longitude);
-  var layerNoise = PS.render.surfaceNoise.getLayerNoise(meters, Math.max(1, sampleMeters * 7), 109);
-  var grainNoise = PS.render.surfaceNoise.getPixelNoise(meters, Math.max(1, sampleMeters * 2), 127);
-  var wetness = clamp(Number(signals.wetness) || 0, 0, 1);
-  var dryness = clamp(Number(signals.dryness) || 0, 0, 1);
-  var roughness = clamp(Number(signals.surfaceRoughness) || Number(lod && lod.roughness) || 0, 0, 1);
-  var slope = clamp(Number(relief && relief.slope) || 0, 0, 1);
-  var canopy = clamp(Number(signals.canopyDensity) || 0, 0, 1);
-  var snow = clamp(Number(signals.snow) || 0, 0, 1);
-  var shallowWater = clamp(Number(signals.shallowWater) || 0, 0, 1);
-  var coast = clamp(Number(signals.coast) || 0, 0, 1);
-  var primary = "loam";
-  var secondary = layerNoise > 0.56 ? "clay" : "silt";
-  var organicCover = clamp(canopy * 0.46 + wetness * 0.18 + (biome === "forest" ? 0.28 : 0) + (surface === "moss" ? 0.18 : 0), 0, 1);
-  var rockExposure = clamp(roughness * 0.44 + slope * 0.36 + (Number(signals.ridge) || 0) * 0.24, 0, 1);
-  var granularity = clamp(0.22 + roughness * 0.34 + dryness * 0.18 + grainNoise * 0.22, 0, 1);
-  var depthMix = clamp(layerNoise * 0.64 + grainNoise * 0.36, 0, 1);
+PS.render.surfaceStrata.getMaterial = function getStrataMaterial(latitude, longitude, biome, material, lod, relief) {
+  var context = makeStrataMaterialContext(latitude, longitude, biome, material, lod, relief);
+  var handler = STRATA_SURFACE_HANDLERS[context.surface];
 
-  if (surface === "open water" || surface === "deep water" || surface === "whitecap") {
-    primary = "water";
-    secondary = shallowWater > 0.36 || coast > 0.34 ? "shelf-sediment" : "basalt-silt";
-    organicCover = 0;
-    rockExposure = clamp(shallowWater * 0.22 + roughness * 0.18, 0, 0.42);
-    granularity = clamp(0.10 + shallowWater * 0.30 + grainNoise * 0.18, 0, 0.48);
-    wetness = 1;
-  } else if (surface === "sand" || surface === "dune") {
-    primary = "sand";
-    secondary = rockExposure > 0.46 || layerNoise > 0.68 ? "gravel" : "silt";
-    organicCover = clamp(organicCover * 0.22, 0, 0.24);
-    granularity = clamp(0.54 + dryness * 0.22 + grainNoise * 0.20 + rockExposure * 0.10, 0, 1);
-  } else if (surface === "rock" || surface === "stone" || surface === "ridge ice") {
-    primary = surface === "ridge ice" ? "ice" : (rockExposure > 0.62 ? "bedrock" : "scree");
-    secondary = surface === "ridge ice" ? "frost" : (layerNoise > 0.54 ? "mineral-vein" : "weathered-soil");
-    organicCover = clamp(organicCover * 0.18, 0, 0.20);
-    rockExposure = clamp(0.50 + rockExposure * 0.48, 0, 1);
-    granularity = clamp(0.38 + roughness * 0.28 + grainNoise * 0.22, 0, 1);
-  } else if (surface === "snow" || surface === "ice") {
-    primary = surface === "snow" ? "frost" : "ice";
-    secondary = snow > 0.66 ? "snowpack" : "permafrost";
-    organicCover = 0;
-    rockExposure = clamp(rockExposure * (surface === "snow" ? 0.18 : 0.36), 0, 0.42);
-    granularity = clamp(0.12 + roughness * 0.16 + grainNoise * 0.18, 0, 0.48);
-  } else if (surface === "dense canopy" || surface === "woodland") {
-    primary = "humus";
-    secondary = canopy > 0.62 ? "leaf-litter" : "topsoil";
-    organicCover = clamp(0.46 + canopy * 0.42 + wetness * 0.08, 0, 1);
-    rockExposure = clamp(rockExposure * 0.38, 0, 0.46);
-    granularity = clamp(0.18 + roughness * 0.18 + grainNoise * 0.18, 0, 0.62);
-  } else if (surface === "moss" || surface === "scrub") {
-    primary = biome === "tundra" ? "peat" : "topsoil";
-    secondary = biome === "tundra" || snow > 0.28 ? "permafrost" : "root-mat";
-    organicCover = clamp(0.30 + wetness * 0.26 + canopy * 0.18, 0, 0.82);
-    rockExposure = clamp(rockExposure * 0.62, 0, 0.72);
-  } else if (surface === "grass" || surface === "brush" || surface === "meadow" || surface === "clearing") {
-    primary = wetness > 0.62 ? "loam" : (dryness > 0.58 ? "sandy-soil" : "topsoil");
-    secondary = wetness > 0.62 ? "clay" : (rockExposure > 0.42 ? "gravel" : "root-mat");
-    organicCover = clamp(0.24 + wetness * 0.24 + canopy * 0.16 + (surface === "meadow" ? 0.18 : 0), 0, 0.86);
-    rockExposure = clamp(rockExposure * (surface === "brush" ? 0.82 : 0.56), 0, 0.76);
+  if (handler) {
+    handler(context);
   }
 
   return {
-    primary: primary,
-    secondary: secondary,
-    wetness: wetness,
-    granularity: granularity,
-    organicCover: organicCover,
-    rockExposure: rockExposure,
-    depthMix: depthMix,
-    tintColor: PS.render.surfaceStrata.getTintColor(primary, secondary, surface)
+    primary: context.primary,
+    secondary: context.secondary,
+    wetness: context.wetness,
+    granularity: context.granularity,
+    organicCover: context.organicCover,
+    rockExposure: context.rockExposure,
+    depthMix: context.depthMix,
+    tintColor: PS.render.surfaceStrata.getTintColor(context.primary, context.secondary, context.surface)
   };
 };
 
-PS.render.surfaceStrata.getSwatches = function (sample, baseColor) {
+PS.render.surfaceStrata.getSwatches = function getStrataSwatches(sample, baseColor) {
   var detail = sample && sample.detail ? sample.detail : {};
   var strata = detail.materialStrata || null;
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
-  var seedEast = Math.round(Number(sample && sample.surfaceSampleX) || 0);
-  var seedNorth = Math.round(Number(sample && sample.surfaceSampleY) || 0);
-  var swatches = [];
   var strength;
   var count;
   var typeSeed;
 
   if (!strata || sampleMeters > 5 || CONFIG.TILE_SIZE < 4) {
-    return swatches;
+    return [];
   }
 
   strength = clamp(
@@ -229,38 +330,45 @@ PS.render.surfaceStrata.getSwatches = function (sample, baseColor) {
   count = strength <= 0.14 ? 0 : clamp(Math.round(1 + strength * (sampleMeters <= 1 ? 6 : 4)), 1, sampleMeters <= 1 ? 7 : 5);
 
   if (count <= 0) {
-    return swatches;
+    return [];
   }
 
-  typeSeed = String(strata.primary || "").split("").reduce(function(total, character) {
-    return total + character.charCodeAt(0);
-  }, 0) + String(strata.secondary || "").split("").reduce(function(total, character) {
-    return total + character.charCodeAt(0);
-  }, 0);
+  typeSeed = getStringSeed(strata.primary) + getStringSeed(strata.secondary);
 
-  for (var i = 0; i < count; i++) {
-    var noise = getDeterministicUnitNoise(seedEast + i * 41, seedNorth - i * 43, getPlanetVisualSeedOffset() + typeSeed + 6101 + i * 29);
-    var shape = PS.render.surfaceStrata.getSwatchShape(strata, noise, i);
-    var maxX = Math.max(1, CONFIG.TILE_SIZE - shape.width + 1);
-    var maxY = Math.max(1, CONFIG.TILE_SIZE - shape.height + 1);
-
-    if (i > 0 && noise > strength + 0.46) {
-      continue;
+  return createDeterministicSwatches({
+    sample: sample,
+    count: count,
+    seedExtra: typeSeed,
+    noiseBase: 6101,
+    noiseEastStep: 41,
+    noiseNorthStep: -43,
+    noiseSeedStep: 29,
+    xBase: 6221,
+    xEastStep: -17,
+    xNorthStep: 19,
+    yBase: 6359,
+    yEastStep: 23,
+    yNorthStep: -29,
+    shouldSkip: function(noise) {
+      return noise > strength + 0.46;
+    },
+    getShape: function(noise, index) {
+      return PS.render.surfaceStrata.getSwatchShape(strata, noise, index);
+    },
+    getColor: function(noise) {
+      return PS.render.surfaceStrata.getSwatchAccent(sample, baseColor, noise);
+    },
+    getAlpha: function(noise) {
+      return clamp(0.08 + strength * 0.20 + noise * 0.10, 0.10, 0.42);
+    },
+    getRotationRadians: function(noise, index) {
+      return PS.render.surfaceStrata.getSwatchRotation(sample, strata, noise, index);
+    },
+    getExtraProperties: function() {
+      return {
+        strataPrimary: strata.primary,
+        strataSecondary: strata.secondary
+      };
     }
-
-    swatches.push({
-      x: Math.floor(getDeterministicUnitNoise(seedEast - i * 17, seedNorth + i * 19, getPlanetVisualSeedOffset() + typeSeed + 6221 + i) * maxX),
-      y: Math.floor(getDeterministicUnitNoise(seedEast + i * 23, seedNorth - i * 29, getPlanetVisualSeedOffset() + typeSeed + 6359 + i) * maxY),
-      width: shape.width,
-      height: shape.height,
-      size: Math.max(shape.width, shape.height),
-      color: PS.render.surfaceStrata.getSwatchAccent(sample, baseColor, noise),
-      alpha: clamp(0.08 + strength * 0.20 + noise * 0.10, 0.10, 0.42),
-      rotationRadians: PS.render.surfaceStrata.getSwatchRotation(sample, strata, noise, i),
-      strataPrimary: strata.primary,
-      strataSecondary: strata.secondary
-    });
-  }
-
-  return swatches;
+  });
 };

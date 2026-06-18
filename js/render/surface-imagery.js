@@ -1,3 +1,10 @@
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetSurfaceSnowSignal, getSurfaceMeterCoordinate } from "./planet-surface.js";
+import { normalizeLongitude } from "./planet-view.js";
+// fallow-ignore-next-line circular-dependency
+import { blendHexColors, blendRgbWithHex, clampRgb, shadeHexColor, shadeRgb } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceImagery = PS.render.surfaceImagery || {};
 
@@ -34,6 +41,15 @@ PS.render.surfaceImagery.getVisualBiome = function (biome, signals, latitude) {
   return normalizedBiome;
 };
 
+/**
+ * @description Computes a cartographic accent descriptor for a regional surface sample using biome, material signals, multi-scale noise, meter coordinates, and latitude.
+ * @param {string} biome Normalized biome id for the sample.
+ * @param {Object|null} signals Material, hydrology, vegetation, and relief signals.
+ * @param {Object|null} noise Regional and fine noise values.
+ * @param {Object|null} surfaceMeters Surface meter coordinates for contour and grid patterns.
+ * @param {number} latitude Sample latitude in degrees.
+ * @returns {Object} Accent descriptor with color, alpha, scale, and pattern metadata.
+ */
 PS.render.surfaceImagery.getRegionalCartographicAccent = function (biome, signals, noise, surfaceMeters, latitude) {
   var visualBiome = PS.render.surfaceImagery.getVisualBiome(biome, signals, latitude);
   var regional = clamp(Number(noise && noise.regional) || 0.5, 0, 1);
@@ -396,6 +412,6 @@ PS.render.surfaceImagery.getTileCompositedColor = function (tile) {
   ));
 };
 
-function getPlanetTileCompositedColor(tile) {
+export function getPlanetTileCompositedColor(tile) {
   return PS.render.surfaceImagery.getTileCompositedColor(tile);
 }

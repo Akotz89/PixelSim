@@ -9,7 +9,7 @@
 </head>
 <body>
   <main id="game-wrap">
-    <canvas id="game-webgl" width="1600" height="850" aria-label="Pixeldarium simulation"></canvas>
+    <canvas id="game-webgpu" width="1600" height="850" aria-label="Pixeldarium simulation"></canvas>
     <button id="seed-copy-button" class="seed-copy-button" type="button">Seed</button>
     <div id="notification-toast" class="notification-toast" role="status" aria-live="polite" hidden></div>
     <section id="spotlight-panel" class="spotlight-panel" role="dialog" aria-label="Event spotlight" hidden>
@@ -58,6 +58,18 @@
         <button id="export-json-button" class="sim-button" type="button">Export JSON</button>
         <button id="import-json-button" class="sim-button" type="button">Import JSON</button>
         <input id="import-json-file" type="file" accept="application/json,.json" hidden>
+        <div id="export-capture-controls" class="export-capture-controls" aria-label="Capture exports">
+          <select id="capture-mode-select" aria-label="Capture mode">
+            <option value="simulation">Simulation PNG</option>
+            <option value="hud">PNG + HUD context</option>
+          </select>
+          <label>
+            <input id="capture-bookmark-checkbox" type="checkbox">
+            Bookmark
+          </label>
+          <button id="screenshot-export-button" class="sim-button" type="button">PNG</button>
+          <button id="recording-export-button" class="sim-button" type="button">Record</button>
+        </div>
         <span id="speed-label" class="speed-label">Speed: 1x</span>
       </section>
 
@@ -136,6 +148,19 @@
       <span id="lineage-summary">LINEAGES: -</span>
     </section>
 
+    <section id="evolution-tree-panel" data-menu-page="ecosystem" aria-label="Evolutionary tree" hidden>
+      <div class="evolution-tree-toolbar" aria-label="Evolutionary tree controls">
+        <button type="button" data-evolution-tree-filter="all" aria-pressed="true">All</button>
+        <button type="button" data-evolution-tree-filter="active" aria-pressed="false">Active</button>
+        <button type="button" data-evolution-tree-filter="extinct" aria-pressed="false">Extinct</button>
+        <button type="button" data-evolution-tree-filter="selected" aria-pressed="false">Branch</button>
+        <button type="button" data-evolution-tree-action="zoom-out" aria-label="Zoom out">-</button>
+        <button type="button" data-evolution-tree-action="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" data-evolution-tree-action="reset" aria-label="Reset tree view">Reset</button>
+      </div>
+      <div id="evolution-tree-view" class="evolution-tree-view">TREE: -</div>
+    </section>
+
     <section id="settlement-panel" data-menu-page="ecosystem" aria-label="Settlement summary" hidden>
       <div id="settlement-summary">SETTLEMENTS: -</div>
     </section>
@@ -161,6 +186,7 @@
         <button type="button" data-observation-overlay="observation.temperature" aria-pressed="false">Temp</button>
         <button type="button" data-observation-overlay="observation.population" aria-pressed="false">Population</button>
         <button type="button" data-observation-overlay="observation.resources" aria-pressed="false">Resources</button>
+        <button type="button" data-observation-overlay="observation.selection" aria-pressed="false">Lineage</button>
         <button type="button" data-observation-overlay="observation.atmosphere" aria-pressed="false">Atmosphere</button>
         <button type="button" data-observation-overlay="observation.microbial" aria-pressed="false">Microbes</button>
       </div>
@@ -172,9 +198,19 @@
         <button type="button" data-timeline-filter="all" aria-pressed="true">All</button>
         <button type="button" data-timeline-filter="extinction" aria-pressed="false">Extinction</button>
         <button type="button" data-timeline-filter="speciation" aria-pressed="false">Speciation</button>
+        <button type="button" data-timeline-filter="lineage" aria-pressed="false">Lineage</button>
         <button type="button" data-timeline-filter="civilization" aria-pressed="false">Civilization</button>
       </div>
       <div id="timeline-list" class="timeline-list">TIMELINE: Waiting for events</div>
+    </section>
+
+    <section id="bookmark-panel" data-menu-page="log" aria-label="Bookmarks" hidden>
+      <div class="bookmark-editor">
+        <input id="bookmark-label-input" type="text" maxlength="64" placeholder="Label" spellcheck="false">
+        <textarea id="bookmark-note-input" maxlength="240" placeholder="Note" rows="2"></textarea>
+        <button id="bookmark-add-button" type="button">Bookmark</button>
+      </div>
+      <div id="bookmark-list" class="bookmark-list">BOOKMARKS: -</div>
     </section>
 
     <section id="persistence-status" data-menu-page="controls" aria-label="Save status">SAVE: Ready</section>
@@ -230,8 +266,8 @@
     });
   </script>
 
-  <!-- Bootstrap -->
-  <script src="js/core/namespace.js"></script>
-  <script src="js/core/loader.js"></script>
+  <!-- Bootstrap: namespace exports PS, then ESM loader loads all modules -->
+  <script type="module" src="js/core/namespace.js"></script>
+  <script type="module" src="js/core/loader-esm.js"></script>
 </body>
 </html>

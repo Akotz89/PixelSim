@@ -1,4 +1,308 @@
+import { PS } from "../core/namespace.js";
+
 PS.render = PS.render || {};
+
+PS.render.Autotile = PS.render.Autotile || {};
+
+PS.render.Autotile.ORTHO_BITS = {
+  N: 1,
+  E: 2,
+  S: 4,
+  W: 8
+};
+
+PS.render.Autotile.CORNER_BITS = {
+  NE: 16,
+  SE: 32,
+  SW: 64,
+  NW: 128
+};
+
+PS.render.Autotile.ORTHO_DIRECTIONS = [
+  { id: "N", dx: 0, dy: -1, bit: PS.render.Autotile.ORTHO_BITS.N },
+  { id: "E", dx: 1, dy: 0, bit: PS.render.Autotile.ORTHO_BITS.E },
+  { id: "S", dx: 0, dy: 1, bit: PS.render.Autotile.ORTHO_BITS.S },
+  { id: "W", dx: -1, dy: 0, bit: PS.render.Autotile.ORTHO_BITS.W }
+];
+
+PS.render.Autotile.CORNER_DIRECTIONS = [
+  {
+    id: "NE",
+    dx: 1,
+    dy: -1,
+    bit: PS.render.Autotile.CORNER_BITS.NE,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.N, PS.render.Autotile.ORTHO_BITS.E]
+  },
+  {
+    id: "SE",
+    dx: 1,
+    dy: 1,
+    bit: PS.render.Autotile.CORNER_BITS.SE,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.S, PS.render.Autotile.ORTHO_BITS.E]
+  },
+  {
+    id: "SW",
+    dx: -1,
+    dy: 1,
+    bit: PS.render.Autotile.CORNER_BITS.SW,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.S, PS.render.Autotile.ORTHO_BITS.W]
+  },
+  {
+    id: "NW",
+    dx: -1,
+    dy: -1,
+    bit: PS.render.Autotile.CORNER_BITS.NW,
+    adjacent: [PS.render.Autotile.ORTHO_BITS.N, PS.render.Autotile.ORTHO_BITS.W]
+  }
+];
+
+PS.render.Autotile.computeAutotileMask = function (tileX, tileY, matchFn) {
+  var x = Math.round(Number(tileX) || 0);
+  var y = Math.round(Number(tileY) || 0);
+  var ortho = PS.render.Autotile.ORTHO_DIRECTIONS;
+  var corners = PS.render.Autotile.CORNER_DIRECTIONS;
+  var mask = 0;
+  var i;
+  var corner;
+
+  if (typeof matchFn !== "function") {
+    return 0;
+  }
+
+  for (i = 0; i < ortho.length; i += 1) {
+    if (matchFn(x + ortho[i].dx, y + ortho[i].dy, ortho[i].id, x, y)) {
+      mask |= ortho[i].bit;
+    }
+  }
+
+  for (i = 0; i < corners.length; i += 1) {
+    corner = corners[i];
+    if (
+      (mask & corner.adjacent[0]) &&
+      (mask & corner.adjacent[1]) &&
+      !matchFn(x + corner.dx, y + corner.dy, corner.id, x, y)
+    ) {
+      mask |= corner.bit;
+    }
+  }
+
+  return mask & 255;
+};
+
+PS.render.Autotile.getOrthogonalMask = function (mask) {
+  return Math.round(Number(mask) || 0) & 15;
+};
+
+PS.render.Autotile.getCornerMask = function (mask) {
+  return (Math.round(Number(mask) || 0) >>> 4) & 15;
+};
+
+PS.render.Autotile.getVariant = function (tileX, tileY, ranFn) {
+  var raw;
+
+  if (typeof ranFn === "function") {
+    raw = ranFn(tileX, tileY);
+  } else if (PS.ranmap && typeof PS.ranmap.get === "function") {
+    raw = PS.ranmap.get(tileX, tileY);
+  } else {
+    raw = Math.imul(Math.round(Number(tileX) || 0) + 374761393, 668265263) ^
+      Math.imul(Math.round(Number(tileY) || 0) + 2246822519, 1274126177);
+  }
+
+  return (Number(raw) >>> 0) & 3;
+};
+
+PS.render.Autotile.getAtlasOffset = function (mask, variant) {
+  return ((Math.round(Number(variant) || 0) & 3) * 16) + PS.render.Autotile.getOrthogonalMask(mask);
+};
+
+PS.render.Autotile.getCornerAtlasOffset = function (mask, variant) {
+  return ((Math.round(Number(variant) || 0) & 3) * 16) + PS.render.Autotile.getCornerMask(mask);
+};
+
+PS.render.Autotile.normalizeTileId = function (tile) {
+  return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
+};
+
+PS.render.Autotile.getTileId = function (grid, tileX, tileY) {
+  var width = Number(grid && grid.width) || 0;
+  var height = Number(grid && grid.height) || 0;
+  var tile;
+
+  if (PS.core && typeof PS.core.getTileIdFromGrid === "function") {
+    return PS.core.getTileIdFromGrid(grid, tileX, tileY);
+  }
+
+  if (!grid) {
+    return null;
+  }
+
+  if (typeof grid.getTileId === "function") {
+    return grid.getTileId(tileX, tileY);
+  }
+
+  if (typeof grid.get === "function") {
+    return PS.render.Autotile.normalizeTileId(grid.get(tileX, tileY));
+  }
+
+  if (Array.isArray(grid.tiles) && width > 0 && height > 0 && tileX >= 0 && tileY >= 0 && tileX < width && tileY < height) {
+    tile = grid.tiles[tileY * width + tileX];
+    return PS.render.Autotile.normalizeTileId(tile);
+  }
+
+  return null;
+};
+
+PS.render.Autotile.getTileDefinition = function (tileRegistry, tileId) {
+  return tileRegistry && typeof tileRegistry.get === "function" ? tileRegistry.get(tileId) : null;
+};
+
+PS.render.Autotile.isModeMatch = function (mode, tileId, tile, centerTileId, centerTile) {
+  var normalized = String(mode || "same-terrain");
+
+  if (!tileId) {
+    return false;
+  }
+
+  if (normalized === "same-terrain") {
+    return tileId === centerTileId;
+  }
+
+  if (normalized === "terrain") {
+    return tile && tile.category === "terrain";
+  }
+
+  if (normalized === "water") {
+    return Number(tile && tile.waterDepth) > 0 || /water|ocean|shore|wetland/.test(tileId);
+  }
+
+  if (normalized === "ice") {
+    return /ice|snow|frost/.test(tileId) || /ice|snow|frost/.test(String(tile && tile.biome || ""));
+  }
+
+  if (normalized === "wall") {
+    return tile && tile.category === "wall" || /wall|cliff|rock_cliff/.test(tileId);
+  }
+
+  if (normalized === "floor") {
+    return tile && tile.category === "floor" || /floor|road|pavement/.test(tileId);
+  }
+
+  if (normalized === "same-category") {
+    return tile && centerTile && tile.category === centerTile.category;
+  }
+
+  return false;
+};
+
+PS.render.Autotile.createMatchFn = function (grid, mode, options) {
+  var settings = options || {};
+  var tileRegistry = settings.tileRegistry || (PS.core && PS.core.TileRegistry) || null;
+
+  if (typeof mode === "function") {
+    return mode;
+  }
+
+  return function (tileX, tileY, direction, centerX, centerY) {
+    var tileId = PS.render.Autotile.getTileId(grid, tileX, tileY);
+    var centerTileId = settings.tileId || PS.render.Autotile.getTileId(grid, centerX, centerY);
+    var tile = PS.render.Autotile.getTileDefinition(tileRegistry, tileId);
+    var centerTile = PS.render.Autotile.getTileDefinition(tileRegistry, centerTileId);
+
+    return PS.render.Autotile.isModeMatch(mode, tileId, tile, centerTileId, centerTile, direction);
+  };
+};
+
+PS.render.Autotile.MaskStore = function MaskStore(width, height, matchFn, options) {
+  var settings = options || {};
+
+  this.width = Math.max(1, Math.round(Number(width) || 1));
+  this.height = Math.max(1, Math.round(Number(height) || 1));
+  this.matchFn = typeof matchFn === "function" ? matchFn : function () { return false; };
+  this.ranFn = settings.ranFn || null;
+  this.masks = new Uint8Array(this.width * this.height);
+  this.variants = new Uint8Array(this.width * this.height);
+  this.recomputeCount = 0;
+};
+
+PS.render.Autotile.MaskStore.prototype.index = function (tileX, tileY) {
+  var x = Math.round(Number(tileX) || 0);
+  var y = Math.round(Number(tileY) || 0);
+
+  if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
+    return -1;
+  }
+
+  return y * this.width + x;
+};
+
+PS.render.Autotile.MaskStore.prototype.recomputeTile = function (tileX, tileY) {
+  var index = this.index(tileX, tileY);
+  var mask;
+
+  if (index < 0) {
+    return null;
+  }
+
+  mask = PS.render.Autotile.computeAutotileMask(tileX, tileY, this.matchFn);
+  this.masks[index] = mask;
+  this.variants[index] = PS.render.Autotile.getVariant(tileX, tileY, this.ranFn);
+  this.recomputeCount += 1;
+
+  return {
+    x: Math.round(Number(tileX) || 0),
+    y: Math.round(Number(tileY) || 0),
+    mask: this.masks[index],
+    variant: this.variants[index],
+    atlasOffset: PS.render.Autotile.getAtlasOffset(this.masks[index], this.variants[index])
+  };
+};
+
+PS.render.Autotile.MaskStore.prototype.recomputeAll = function () {
+  var updates = [];
+  var x;
+  var y;
+
+  for (y = 0; y < this.height; y += 1) {
+    for (x = 0; x < this.width; x += 1) {
+      updates.push(this.recomputeTile(x, y));
+    }
+  }
+
+  return updates;
+};
+
+PS.render.Autotile.MaskStore.prototype.recomputeChanged = function (tileX, tileY) {
+  var updates = [];
+  var dx;
+  var dy;
+  var update;
+
+  for (dy = -1; dy <= 1; dy += 1) {
+    for (dx = -1; dx <= 1; dx += 1) {
+      update = this.recomputeTile(tileX + dx, tileY + dy);
+      if (update) {
+        updates.push(update);
+      }
+    }
+  }
+
+  return updates;
+};
+
+PS.render.Autotile.MaskStore.prototype.getMask = function (tileX, tileY) {
+  var index = this.index(tileX, tileY);
+  return index >= 0 ? this.masks[index] : 0;
+};
+
+PS.render.Autotile.MaskStore.prototype.getVariant = function (tileX, tileY) {
+  var index = this.index(tileX, tileY);
+  return index >= 0 ? this.variants[index] : 0;
+};
+
+PS.render.Autotile.MaskStore.prototype.getAtlasOffset = function (tileX, tileY) {
+  return PS.render.Autotile.getAtlasOffset(this.getMask(tileX, tileY), this.getVariant(tileX, tileY));
+};
 
 PS.render.TerrainTransitionResolver = function (tileRegistry, transitionData) {
   this.tileRegistry = tileRegistry || (PS.core && PS.core.TileRegistry) || null;
@@ -24,32 +328,59 @@ PS.render.TerrainTransitionResolver.BITS = {
   W: 128
 };
 
+PS.render.TerrainTransitionResolver.CANONICAL_JOIN_PATTERN_COUNT = 46;
+
+PS.render.TerrainTransitionResolver.getJoinSignature = function (edges) {
+  if (!edges || edges.length <= 0) {
+    return "solid";
+  }
+  return edges.map(function (edge) {
+    return edge.edge;
+  }).join("+");
+};
+
+PS.render.TerrainTransitionResolver.getCanonicalJoinPatterns = function () {
+  var Resolver = PS.render.TerrainTransitionResolver;
+  var patterns = Resolver.CANONICAL_JOIN_PATTERNS;
+  var seen;
+  var mask;
+  var edges;
+  var signature;
+
+  if (patterns) {
+    return patterns;
+  }
+
+  seen = {};
+  patterns = [];
+  for (mask = 0; mask < 256 && patterns.length < Resolver.CANONICAL_JOIN_PATTERN_COUNT; mask += 1) {
+    edges = Resolver.prototype.getOverlayEdges.call(null, mask);
+    signature = Resolver.getJoinSignature(edges);
+    if (seen[signature]) {
+      continue;
+    }
+    seen[signature] = true;
+    patterns.push({
+      index: patterns.length,
+      mask: mask,
+      name: signature,
+      spriteIndex: Resolver.prototype.maskToSpriteIndex.call(null, mask),
+      edges: edges.map(function (edge) {
+        return edge.edge;
+      })
+    });
+  }
+
+  Resolver.CANONICAL_JOIN_PATTERNS = patterns;
+  return patterns;
+};
+
 PS.render.TerrainTransitionResolver.prototype.getTileId = function (tileX, tileY, grid) {
-  var width;
-  var tile;
-  var index;
-
-  if (!grid) {
-    return null;
+  if (PS.core && typeof PS.core.getTileIdFromGrid === "function") {
+    return PS.core.getTileIdFromGrid(grid, tileX, tileY);
   }
 
-  if (typeof grid.getTileId === "function") {
-    return grid.getTileId(tileX, tileY);
-  }
-
-  if (typeof grid.get === "function") {
-    tile = grid.get(tileX, tileY);
-    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
-  }
-
-  width = Number(grid.width) || 0;
-  if (Array.isArray(grid.tiles) && width > 0 && tileX >= 0 && tileY >= 0 && tileX < width) {
-    index = tileY * width + tileX;
-    tile = grid.tiles[index];
-    return typeof tile === "string" ? tile : tile && (tile.id || tile.tileId || tile.type);
-  }
-
-  return null;
+  return PS.render.Autotile.getTileId(grid, tileX, tileY);
 };
 
 PS.render.TerrainTransitionResolver.prototype.getPriority = function (tileId) {
@@ -99,16 +430,13 @@ PS.render.TerrainTransitionResolver.prototype.getPair = function (from, to) {
 
 PS.render.TerrainTransitionResolver.prototype.getNeighborMask = function (tileX, tileY, tileId, grid) {
   var bits = PS.render.TerrainTransitionResolver.BITS;
-  var offsets = [
-    { dx: -1, dy: -1, bit: bits.NW },
-    { dx: 0, dy: -1, bit: bits.N },
-    { dx: 1, dy: -1, bit: bits.NE },
-    { dx: 1, dy: 0, bit: bits.E },
-    { dx: 1, dy: 1, bit: bits.SE },
-    { dx: 0, dy: 1, bit: bits.S },
-    { dx: -1, dy: 1, bit: bits.SW },
-    { dx: -1, dy: 0, bit: bits.W }
-  ];
+  var offsets = PS.core && typeof PS.core.getTerrainNeighborOffsets === "function"
+    ? PS.core.getTerrainNeighborOffsets(bits)
+    : ["NW", "N", "NE", "E", "SE", "S", "SW", "W"].map(function (id, index) {
+      var dx = [ -1, 0, 1, 1, 1, 0, -1, -1 ][index];
+      var dy = [ -1, -1, -1, 0, 1, 1, 1, 0 ][index];
+      return { dx: dx, dy: dy, bit: bits[id] };
+    });
   var mask = 0;
   var i;
   var neighborId;
@@ -200,6 +528,36 @@ PS.render.TerrainTransitionResolver.prototype.getOverlayEdges = function (mask) 
   return edges;
 };
 
+PS.render.TerrainTransitionResolver.prototype.getJoinPattern = function (mask) {
+  var normalizedMask = Math.round(Number(mask) || 0) & 255;
+  var signature = PS.render.TerrainTransitionResolver.getJoinSignature(this.getOverlayEdges(normalizedMask));
+  var patterns = PS.render.TerrainTransitionResolver.getCanonicalJoinPatterns();
+  var i;
+  var fallback = patterns[0] || { index: 0, mask: 0, name: "solid", spriteIndex: -1, edges: [] };
+
+  for (i = 0; i < patterns.length; i += 1) {
+    if (patterns[i].name === signature) {
+      return {
+        index: patterns[i].index,
+        mask: normalizedMask,
+        canonicalMask: patterns[i].mask,
+        name: patterns[i].name,
+        spriteIndex: patterns[i].spriteIndex,
+        edges: patterns[i].edges.slice()
+      };
+    }
+  }
+
+  return {
+    index: fallback.index,
+    mask: normalizedMask,
+    canonicalMask: fallback.mask,
+    name: fallback.name,
+    spriteIndex: fallback.spriteIndex,
+    edges: fallback.edges.slice()
+  };
+};
+
 PS.render.TerrainTransitionResolver.prototype.getNeighborSignature = function (tileX, tileY, grid) {
   var ids = [];
   var offsets = [
@@ -261,6 +619,7 @@ PS.render.TerrainTransitionResolver.prototype.resolve = function (tileX, tileY, 
   var edges;
   var edge;
   var result;
+  var joinPattern;
 
   if (cached) {
     this.cacheHits += 1;
@@ -276,6 +635,7 @@ PS.render.TerrainTransitionResolver.prototype.resolve = function (tileX, tileY, 
   }
 
   mask = this.getNeighborMask(tileX, tileY, tileId, grid);
+  joinPattern = this.getJoinPattern(mask);
   basePriority = this.getPriority(tileId);
   neighborIds = this.getNeighborTileIds(tileX, tileY, tileId, grid);
 
@@ -295,6 +655,7 @@ PS.render.TerrainTransitionResolver.prototype.resolve = function (tileX, tileY, 
         spriteId: pair.sheet.replace(/\//g, ".") + "." + edge.spriteIndex,
         sheet: pair.sheet,
         spriteIndex: edge.spriteIndex,
+        joinPatternIndex: this.getJoinPattern(this.getDirectionalMaskForNeighbor(tileX, tileY, tileId, neighborId, grid)).index,
         rotation: edge.rotation,
         from: tileId,
         to: neighborId,
@@ -304,7 +665,7 @@ PS.render.TerrainTransitionResolver.prototype.resolve = function (tileX, tileY, 
     }
   }
 
-  result = { baseTile: tileId, mask: mask, overlays: overlays };
+  result = { baseTile: tileId, mask: mask, joinPattern: joinPattern, overlays: overlays };
   this.cache.set(cacheKey, result);
   return result;
 };
@@ -330,16 +691,13 @@ PS.render.TerrainTransitionResolver.prototype.getNeighborTileIds = function (til
 PS.render.TerrainTransitionResolver.prototype.getDirectionalMaskForNeighbor = function (tileX, tileY, tileId, neighborId, grid) {
   var bits = PS.render.TerrainTransitionResolver.BITS;
   var mask = 0;
-  var checks = [
-    { dx: -1, dy: -1, bit: bits.NW },
-    { dx: 0, dy: -1, bit: bits.N },
-    { dx: 1, dy: -1, bit: bits.NE },
-    { dx: 1, dy: 0, bit: bits.E },
-    { dx: 1, dy: 1, bit: bits.SE },
-    { dx: 0, dy: 1, bit: bits.S },
-    { dx: -1, dy: 1, bit: bits.SW },
-    { dx: -1, dy: 0, bit: bits.W }
-  ];
+  var checks = PS.core && typeof PS.core.getTerrainNeighborOffsets === "function"
+    ? PS.core.getTerrainNeighborOffsets(bits)
+    : ["NW", "N", "NE", "E", "SE", "S", "SW", "W"].map(function (id, index) {
+      var dx = [ -1, 0, 1, 1, 1, 0, -1, -1 ][index];
+      var dy = [ -1, -1, -1, 0, 1, 1, 1, 0 ][index];
+      return { dx: dx, dy: dy, bit: bits[id] };
+    });
   var i;
 
   for (i = 0; i < checks.length; i += 1) {

@@ -1,6 +1,9 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+
 PS.systems = PS.systems || {};
 
-function assertPoolManager(condition, message) {
+export function assertPoolManager(condition, message) {
   if (PS.assert && typeof PS.assert === "function") {
     PS.assert(condition, message);
     return;
@@ -85,6 +88,7 @@ PS.poolManager = PS.poolManager || {
     var rawAcquire;
     var rawRelease;
     var rawReset;
+    var trackedActiveItems;
 
     assertPoolManager(poolName.length > 0, "Pool name is required");
     assertPoolManager(pool && typeof pool.acquire === "function", "Pool acquire is required for " + poolName);
@@ -94,11 +98,13 @@ PS.poolManager = PS.poolManager || {
     rawAcquire = pool._poolManagerAcquireRaw || pool.acquire.bind(pool);
     rawRelease = pool._poolManagerReleaseRaw || pool.release.bind(pool);
     rawReset = pool._poolManagerResetRaw || (typeof pool.reset === "function" ? pool.reset.bind(pool) : null);
+    trackedActiveItems = pool._poolManagerTrackedActiveItems || this.createActiveItemTracker();
 
     pool._poolManagerName = poolName;
     pool._poolManagerAcquireRaw = rawAcquire;
     pool._poolManagerReleaseRaw = rawRelease;
     pool._poolManagerResetRaw = rawReset;
+    pool._poolManagerTrackedActiveItems = trackedActiveItems;
     pool.acquire = function() {
       return manager.acquire(poolName);
     };
@@ -112,6 +118,7 @@ PS.poolManager = PS.poolManager || {
     this.pools[poolName] = {
       name: poolName,
       pool: pool,
+      activeItems: trackedActiveItems,
       bytesPerItem: Math.max(0, Math.round(Number(options.bytesPerItem) || 0)),
       estimateMemoryBytes: typeof options.estimateMemoryBytes === "function" ? options.estimateMemoryBytes : null
     };
@@ -135,12 +142,26 @@ PS.poolManager = PS.poolManager || {
       this.throwOverflow(record, this.getPoolStats(record));
     }
 
+    this.markItemActive(record, item);
     return item;
   },
 
   release: function(name, item) {
     var record = this.getRecord(name);
-    return record.pool._poolManagerReleaseRaw(item);
+    var released;
+
+    if (!this.isItemActive(record, item)) {
+      return false;
+    }
+
+    released = record.pool._poolManagerReleaseRaw(item);
+
+    if (released) {
+      this.markItemInactive(record, item);
+      return true;
+    }
+
+    return false;
   },
 
   reset: function(name) {
@@ -150,8 +171,69 @@ PS.poolManager = PS.poolManager || {
       record.pool._poolManagerResetRaw();
     }
 
+    record.activeItems = this.createActiveItemTracker();
+    record.pool._poolManagerTrackedActiveItems = record.activeItems;
     this.checkMemoryBudget();
     return record.pool;
+  },
+
+  createActiveItemTracker: function() {
+    return typeof WeakSet === "function"
+      ? { weak: new WeakSet(), primitive: [] }
+      : { weak: null, primitive: [] };
+  },
+
+  isTrackableObject: function(item) {
+    return item !== null && (typeof item === "object" || typeof item === "function");
+  },
+
+  markItemActive: function(record, item) {
+    var tracker = record.activeItems || this.createActiveItemTracker();
+
+    record.activeItems = tracker;
+    record.pool._poolManagerTrackedActiveItems = tracker;
+
+    if (this.isTrackableObject(item) && tracker.weak) {
+      tracker.weak.add(item);
+      return;
+    }
+
+    if (tracker.primitive.indexOf(item) < 0) {
+      tracker.primitive.push(item);
+    }
+  },
+
+  markItemInactive: function(record, item) {
+    var tracker = record.activeItems;
+    var index;
+
+    if (!tracker) {
+      return;
+    }
+
+    if (this.isTrackableObject(item) && tracker.weak) {
+      tracker.weak.delete(item);
+      return;
+    }
+
+    index = tracker.primitive.indexOf(item);
+    if (index >= 0) {
+      tracker.primitive.splice(index, 1);
+    }
+  },
+
+  isItemActive: function(record, item) {
+    var tracker = record.activeItems;
+
+    if (!tracker) {
+      return false;
+    }
+
+    if (this.isTrackableObject(item) && tracker.weak) {
+      return tracker.weak.has(item);
+    }
+
+    return tracker.primitive.indexOf(item) >= 0;
   },
 
   getRecord: function(name) {

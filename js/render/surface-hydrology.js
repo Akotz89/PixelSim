@@ -1,3 +1,9 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { blendHexColors, getPlanetVisualSeedOffset } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceHydrology = PS.render.surfaceHydrology || {};
 

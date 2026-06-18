@@ -1,3 +1,6 @@
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.epochs = {
   entries: {},
   order: [],

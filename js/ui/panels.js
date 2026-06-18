@@ -1,3 +1,11 @@
+import { PS } from "../core/namespace.js";
+import { updateSettlements } from "../sim/settlements-runtime.js";
+import { uiMenu } from "./dom-refs.js";
+import { setMenuOpen, setMenuPage, syncMenuPage, syncMenuState, toggleMenuOpen } from "./foundation.js";
+import { updateSettlementSummary } from "./history-summary.js";
+import { updateInspectPanel } from "./inspect-history.js";
+import { updateEcosystemSummary } from "./summary.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.panels = {

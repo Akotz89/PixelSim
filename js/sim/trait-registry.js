@@ -1,3 +1,8 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { chance, clamp, randomInt } from "../core/utils.js";
+import { world } from "../systems/state.js";
+
 // ── Trait Registry (AZR-493) ───────────────────────────────────────
 // Data-driven trait definitions replacing the 48 CONFIG.TRAIT_* entries.
 // Each trait is declared once; the registry provides defaults, ranges,
@@ -7,7 +12,7 @@
 
 PS.sim = PS.sim || {};
 
-var TRAIT_DEFINITIONS = [
+export var TRAIT_DEFINITIONS = [
   // ── Core evolvable traits ──
   {
     id: "vision",
@@ -64,6 +69,39 @@ var TRAIT_DEFINITIONS = [
     evolvable: true,
     integer: false
   },
+  {
+    id: "intelligence",
+    label: "Intelligence",
+    category: "cognition",
+    min: CONFIG.TRAIT_INTELLIGENCE_MIN,
+    max: CONFIG.TRAIT_INTELLIGENCE_MAX,
+    defaultValue: CONFIG.TRAIT_INTELLIGENCE_DEFAULT,
+    mutationStep: CONFIG.TRAIT_INTELLIGENCE_MUTATION_STEP,
+    evolvable: true,
+    integer: false
+  },
+  {
+    id: "sociality",
+    label: "Sociality",
+    category: "behavior",
+    min: CONFIG.TRAIT_SOCIALITY_MIN,
+    max: CONFIG.TRAIT_SOCIALITY_MAX,
+    defaultValue: CONFIG.TRAIT_SOCIALITY_DEFAULT,
+    mutationStep: CONFIG.TRAIT_SOCIALITY_MUTATION_STEP,
+    evolvable: true,
+    integer: false
+  },
+  {
+    id: "carnivory",
+    label: "Carnivory",
+    category: "diet",
+    min: CONFIG.TRAIT_CARNIVORY_MIN,
+    max: CONFIG.TRAIT_CARNIVORY_MAX,
+    defaultValue: CONFIG.TRAIT_CARNIVORY_DEFAULT,
+    mutationStep: CONFIG.TRAIT_CARNIVORY_MUTATION_STEP,
+    evolvable: true,
+    integer: false
+  },
 
   // ── Morphology traits (not evolvable yet, set at creation) ──
   {
@@ -73,8 +111,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_BODY_SIZE_MIN,
     max: CONFIG.TRAIT_BODY_SIZE_MAX,
     defaultValue: CONFIG.TRAIT_BODY_SIZE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_BODY_SIZE_MUTATION_STEP,
+    evolvable: true,
     integer: false
   },
   {
@@ -84,8 +122,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_LIMB_COUNT_MIN,
     max: CONFIG.TRAIT_LIMB_COUNT_MAX,
     defaultValue: CONFIG.TRAIT_LIMB_COUNT_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_LIMB_COUNT_MUTATION_STEP,
+    evolvable: true,
     integer: true
   },
   {
@@ -95,8 +133,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_BODY_SHAPE_MIN,
     max: CONFIG.TRAIT_BODY_SHAPE_MAX,
     defaultValue: CONFIG.TRAIT_BODY_SHAPE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_BODY_SHAPE_MUTATION_STEP,
+    evolvable: true,
     integer: true
   },
   {
@@ -106,8 +144,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_APPENDAGE_TYPE_MIN,
     max: CONFIG.TRAIT_APPENDAGE_TYPE_MAX,
     defaultValue: CONFIG.TRAIT_APPENDAGE_TYPE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_APPENDAGE_TYPE_MUTATION_STEP,
+    evolvable: true,
     integer: true
   },
   {
@@ -117,8 +155,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_CAMOUFLAGE_MIN,
     max: CONFIG.TRAIT_CAMOUFLAGE_MAX,
     defaultValue: CONFIG.TRAIT_CAMOUFLAGE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_CAMOUFLAGE_MUTATION_STEP,
+    evolvable: true,
     integer: false
   },
   {
@@ -128,8 +166,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_THERMAL_TOLERANCE_MIN,
     max: CONFIG.TRAIT_THERMAL_TOLERANCE_MAX,
     defaultValue: CONFIG.TRAIT_THERMAL_TOLERANCE_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_THERMAL_TOLERANCE_MUTATION_STEP,
+    evolvable: true,
     integer: false
   },
   {
@@ -139,8 +177,8 @@ var TRAIT_DEFINITIONS = [
     min: CONFIG.TRAIT_WATER_DEPENDENCY_MIN,
     max: CONFIG.TRAIT_WATER_DEPENDENCY_MAX,
     defaultValue: CONFIG.TRAIT_WATER_DEPENDENCY_DEFAULT,
-    mutationStep: 0,
-    evolvable: false,
+    mutationStep: CONFIG.TRAIT_WATER_DEPENDENCY_MUTATION_STEP,
+    evolvable: true,
     integer: false
   }
 ];

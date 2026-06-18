@@ -1,5 +1,18 @@
+import { PS } from "../core/namespace.js";
+import { normalizeSeedText } from "../core/utils.js";
+import { adjustSimulationSpeed, stepSimulationOnce, toggleSimulationPaused } from "../main-loop.js";
+import { isPlanetLocalView } from "../render/planet-view.js";
+import { exportWorldToJsonFile, importWorldFromJsonFile, loadWorldFromIndexedDB } from "../systems/persistence-io.js";
+import { saveWorldToIndexedDB } from "../systems/persistence-restore-core.js";
+import { world } from "../systems/state.js";
+import { getCanvasPointFromEvent, getSurfacePositionFromCanvasEvent, getTileFromCanvasEvent, planetDragState, prepareTouchInput } from "./camera-input.js";
+import { canvas, exportJsonButton, foodGrowthSlider, foodSizeSlider, importJsonButton, importJsonFile, loadButton, menuBackdrop, menuTabs, menuToggleButton, organismSizeSlider, pauseButton, restartButton, saveButton, seedInput, seedRandomButton, speedDownButton, speedSlider, speedUpButton, startingFoodSlider, stepButton, timeScaleSlider } from "./dom-refs.js";
+import { applyTuningFromControls, setMenuOpen, setMenuPage, syncControlStates, syncMenuPage, syncMenuState, syncTuningControls, toggleMenuOpen, updateHud } from "./foundation.js";
+import { getInspectableEntityFromTile, inspectTile } from "./inspect.js";
+import { handleSimulationShortcut, registerSimulationInputActions } from "./interaction.js";
+import { requestRestartSimulationFromControls, setPersistenceStatus } from "./persistence-controls.js";
 
-window.setupControls = function() {
+export function setupControls() {
   var tabButtons = menuTabs.querySelectorAll("[data-menu-target]");
 
   prepareTouchInput();
@@ -39,6 +52,17 @@ window.setupControls = function() {
     }
 
     var surfacePosition = getSurfacePositionFromCanvasEvent(event);
+    var point = getCanvasPointFromEvent(event);
+    if (
+      window.PS &&
+      PS.render &&
+      PS.render.minimap &&
+      typeof PS.render.minimap.focusFromCanvasPoint === "function" &&
+      PS.render.minimap.focusFromCanvasPoint(point.canvasX, point.canvasY)
+    ) {
+      return;
+    }
+
     var tile = getTileFromCanvasEvent(event);
     var inspectedEntity = getInspectableEntityFromTile(tile.x, tile.y);
 
@@ -248,6 +272,18 @@ window.setupControls = function() {
     if (PS.ui.timeline) {
       PS.ui.timeline.setup();
     }
+
+    if (PS.ui.bookmarks) {
+      PS.ui.bookmarks.setup();
+    }
+
+    if (PS.ui.evolutionaryTree) {
+      PS.ui.evolutionaryTree.setup();
+    }
+
+    if (PS.ui.exportCapture) {
+      PS.ui.exportCapture.setup();
+    }
   }
 
   if (window.PS && PS.debug) {
@@ -271,4 +307,4 @@ window.setupControls = function() {
       PS.debug.inspector.setup();
     }
   }
-};
+}

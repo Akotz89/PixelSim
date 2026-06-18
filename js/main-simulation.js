@@ -1,5 +1,20 @@
+import { CONFIG } from "../config.js";
+import { PS } from "./core/namespace.js";
+import { formatEcosystemStabilityFactorScore, formatEcosystemTrendDelta, recordSimulationMilestones } from "./main-ecosystem-stability.js";
+import { formatFoodRunway, getSimulationAlertSeverityRank, makeSimulationAlert, recordEcosystemHistorySample, refreshEcosystemSummary, resetFoodFlowCounters, resetPopulationFlowCounters } from "./main-ecosystem-summary.js";
+import { formatMilestoneSignedNumber, getSimulationMilestoneSnapshot, recordSimulationEvent } from "./main-runtime.js";
+import { growFood } from "./sim/food-growth.js";
+import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePooledOrganismsForTick } from "./sim/organisms-behavior.js";
+import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
+import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./sim/settlements-routes.js";
+import { updateSettlements } from "./sim/settlements-runtime.js";
+import { world } from "./systems/state.js";
+// fallow-ignore-next-line circular-dependency
+import { syncControlStates } from "./ui/foundation.js";
+// fallow-ignore-next-line circular-dependency
+import { recordTraitHistorySample } from "./ui/inspect-history.js";
 
-function compareSimulationAlerts(left, right) {
+export function compareSimulationAlerts(left, right) {
   if (left.priority !== right.priority) {
     return left.priority - right.priority;
   }
@@ -14,7 +29,7 @@ function compareSimulationAlerts(left, right) {
   return left.order - right.order;
 }
 
-function addSimulationAlert(alerts, severity, label, detail, priority) {
+export function addSimulationAlert(alerts, severity, label, detail, priority) {
   var nextAlert = makeSimulationAlert(severity, label, detail, priority);
   nextAlert.order = alerts.length;
 
@@ -32,7 +47,7 @@ function addSimulationAlert(alerts, severity, label, detail, priority) {
   alerts.push(nextAlert);
 }
 
-function rankSimulationAlerts(alerts) {
+export function rankSimulationAlerts(alerts) {
   return alerts.slice().sort(compareSimulationAlerts).map(function(alert) {
     return {
       severity: alert.severity,
@@ -43,7 +58,7 @@ function rankSimulationAlerts(alerts) {
   });
 }
 
-function refreshSimulationAlerts() {
+export function refreshSimulationAlerts() {
   var alerts = [];
   var ecosystemSummary = world.ecosystemSummary || refreshEcosystemSummary();
   var settlementSummary = world.settlementSummary || (
@@ -65,6 +80,19 @@ function refreshSimulationAlerts() {
 
   if (!world.isExtinct && ecosystemSummary.populationBalance === "crashing") {
     addSimulationAlert(alerts, "danger", "Population crash", String(world.populationDeltaThisTick), 12);
+  }
+
+  if (!world.isExtinct && PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
+    var extinctionSummary = PS.sim.massExtinction.getSummary();
+    if (extinctionSummary.recoveryWindow) {
+      addSimulationAlert(
+        alerts,
+        "ready",
+        "Adaptive radiation",
+        "until T" + Math.max(0, Math.round(Number(extinctionSummary.recoveryWindow.endTick) || 0)),
+        14
+      );
+    }
   }
 
   if (
@@ -192,7 +220,7 @@ function refreshSimulationAlerts() {
   return world.simulationAlerts;
 }
 
-function syncLifecycleState() {
+export function syncLifecycleState() {
   var population = Array.isArray(world.organisms) ? world.organisms.length : 0;
 
   if (population <= 0) {
@@ -213,11 +241,14 @@ function syncLifecycleState() {
   }
 }
 
-function seedWorld() {
+export function seedWorld() {
   PS.core.worldGen.generateWorld(world.seedText, CONFIG);
 
   if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function") {
     PS.sim.representatives.refresh();
+  }
+  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
+    PS.sim.lineageTracking.update(true);
   }
 
   refreshEcosystemSummary();
@@ -232,7 +263,7 @@ function seedWorld() {
   refreshSimulationAlerts();
 }
 
-function updateWorld(dt) {
+export function updateWorld(dt) {
   var tickProfile = {
     organisms: 0,
     food: 0,
@@ -264,12 +295,17 @@ function updateWorld(dt) {
 
   if (typeof updatePooledOrganismsForTick !== "function" || !updatePooledOrganismsForTick(organismsAtStartOfTick)) {
     for (var i = 0; i < organismsAtStartOfTick; i++) {
-      updateOrganism(world.organisms[i]);
+      updateOrganism(world.organisms[i], i);
     }
   }
 
   removeDeadOrganisms();
   trimOrganismPopulation();
+
+  if (PS.sim.massExtinction && typeof PS.sim.massExtinction.maybeTrigger === "function") {
+    PS.sim.massExtinction.maybeTrigger();
+  }
+
   world.populationDeltaThisTick = world.organisms.length - organismsAtStartOfTick;
 
   if (typeof refreshLineageRegistry === "function" && shouldRefreshSummaries) {
@@ -278,6 +314,9 @@ function updateWorld(dt) {
 
   if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function" && shouldRefreshSummaries) {
     PS.sim.representatives.refresh();
+  }
+  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function" && shouldRefreshSummaries) {
+    PS.sim.lineageTracking.update(false);
   }
 
   // Update environmental modifiers periodically (AZR-493)
@@ -321,7 +360,7 @@ function updateWorld(dt) {
   world.tickProfileMs = tickProfile;
 }
 
-function setSimulationPaused(isPaused) {
+export function setSimulationPaused(isPaused) {
   if (world.isExtinct) {
     return false;
   }

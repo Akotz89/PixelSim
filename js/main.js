@@ -1,3 +1,6 @@
+import { PS } from "./core/namespace.js";
+import { startGame } from "./main-loop.js";
+
 PS.init = function() {
   if (PS.isInitialized) {
     return false;
@@ -13,6 +16,10 @@ PS.init = function() {
     if (PS.ui.notifications && PS.ui.notifications.setup) {
       PS.ui.notifications.setup();
     }
+  }
+
+  if (PS.runtime && typeof PS.runtime.verify === "function") {
+    PS.runtime.verify();
   }
 
   if (typeof startGame === "function") {

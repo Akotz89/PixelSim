@@ -1,3 +1,6 @@
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+
 PS.atlas = PS.atlas || {};
 
 PS.atlas.getTerrainDetailColor = function (palette, kind) {
@@ -31,6 +34,191 @@ PS.atlas.writeTerrainDash = function (cell, x, y, length, horizontal, color) {
   for (var i = 0; i < length; i++) {
     PS.atlas.writePixel(cell, x + (horizontal ? i : 0), y + (horizontal ? 0 : i), color);
   }
+};
+
+PS.atlas.isTerrainWaterLikeSample = function (sample, biome) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var surface = String(detail.surface || sample && sample.surface || "").toLowerCase();
+  var feature = String(detail.feature || sample && sample.feature || "").toLowerCase();
+  var biomeKey = String(biome || sample && sample.biome || "").toLowerCase();
+  var signals = detail.materialSignals || sample && sample.materialSignals || {};
+
+  if (PS.render && PS.render.waterRendering && typeof PS.render.waterRendering.isWaterSample === "function") {
+    return PS.render.waterRendering.isWaterSample(sample, biome);
+  }
+
+  return biomeKey === "ocean" ||
+    biomeKey === "lake" ||
+    surface.indexOf("water") >= 0 ||
+    surface.indexOf("shore") >= 0 ||
+    feature.indexOf("foam") >= 0 ||
+    Number(signals.waterDepth) > 0.05 ||
+    Number(signals.shallowWater) > 0.05;
+};
+
+PS.atlas.getTerrainOverlayGroundSample = function (sample, neighborBiome) {
+  var tileBlend = sample && sample.tileBlend ? sample.tileBlend : null;
+  var tiles = tileBlend && Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var best = null;
+  var bestWeight = 0;
+  var preferred = String(neighborBiome || "").toLowerCase();
+  var i;
+  var item;
+  var itemBiome;
+  var weight;
+
+  for (i = 0; i < tiles.length; i += 1) {
+    item = tiles[i];
+    itemBiome = String(item && (item.biome || item.tile && item.tile.biome) || "").toLowerCase();
+    if (preferred && itemBiome !== preferred) {
+      continue;
+    }
+    if (PS.atlas.isTerrainWaterLikeSample(item, itemBiome)) {
+      continue;
+    }
+    weight = Number(item && item.weight) || 0;
+    if (weight > bestWeight) {
+      bestWeight = weight;
+      best = item;
+    }
+  }
+
+  if (!best && preferred) {
+    return PS.atlas.getTerrainOverlayGroundSample(sample, "");
+  }
+
+  return best || sample || null;
+};
+
+PS.atlas.getTerrainOverlayGroundColor = function (sample, palette, neighborBiome) {
+  var groundSample = PS.atlas.getTerrainOverlayGroundSample(sample, neighborBiome);
+  var color = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureColor === "function"
+    ? PS.render.surfaceColor.getGroundMoistureColor(groundSample)
+    : null;
+
+  if (color) {
+    return PS.atlas.hexToRgb(color).concat([255]);
+  }
+
+  return [
+    palette && palette.base ? palette.base[0] : 104,
+    palette && palette.base ? palette.base[1] : 128,
+    palette && palette.base ? palette.base[2] : 78,
+    255
+  ];
+};
+
+PS.atlas.getTerrainOverlayGroundKey = function (sample, neighborBiome) {
+  var groundSample = PS.atlas.getTerrainOverlayGroundSample(sample, neighborBiome);
+  var moistureKey = groundSample && PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
+    ? PS.render.surfaceColor.getGroundMoistureKey(groundSample)
+    : "gmoist.none";
+  var eraKey = groundSample && PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getEraPaletteKey === "function"
+    ? PS.render.surfaceColor.getEraPaletteKey(groundSample)
+    : "era.none";
+
+  return moistureKey + "." + eraKey;
+};
+
+PS.atlas.adjustTerrainOverlayColor = function (color, delta) {
+  return [
+    clamp(Math.round(color[0] + delta), 0, 255),
+    clamp(Math.round(color[1] + delta), 0, 255),
+    clamp(Math.round(color[2] + delta), 0, 255),
+    255
+  ];
+};
+
+PS.atlas.writeTerrainTexturedMask = function (cell, mask, color, variant) {
+  var phase = clamp(Math.round(Number(variant) || 0), 0, 15);
+  var base = color || [104, 128, 78, 255];
+  var light = PS.atlas.adjustTerrainOverlayColor(base, 18);
+  var dark = PS.atlas.adjustTerrainOverlayColor(base, -16);
+  var x;
+  var y;
+
+  function writeTexturedPixel(px, py, edgeDepth) {
+    var pick = (px * 7 + py * 11 + phase) % 5;
+    var pixelColor = edgeDepth === 0 ? base : (pick <= 1 ? light : (pick === 2 ? dark : base));
+    PS.atlas.writePixel(cell, px, py, pixelColor);
+  }
+
+  if (!mask) {
+    return;
+  }
+
+  if (mask & 8) {
+    for (x = 0; x < 16; x += 1) {
+      writeTexturedPixel(x, 0, 0);
+      if ((x + phase) % 3 !== 1) { writeTexturedPixel(x, 1, 1); }
+      if ((x + phase) % 5 === 0) { writeTexturedPixel(x, 2, 1); }
+    }
+  }
+
+  if (mask & 4) {
+    for (x = 0; x < 16; x += 1) {
+      writeTexturedPixel(x, 15, 0);
+      if ((x + phase) % 3 !== 2) { writeTexturedPixel(x, 14, 1); }
+      if ((x + phase) % 5 === 1) { writeTexturedPixel(x, 13, 1); }
+    }
+  }
+
+  if (mask & 1) {
+    for (y = 0; y < 16; y += 1) {
+      writeTexturedPixel(15, y, 0);
+      if ((y + phase) % 3 !== 1) { writeTexturedPixel(14, y, 1); }
+      if ((y + phase) % 5 === 2) { writeTexturedPixel(13, y, 1); }
+    }
+  }
+
+  if (mask & 2) {
+    for (y = 0; y < 16; y += 1) {
+      writeTexturedPixel(0, y, 0);
+      if ((y + phase) % 3 !== 2) { writeTexturedPixel(1, y, 1); }
+      if ((y + phase) % 5 === 3) { writeTexturedPixel(2, y, 1); }
+    }
+  }
+};
+
+PS.atlas.getTerrainWaterStencilMask = function (sample, biome) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var signals = detail.materialSignals || sample && sample.materialSignals || {};
+  var raw = signals.shoreMask !== undefined ? signals.shoreMask : (
+    sample && sample.shoreMask !== undefined ? sample.shoreMask : sample && sample.autotileMask
+  );
+  var mask = Math.round(Number(raw));
+
+  if (Number.isFinite(mask)) {
+    return mask & 15;
+  }
+
+  if (PS.render && PS.render.waterRendering && typeof PS.render.waterRendering.computeShoreMask === "function") {
+    return PS.render.waterRendering.computeShoreMask(sample, sample && sample.x, sample && sample.y) & 15;
+  }
+
+  return PS.atlas.isTerrainWaterLikeSample(sample, biome) ? 15 : 0;
+};
+
+PS.atlas.getTerrainTextureOverlayKey = function (sample, biome) {
+  var mask = PS.atlas.isTerrainWaterLikeSample(sample, biome)
+    ? PS.atlas.getTerrainWaterStencilMask(sample, biome)
+    : 0;
+  var civilization = typeof PS.atlas.getTerrainCivilizationInfo === "function"
+    ? PS.atlas.getTerrainCivilizationInfo(sample)
+    : null;
+  var groundKey = mask || civilization && civilization.type === "settlement"
+    ? PS.atlas.getTerrainOverlayGroundKey(sample)
+    : "gmoist.none.era.none";
+
+  if (mask) {
+    return "stencil.water." + mask + "." + groundKey;
+  }
+
+  if (civilization && civilization.type === "settlement") {
+    return "stencil.building." + civilization.bucket + "." + civilization.family + "." + groundKey;
+  }
+
+  return "stencil.none";
 };
 
 PS.atlas.getTerrainTransitionType = function (biome, neighborBiome, surface) {
@@ -113,19 +301,27 @@ PS.atlas.getTerrainTransitionInfo = function (sample, biome) {
 
 PS.atlas.getTerrainTransitionKey = function (sample, biome) {
   var transition = PS.atlas.getTerrainTransitionInfo(sample, biome);
+  var groundKey;
 
   if (!transition) {
     return "plain";
   }
 
+  groundKey = PS.atlas.getTerrainOverlayGroundKey(sample, transition.neighborBiome);
+
   return [
     transition.type,
     transition.mask,
-    Math.min(3, Math.floor(transition.weight * 4))
+    Math.min(3, Math.floor(transition.weight * 4)),
+    groundKey
   ].join(".");
 };
 
 PS.atlas.getTerrainTransitionColor = function (palette, transition) {
+  if (transition && transition.gradientColor) {
+    return transition.gradientColor;
+  }
+
   if (transition.type === "coast") {
     return PS.atlas.getTerrainDetailColor(palette, "light");
   }
@@ -146,12 +342,60 @@ PS.atlas.getTerrainTransitionColor = function (palette, transition) {
   return PS.atlas.getTerrainDetailColor(palette, transition.type === "canopy" ? "shadow" : "warm");
 };
 
+PS.atlas.getTerrainTransitionGradientColor = function (sample, transition) {
+  var tileBlend = sample && sample.tileBlend ? sample.tileBlend : null;
+  var tiles = tileBlend && Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var best = null;
+  var bestWeight = 0;
+  var i;
+  var item;
+  var color;
+
+  if (!transition || !transition.neighborBiome || !PS.render || !PS.render.surfaceColor ||
+      typeof PS.render.surfaceColor.getGroundMoistureColor !== "function") {
+    return null;
+  }
+
+  for (i = 0; i < tiles.length; i += 1) {
+    item = tiles[i];
+    if ((item.biome || item.tile && item.tile.biome) !== transition.neighborBiome) {
+      continue;
+    }
+    if ((Number(item.weight) || 0) > bestWeight) {
+      bestWeight = Number(item.weight) || 0;
+      best = item;
+    }
+  }
+
+  if (!best || bestWeight <= 0) {
+    return null;
+  }
+
+  color = PS.render.surfaceColor.getGroundMoistureColor({
+    biome: best.biome || best.tile && best.tile.biome || transition.neighborBiome,
+    detail: best.detail || {
+      surface: best.surface || "",
+      materialSignals: best.materialSignals || {}
+    },
+    tile: best.tile || null,
+    x: best.x,
+    y: best.y,
+    ran: best.ran
+  });
+
+  return color ? PS.atlas.hexToRgb(color).concat([255]) : null;
+};
+
 PS.atlas.drawTerrainTransitionEdge = function (cell, palette, variant, transition) {
   var color = PS.atlas.getTerrainTransitionColor(palette, transition);
   var shadow = PS.atlas.getTerrainDetailColor(palette, "shadow");
   var mask = transition.mask;
   var offset = clamp(Math.round(Number(variant) || 0), 0, 15);
   var i;
+
+  if (transition && transition.gradientColor) {
+    PS.atlas.writeTerrainTexturedMask(cell, mask, transition.gradientColor, offset);
+  }
 
   if (mask & 8) {
     for (i = 0; i < 16; i += 2) {
@@ -383,6 +627,10 @@ PS.atlas.drawTerrainDetailOverlay = function (cell, palette, variant, tileDefini
   var offset = clamp(Math.round(Number(variant) || 0), 0, 15);
   var transition = PS.atlas.getTerrainTransitionInfo(sample, biome);
 
+  if (transition) {
+    transition.gradientColor = PS.atlas.getTerrainTransitionGradientColor(sample, transition);
+  }
+
   function finish() {
     PS.atlas.drawTerrainFeatureMarks(cell, palette, variant, sample, biome, tileDefinition);
     if (typeof PS.atlas.drawTerrainCivilizationMarks === "function") {
@@ -395,6 +643,12 @@ PS.atlas.drawTerrainDetailOverlay = function (cell, palette, variant, tileDefini
   }
 
   if (pattern === "wave") {
+    PS.atlas.writeTerrainTexturedMask(
+      cell,
+      PS.atlas.getTerrainWaterStencilMask(sample, biome),
+      PS.atlas.getTerrainOverlayGroundColor(sample, palette),
+      offset
+    );
     PS.atlas.writeTerrainDash(cell, 1 + offset % 3, 4, 7, true, light);
     PS.atlas.writeTerrainDash(cell, 8 - offset % 2, 10, 6, true, light);
     PS.atlas.writeTerrainDash(cell, 3, 13, 4, true, shadow);

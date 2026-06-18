@@ -1,3 +1,5 @@
+import { PS } from "./namespace.js";
+
 PS.eventTypes = PS.eventTypes || {};
 
 PS.eventTypes.MILESTONE_REACHED = "milestone.reached";
@@ -5,13 +7,16 @@ PS.eventTypes.EPOCH_TRANSITION = "epoch.transition";
 
 PS.eventTypes.ORGANISM_BORN = "organism.born";
 PS.eventTypes.ORGANISM_DIED = "organism.died";
+PS.eventTypes.SPECIES_NEW = "species.new";
+PS.eventTypes.EXTINCTION_EVENT = "extinction.event";
+PS.eventTypes.EXTINCTION_RECOVERY = "extinction.recovery";
 PS.eventTypes.FOOD_SPAWNED = "food.spawned";
 PS.eventTypes.SETTLEMENT_FOUNDED = "settlement.founded";
 
 PS.eventTypes.TERRAIN_INVALIDATED = "terrain.invalidated";
 PS.eventTypes.ATLAS_REBUILT = "atlas.rebuilt";
-PS.eventTypes.RENDER_GL_CONTEXT_LOST = "render.gl.contextlost";
-PS.eventTypes.RENDER_GL_CONTEXT_RESTORED = "render.gl.contextrestored";
+PS.eventTypes.RENDER_CONTEXT_LOST = "render.contextlost";
+PS.eventTypes.RENDER_BACKEND_READY = "render.backend";
 
 PS.eventTypes.TILE_INSPECTED = "tile.inspected";
 PS.eventTypes.MENU_TOGGLED = "menu.toggled";
@@ -35,6 +40,15 @@ PS.eventPayloads[PS.eventTypes.ORGANISM_BORN] = {
 PS.eventPayloads[PS.eventTypes.ORGANISM_DIED] = {
   jsdoc: "@payload { id, representativeId, populationId, speciesId, lineageId, cause, x, y, tick }"
 };
+PS.eventPayloads[PS.eventTypes.SPECIES_NEW] = {
+  jsdoc: "@payload { id, parentId, lineageId, speciesId, populationId, traits, location, cause, divergence, tick }"
+};
+PS.eventPayloads[PS.eventTypes.EXTINCTION_EVENT] = {
+  jsdoc: "@payload { id, eventType, severityScore, killRate, cause, location, affectedSpecies, survivors, losses, recoveryWindow, tick }"
+};
+PS.eventPayloads[PS.eventTypes.EXTINCTION_RECOVERY] = {
+  jsdoc: "@payload { id, cause, recoveryWindow, survivorPopulationIds, radiationCandidateIds, tick }"
+};
 PS.eventPayloads[PS.eventTypes.FOOD_SPAWNED] = {
   jsdoc: "@payload { id, x, y, amount, source, tick }"
 };
@@ -47,11 +61,11 @@ PS.eventPayloads[PS.eventTypes.TERRAIN_INVALIDATED] = {
 PS.eventPayloads[PS.eventTypes.ATLAS_REBUILT] = {
   jsdoc: "@payload { atlasId, textureWidth, textureHeight, entryCount, version }"
 };
-PS.eventPayloads[PS.eventTypes.RENDER_GL_CONTEXT_LOST] = {
-  jsdoc: "@payload { count }"
+PS.eventPayloads[PS.eventTypes.RENDER_CONTEXT_LOST] = {
+  jsdoc: "@payload { reason }"
 };
-PS.eventPayloads[PS.eventTypes.RENDER_GL_CONTEXT_RESTORED] = {
-  jsdoc: "@payload { count }"
+PS.eventPayloads[PS.eventTypes.RENDER_BACKEND_READY] = {
+  jsdoc: "@payload { backend }"
 };
 PS.eventPayloads[PS.eventTypes.TILE_INSPECTED] = {
   jsdoc: "@payload { tileX, tileY, surfacePosition, entityType, representativeId, tick }"

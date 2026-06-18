@@ -1,3 +1,11 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getSurfaceMeterCoordinate } from "./planet-surface.js";
+import { getLatLonFromSurfaceMeterCoordinate, getPlanetSurfaceLodZoomIndex, getPlanetView, getPlanetViewPanVector, getPlanetViewScale, getPlanetZoomLevel } from "./planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import { canvas } from "../ui/dom-refs.js";
+
 PS.render = PS.render || {};
 PS.render.surface = PS.render.surface || {};
 
@@ -169,6 +177,65 @@ PS.render.surface.getChunkPriorityScore = function (screenRect) {
   return Math.max(0, priorityDistance - directionalBoost);
 };
 
+PS.render.surface.getInteractiveVisibleChunks = function (guardSamples, visibleChunkLimit) {
+  var normalizedGuardSamples = Math.max(1, Math.round(Number(guardSamples) || 1));
+  var centerAddress = PS.render.surface.getLocalAddress(WORLD_WIDTH / 2, WORLD_HEIGHT / 2).address;
+  var radius = Math.max(
+    2,
+    Math.ceil(Math.sqrt(Math.max(1, visibleChunkLimit))) + normalizedGuardSamples
+  );
+  var candidates = [];
+  var visibleChunks = [];
+
+  for (var chunkY = centerAddress.chunkY - radius; chunkY <= centerAddress.chunkY + radius; chunkY++) {
+    for (var chunkX = centerAddress.chunkX - radius; chunkX <= centerAddress.chunkX + radius; chunkX++) {
+      var address = PS.render.surface.makeChunkAddress(centerAddress.zoomLevel, chunkX, chunkY);
+      var screenRect = PS.render.surface.getChunkScreenRect(address);
+
+      if (
+        screenRect.x > canvas.width + CONFIG.TILE_SIZE ||
+        screenRect.x + screenRect.width < -CONFIG.TILE_SIZE ||
+        screenRect.y > canvas.height + CONFIG.TILE_SIZE ||
+        screenRect.y + screenRect.height < -CONFIG.TILE_SIZE
+      ) {
+        continue;
+      }
+
+      candidates.push({
+        address: address,
+        screenX: screenRect.x,
+        screenY: screenRect.y,
+        width: screenRect.width,
+        height: screenRect.height,
+        priorityDistance: PS.render.surface.getChunkScreenPriority(screenRect),
+        priorityScore: PS.render.surface.getChunkPriorityScore(screenRect)
+      });
+    }
+  }
+
+  candidates.sort(function (a, b) {
+    if (a.priorityScore !== b.priorityScore) {
+      return a.priorityScore - b.priorityScore;
+    }
+
+    if (a.priorityDistance !== b.priorityDistance) {
+      return a.priorityDistance - b.priorityDistance;
+    }
+
+    if (a.address.chunkY !== b.address.chunkY) {
+      return a.address.chunkY - b.address.chunkY;
+    }
+
+    return a.address.chunkX - b.address.chunkX;
+  });
+
+  visibleChunks = candidates.slice(0, visibleChunkLimit);
+  visibleChunks.totalCandidateChunks = candidates.length;
+  visibleChunks.workingSetLimit = visibleChunkLimit;
+  visibleChunks.culledChunks = Math.max(0, candidates.length - visibleChunks.length);
+  return visibleChunks;
+};
+
 PS.render.surface.getVisibleChunks = function (guardSamples, maxChunks) {
   var normalizedGuardSamples = Math.max(1, Math.round(Number(guardSamples) || 1));
   var visibleChunkLimit = Math.max(
@@ -181,6 +248,10 @@ PS.render.surface.getVisibleChunks = function (guardSamples, maxChunks) {
       visibleChunkLimit,
       Math.max(16, Math.round(Number(CONFIG.PLANET_SURFACE_INTERACTIVE_VISIBLE_CHUNK_LIMIT) || 96))
     );
+  }
+
+  if (world.isCameraInteracting) {
+    return PS.render.surface.getInteractiveVisibleChunks(normalizedGuardSamples, visibleChunkLimit);
   }
 
   var samplePoints = [

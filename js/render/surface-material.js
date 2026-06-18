@@ -1,3 +1,7 @@
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetSurfaceTileBlend } from "./planet-view.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceMaterial = PS.render.surfaceMaterial || {};
 
@@ -104,6 +108,16 @@ PS.render.surfaceMaterial.getSignals = function (latitude, tile, lod, relief, lo
   };
 };
 
+/**
+ * @description Classifies a surface sample into a render material and feature by combining biome, latitude, LOD noise, relief, shoreline, hydrology, and elevation signals.
+ * @param {number} latitude Sample latitude in degrees.
+ * @param {string} biome Normalized biome id for the sample.
+ * @param {Object} lod Level-of-detail noise and meter-scale signals.
+ * @param {Object} relief Relief, slope, and hillshade signals for the sample.
+ * @param {Object|null} tile Planet tile data associated with the sample.
+ * @param {number} longitude Sample longitude in degrees.
+ * @returns {Object} Material classification with surface, feature, and signal metadata.
+ */
 PS.render.surfaceMaterial.classify = function (latitude, biome, lod, relief, tile, longitude) {
   var signals = PS.render.surfaceMaterial.getSignals(latitude, tile, lod, relief, longitude);
   var surface = "ground";
@@ -214,6 +228,13 @@ PS.render.surfaceMaterial.classify = function (latitude, biome, lod, relief, til
   };
 };
 
+/**
+ * @description Applies a detected ground feature to a base material classification, blending feature strength and preserving material signals for downstream color and atlas selection.
+ * @param {Object} material Base material classification returned by classify.
+ * @param {Object|null} groundFeature Ground feature descriptor with type and influence.
+ * @param {string} biome Normalized biome id for biome-specific feature handling.
+ * @returns {Object} Adjusted material classification with copied and feature-weighted signals.
+ */
 PS.render.surfaceMaterial.applyGroundFeatureInfluence = function (material, groundFeature, biome) {
   var result = { surface: material.surface, feature: material.feature, signals: {} };
   var type = groundFeature && groundFeature.type ? groundFeature.type : "";

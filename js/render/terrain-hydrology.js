@@ -1,15 +1,23 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, getTileIndex, hashSeedText } from "../core/utils.js";
+import { getClampedWorldY, getPlanetTile, getWrappedWorldX } from "./planet-grid.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { normalizeLongitude } from "./planet-view.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 // Pixeldarium - terrain.js
 // Terrain generation and fertile land helpers.
 
-function getTerrain(x, y) {
+export function getTerrain(x, y) {
   return world.terrain[getTileIndex(x, y)];
 }
 
-function isFertile(x, y) {
+export function isFertile(x, y) {
   return getTerrain(x, y) === CONFIG.TERRAIN_FERTILE;
 }
 
-function getTerrainNeighborTiles(tile) {
+export function getTerrainNeighborTiles(tile) {
   var neighbors = [];
 
   for (var dy = -1; dy <= 1; dy++) {
@@ -29,7 +37,11 @@ function getTerrainNeighborTiles(tile) {
   return neighbors;
 }
 
-function annotatePlanetHydrology() {
+/**
+ * @description Annotates planet tiles with watershed, river, coast, floodplain, and wetland signals derived from elevation, rainfall, and neighbor flow.
+ * @returns {void} Mutates world planet tiles with hydrology metadata.
+ */
+export function annotatePlanetHydrology() {
   if (!Array.isArray(world.planetTiles) || world.planetTiles.length === 0) {
     return;
   }
@@ -208,7 +220,7 @@ function annotatePlanetHydrology() {
   }
 }
 
-function annotatePlanetTerrainRelief() {
+export function annotatePlanetTerrainRelief() {
   if (!Array.isArray(world.planetTiles) || world.planetTiles.length === 0) {
     return;
   }
@@ -247,21 +259,21 @@ function annotatePlanetTerrainRelief() {
   }
 }
 
-function smoothTerrainNoiseAmount(amount) {
+export function smoothTerrainNoiseAmount(amount) {
   var t = clamp(Number(amount) || 0, 0, 1);
 
   return t * t * (3 - 2 * t);
 }
 
-function getWrappedTerrainNoiseCellX(cellX, columnCount) {
+export function getWrappedTerrainNoiseCellX(cellX, columnCount) {
   var normalizedColumnCount = Math.max(1, Math.round(Number(columnCount) || 1));
 
   return ((Math.round(Number(cellX) || 0) % normalizedColumnCount) + normalizedColumnCount) % normalizedColumnCount;
 }
 
-var terrainNoiseCache = {};
+export var terrainNoiseCache = {};
 
-function getTerrainNoise2D(seedOffset) {
+export function getTerrainNoise2D(seedOffset) {
   var key = String(Math.round(Number(seedOffset) || 0));
 
   if (!terrainNoiseCache[key]) {
@@ -271,7 +283,7 @@ function getTerrainNoise2D(seedOffset) {
   return terrainNoiseCache[key];
 }
 
-function getTerrainValueNoise(x, y, scale, seedOffset) {
+export function getTerrainValueNoise(x, y, scale, seedOffset) {
   var normalizedScale = Math.max(1, Number(scale) || 1);
   var columnCount = Math.max(1, Math.ceil(WORLD_WIDTH / normalizedScale));
   var rowCount = Math.max(1, Math.ceil(WORLD_HEIGHT / normalizedScale));
@@ -295,7 +307,7 @@ function getTerrainValueNoise(x, y, scale, seedOffset) {
   return top + (bottom - top) * yAmount;
 }
 
-function getTerrainFractalNoise(x, y, scale, seedOffset, octaves, persistence) {
+export function getTerrainFractalNoise(x, y, scale, seedOffset, octaves, persistence) {
   var normalizedOctaves = Math.max(1, Math.round(Number(octaves) || 1));
   var normalizedPersistence = clamp(Number(persistence) || 0.5, 0.1, 0.9);
   var value = 0;

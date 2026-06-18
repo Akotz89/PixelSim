@@ -1,3 +1,8 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "./namespace.js";
+import { clamp } from "./utils.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.planet = PS.planet || {};
 PS.planet.metrics = PS.planet.metrics || {};
 

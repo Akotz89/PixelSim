@@ -1,3 +1,9 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { normalizeSeedText } from "../core/utils.js";
+import { world } from "../systems/state.js";
+import { updateHud } from "./foundation.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.hud = {

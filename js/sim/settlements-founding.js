@@ -1,5 +1,16 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getClampedBucketIndexes, getWrappedBucketIndexes } from "../render/planet-grid.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { countFoodInRadius } from "./food-runtime.js";
+import { ensureOrganismTraits } from "./organisms-traits.js";
+import { countChildOutposts, updateSettlementLevel, updateSettlementMetrics } from "./settlements-growth.js";
+// fallow-ignore-next-line circular-dependency
+import { refreshSettlementSummaryCache } from "./settlements-routes.js";
+import { allocateSettlementId, allocateSettlementRouteId, ensureSettlementState, getDistanceBetweenSettlements, getDistanceToSettlement, getLineageCenter, getOrganismsForLineage, getRootSettlementForLineage, getSettlementBucketSize, getSettlementClampedY, getSettlementRouteKey, getSettlementWrappedManhattanDistance, getSettlementWrappedX, registerSettlementInIndexes, registerSettlementRouteInIndex, registerSettlementRouteStats, restoreSettlementGrowthNumber } from "./settlements-state.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
-function makeSettlement(lineage, organisms) {
+export function makeSettlement(lineage, organisms) {
   var center = getLineageCenter(organisms);
   return makeSettlementAt(lineage.id, center.x, center.y, {
     parentSettlementId: 0,
@@ -7,13 +18,13 @@ function makeSettlement(lineage, organisms) {
   });
 }
 
-function makeSettlementAt(lineageId, x, y, options) {
+export function makeSettlementAt(lineageId, x, y, options) {
   options = options || {};
   return {
     id: allocateSettlementId(),
     lineageId: lineageId,
-    x: clamp(Math.round(x), 0, WORLD_WIDTH - 1),
-    y: clamp(Math.round(y), 0, WORLD_HEIGHT - 1),
+    x: getSettlementWrappedX(x),
+    y: getSettlementClampedY(y),
     foundedTick: world.tick,
     radius: CONFIG.SETTLEMENT_RADIUS,
     population: 0,
@@ -35,17 +46,51 @@ function makeSettlementAt(lineageId, x, y, options) {
   };
 }
 
-function canFoundSettlement(lineage) {
+export function getLineageSettlementTraitReadiness(lineageId) {
+  var organisms = getOrganismsForLineage(lineageId);
+  var count = organisms.length;
+  var totalIntelligence = 0;
+  var totalSociality = 0;
+
+  for (var i = 0; i < organisms.length; i++) {
+    var traits = ensureOrganismTraits(organisms[i]);
+    totalIntelligence += Number(traits.intelligence) || 0;
+    totalSociality += Number(traits.sociality) || 0;
+  }
+
+  return {
+    population: count,
+    intelligence: count > 0 ? totalIntelligence / count : 0,
+    sociality: count > 0 ? totalSociality / count : 0
+  };
+}
+
+export function isLineageSettlementReady(lineage) {
+  if (!lineage) {
+    return false;
+  }
+
+  var readiness = getLineageSettlementTraitReadiness(lineage.id);
+
+  lineage.settlementReadiness = readiness;
+  return (
+    readiness.intelligence >= CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE &&
+    readiness.sociality >= CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY
+  );
+}
+
+export function canFoundSettlement(lineage) {
   return (
     lineage &&
     lineage.activeCount >= CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION &&
     lineage.peakPopulation >= CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION &&
+    isLineageSettlementReady(lineage) &&
     !lineage.isExtinct &&
     !getRootSettlementForLineage(lineage.id)
   );
 }
 
-function foundSettlementForLineage(lineage) {
+export function foundSettlementForLineage(lineage) {
   var organisms = getOrganismsForLineage(lineage.id);
 
   if (organisms.length === 0) {
@@ -59,7 +104,7 @@ function foundSettlementForLineage(lineage) {
   return settlement;
 }
 
-function getDistanceToNearestSettlement(x, y, searchRadius) {
+export function getDistanceToNearestSettlement(x, y, searchRadius) {
   ensureSettlementState();
 
   var buckets = world.settlementBuckets;
@@ -69,14 +114,18 @@ function getDistanceToNearestSettlement(x, y, searchRadius) {
     isBoundedSearch
       ? searchRadius
       : Math.max(WORLD_WIDTH, WORLD_HEIGHT);
-  var minBucketX = Math.floor(Math.max(0, x - normalizedRadius) / bucketSize);
-  var maxBucketX = Math.floor(Math.min(WORLD_WIDTH - 1, x + normalizedRadius) / bucketSize);
-  var minBucketY = Math.floor(Math.max(0, y - normalizedRadius) / bucketSize);
-  var maxBucketY = Math.floor(Math.min(WORLD_HEIGHT - 1, y + normalizedRadius) / bucketSize);
+  var bucketXs = PS.worldGrid && typeof PS.worldGrid.getWrappedBucketIndexes === "function"
+    ? PS.worldGrid.getWrappedBucketIndexes(x, normalizedRadius, bucketSize, WORLD_WIDTH)
+    : [Math.floor(getSettlementWrappedX(x) / bucketSize)];
+  var bucketYs = PS.worldGrid && typeof PS.worldGrid.getClampedBucketIndexes === "function"
+    ? PS.worldGrid.getClampedBucketIndexes(y, normalizedRadius, bucketSize, WORLD_HEIGHT)
+    : [Math.floor(getSettlementClampedY(y) / bucketSize)];
   var nearestDistance = Infinity;
 
-  for (var bucketY = minBucketY; bucketY <= maxBucketY; bucketY++) {
-    for (var bucketX = minBucketX; bucketX <= maxBucketX; bucketX++) {
+  for (var bucketYIndex = 0; bucketYIndex < bucketYs.length; bucketYIndex++) {
+    for (var bucketXIndex = 0; bucketXIndex < bucketXs.length; bucketXIndex++) {
+      var bucketY = bucketYs[bucketYIndex];
+      var bucketX = bucketXs[bucketXIndex];
       var bucket = buckets[bucketX + ":" + bucketY];
 
       if (!bucket) {
@@ -85,7 +134,7 @@ function getDistanceToNearestSettlement(x, y, searchRadius) {
 
       for (var i = 0; i < bucket.length; i++) {
         var settlement = bucket[i];
-        var distance = Math.abs(settlement.x - x) + Math.abs(settlement.y - y);
+        var distance = getDistanceToSettlement(settlement, x, y);
 
         if (isBoundedSearch && distance > normalizedRadius) {
           continue;
@@ -101,21 +150,25 @@ function getDistanceToNearestSettlement(x, y, searchRadius) {
   return nearestDistance;
 }
 
-function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
+export function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
   ensureSettlementState();
 
   var buckets = world.settlementBuckets;
   var bucketSize = getSettlementBucketSize();
   var normalizedRadius = Math.max(0, Math.round(Number(searchRadius) || 0));
-  var minBucketX = Math.floor(Math.max(0, x - normalizedRadius) / bucketSize);
-  var maxBucketX = Math.floor(Math.min(WORLD_WIDTH - 1, x + normalizedRadius) / bucketSize);
-  var minBucketY = Math.floor(Math.max(0, y - normalizedRadius) / bucketSize);
-  var maxBucketY = Math.floor(Math.min(WORLD_HEIGHT - 1, y + normalizedRadius) / bucketSize);
+  var bucketXs = PS.worldGrid && typeof PS.worldGrid.getWrappedBucketIndexes === "function"
+    ? PS.worldGrid.getWrappedBucketIndexes(x, normalizedRadius, bucketSize, WORLD_WIDTH)
+    : [Math.floor(getSettlementWrappedX(x) / bucketSize)];
+  var bucketYs = PS.worldGrid && typeof PS.worldGrid.getClampedBucketIndexes === "function"
+    ? PS.worldGrid.getClampedBucketIndexes(y, normalizedRadius, bucketSize, WORLD_HEIGHT)
+    : [Math.floor(getSettlementClampedY(y) / bucketSize)];
   var nearestSettlement = null;
   var nearestDistance = Infinity;
 
-  for (var bucketY = minBucketY; bucketY <= maxBucketY; bucketY++) {
-    for (var bucketX = minBucketX; bucketX <= maxBucketX; bucketX++) {
+  for (var bucketYIndex = 0; bucketYIndex < bucketYs.length; bucketYIndex++) {
+    for (var bucketXIndex = 0; bucketXIndex < bucketXs.length; bucketXIndex++) {
+      var bucketY = bucketYs[bucketYIndex];
+      var bucketX = bucketXs[bucketXIndex];
       var bucket = buckets[bucketX + ":" + bucketY];
 
       if (!bucket) {
@@ -124,7 +177,7 @@ function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
 
       for (var i = 0; i < bucket.length; i++) {
         var settlement = bucket[i];
-        var distance = Math.abs(settlement.x - x) + Math.abs(settlement.y - y);
+        var distance = getDistanceToSettlement(settlement, x, y);
 
         if (distance > normalizedRadius) {
           continue;
@@ -145,7 +198,7 @@ function getNearestSettlementInRadius(x, y, searchRadius, requireInfluence) {
   return nearestSettlement;
 }
 
-function getNearestInfluencingSettlement(x, y) {
+export function getNearestInfluencingSettlement(x, y) {
   var summary = world.settlementSummary || refreshSettlementSummaryCache();
 
   if (!summary) {
@@ -160,11 +213,11 @@ function getNearestInfluencingSettlement(x, y) {
   );
 }
 
-function countFoodNearTile(x, y, radius) {
+export function countFoodNearTile(x, y, radius) {
   return countFoodInRadius(x, y, radius);
 }
 
-function getOutpostPlacement(parentSettlement) {
+export function getOutpostPlacement(parentSettlement) {
   var searchRadius = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_OUTPOST_SEARCH_RADIUS) || 1));
   var minDistance = Math.max(1, Math.round(Number(CONFIG.SETTLEMENT_OUTPOST_MIN_DISTANCE) || 1));
   var bestCandidate = null;
@@ -176,8 +229,8 @@ function getOutpostPlacement(parentSettlement) {
       var dxValues = dxMagnitude === 0 ? [0] : [-dxMagnitude, dxMagnitude];
 
       for (var dxIndex = 0; dxIndex < dxValues.length; dxIndex++) {
-        var candidateX = clamp(parentSettlement.x + dxValues[dxIndex], 0, WORLD_WIDTH - 1);
-        var candidateY = clamp(parentSettlement.y + dy, 0, WORLD_HEIGHT - 1);
+        var candidateX = getSettlementWrappedX(parentSettlement.x + dxValues[dxIndex]);
+        var candidateY = getSettlementClampedY(parentSettlement.y + dy);
 
         if (getDistanceToNearestSettlement(candidateX, candidateY, minDistance - 1) < minDistance) {
           continue;
@@ -186,8 +239,7 @@ function getOutpostPlacement(parentSettlement) {
         var score =
           countFoodNearTile(candidateX, candidateY, CONFIG.SETTLEMENT_RADIUS) * 4 +
           (isFertile(candidateX, candidateY) ? 2 : 0) -
-          Math.abs(parentSettlement.x - candidateX) * 0.01 -
-          Math.abs(parentSettlement.y - candidateY) * 0.01;
+          getSettlementWrappedManhattanDistance(parentSettlement.x, parentSettlement.y, candidateX, candidateY) * 0.01;
 
         if (score > bestScore) {
           bestScore = score;
@@ -203,7 +255,7 @@ function getOutpostPlacement(parentSettlement) {
   return bestCandidate;
 }
 
-function canFoundOutpost(settlement) {
+export function canFoundOutpost(settlement) {
   return (
     settlement &&
     settlement.isActive &&
@@ -215,7 +267,7 @@ function canFoundOutpost(settlement) {
   );
 }
 
-function foundOutpostFromSettlement(parentSettlement) {
+export function foundOutpostFromSettlement(parentSettlement) {
   if (!canFoundOutpost(parentSettlement)) {
     return null;
   }
@@ -226,7 +278,11 @@ function foundOutpostFromSettlement(parentSettlement) {
     return null;
   }
 
-  parentSettlement.storedFood = Math.max(0, parentSettlement.storedFood - CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
+  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
+    PS.sim.resources.recordFlow(parentSettlement, "food", "consumed", CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
+  } else {
+    parentSettlement.storedFood = Math.max(0, parentSettlement.storedFood - CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
+  }
   parentSettlement.development = Math.max(0, parentSettlement.development - CONFIG.SETTLEMENT_OUTPOST_DEVELOPMENT_COST);
   parentSettlement.lastOutpostTick = world.tick;
   updateSettlementLevel(parentSettlement);
@@ -241,7 +297,7 @@ function foundOutpostFromSettlement(parentSettlement) {
   return outpost;
 }
 
-function updateSettlementOutposts() {
+export function updateSettlementOutposts() {
   var settlementCount = world.settlements.length;
 
   for (var i = 0; i < settlementCount; i++) {
@@ -249,12 +305,12 @@ function updateSettlementOutposts() {
   }
 }
 
-function getSettlementRoute(parentSettlementId, childSettlementId) {
+export function getSettlementRoute(parentSettlementId, childSettlementId) {
   ensureSettlementState();
   return world.settlementRoutesByKey[getSettlementRouteKey(parentSettlementId, childSettlementId)] || null;
 }
 
-function makeSettlementRoute(parentSettlement, childSettlement) {
+export function makeSettlementRoute(parentSettlement, childSettlement) {
   return {
     id: allocateSettlementRouteId(),
     parentSettlementId: parentSettlement.id,
@@ -268,7 +324,7 @@ function makeSettlementRoute(parentSettlement, childSettlement) {
   };
 }
 
-function ensureSettlementRoute(parentSettlement, childSettlement) {
+export function ensureSettlementRoute(parentSettlement, childSettlement) {
   var route = getSettlementRoute(parentSettlement.id, childSettlement.id);
 
   if (!route) {
@@ -281,7 +337,7 @@ function ensureSettlementRoute(parentSettlement, childSettlement) {
   return route;
 }
 
-function normalizeSettlementRoute(route) {
+export function normalizeSettlementRoute(route) {
   var previousRouteKey = route._indexKey || getSettlementRouteKey(route.parentSettlementId, route.childSettlementId);
   route.parentSettlementId = Math.max(1, Math.round(restoreSettlementGrowthNumber(route.parentSettlementId, 1)));
   route.childSettlementId = Math.max(1, Math.round(restoreSettlementGrowthNumber(route.childSettlementId, 1)));

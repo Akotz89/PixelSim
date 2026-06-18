@@ -1,3 +1,7 @@
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPointToRotatedRectDistanceMeters, getPointToSegmentDistanceMeters, getSurfaceMeterCoordinate } from "./planet-surface.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceFeatureQuery = PS.render.surfaceFeatureQuery || {};
 

@@ -1,4 +1,10 @@
-function getGeologyConfig() {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp, hashSeedText } from "../core/utils.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+import "./registry.js";
+
+export function getGeologyConfig() {
   var constants = typeof CONFIG !== "undefined" ? CONFIG : {};
 
   return {
@@ -10,48 +16,33 @@ function getGeologyConfig() {
   };
 }
 
-function hashGeologySeed(seedText) {
+export function hashGeologySeed(seedText) {
   if (PS.math && typeof PS.math.hashSeedText === "function") {
     return PS.math.hashSeedText(seedText);
   }
 
-  var hash = 2166136261;
   var text = String(seedText || "PIXELDARIUM");
-
-  for (var i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0 || 1;
+  return text.split("").reduce(function (hash, character) {
+    return Math.imul(hash ^ character.charCodeAt(0), 16777619);
+  }, 2166136261) >>> 0 || 1;
 }
 
-function getGeologyNoise(a, b, c) {
-  if (PS.math && typeof PS.math.deterministicUnitNoise === "function") {
-    return PS.math.deterministicUnitNoise(a, b, c);
-  }
-
-  var value = Math.sin((Number(a) || 0) * 12.9898 + (Number(b) || 0) * 78.233 + (Number(c) || 0) * 37.719) * 43758.5453;
-
-  return value - Math.floor(value);
+export function getGeologyNoise(a, b, c) {
+  return PS.math && typeof PS.math.deterministicUnitNoise === "function" ? PS.math.deterministicUnitNoise(a, b, c) : 0;
 }
 
-function clampGeology(value, min, max) {
-  if (PS.math && typeof PS.math.clamp === "function") {
-    return PS.math.clamp(value, min, max);
-  }
-
-  return Math.max(min, Math.min(max, value));
+export function clampGeology(value, min, max) {
+  return PS.math && typeof PS.math.clamp === "function" ? PS.math.clamp(value, min, max) : Math.max(min, Math.min(max, value));
 }
 
-function getGeologyWorldSize() {
+export function getGeologyWorldSize() {
   return {
     width: Math.max(1, typeof WORLD_WIDTH === "number" ? WORLD_WIDTH : 320),
     height: Math.max(1, typeof WORLD_HEIGHT === "number" ? WORLD_HEIGHT : 170)
   };
 }
 
-function makeGeologyPlates(seedHash, config) {
+export function makeGeologyPlates(seedHash, config) {
   var size = getGeologyWorldSize();
   var minPlates = Math.min(config.plateMin, config.plateMax);
   var maxPlates = Math.max(config.plateMin, config.plateMax);
@@ -85,7 +76,7 @@ function makeGeologyPlates(seedHash, config) {
   return plates;
 }
 
-function classifyGeologyBoundary(plateA, plateB, index) {
+export function classifyGeologyBoundary(plateA, plateB, index) {
   if (plateA.type !== plateB.type) {
     return "subduction";
   }
@@ -101,7 +92,7 @@ function classifyGeologyBoundary(plateA, plateB, index) {
   return index % 4 === 2 ? "transform" : "collision";
 }
 
-function updateGeologyBoundaries(state) {
+export function updateGeologyBoundaries(state) {
   var plates = state.plates || [];
   var size = getGeologyWorldSize();
   var boundaries = [];
@@ -151,7 +142,7 @@ function updateGeologyBoundaries(state) {
   }).length * (1 + state.volcanicActivity));
 }
 
-function makeGeologyHotspots(seedHash) {
+export function makeGeologyHotspots(seedHash) {
   var size = getGeologyWorldSize();
   var hotspots = [];
   var count = 3 + (seedHash % 3);
@@ -168,7 +159,7 @@ function makeGeologyHotspots(seedHash) {
   return hotspots;
 }
 
-function findNearestGeologyPlate(x, y, plates) {
+export function findNearestGeologyPlate(x, y, plates) {
   var size = getGeologyWorldSize();
   var bestPlate = plates[0] || null;
   var bestDistance = Infinity;
@@ -189,7 +180,7 @@ function findNearestGeologyPlate(x, y, plates) {
   return bestPlate;
 }
 
-function annotateGeologyTiles(state) {
+export function annotateGeologyTiles(state) {
   if (!Array.isArray(world.planetTiles) || world.planetTiles.length === 0 || !state.plates.length) {
     return;
   }

@@ -1,0 +1,21 @@
+PS.assets.registerJSON("sim/configs/thermohaline.json", {
+  "width": 512,
+  "height": 512,
+  "initial_salinity_psu": 35,
+  "river_salinity_psu": 0,
+  "haline_diffusivity": 0.02,
+  "advection_scale": 0.25,
+  "evaporation_psu_per_tick": 0.007,
+  "precipitation_psu_per_tick": 0.01,
+  "river_freshening_psu_per_tick": 0.08,
+  "ice_brine_psu_per_tick": 0.006,
+  "ice_melt_psu_per_tick": 0.005,
+  "density_base": 1025,
+  "density_salinity_coeff": 0.8,
+  "density_temperature_coeff": -0.2,
+  "density_reference_salinity": 35,
+  "density_reference_temperature_c": 10,
+  "density_min": 1025,
+  "density_max": 1028.5,
+  "downwelling_density_threshold": 1027.5
+});

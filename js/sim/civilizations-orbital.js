@@ -1,5 +1,16 @@
+"use strict";
+// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
+// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
-function allocateOrbitalAssetId() {
+import { CONFIG } from "../../config.js";
+// fallow-ignore-next-line circular-dependency
+import { getCompletedProbeMissionCount } from "./civilizations-probes.js";
+// fallow-ignore-next-line circular-dependency
+import { ensureOrbitalState } from "./settlements-growth.js";
+import { restoreSettlementGrowthNumber } from "./settlements-state.js";
+import { world } from "../systems/state.js";
+
+export function allocateOrbitalAssetId() {
   ensureOrbitalState();
 
   var assetId = world.nextOrbitalAssetId;
@@ -7,7 +18,7 @@ function allocateOrbitalAssetId() {
   return assetId;
 }
 
-function normalizeOrbitalAsset(asset) {
+export function normalizeOrbitalAsset(asset) {
   asset.id = Math.max(1, Math.round(restoreSettlementGrowthNumber(asset.id, world.nextOrbitalAssetId)));
   asset.launchNumber = Math.max(1, Math.round(restoreSettlementGrowthNumber(asset.launchNumber, asset.id)));
   asset.launchedTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(asset.launchedTick, world.tick)));
@@ -21,7 +32,7 @@ function normalizeOrbitalAsset(asset) {
   }
 }
 
-function makeOrbitalAsset(launchNumber) {
+export function makeOrbitalAsset(launchNumber) {
   var assetId = allocateOrbitalAssetId();
 
   return {
@@ -35,7 +46,7 @@ function makeOrbitalAsset(launchNumber) {
   };
 }
 
-function ensureOrbitalAssetsForLaunches() {
+export function ensureOrbitalAssetsForLaunches() {
   ensureOrbitalState();
 
   for (var i = 0; i < world.orbitalAssets.length; i++) {
@@ -47,7 +58,7 @@ function ensureOrbitalAssetsForLaunches() {
   }
 }
 
-function updateOrbitalInfrastructureState() {
+export function updateOrbitalInfrastructureState() {
   ensureOrbitalAssetsForLaunches();
 
   var infrastructureScore = 0;
@@ -76,7 +87,7 @@ function updateOrbitalInfrastructureState() {
   updatePlanetarySurveyReadiness();
 }
 
-function ensurePlanetaryState() {
+export function ensurePlanetaryState() {
   if (!Array.isArray(world.planetaryBodies)) {
     world.planetaryBodies = [];
   }
@@ -94,7 +105,7 @@ function ensurePlanetaryState() {
   world.lastPlanetarySurveyTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.lastPlanetarySurveyTick, 0)));
 }
 
-function allocatePlanetaryBodyId() {
+export function allocatePlanetaryBodyId() {
   ensurePlanetaryState();
 
   var bodyId = world.nextPlanetaryBodyId;
@@ -102,11 +113,11 @@ function allocatePlanetaryBodyId() {
   return bodyId;
 }
 
-function getPlanetaryBodyName(bodyId) {
+export function getPlanetaryBodyName(bodyId) {
   return "P-" + String(100 + bodyId);
 }
 
-function normalizePlanetaryBody(body) {
+export function normalizePlanetaryBody(body) {
   body.id = Math.max(1, Math.round(restoreSettlementGrowthNumber(body.id, world.nextPlanetaryBodyId)));
   body.name = String(body.name || getPlanetaryBodyName(body.id));
   body.discoveredTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(body.discoveredTick, world.tick)));
@@ -120,7 +131,7 @@ function normalizePlanetaryBody(body) {
   }
 }
 
-function makePlanetaryBody() {
+export function makePlanetaryBody() {
   var bodyId = allocatePlanetaryBodyId();
 
   return {
@@ -134,7 +145,7 @@ function makePlanetaryBody() {
   };
 }
 
-function registerPlanetaryBodyInIndex(body) {
+export function registerPlanetaryBodyInIndex(body) {
   if (!body) {
     return;
   }
@@ -146,7 +157,7 @@ function registerPlanetaryBodyInIndex(body) {
   world.planetaryBodiesById[String(body.id)] = body;
 }
 
-function rebuildPlanetaryBodyIndexes() {
+export function rebuildPlanetaryBodyIndexes() {
   world.planetaryBodiesById = {};
 
   if (!Array.isArray(world.planetaryBodies)) {
@@ -160,7 +171,7 @@ function rebuildPlanetaryBodyIndexes() {
   return world.planetaryBodiesById;
 }
 
-function normalizePlanetaryBodies() {
+export function normalizePlanetaryBodies() {
   ensurePlanetaryState();
   world.planetaryBodiesById = {};
 
@@ -170,7 +181,7 @@ function normalizePlanetaryBodies() {
   }
 }
 
-function getDiscoveredPlanetaryBodyCount() {
+export function getDiscoveredPlanetaryBodyCount() {
   normalizePlanetaryBodies();
 
   var discoveredBodies = 0;
@@ -184,7 +195,7 @@ function getDiscoveredPlanetaryBodyCount() {
   return discoveredBodies;
 }
 
-function updatePlanetarySurveyEra() {
+export function updatePlanetarySurveyEra() {
   var discoveredBodies = getDiscoveredPlanetaryBodyCount();
 
   if (getCompletedProbeMissionCount() >= CONFIG.STELLAR_CARTOGRAPHY_MISSION_COUNT) {
@@ -198,7 +209,7 @@ function updatePlanetarySurveyEra() {
   }
 }
 
-function updatePlanetarySurveyReadiness() {
+export function updatePlanetarySurveyReadiness() {
   ensurePlanetaryState();
 
   world.planetarySurveyReady = Boolean(
@@ -211,7 +222,7 @@ function updatePlanetarySurveyReadiness() {
   return world.planetarySurveyReady;
 }
 
-function updatePlanetarySurveyState() {
+export function updatePlanetarySurveyState() {
   if (!updatePlanetarySurveyReadiness()) {
     return;
   }
@@ -242,7 +253,7 @@ function updatePlanetarySurveyState() {
   updatePlanetarySurveyReadiness();
 }
 
-function ensureProbeMissionState() {
+export function ensureProbeMissionState() {
   if (!Array.isArray(world.probeMissions)) {
     world.probeMissions = [];
   }
@@ -256,7 +267,7 @@ function ensureProbeMissionState() {
   world.lastProbeMissionTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.lastProbeMissionTick, 0)));
 }
 
-function allocateProbeMissionId() {
+export function allocateProbeMissionId() {
   ensureProbeMissionState();
 
   var missionId = world.nextProbeMissionId;
@@ -264,7 +275,7 @@ function allocateProbeMissionId() {
   return missionId;
 }
 
-function getPlanetaryBodyById(bodyId) {
+export function getPlanetaryBodyById(bodyId) {
   ensurePlanetaryState();
   var bodyKey = String(bodyId);
 
@@ -276,7 +287,7 @@ function getPlanetaryBodyById(bodyId) {
   return world.planetaryBodiesById[bodyKey] || null;
 }
 
-function getProbeMissionTargetBodyId() {
+export function getProbeMissionTargetBodyId() {
   normalizePlanetaryBodies();
 
   if (world.planetaryBodies.length === 0) {
@@ -287,7 +298,7 @@ function getProbeMissionTargetBodyId() {
   return world.planetaryBodies[targetIndex].id;
 }
 
-function normalizeProbeMission(mission) {
+export function normalizeProbeMission(mission) {
   mission.id = Math.max(1, Math.round(restoreSettlementGrowthNumber(mission.id, world.nextProbeMissionId)));
   mission.targetBodyId = Math.max(0, Math.round(restoreSettlementGrowthNumber(mission.targetBodyId, 0)));
   mission.launchedTick = Math.max(0, Math.round(restoreSettlementGrowthNumber(mission.launchedTick, world.tick)));

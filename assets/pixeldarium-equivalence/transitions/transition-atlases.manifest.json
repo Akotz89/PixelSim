@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "patternCount": 46,
+  "tileSize": 32,
+  "columns": 8,
+  "rows": 6,
+  "atlases": [
+    {
+      "from": "grass_lush",
+      "to": "sand",
+      "pair": "grass-sand",
+      "image": "grass-sand.png",
+      "atlas": "grass-sand.json",
+      "patternCount": 46
+    },
+    {
+      "from": "grass_lush",
+      "to": "water_shallow",
+      "pair": "grass-water",
+      "image": "grass-water.png",
+      "atlas": "grass-water.json",
+      "patternCount": 46
+    },
+    {
+      "from": "grass_lush",
+      "to": "rock",
+      "pair": "grass-rock",
+      "image": "grass-rock.png",
+      "atlas": "grass-rock.json",
+      "patternCount": 46
+    },
+    {
+      "from": "sand",
+      "to": "water_shallow",
+      "pair": "sand-water",
+      "image": "sand-water.png",
+      "atlas": "sand-water.json",
+      "patternCount": 46
+    },
+    {
+      "from": "snow",
+      "to": "rock",
+      "pair": "rock-snow",
+      "image": "rock-snow.png",
+      "atlas": "rock-snow.json",
+      "patternCount": 46
+    },
+    {
+      "from": "forest_floor",
+      "to": "grass_lush",
+      "pair": "grass-forest-floor",
+      "image": "grass-forest-floor.png",
+      "atlas": "grass-forest-floor.json",
+      "patternCount": 46
+    },
+    {
+      "from": "mud",
+      "to": "water_shallow",
+      "pair": "mud-water",
+      "image": "mud-water.png",
+      "atlas": "mud-water.json",
+      "patternCount": 46
+    },
+    {
+      "from": "volcanic",
+      "to": "rock",
+      "pair": "volcanic-rock",
+      "image": "volcanic-rock.png",
+      "atlas": "volcanic-rock.json",
+      "patternCount": 46
+    }
+  ]
+}

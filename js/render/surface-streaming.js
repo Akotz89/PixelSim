@@ -1,3 +1,8 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { getPlanetVisibleSurfaceChunks } from "./planet-surface.js";
+import { getPlanetViewPanVector } from "./planet-view.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceStreaming = PS.render.surfaceStreaming || {};
 

@@ -1,3 +1,10 @@
+import { PS } from "../core/namespace.js";
+import { clamp, hashSeedText } from "../core/utils.js";
+import { getPlanetTile } from "./planet-grid.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { getLatLonFromSurfaceMeterCoordinate, getTileFromLatLon, planetGroundFeatureBlockCache } from "./planet-view.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceFeatures = PS.render.surfaceFeatures || {};
 
@@ -14,15 +21,13 @@ PS.render.surfaceFeatures.getBlockCacheLimit = function () {
 };
 
 PS.render.surfaceFeatures.resetBlockCache = function () {
-  planetGroundFeatureBlockCache = {
-    blocks: {},
-    order: [],
-    stats: {
-      hits: 0,
-      misses: 0,
-      evictions: 0,
-      lastBlockKey: "-"
-    }
+  planetGroundFeatureBlockCache.blocks = {};
+  planetGroundFeatureBlockCache.order = [];
+  planetGroundFeatureBlockCache.stats = {
+    hits: 0,
+    misses: 0,
+    evictions: 0,
+    lastBlockKey: "-"
   };
 };
 
@@ -197,6 +202,13 @@ PS.render.surfaceFeatures.getFeatureOrientation = function (tile, type, blockEas
   };
 };
 
+/**
+ * @description Builds or retrieves a deterministic surface-feature block containing linework, vegetation hints, and geological feature samples for a meter-grid cell.
+ * @param {number} blockEast Easting of the requested block in surface meters.
+ * @param {number} blockNorth Northing of the requested block in surface meters.
+ * @param {number} blockMeters Requested block size in meters.
+ * @returns {Object} Cached feature block with seeded feature samples and metadata.
+ */
 PS.render.surfaceFeatures.getBlock = function (blockEast, blockNorth, blockMeters) {
   var normalizedBlockMeters = Math.max(16, Number(blockMeters) || PS.render.surfaceFeatures.getBlockMeters());
   var normalizedBlockEast = Math.round(Number(blockEast) || 0);

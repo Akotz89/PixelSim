@@ -1,27 +1,23 @@
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { normalizeAtmosphereGases } from "../layers/atmosphere.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
+
 PS.epochs = PS.epochs || {};
 
-var MICROBIAL_FIELD_WIDTH = 40;
-var MICROBIAL_FIELD_HEIGHT = 22;
-var MICROBIAL_MAX_POPULATIONS = 12;
+export var MICROBIAL_FIELD_WIDTH = 40;
+export var MICROBIAL_FIELD_HEIGHT = 22;
+export var MICROBIAL_MAX_POPULATIONS = 12;
 
-function clampMicrobial(value, min, max) {
-  if (PS.math && typeof PS.math.clamp === "function") {
-    return PS.math.clamp(value, min, max);
-  }
-
-  return Math.max(min, Math.min(max, value));
+export function clampMicrobial(value, min, max) {
+  return PS.math && typeof PS.math.clamp === "function" ? PS.math.clamp(value, min, max) : Math.max(min, Math.min(max, value));
 }
 
-function getMicrobialNoise(a, b, c) {
-  if (PS.math && typeof PS.math.deterministicUnitNoise === "function") {
-    return PS.math.deterministicUnitNoise(a, b, c);
-  }
-
-  var value = Math.sin((Number(a) || 0) * 12.9898 + (Number(b) || 0) * 78.233 + (Number(c) || 0) * 37.719) * 43758.5453;
-  return value - Math.floor(value);
+export function getMicrobialNoise(a, b, c) {
+  return PS.math && typeof PS.math.deterministicUnitNoise === "function" ? PS.math.deterministicUnitNoise(a, b, c) : 0;
 }
 
-function getMicrobialPrototypeEvaluation() {
+export function getMicrobialPrototypeEvaluation() {
   return {
     agentBased: {
       id: "agent",
@@ -52,17 +48,30 @@ function getMicrobialPrototypeEvaluation() {
   };
 }
 
-function makeMicrobialArray(length, value) {
-  var values = [];
+export function makeMicrobialArray(length, value) {
+  var values;
 
-  for (var i = 0; i < length; i++) {
-    values.push(value);
+  if (PS.core && typeof PS.core.makeFloatFieldArray === "function") {
+    return PS.core.makeFloatFieldArray(length, value);
   }
 
+  values = new Float32Array(Math.max(0, Math.round(Number(length) || 0)));
+  if (Number(value) !== 0) {
+    values.fill(Number(value) || 0);
+  }
   return values;
 }
 
-function getMicrobialInitialState() {
+export function normalizeMicrobialField(fields, name, cellCount) {
+  if (PS.core && typeof PS.core.normalizeFloatField === "function") {
+    PS.core.normalizeFloatField(fields, name, cellCount, makeMicrobialArray);
+    return;
+  }
+
+  fields[name] = makeMicrobialArray(cellCount, 0);
+}
+
+export function getMicrobialInitialState() {
   var cellCount = MICROBIAL_FIELD_WIDTH * MICROBIAL_FIELD_HEIGHT;
 
   return {
@@ -87,10 +96,22 @@ function getMicrobialInitialState() {
   };
 }
 
-function ensureMicrobialState() {
+export function ensureMicrobialState() {
+  var cellCount;
+
   if (!world.microbial || !world.microbial.fields) {
     world.microbial = getMicrobialInitialState();
   }
+
+  world.microbial.fieldWidth = Math.max(1, Math.round(Number(world.microbial.fieldWidth) || MICROBIAL_FIELD_WIDTH));
+  world.microbial.fieldHeight = Math.max(1, Math.round(Number(world.microbial.fieldHeight) || MICROBIAL_FIELD_HEIGHT));
+  cellCount = world.microbial.fieldWidth * world.microbial.fieldHeight;
+  world.microbial.fields = world.microbial.fields || {};
+  normalizeMicrobialField(world.microbial.fields, "density", cellCount);
+  normalizeMicrobialField(world.microbial.fields, "chemicalEnergy", cellCount);
+  normalizeMicrobialField(world.microbial.fields, "oxygenProduction", cellCount);
+  normalizeMicrobialField(world.microbial.fields, "stress", cellCount);
+  normalizeMicrobialField(world.microbial.fields, "bloomIntensity", cellCount);
 
   if (!Array.isArray(world.microbial.populations)) {
     world.microbial.populations = [];
@@ -116,7 +137,7 @@ function ensureMicrobialState() {
   return world.microbial;
 }
 
-function rebuildMicrobialPopulationIndex(state) {
+export function rebuildMicrobialPopulationIndex(state) {
   state.populationById = {};
 
   for (var i = 0; i < state.populations.length; i++) {
@@ -129,13 +150,13 @@ function rebuildMicrobialPopulationIndex(state) {
   }
 }
 
-function getMicrobialCellIndex(cellX, cellY, state) {
+export function getMicrobialCellIndex(cellX, cellY, state) {
   var x = clampMicrobial(Math.round(Number(cellX) || 0), 0, state.fieldWidth - 1);
   var y = clampMicrobial(Math.round(Number(cellY) || 0), 0, state.fieldHeight - 1);
   return y * state.fieldWidth + x;
 }
 
-function getMicrobialCellForTile(tileX, tileY) {
+export function getMicrobialCellForTile(tileX, tileY) {
   var state = ensureMicrobialState();
   var cellX = Math.floor((Number(tileX) || 0) / Math.max(1, WORLD_WIDTH) * state.fieldWidth);
   var cellY = Math.floor((Number(tileY) || 0) / Math.max(1, WORLD_HEIGHT) * state.fieldHeight);
@@ -153,7 +174,7 @@ function getMicrobialCellForTile(tileX, tileY) {
   };
 }
 
-function getMicrobialHydrothermalEnergy(cellX, cellY, state) {
+export function getMicrobialHydrothermalEnergy(cellX, cellY, state) {
   var geology = world.geology || {};
   var ventBoost = Math.max(0, Number(geology.hydrothermalVents) || 0) / 24;
   var volcanicBoost = Math.max(0, Number(geology.volcanicActivity) || 0) * 0.45;
@@ -163,7 +184,7 @@ function getMicrobialHydrothermalEnergy(cellX, cellY, state) {
   return clampMicrobial(0.08 + noise * 0.24 + ventBoost + volcanicBoost, 0, 1);
 }
 
-function getMicrobialStress(cellX, cellY) {
+export function getMicrobialStress(cellX, cellY) {
   var atmosphere = world.atmosphere || {};
   var temperature = Number(atmosphere.temperatureC);
   var oxygen = atmosphere.gases ? Number(atmosphere.gases.o2) || 0 : Number(atmosphere.oxygen) || 0;
@@ -174,7 +195,7 @@ function getMicrobialStress(cellX, cellY) {
   return clampMicrobial(temperatureStress + oxygenStress + latitudeStress, 0, 1);
 }
 
-function updateMicrobialFields(state, dt) {
+export function updateMicrobialFields(state, dt) {
   var timeStep = Math.max(0.25, Math.min(4, (Number(dt) || 16) / 1000));
   var totalDensity = 0;
   var totalOxygen = 0;
@@ -207,7 +228,7 @@ function updateMicrobialFields(state, dt) {
   state.totalOxygenProduction = totalOxygen;
 }
 
-function getTopMicrobialBloomCells(state) {
+export function getTopMicrobialBloomCells(state) {
   var cells = [];
 
   for (var y = 0; y < state.fieldHeight; y++) {
@@ -237,7 +258,7 @@ function getTopMicrobialBloomCells(state) {
   return cells.slice(0, MICROBIAL_MAX_POPULATIONS);
 }
 
-function syncMicrobialPopulations(state) {
+export function syncMicrobialPopulations(state) {
   var blooms = getTopMicrobialBloomCells(state);
   var populations = [];
 
@@ -281,7 +302,7 @@ function syncMicrobialPopulations(state) {
   rebuildMicrobialPopulationIndex(state);
 }
 
-function applyMicrobialAtmosphereOutput(state) {
+export function applyMicrobialAtmosphereOutput(state) {
   if (!world.atmosphere || !world.atmosphere.gases) {
     return;
   }
@@ -295,7 +316,7 @@ function applyMicrobialAtmosphereOutput(state) {
   }
 }
 
-function updateMicrobialEpoch(dt) {
+export function updateMicrobialEpoch(dt) {
   var state = ensureMicrobialState();
 
   state.ageTicks++;

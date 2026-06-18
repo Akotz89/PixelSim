@@ -1,3 +1,6 @@
+import { PS } from "./namespace.js";
+import { world } from "../systems/state.js";
+
 PS.assert = function (condition, message) {
   if (condition) {
     return;

@@ -1,10 +1,12 @@
-var PS = window.PS || {};
+"use strict";
+const globalScope = typeof window !== "undefined" ? window : globalThis;
+export var PS = globalScope.PS || {};
 
 PS.meta = PS.meta || {};
 PS.meta.name = "Pixeldarium";
 PS.meta.version = PS.meta.version || "0.1.0";
 
-window.PS = PS;
+globalScope.PS = PS;
 
 PS.core = PS.core || {};
 PS.core.bootstrapScript = "js/core/namespace.js";
@@ -26,18 +28,23 @@ PS.core.manifest = [
   "js/core/animation.js",
   "js/assets/registry.js",
   "js/assets/loader.js",
+  "js/core/data-loader.js",
   "js/assets/sprite-sheet.js",
   "js/assets/equivalence.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/systems/world.js",
   "js/core/utils.js",
+  "js/core/trait-schema.js",
   "js/core/world-grid.js",
+  "js/core/bitsmap.js",
   "js/core/planet-metrics.js",
   "js/systems/spatial.js",
   "js/systems/pool-manager.js",
   "js/systems/pools.js",
   "js/systems/tile-grid.js",
   "js/systems/persistence-db.js",
+  "js/systems/persistence-config.js",
   "js/systems/save-migration.js",
   "js/systems/persistence-save-data.js",
   "js/systems/persistence-restore-core.js",
@@ -47,8 +54,6 @@ PS.core.manifest = [
   "js/systems/time.js",
   "js/systems/deep-time.js",
   "js/render/ranmap.js",
-  "js/render/sprite-shaders.js",
-  "js/render/sprite-batch.js",
   "js/render/tile-iterator.js",
   "js/render/particles.js",
   "js/render/entity-atlas.js",
@@ -65,29 +70,53 @@ PS.core.manifest = [
   "js/render/planet-grid.js",
   "js/render/terrain-hydrology.js",
   "js/render/terrain-seeding.js",
-  "js/render/pipeline-compat.js",
-  "js/render/shader-manager.js",
-  "js/render/gl.js",
-  "js/render/webgl-presenter.js",
-  "js/render/webgl-engine.js",
-  "js/render/webgl-targets.js",
-  "js/render/webgl-compositor.js",
-  "js/render/webgl-gbuffer.js",
-  "js/render/webgl-globe-shaders.js",
-  "js/render/webgl-globe.js",
+  "js/render/renderer.js",
+  "js/render/gpu.js",
+  "js/render/canvas-resize.js",
+  "js/render/wgsl-shader-manager.js",
+  "js/render/webgpu-targets.js",
+  "js/render/webgpu-gbuffer.js",
+  "js/render/lighting-cycle.js",
+  "js/render/webgpu-compositor.js",
+  "js/render/webgpu-tile-lights.js",
+  "js/render/webgpu-point-lights.js",
+  "js/render/webgpu-water-displacement.js",
+  "js/render/webgpu-entity.js",
+  "js/render/webgpu-globe.js",
+  "js/render/webgpu-surface-underlay.js",
+  "js/render/water-rendering.js",
+  "js/render/shadow-stamping.js",
+  "js/render/mountain-render.js",
+  "js/render/surface-tile-batcher.js",
+  "js/render/webgpu-surface-tile.js",
+  "js/render/webgpu-renderer.js",
+  "js/render/webgpu-pipeline.js",
+  "js/sim/compute-harness.js",
+  "js/sim/parameter-registry.js",
+  "js/sim/gpu-sim-runtime.js",
+  "js/sim/heat-diffusion.js",
+  "js/sim/lbm-ocean.js",
+  "js/sim/thermohaline.js",
+  "js/sim/reaction-diffusion.js",
+  "js/sim/moisture.js",
+  "js/sim/pixel-ca.js",
+  "js/sim/biome-lut.js",
+  "js/sim/geochemistry.js",
+  "js/sim/molecular-dynamics.js",
+  "js/sim/lenia.js",
+  "js/sim/environment-drivers.js",
+  "wasm/pixeldarium-sim.js",
+  "wasm/pixeldarium-sim.wasm.js",
+  "js/sim/wasm-bridge.js",
+  "js/sim/sim-worker-client.js",
+  "js/sim/coupling.js",
   "js/render/surface-worker-client.js",
   "js/render/surface-ecology.js",
-  "js/render/surface-underlay-webgl.js",
   "js/render/surface-ready-feather.js",
-  "js/render/surface-tile-webgl.js",
-  "js/render/entity-webgl.js",
-  "js/render/entity-webgl-readiness.js",
-  "js/render/entity-webgl-events.js",
-  "js/render/renderer.js",
-  "js/render/webgl2-renderer.js",
   "js/render/draw-order.js",
   "js/render/camera.js",
   "js/render/lod.js",
+  "js/render/proof-scenes.js",
   "js/render/projection.js",
   "js/render/surface-address.js",
   "js/render/surface-cache.js",
@@ -98,6 +127,7 @@ PS.core.manifest = [
   "js/render/surface-streaming.js",
   "js/render/surface-render-cache.js",
   "js/render/terrain.js",
+  "js/render/surface-base.js",
   "js/render/surface-landform.js",
   "js/render/surface-imagery.js",
   "js/render/surface-color.js",
@@ -107,22 +137,39 @@ PS.core.manifest = [
   "js/render/surface-natural.js",
   "js/render/surface-hydrology.js",
   "js/render/surface-transitions.js",
+  "js/render/terrain-transitions.js",
+  "js/render/autotile.js",
   "js/render/surface-material.js",
   "js/render/surface-relief.js",
   "js/render/entities.js",
+  "js/render/vegetation-cells.js",
+  "js/render/vegetation-shadows.js",
+  "js/render/vegetation-overlays.js",
+  "js/render/vegetation-draw-list.js",
+  "js/render/vegetation-render.js",
+  "js/render/environment-overlays.js",
+  "js/render/minimap.js",
   "js/render/pipeline.js",
   "js/sim/food-runtime.js",
+  "js/sim/vegetation.js",
   "js/sim/tile-worker.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/sim/resource-registry.js",
   "js/sim/modifiers.js",
   "js/sim/trait-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
+  "js/sim/organism-ai.js",
+  "js/sim/terrain-pressure.js",
+  "js/sim/speciation.js",
+  "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js",
   "js/sim/representatives.js",
+  "js/sim/lineage-tracking.js",
   "js/sim/settlements-state.js",
   "js/sim/settlements-growth.js",
   "js/sim/civilizations-orbital.js",
@@ -136,6 +183,8 @@ PS.core.manifest = [
   "js/sim/civilizations.js",
   "js/core/world-gen.js",
   "js/epochs/registry.js",
+  "sim/configs/epoch-configs.json.js",
+  "js/epochs/state-machine.js",
   "js/epochs/primordial.js",
   "js/epochs/microbial.js",
   "js/layers/registry.js",
@@ -146,14 +195,22 @@ PS.core.manifest = [
   "js/ui/panel-manager.js",
   "js/ui/tooltip.js",
   "js/ui/modal.js",
+  "js/ui/statistics-dashboard.js",
+  "js/ui/summary-html.js",
   "js/ui/summary.js",
+  "js/ui/evolutionary-tree.js",
   "js/ui/history-summary.js",
   "js/ui/inspect-history.js",
+  "js/ui/inspect.js",
+  "js/ui/camera-input.js",
+  "js/ui/persistence-controls.js",
+  "js/ui/export-capture.js",
   "js/ui/interaction.js",
   "js/ui/touch.js",
   "js/ui/spotlight.js",
   "js/ui/observation-overlays.js",
   "js/ui/timeline.js",
+  "js/ui/bookmarks.js",
   "js/ui/setup.js",
   "js/ui/hud.js",
   "js/ui/panels.js",
@@ -174,6 +231,70 @@ PS.core.manifest = [
 
 PS.runtime = PS.runtime || {};
 PS.runtime.errors = PS.runtime.errors || [];
+PS.runtime.requiredFunctions = PS.runtime.requiredFunctions || [
+  "PS.init",
+  "PS.gpu.initialize",
+  "PS.sim.organisms.make",
+  "PS.sim.settlements.update",
+  "PS.sim.evolution.inheritTraits",
+  "PS.render.terrain.draw",
+  "PS.render.pipeline.drawWorld",
+  "PS.render.renderer.getActive",
+  "PS.camera.getZoomLevel",
+  "PS.persistence.save",
+  "PS.time.runFrame",
+  "PS.events.detectMilestones"
+];
+
+PS.runtime.resolvePath = function (pathName) {
+  var parts = String(pathName || "").split(".");
+  var cursor = parts[0] === "PS" ? PS : window[parts[0]];
+
+  for (var i = 1; i < parts.length; i++) {
+    if (!cursor) {
+      return undefined;
+    }
+
+    cursor = cursor[parts[i]];
+  }
+
+  return cursor;
+};
+
+PS.runtime.verify = function (requiredFunctions) {
+  var required = Array.isArray(requiredFunctions) ? requiredFunctions : PS.runtime.requiredFunctions;
+  var missing = [];
+
+  for (var i = 0; i < required.length; i++) {
+    if (typeof PS.runtime.resolvePath(required[i]) !== "function") {
+      missing.push(required[i]);
+    }
+  }
+
+  var result = {
+    ok: missing.length === 0,
+    missing: missing
+  };
+
+  PS.runtime.lastVerification = result;
+
+  if (!result.ok) {
+    var message = "Missing runtime functions: " + missing.join(", ");
+
+    if (PS.log && typeof PS.log === "function") {
+      PS.log("runtime", "WARN", message, { missing: missing });
+    }
+
+    if (typeof PS.runtime.recordError === "function") {
+      PS.runtime.recordError("runtime.verify.missing", {
+        message: message,
+        missing: missing
+      });
+    }
+  }
+
+  return result;
+};
 
 PS.runtime.recordError = function (kind, payload) {
   var entry = {

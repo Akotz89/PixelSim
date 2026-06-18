@@ -1,3 +1,11 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getDeterministicUnitNoise, getPlanetSurfaceChunkSampleAtAddress } from "./planet-surface.js";
+import { getLocalSurfaceRenderChunkKey } from "./surface-render-cache.js";
+import { getPlanetVisualSeedOffset } from "./terrain.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceWorker = PS.render.surfaceWorker || {};
 
@@ -200,6 +208,22 @@ PS.render.surfaceWorker.ensure = function () {
     state.lastError = String(error && error.message ? error.message : error);
     return false;
   }
+};
+
+PS.render.surfaceWorker.terminate = function (reason) {
+  var state = PS.render.surfaceWorker.state;
+  var worker = state.worker;
+
+  if (worker && typeof worker.terminate === "function") {
+    worker.terminate();
+  }
+
+  state.worker = null;
+  state.pending = {};
+  state.inFlight = 0;
+  state.supported = null;
+  state.lastError = reason ? "surface worker terminated: " + String(reason) : "";
+  return Boolean(worker);
 };
 
 PS.render.surfaceWorker.makeChunkPayload = function (address) {

@@ -1,3 +1,7 @@
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "./state.js";
+
 PS.systems = PS.systems || {};
 
 PS.deepTime = (function() {
@@ -133,8 +137,6 @@ PS.deepTime = (function() {
     }
     if (PS.render && PS.render.terrain && typeof PS.render.terrain.invalidateCache === "function") {
       PS.render.terrain.invalidateCache();
-    } else if (typeof invalidateTerrainCache === "function") {
-      invalidateTerrainCache();
     }
     world.needsRender = true;
     return true;

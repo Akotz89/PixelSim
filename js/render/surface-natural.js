@@ -1,3 +1,10 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getDeterministicUnitNoise, getSurfaceMeterCoordinate, normalizePlanetLineAngleRadians } from "./planet-surface.js";
+import { createDeterministicSwatches, getStringSeed } from "./surface-base.js";
+import { blendHexColors, getPlanetVisualSeedOffset } from "./terrain.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceNatural = PS.render.surfaceNatural || {};
 
@@ -173,43 +180,47 @@ PS.render.surfaceNatural.getElementSwatches = function (sample, baseColor) {
   var element = detail.naturalElement || null;
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
   var density = clamp(Number(element && element.density) || 0, 0, 1);
-  var swatches = [];
-  var seedEast = Math.round(Number(sample && sample.surfaceSampleX) || 0);
-  var seedNorth = Math.round(Number(sample && sample.surfaceSampleY) || 0);
   var type = element && element.type ? element.type : "none";
-  var typeSeed = String(type).split("").reduce(function(total, character) {
-    return total + character.charCodeAt(0);
-  }, 0);
+  var typeSeed = getStringSeed(type);
   var count = density <= 0.18 ? 0 : clamp(Math.round(1 + density * 5), 1, 6);
 
   if (!element || type === "none" || sampleMeters > 5 || CONFIG.TILE_SIZE < 4 || count <= 0) {
-    return swatches;
+    return [];
   }
 
-  for (var i = 0; i < count; i++) {
-    var noise = getDeterministicUnitNoise(seedEast + i * 29, seedNorth - i * 31, getPlanetVisualSeedOffset() + typeSeed + 5303 + i * 17);
-    var shape = PS.render.surfaceNatural.getElementShape(type, noise, i);
-    var maxX = Math.max(1, CONFIG.TILE_SIZE - shape.width + 1);
-    var maxY = Math.max(1, CONFIG.TILE_SIZE - shape.height + 1);
-
-    if (i > 0 && noise > density + 0.42) {
-      continue;
+  return createDeterministicSwatches({
+    sample: sample,
+    count: count,
+    seedExtra: typeSeed,
+    noiseBase: 5303,
+    noiseEastStep: 29,
+    noiseNorthStep: -31,
+    noiseSeedStep: 17,
+    xBase: 5417,
+    xEastStep: -13,
+    xNorthStep: 11,
+    yBase: 5521,
+    yEastStep: 7,
+    yNorthStep: -19,
+    shouldSkip: function(noise) {
+      return noise > density + 0.42;
+    },
+    getShape: function(noise, index) {
+      return PS.render.surfaceNatural.getElementShape(type, noise, index);
+    },
+    getColor: function(noise) {
+      return blendHexColors(baseColor, element.color || "#d9e7ff", clamp(0.18 + density * 0.28 + noise * 0.10, 0.18, 0.54));
+    },
+    getAlpha: function(noise) {
+      return clamp((Number(element.alpha) || 0.18) + noise * 0.08, 0.12, 0.50);
+    },
+    getRotationRadians: function(noise, index) {
+      return PS.render.surfaceNatural.getElementRotation(element, type, noise, index);
+    },
+    getExtraProperties: function() {
+      return { elementType: type };
     }
-
-    swatches.push({
-      x: Math.floor(getDeterministicUnitNoise(seedEast - i * 13, seedNorth + i * 11, getPlanetVisualSeedOffset() + typeSeed + 5417 + i) * maxX),
-      y: Math.floor(getDeterministicUnitNoise(seedEast + i * 7, seedNorth - i * 19, getPlanetVisualSeedOffset() + typeSeed + 5521 + i) * maxY),
-      width: shape.width,
-      height: shape.height,
-      size: Math.max(shape.width, shape.height),
-      color: blendHexColors(baseColor, element.color || "#d9e7ff", clamp(0.18 + density * 0.28 + noise * 0.10, 0.18, 0.54)),
-      alpha: clamp((Number(element.alpha) || 0.18) + noise * 0.08, 0.12, 0.50),
-      rotationRadians: PS.render.surfaceNatural.getElementRotation(element, type, noise, i),
-      elementType: type
-    });
-  }
-
-  return swatches;
+  });
 };
 
 PS.render.surfaceNatural.getLandmarkType = function (sample) {
@@ -295,10 +306,7 @@ PS.render.surfaceNatural.getLandmarkShape = function (landmarkType, noise) {
 PS.render.surfaceNatural.getLandmarkSwatches = function (sample, baseColor) {
   var detail = sample && sample.detail ? sample.detail : {};
   var sampleMeters = Math.max(1, Number(sample && sample.surfaceSampleMeters) || Number(detail.sampleMeters) || 1);
-  var swatches = [];
   var landmarkType = PS.render.surfaceNatural.getLandmarkType(sample);
-  var seedEast = Math.round(Number(sample && sample.surfaceSampleX) || 0);
-  var seedNorth = Math.round(Number(sample && sample.surfaceSampleY) || 0);
   var strength = clamp(
     0.22 +
       getPlanetSurfaceBiomeTransitionStrength(sample) * 0.24 +
@@ -311,26 +319,33 @@ PS.render.surfaceNatural.getLandmarkSwatches = function (sample, baseColor) {
   var count = sampleMeters <= 5 ? 3 : (sampleMeters <= 25 ? 2 : 0);
 
   if (count <= 0 || CONFIG.TILE_SIZE < 4) {
-    return swatches;
+    return [];
   }
 
-  for (var i = 0; i < count; i++) {
-    var noise = getDeterministicUnitNoise(seedEast + i * 37, seedNorth - i * 41, getPlanetVisualSeedOffset() + 6101 + i * 23);
-    var shape = PS.render.surfaceNatural.getLandmarkShape(landmarkType, noise);
-    var maxX = Math.max(1, CONFIG.TILE_SIZE - shape.width + 1);
-    var maxY = Math.max(1, CONFIG.TILE_SIZE - shape.height + 1);
-
-    swatches.push({
-      x: Math.floor(getDeterministicUnitNoise(seedEast - i * 11, seedNorth + i * 13, getPlanetVisualSeedOffset() + 6203 + i) * maxX),
-      y: Math.floor(getDeterministicUnitNoise(seedEast + i * 17, seedNorth - i * 19, getPlanetVisualSeedOffset() + 6311 + i) * maxY),
-      width: shape.width,
-      height: shape.height,
-      size: Math.max(shape.width, shape.height),
-      color: PS.render.surfaceNatural.getLandmarkColor(landmarkType, baseColor, noise),
-      alpha: clamp(0.16 + strength * 0.24 + noise * 0.08, 0.16, 0.48),
-      landmarkType: landmarkType
-    });
-  }
-
-  return swatches;
+  return createDeterministicSwatches({
+    sample: sample,
+    count: count,
+    noiseBase: 6101,
+    noiseEastStep: 37,
+    noiseNorthStep: -41,
+    noiseSeedStep: 23,
+    xBase: 6203,
+    xEastStep: -11,
+    xNorthStep: 13,
+    yBase: 6311,
+    yEastStep: 17,
+    yNorthStep: -19,
+    getShape: function(noise) {
+      return PS.render.surfaceNatural.getLandmarkShape(landmarkType, noise);
+    },
+    getColor: function(noise) {
+      return PS.render.surfaceNatural.getLandmarkColor(landmarkType, baseColor, noise);
+    },
+    getAlpha: function(noise) {
+      return clamp(0.16 + strength * 0.24 + noise * 0.08, 0.16, 0.48);
+    },
+    getExtraProperties: function() {
+      return { landmarkType: landmarkType };
+    }
+  });
 };

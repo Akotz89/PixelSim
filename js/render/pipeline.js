@@ -1,3 +1,7 @@
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+import "./draw-order.js";
+
 PS.render = PS.render || {};
 PS.render.pipeline = PS.render.pipeline || {};
 PS.render.pipeline.layers = PS.render.pipeline.layers || [];
@@ -9,10 +13,13 @@ PS.render.pipeline.stats = PS.render.pipeline.stats || {
   lodTierIndex: 0,
   transitionAlpha: 0,
   preloadSurfaceLodIndex: 0,
+  visualLevel: "SURFACE",
+  visualBudgetMs: 16,
   submittedLayers: 0,
   skippedLayers: 0,
   blendedLayers: 0,
-  lastFrameMs: 0
+  lastFrameMs: 0,
+  zoomFrame: null
 };
 
 PS.render.pipeline.bandOrder = {
@@ -140,8 +147,12 @@ PS.render.pipeline.getLodState = function () {
   var preloadIndex = PS.render.lod && typeof PS.render.lod.getPreloadSurfaceLodIndex === "function"
     ? PS.render.lod.getPreloadSurfaceLodIndex()
     : 0;
+  var visualPolicy = PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
+    ? PS.render.lod.getVisualPolicy(zoomLevel)
+    : { level: "SURFACE", renderBudgetMs: 16, transitionAlpha: 0 };
+  var lodState;
 
-  return {
+  lodState = {
     zoomLevel: zoomLevel,
     zoomBand: PS.render.pipeline.getZoomBand(zoomLevel),
     tier: tier,
@@ -154,8 +165,17 @@ PS.render.pipeline.getLodState = function () {
     transitionAlpha: Number(tier.transitionAlpha) || 0,
     blendFromPrevious: Number(tier.blendFromPrevious) || 0,
     blendToNext: Number(tier.blendToNext) || 0,
-    preloadSurfaceLodIndex: preloadIndex
+    preloadSurfaceLodIndex: preloadIndex,
+    visualPolicy: visualPolicy,
+    visualLevel: visualPolicy.level,
+    visualBudgetMs: visualPolicy.renderBudgetMs
   };
+
+  lodState.zoomFrame = PS.render.lod && typeof PS.render.lod.getFrameContract === "function"
+    ? PS.render.lod.getFrameContract(zoomLevel, { lodState: lodState })
+    : null;
+
+  return lodState;
 };
 
 PS.render.pipeline.isLayerInBand = function (layer, band) {
@@ -211,16 +231,41 @@ PS.render.pipeline.publishFrameStats = function (lodState, frameStats, elapsed) 
   stats.lodTierIndex = lodState.tierIndex;
   stats.transitionAlpha = lodState.transitionAlpha;
   stats.preloadSurfaceLodIndex = lodState.preloadSurfaceLodIndex;
+  stats.visualLevel = lodState.visualLevel;
+  stats.visualBudgetMs = lodState.visualBudgetMs;
   stats.submittedLayers = frameStats.submittedLayers;
   stats.skippedLayers = frameStats.skippedLayers;
   stats.blendedLayers = frameStats.blendedLayers;
   stats.lastFrameMs = elapsed;
+  stats.zoomFrame = lodState.zoomFrame || (PS.render.lod && typeof PS.render.lod.getFrameContract === "function"
+    ? PS.render.lod.getFrameContract(lodState.zoomLevel, {
+      lodState: lodState,
+      frameStats: frameStats,
+      elapsed: elapsed
+    })
+    : null);
+  if (stats.zoomFrame) {
+    stats.zoomFrame.frameStats = {
+      submittedLayers: frameStats.submittedLayers,
+      skippedLayers: frameStats.skippedLayers,
+      blendedLayers: frameStats.blendedLayers,
+      elapsedMs: elapsed
+    };
+    if (PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function") {
+      stats.zoomFrame.readiness = Object.assign({}, stats.zoomFrame.readiness || {}, {
+        coverage: PS.render.surfaceRender.getCacheStats()
+      });
+    }
+  }
 
   if (PS.render.renderer && PS.render.renderer.active && PS.render.renderer.active.stats) {
     PS.render.renderer.active.stats.lodTier = stats.lodTier;
     PS.render.renderer.active.stats.lodTierIndex = stats.lodTierIndex;
     PS.render.renderer.active.stats.lodTransitionAlpha = stats.transitionAlpha;
     PS.render.renderer.active.stats.preloadSurfaceLodIndex = stats.preloadSurfaceLodIndex;
+    PS.render.renderer.active.stats.visualLodLevel = stats.visualLevel;
+    PS.render.renderer.active.stats.visualLodBudgetMs = stats.visualBudgetMs;
+    PS.render.renderer.active.stats.zoomFrame = stats.zoomFrame;
   }
 
   return stats;
@@ -276,6 +321,9 @@ PS.render.pipeline.drawWorld = function () {
   };
 
   if (PS.render.renderer && typeof PS.render.renderer.beginFrame === "function") {
+    if (PS.render.renderer.active && PS.render.renderer.active.stats) {
+      PS.render.renderer.active.stats.zoomFrame = lodState.zoomFrame;
+    }
     PS.render.renderer.beginFrame(PS.camera && PS.camera.unified ? PS.camera.unified.getState() : null);
   }
 
@@ -297,6 +345,14 @@ PS.render.pipeline.drawWorld = function () {
     (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt
   );
 };
+
+if (typeof globalThis !== "undefined") {
+  globalThis.drawWorld = drawWorld;
+}
+
+export function drawWorld() {
+  PS.render.pipeline.drawWorld();
+}
 
 PS.render.pipeline.rebuildShaders = function () {};
 
@@ -326,15 +382,14 @@ PS.render.getSubsystems = function () {
   return [
     PS.camera,
     PS.render.lod,
-    PS.render.webglEngine,
-    PS.render.webglCompositor,
-    PS.render.webglGbuffer,
-    PS.render.webglGlobe,
-    PS.render.surfaceUnderlayWebgl,
-    PS.render.surfaceTileWebgl,
-    PS.render.entityWebgl,
+    PS.render.webgpuGlobe,
+    PS.render.webgpuSurfaceUnderlay,
+    PS.render.webgpuSurfaceTile,
+    PS.render.webgpuPointLights,
+    PS.render.webgpuWaterDisplacement,
+    PS.render.webgpuEntity,
+    PS.render.webgpuRenderer,
     PS.render.renderer,
-    PS.render.webgl2Renderer,
     PS.render.terrain,
     PS.render.surfaceStreaming,
     PS.render.entities,
@@ -349,7 +404,7 @@ PS.render.pipeline.registerLayer("terrain.base", {
   semantic: "base terrain, biome, elevation, water, and local surface materials",
   minTier: "galaxy",
   maxTier: "local",
-  draw: function () { PS.render.terrain.draw(); }
+  draw: function (lodState) { PS.render.terrain.draw(lodState); }
 });
 
 PS.render.pipeline.registerLayer("overlays.reference", {
@@ -360,6 +415,86 @@ PS.render.pipeline.registerLayer("overlays.reference", {
   minTier: "galaxy",
   maxTier: "local",
   draw: function () {}
+});
+
+PS.render.pipeline.registerLayer("vegetation.world", {
+  order: 35,
+  drawLayer: PS.render.DrawLayer.VEGETATION_TRUNK,
+  family: "vegetation",
+  semantic: "Y-sorted world vegetation trunks, bushes, rocks, and tree canopy split passes",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function (lodState) { PS.render.vegetation.draw(lodState); }
+});
+
+PS.render.pipeline.registerLayer("vegetation.grass", {
+  order: 34,
+  drawLayer: PS.render.DrawLayer.TERRAIN_DECORATION,
+  family: "vegetation",
+  semantic: "4-bit grass density overlay tinted over terrain below world vegetation",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function (lodState) {
+    if (PS.render.vegetation && typeof PS.render.vegetation.drawGrassOverlay === "function") {
+      PS.render.vegetation.drawGrassOverlay(lodState);
+    }
+  }
+});
+
+PS.render.pipeline.registerLayer("environment.snow", {
+  order: 33,
+  drawLayer: PS.render.DrawLayer.TERRAIN_DECORATION,
+  family: "environment",
+  semantic: "threshold-based snow overlay with 2-bit base noise and context suppression",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawSnowOverlay === "function") {
+      PS.render.environmentOverlays.drawSnowOverlay();
+    }
+  }
+});
+
+PS.render.pipeline.registerLayer("water.displacement", {
+  order: 32,
+  drawLayer: PS.render.DrawLayer.WATER_SURFACE,
+  family: "water",
+  semantic: "shader-driven wind-scrolled water displacement passes",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function (lodState) {
+    if (PS.render.webgpuWaterDisplacement && typeof PS.render.webgpuWaterDisplacement.draw === "function") {
+      PS.render.webgpuWaterDisplacement.draw({ loadOp: "load", lodState: lodState });
+    }
+  }
+});
+
+PS.render.pipeline.registerLayer("environment.ice", {
+  order: 32.5,
+  drawLayer: PS.render.DrawLayer.WATER_SURFACE,
+  family: "environment",
+  semantic: "deterministic threshold ice overlay with water-local autotile masks",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function () {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawIceOverlay === "function") {
+      PS.render.environmentOverlays.drawIceOverlay();
+    }
+  }
+});
+
+PS.render.pipeline.registerLayer("environment.cloudShadows", {
+  order: 36,
+  drawLayer: PS.render.DrawLayer.SHADOW,
+  family: "environment",
+  semantic: "scrolling cloud shadow overlay from the environment system",
+  minTier: "continent",
+  maxTier: "local",
+  draw: function (lodState) {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawCloudShadowOverlay === "function") {
+      PS.render.environmentOverlays.drawCloudShadowOverlay(lodState);
+    }
+  }
 });
 
 PS.render.pipeline.registerLayer("settlement.shadows", {
@@ -389,6 +524,8 @@ PS.render.pipeline.registerLayer("settlement.routes", {
   drawLayer: PS.render.DrawLayer.ROUTE_OVERLAY,
   family: "settlement",
   semantic: "routes, paths, and supply links",
+  minBand: "region",
+  maxBand: "settlement",
   minTier: "region",
   maxTier: "local",
   draw: function () { PS.render.entities.drawSettlementRoutes(); }
@@ -507,6 +644,7 @@ PS.render.pipeline.registerLayer("weather.particles", {
   maxTier: "local",
   draw: function () {
     if (PS.render.particles) {
+      PS.render.particles.emitFallingLeaves(PS.render.pipeline.getLodState());
       PS.render.particles.update(1 / 60);
       PS.render.particles.render(PS.camera && PS.camera.unified ? PS.camera.unified.getState() : null);
     }
@@ -539,10 +677,29 @@ PS.render.pipeline.registerLayer("lighting.ambient", {
   order: 110,
   drawLayer: PS.render.DrawLayer.PARTICLE_BELOW,
   family: "lighting",
-  semantic: "day/night cycle tint overlay",
+  semantic: "additive point lights over the deferred WebGPU terrain composite",
   minTier: "galaxy",
   maxTier: "local",
-  draw: function () {}
+  draw: function (lodState) {
+    if (PS.render.webgpuPointLights && typeof PS.render.webgpuPointLights.drawQueued === "function") {
+      var policy = lodState && lodState.visualPolicy ? lodState.visualPolicy : {};
+      var pointLightScale = policy.pointLightScale !== undefined ? policy.pointLightScale : 1;
+
+      if (Math.max(0, Number(pointLightScale) || 0) <= 0) {
+        if (typeof PS.render.webgpuPointLights.takeQueuedLights === "function") {
+          PS.render.webgpuPointLights.takeQueuedLights();
+        }
+        return;
+      }
+
+      PS.render.webgpuPointLights.drawQueued({
+        loadOp: "load",
+        pointLightScale: pointLightScale,
+        pointLightExposureScale: pointLightScale,
+        lodState: lodState
+      });
+    }
+  }
 });
 
 PS.render.pipeline.registerLayer("status.selection", {
@@ -588,5 +745,9 @@ PS.render.pipeline.registerLayer("ui.minimap", {
   maxBand: "settlement",
   minTier: "region",
   maxTier: "local",
-  draw: function () {}
+  draw: function (lodState, alpha) {
+    if (PS.render.minimap && typeof PS.render.minimap.draw === "function") {
+      PS.render.minimap.draw(lodState, alpha);
+    }
+  }
 });

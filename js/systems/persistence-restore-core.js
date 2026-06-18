@@ -1,5 +1,14 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTileCenterLatLon, normalizeLongitude } from "../render/planet-view.js";
+import { makeFood } from "../sim/food-runtime.js";
+import { countSettlementClaimedTiles, getSettlementInfluenceRadius } from "../sim/settlements-state.js";
+import { openPixeldariumDatabase, PIXELDARIUM_SAVE_STORE } from "./persistence-db.js";
+import { createWorldSaveData } from "./persistence-save-data.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
 
-function saveWorldToIndexedDB() {
+export function saveWorldToIndexedDB() {
   return openPixeldariumDatabase().then(function(db) {
     return new Promise(function(resolve, reject) {
       var saveData = createWorldSaveData();
@@ -21,11 +30,11 @@ function saveWorldToIndexedDB() {
   });
 }
 
-function validateWorldSaveData(saveData) {
+export function validateWorldSaveData(saveData) {
   return PS.systems.saveMigration.validate(saveData);
 }
 
-function restoreFood(food) {
+export function restoreFood(food) {
   var tileX = clamp(Math.round(restoreNumber(food.x, 0)), 0, WORLD_WIDTH - 1);
   var tileY = clamp(Math.round(restoreNumber(food.y, 0)), 0, WORLD_HEIGHT - 1);
   var restoredFood = makeFood(tileX, tileY);
@@ -36,12 +45,12 @@ function restoreFood(food) {
   return restoredFood;
 }
 
-function restoreNumber(value, fallback) {
+export function restoreNumber(value, fallback) {
   var numberValue = Number(value);
   return Number.isFinite(numberValue) ? numberValue : fallback;
 }
 
-function getRestoredSurfacePosition(source, tileX, tileY) {
+export function getRestoredSurfacePosition(source, tileX, tileY) {
   var latitude = Number(source && source.latitude);
   var longitude = Number(source && source.longitude);
 
@@ -55,87 +64,15 @@ function getRestoredSurfacePosition(source, tileX, tileY) {
   return getPlanetTileCenterLatLon(tileX, tileY);
 }
 
-function restoreClampedNumber(value, fallback, minValue, maxValue) {
+export function restoreClampedNumber(value, fallback, minValue, maxValue) {
   return clamp(restoreNumber(value, fallback), minValue, maxValue);
 }
 
-function restoreOrganismTraits(traits) {
-  traits = traits || {};
-
-  return {
-    vision: restoreClampedNumber(
-      traits.vision,
-      CONFIG.TRAIT_VISION_DEFAULT,
-      CONFIG.TRAIT_VISION_MIN,
-      CONFIG.TRAIT_VISION_MAX
-    ),
-    metabolism: restoreClampedNumber(
-      traits.metabolism,
-      CONFIG.TRAIT_METABOLISM_DEFAULT,
-      CONFIG.TRAIT_METABOLISM_MIN,
-      CONFIG.TRAIT_METABOLISM_MAX
-    ),
-    reproductionEnergy: restoreClampedNumber(
-      traits.reproductionEnergy,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MIN,
-      CONFIG.TRAIT_REPRODUCTION_ENERGY_MAX
-    ),
-    movementTendency: restoreClampedNumber(
-      traits.movementTendency,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MIN,
-      CONFIG.TRAIT_MOVEMENT_TENDENCY_MAX
-    ),
-    terrainAffinity: restoreClampedNumber(
-      traits.terrainAffinity,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MIN,
-      CONFIG.TRAIT_TERRAIN_AFFINITY_MAX
-    ),
-    bodySize: restoreClampedNumber(
-      traits.bodySize,
-      CONFIG.TRAIT_BODY_SIZE_DEFAULT,
-      CONFIG.TRAIT_BODY_SIZE_MIN,
-      CONFIG.TRAIT_BODY_SIZE_MAX
-    ),
-    limbCount: clamp(
-      Math.round(restoreNumber(traits.limbCount, CONFIG.TRAIT_LIMB_COUNT_DEFAULT)),
-      CONFIG.TRAIT_LIMB_COUNT_MIN,
-      CONFIG.TRAIT_LIMB_COUNT_MAX
-    ),
-    bodyShape: clamp(
-      Math.round(restoreNumber(traits.bodyShape, CONFIG.TRAIT_BODY_SHAPE_DEFAULT)),
-      CONFIG.TRAIT_BODY_SHAPE_MIN,
-      CONFIG.TRAIT_BODY_SHAPE_MAX
-    ),
-    appendageType: clamp(
-      Math.round(restoreNumber(traits.appendageType, CONFIG.TRAIT_APPENDAGE_TYPE_DEFAULT)),
-      CONFIG.TRAIT_APPENDAGE_TYPE_MIN,
-      CONFIG.TRAIT_APPENDAGE_TYPE_MAX
-    ),
-    camouflage: restoreClampedNumber(
-      traits.camouflage,
-      CONFIG.TRAIT_CAMOUFLAGE_DEFAULT,
-      CONFIG.TRAIT_CAMOUFLAGE_MIN,
-      CONFIG.TRAIT_CAMOUFLAGE_MAX
-    ),
-    thermalTolerance: restoreClampedNumber(
-      traits.thermalTolerance,
-      CONFIG.TRAIT_THERMAL_TOLERANCE_DEFAULT,
-      CONFIG.TRAIT_THERMAL_TOLERANCE_MIN,
-      CONFIG.TRAIT_THERMAL_TOLERANCE_MAX
-    ),
-    waterDependency: restoreClampedNumber(
-      traits.waterDependency,
-      CONFIG.TRAIT_WATER_DEPENDENCY_DEFAULT,
-      CONFIG.TRAIT_WATER_DEPENDENCY_MIN,
-      CONFIG.TRAIT_WATER_DEPENDENCY_MAX
-    )
-  };
+export function restoreOrganismTraits(traits) {
+  return PS.core.traitSchema.restore(traits);
 }
 
-function restoreLineageRecord(lineage) {
+export function restoreLineageRecord(lineage) {
   lineage = lineage || {};
 
   var id = Math.max(1, Math.round(restoreNumber(lineage.id, 1)));
@@ -162,7 +99,7 @@ function restoreLineageRecord(lineage) {
   return record;
 }
 
-function restoreLineages(lineages) {
+export function restoreLineages(lineages) {
   var restoredLineages = {};
 
   if (!Array.isArray(lineages)) {
@@ -181,7 +118,7 @@ function restoreLineages(lineages) {
   return restoredLineages;
 }
 
-function restoreSettlement(settlement) {
+export function restoreSettlement(settlement) {
   settlement = settlement || {};
 
   var restoredSettlement = {
@@ -237,7 +174,7 @@ function restoreSettlement(settlement) {
   return restoredSettlement;
 }
 
-function restoreSettlements(settlements) {
+export function restoreSettlements(settlements) {
   if (!Array.isArray(settlements)) {
     return [];
   }
@@ -245,7 +182,7 @@ function restoreSettlements(settlements) {
   return settlements.map(restoreSettlement);
 }
 
-function restoreSettlementRoute(route) {
+export function restoreSettlementRoute(route) {
   route = route || {};
 
   var restoredRoute = {
@@ -267,7 +204,7 @@ function restoreSettlementRoute(route) {
   return restoredRoute;
 }
 
-function restoreSettlementRoutes(routes) {
+export function restoreSettlementRoutes(routes) {
   if (!Array.isArray(routes)) {
     return [];
   }
@@ -275,7 +212,7 @@ function restoreSettlementRoutes(routes) {
   return routes.map(restoreSettlementRoute);
 }
 
-function restoreOrbitalAsset(asset) {
+export function restoreOrbitalAsset(asset) {
   asset = asset || {};
 
   var restoredAsset = {
@@ -295,7 +232,7 @@ function restoreOrbitalAsset(asset) {
   return restoredAsset;
 }
 
-function restoreOrbitalAssets(assets) {
+export function restoreOrbitalAssets(assets) {
   if (!Array.isArray(assets)) {
     return [];
   }
@@ -303,7 +240,7 @@ function restoreOrbitalAssets(assets) {
   return assets.map(restoreOrbitalAsset);
 }
 
-function restorePlanetaryBody(body) {
+export function restorePlanetaryBody(body) {
   body = body || {};
 
   var id = Math.max(1, Math.round(restoreNumber(body.id, world.nextPlanetaryBodyId)));

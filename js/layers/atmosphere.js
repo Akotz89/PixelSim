@@ -1,4 +1,10 @@
-function getAtmosphereConfig() {
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { world } from "../systems/state.js";
+import "./registry.js";
+
+export function getAtmosphereConfig() {
   var constants = typeof CONFIG !== "undefined" ? CONFIG : {};
 
   return {
@@ -10,15 +16,11 @@ function getAtmosphereConfig() {
   };
 }
 
-function clampAtmosphere(value, min, max) {
-  if (PS.math && typeof PS.math.clamp === "function") {
-    return PS.math.clamp(value, min, max);
-  }
-
-  return Math.max(min, Math.min(max, value));
+export function clampAtmosphere(value, min, max) {
+  return PS.math && typeof PS.math.clamp === "function" ? PS.math.clamp(value, min, max) : Math.max(min, Math.min(max, value));
 }
 
-function getAtmosphereInitialState() {
+export function getAtmosphereInitialState() {
   var config = getAtmosphereConfig();
 
   return {
@@ -51,7 +53,7 @@ function getAtmosphereInitialState() {
   };
 }
 
-function normalizeAtmosphereGases(state) {
+export function normalizeAtmosphereGases(state) {
   var gases = state.gases;
   var total =
     Math.max(0, Number(gases.co2) || 0) +
@@ -84,7 +86,7 @@ function normalizeAtmosphereGases(state) {
   state.sulfur = gases.sulfur;
 }
 
-function getAtmosphereVolcanicActivity() {
+export function getAtmosphereVolcanicActivity() {
   if (world.geology && Number.isFinite(Number(world.geology.volcanicActivity))) {
     return Math.max(0, Number(world.geology.volcanicActivity));
   }
@@ -92,7 +94,7 @@ function getAtmosphereVolcanicActivity() {
   return 0.08;
 }
 
-function isPhotosyntheticOrganism(organism) {
+export function isPhotosyntheticOrganism(organism) {
   if (!organism) {
     return false;
   }
@@ -106,7 +108,7 @@ function isPhotosyntheticOrganism(organism) {
   return Boolean(traits.photosynthesis || traits.photosynthetic || traits.chlorophyll);
 }
 
-function getPhotosyntheticBiomass() {
+export function getPhotosyntheticBiomass() {
   if (!Array.isArray(world.organisms)) {
     return 0;
   }
@@ -124,7 +126,7 @@ function getPhotosyntheticBiomass() {
   return biomass;
 }
 
-function applyAtmosphereChemistry(state, timeStep) {
+export function applyAtmosphereChemistry(state, timeStep) {
   var gases = state.gases;
   var volcanicActivity = getAtmosphereVolcanicActivity();
   var outgassing = volcanicActivity * state.config.outgassingRate * timeStep;
@@ -154,7 +156,7 @@ function applyAtmosphereChemistry(state, timeStep) {
   normalizeAtmosphereGases(state);
 }
 
-function updateAtmosphereTemperature(state) {
+export function updateAtmosphereTemperature(state) {
   var greenhouse =
     Math.log(1 + state.gases.co2 * 52) * 6.2 +
     Math.log(1 + state.gases.ch4 * 180) * 4.4 +
@@ -166,7 +168,7 @@ function updateAtmosphereTemperature(state) {
   state.temperatureC = clampAtmosphere(4 + greenhouse, -60, 95);
 }
 
-function applyAtmosphereOrganismSurvival(state, timeStep) {
+export function applyAtmosphereOrganismSurvival(state, timeStep) {
   if (!Array.isArray(world.organisms) || world.organisms.length === 0) {
     state.oxygenStress = state.gases.o2 >= state.config.organismO2Requirement ? 0 : 1;
     return;
@@ -203,6 +205,32 @@ function applyAtmosphereOrganismSurvival(state, timeStep) {
   state.anoxiaDeaths += deaths;
 }
 
+export function syncAtmosphereAliases(state) {
+  var gases = state.gases || {};
+  state.carbonDioxidePpm = Number.isFinite(Number(state.carbonDioxidePpm)) ? Number(state.carbonDioxidePpm) : gases.co2 * 1000000;
+  state.oxygenPercent = Number.isFinite(Number(state.oxygenPercent)) ? Number(state.oxygenPercent) : gases.o2 * 100;
+  state.ozoneIndex = Number.isFinite(Number(state.ozoneIndex)) ? Number(state.ozoneIndex) : gases.o3;
+  return state;
+}
+
+export function applyAtmosphereGeochemistrySummary(state) {
+  var geochemistry = PS.sim && PS.sim.geochemistry;
+  var summary = geochemistry && geochemistry.state && geochemistry.state.summary;
+
+  if (!summary) {
+    syncAtmosphereAliases(state);
+    return state;
+  }
+
+  state.carbonDioxidePpm = summary.co2Ppm;
+  state.oxygenPercent = summary.oxygenPercent;
+  state.methanePpm = summary.ch4Ppm;
+  state.sulfurDioxidePpm = summary.so2Ppm;
+  state.oceanPh = summary.oceanPh;
+  state.debugOverlayRows = summary.debugOverlayRows;
+  return state;
+}
+
 PS.layers.atmosphere = PS.layers.register("atmosphere", {
   family: "planet",
   alwaysOn: true,
@@ -221,13 +249,26 @@ PS.layers.atmosphere = PS.layers.register("atmosphere", {
     var deltaMs = Math.max(0, Number(dt) || 0);
     var timeStep = deltaMs > 0 ? deltaMs / 1000 : 1 / 30;
 
-    state.ageTicks += 1;
-    state.geologicalTimeMy += timeStep;
-    state.lastDeltaMs = deltaMs;
+    world.isAtmosphereUpdating = true;
+    world.epochAtmospherePhase = "updating";
 
-    applyAtmosphereChemistry(state, timeStep);
-    updateAtmosphereTemperature(state);
-    applyAtmosphereOrganismSurvival(state, timeStep);
+    try {
+      state.ageTicks += 1;
+      state.geologicalTimeMy += timeStep;
+      state.lastDeltaMs = deltaMs;
+
+      applyAtmosphereChemistry(state, timeStep);
+      updateAtmosphereTemperature(state);
+      applyAtmosphereOrganismSurvival(state, timeStep);
+      applyAtmosphereGeochemistrySummary(state);
+    } finally {
+      world.isAtmosphereUpdating = false;
+      world.epochAtmospherePhase = "idle";
+    }
+
+    if (PS.epochs && typeof PS.epochs.flushPendingEpochAtmosphere === "function") {
+      PS.epochs.flushPendingEpochAtmosphere();
+    }
 
     return state;
   },

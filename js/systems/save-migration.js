@@ -1,6 +1,11 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clonePersistencePlainValue, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_VERSION } from "./persistence-db.js";
+import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
+
 PS.systems = PS.systems || {};
 
-function getTerrainTileIdForSave(terrainValue) {
+export function getTerrainTileIdForSave(terrainValue) {
   if (typeof terrainValue === "string") {
     return terrainValue;
   }
@@ -12,7 +17,7 @@ function getTerrainTileIdForSave(terrainValue) {
   return "rock";
 }
 
-function getTerrainTileIdsForSave(terrain) {
+export function getTerrainTileIdsForSave(terrain) {
   var source = Array.isArray(terrain) ? terrain : [];
   var tileIds = new Array(source.length);
 
@@ -23,7 +28,7 @@ function getTerrainTileIdsForSave(terrain) {
   return tileIds;
 }
 
-function normalizeMigratedOrganism(organism) {
+export function normalizeMigratedOrganism(organism) {
   var target = organism || {};
 
   if (!target.entityType) {
@@ -37,8 +42,8 @@ function normalizeMigratedOrganism(organism) {
   return target;
 }
 
-function cloneSaveDataForMigration(saveData) {
-  return JSON.parse(JSON.stringify(saveData));
+export function cloneSaveDataForMigration(saveData) {
+  return clonePersistencePlainValue(saveData);
 }
 
 PS.systems.saveMigration = {
@@ -161,6 +166,15 @@ PS.systems.saveMigration.register(1, 2, function (data) {
 
 PS.systems.saveMigration.register(2, 3, function (data) {
   data.terrainTileIds = getTerrainTileIdsForSave(data.terrain);
+
+  // Ensure epoch state defaults for pre-epoch saves (AZR-1105)
+  if (data.era === undefined) {
+    data.era = "Organisms";
+  }
+  if (data.epochScaling === undefined) {
+    data.epochScaling = null;
+  }
+
   data.version = 3;
   return data;
 });

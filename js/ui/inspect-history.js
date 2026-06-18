@@ -1,5 +1,21 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getPlanetTile } from "../render/planet-grid.js";
+import { getPlanetChunkKeyForTile, getPlanetGroundFeatureDimensionLabel, getPlanetGroundFeatureSummary, getPlanetSurfaceChunkLineage, getPlanetSurfaceChunkLineageLabel, getPlanetSurfaceDetail } from "../render/planet-surface.js";
+import { getEntitySurfacePosition, getPlanetCameraScaleInfo, getPlanetDistanceLabel, getPlanetLatitudeForTile, getPlanetLocalSurfaceAddress, getPlanetLongitudeForTile, getPlanetScaleLabel, getPlanetSurfaceCacheStats, isPlanetLocalView } from "../render/planet-view.js";
+import { isFertile } from "../render/terrain-hydrology.js";
+import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
+import { foodExistsAt } from "../sim/food-growth.js";
+import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { world } from "../systems/state.js";
+import { eventLogText, inspectDetailsText, inspectSummaryText, traitHistoryCanvas } from "./dom-refs.js";
+import { getNearestOrganismToTile, getNearestSettlementToTile, setElementClass, setElementHtml, setElementText } from "./foundation.js";
+import { makeEventChip } from "./history-summary.js";
+import { getInspectSurfacePosition, getInspectSurfacePositionLabel } from "./inspect.js";
+import { formatOrganismTraits, getDistanceLabel, getLocalInspectContext, getPopulationTraitSummary, getRouteSummaryForSettlement, getSettlementSummary, makeInspectChip } from "./summary.js";
 
-function updateEventLog() {
+export function updateEventLog() {
   var events = Array.isArray(world.eventLog) ? world.eventLog : [];
 
   if (events.length === 0) {
@@ -20,7 +36,7 @@ function updateEventLog() {
   setElementHtml(eventLogText, chips.join(""));
 }
 
-function makeTraitHistorySample(summary) {
+export function makeTraitHistorySample(summary) {
   return {
     tick: world.tick,
     population: world.organisms.length,
@@ -28,16 +44,26 @@ function makeTraitHistorySample(summary) {
     metabolism: summary.metabolism,
     reproductionEnergy: summary.reproductionEnergy,
     movementTendency: summary.movementTendency,
-    terrainAffinity: summary.terrainAffinity
+    terrainAffinity: summary.terrainAffinity,
+    intelligence: summary.intelligence,
+    sociality: summary.sociality,
+    carnivory: summary.carnivory,
+    bodySize: summary.bodySize,
+    limbCount: summary.limbCount,
+    bodyShape: summary.bodyShape,
+    appendageType: summary.appendageType,
+    camouflage: summary.camouflage,
+    thermalTolerance: summary.thermalTolerance,
+    waterDependency: summary.waterDependency
   };
 }
 
-function resetTraitHistory() {
+export function resetTraitHistory() {
   world.traitHistory = [];
   drawTraitHistory();
 }
 
-function recordTraitHistorySample(force) {
+export function recordTraitHistorySample(force) {
   var summary = getPopulationTraitSummary();
 
   if (!summary) {
@@ -63,7 +89,7 @@ function recordTraitHistorySample(force) {
   drawTraitHistory();
 }
 
-function scaleTraitValue(value, minValue, maxValue, height) {
+export function scaleTraitValue(value, minValue, maxValue, height) {
   if (maxValue <= minValue) {
     return height / 2;
   }
@@ -73,11 +99,11 @@ function scaleTraitValue(value, minValue, maxValue, height) {
   return height - normalized * height;
 }
 
-function drawTraitHistoryLine(samples, getValue, minValue, maxValue, color, chart) {
+export function drawTraitHistoryLine(samples, getValue, minValue, maxValue, color, chart) {
   return null;
 }
 
-function drawTraitHistory() {
+export function drawTraitHistory() {
   var samples = Array.isArray(world.traitHistory) ? world.traitHistory : [];
   var latest = samples.length ? samples[samples.length - 1] : null;
 
@@ -88,11 +114,18 @@ function drawTraitHistory() {
   traitHistoryCanvas.textContent = latest
     ? "TRAIT HISTORY: vision " + Number(latest.vision || 0).toFixed(1) +
       " metabolism " + Number(latest.metabolism || 0).toFixed(1) +
-      " reproduce " + Number(latest.reproductionEnergy || 0).toFixed(0)
+      " reproduce " + Number(latest.reproductionEnergy || 0).toFixed(0) +
+      " intelligence " + Number(latest.intelligence || 0).toFixed(2) +
+      " sociality " + Number(latest.sociality || 0).toFixed(2) +
+      " carnivory " + Number(latest.carnivory || 0).toFixed(2)
     : "TRAIT HISTORY: Waiting for samples";
 }
 
-function updateInspectPanel() {
+/**
+ * @description Rebuilds the inspect side panel from the currently selected tile, including terrain, organism, lineage, settlement, and trait-history details.
+ * @returns {void} Updates cached DOM text and classes in place.
+ */
+export function updateInspectPanel() {
   if (!world.inspectedTile) {
     setElementClass(inspectDetailsText, "");
     setElementText(inspectSummaryText, "INSPECT: None");
@@ -110,7 +143,15 @@ function updateInspectPanel() {
   var localContext = getLocalInspectContext(tileX, tileY);
   var planetScaleInfo = getPlanetCameraScaleInfo();
   var planetCacheStats = getPlanetSurfaceCacheStats();
-  var renderCacheStats = getLocalSurfaceRenderCacheStats();
+  var renderCacheStats = PS.render && PS.render.surfaceRender && typeof PS.render.surfaceRender.getCacheStats === "function"
+    ? PS.render.surfaceRender.getCacheStats()
+    : {
+      chunks: 0,
+      lastVisibleChunks: 0,
+      lastPendingChunks: 0,
+      lastGeneratedThisPass: 0,
+      lastFallbackChunks: 0
+    };
   var inspectedEntity = world.inspectedEntity;
   var inspectedPyramidLineage = isPlanetLocalView()
     ? getPlanetSurfaceChunkLineage(getPlanetLocalSurfaceAddress(tileX, tileY).address)
@@ -153,15 +194,37 @@ function updateInspectPanel() {
     var representativeRecord = representativeContext ? representativeContext.representative : null;
     var populationRecord = representativeContext ? representativeContext.population : null;
     var pressure = populationRecord && populationRecord.pressure ? populationRecord.pressure : null;
+    var foodWeb = populationRecord && populationRecord.foodWeb ? populationRecord.foodWeb : null;
+    var speciesRecord = PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function"
+      ? PS.sim.speciation.getSpecies(organism.speciesId)
+      : null;
 
     detailChips.push(makeInspectChip("Organism", "L" + ensureOrganismLineage(organism) + parentText));
     detailChips.push(makeInspectChip("Rep ID", representativeRecord ? "R" + representativeRecord.id : "-"));
     detailChips.push(makeInspectChip("Population", populationRecord ? "P" + populationRecord.id + " count " + populationRecord.count : "-"));
     detailChips.push(makeInspectChip("Species", organism.speciesId ? "S" + organism.speciesId : "-"));
+    detailChips.push(makeInspectChip("Parent Species", speciesRecord && speciesRecord.parentId ? "S" + speciesRecord.parentId : "-"));
+    detailChips.push(makeInspectChip("Speciation", populationRecord && populationRecord.speciation ? populationRecord.speciation.cause + " d" + populationRecord.speciation.divergence.toFixed(2) : (speciesRecord ? speciesRecord.cause : "-")));
     detailChips.push(makeInspectChip("Rep State", representativeRecord ? representativeRecord.behavior : "-"));
     detailChips.push(makeInspectChip("Rep Pin", representativeRecord && representativeRecord.pinned ? "pinned" : "open"));
     detailChips.push(makeInspectChip("Bookmark", representativeRecord ? representativeRecord.bookmarkScore.toFixed(2) : "0.00"));
+    detailChips.push(makeInspectChip("Morphology", representativeRecord && representativeRecord.morphologyPreview ? representativeRecord.morphologyPreview.label : "-"));
+    detailChips.push(makeInspectChip("Trophic Role", foodWeb ? foodWeb.role : "-"));
+    detailChips.push(makeInspectChip("Food Web", foodWeb ? "balance " + foodWeb.trophicBalance + " predator " + foodWeb.predatorPressure.toFixed(2) + " " + foodWeb.recoveryTrend : "-"));
     detailChips.push(makeInspectChip("Agg Pressure", pressure ? "food " + pressure.food + " scarcity " + pressure.scarcity.toFixed(2) + " terrain " + pressure.terrain.toFixed(2) : "-"));
+    detailChips.push(makeInspectChip("Terrain Driver", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.terrainDriver : "-"));
+    detailChips.push(makeInspectChip("Selection", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.dominantTrait + " p" + populationRecord.terrainPressure.pressure.toFixed(2) + " iso " + populationRecord.terrainPressure.isolation.toFixed(2) : "-"));
+    if (PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
+      var extinctionSummary = PS.sim.massExtinction.getSummary();
+      var extinctionLatest = extinctionSummary.latest;
+      var recoveryWindow = extinctionSummary.recoveryWindow;
+      var populationExtinctionLoss = extinctionLatest && extinctionLatest.losses && extinctionLatest.losses.byPopulation
+        ? extinctionLatest.losses.byPopulation[String(organism.populationId)] || 0
+        : 0;
+
+      detailChips.push(makeInspectChip("Extinction", extinctionLatest ? extinctionLatest.eventType + " -" + populationExtinctionLoss : "-"));
+      detailChips.push(makeInspectChip("Recovery", recoveryWindow && recoveryWindow.survivorPopulationIds.indexOf(organism.populationId) >= 0 ? "radiating to T" + recoveryWindow.endTick : "-"));
+    }
     detailChips.push(makeInspectChip("Org Unit", "~" + Math.max(1, Math.round(Number(CONFIG.ORGANISM_POPULATION_UNIT) || 1)).toLocaleString()));
     detailChips.push(makeInspectChip("Org Energy", organism.energy));
     detailChips.push(makeInspectChip("Org Age", Math.round(organism.age * Math.max(0, Number(CONFIG.SIM_DAYS_PER_TICK) || 0)).toLocaleString() + " days"));
@@ -170,7 +233,7 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Org Pos", organism.x + "," + organism.y));
     detailChips.push(makeInspectChip("Org Lat/Lon", organismSurfacePosition ? organismSurfacePosition.latitude.toFixed(4) + " / " + organismSurfacePosition.longitude.toFixed(4) : "-"));
     detailChips.push(makeInspectChip("Org Dir", organism.directionX + "," + organism.directionY));
-    detailChips.push(makeInspectChip("Org Traits", "V" + traits.vision + " M" + traits.metabolism + " R" + traits.reproductionEnergy + " roam " + traits.movementTendency.toFixed(2) + " hab " + traits.terrainAffinity.toFixed(2)));
+    detailChips.push(makeInspectChip("Org Traits", formatOrganismTraits(organism)));
   } else {
     detailChips.push(makeInspectChip("Organism", "none"));
   }
@@ -189,6 +252,12 @@ function updateInspectPanel() {
     detailChips.push(makeInspectChip("Population", settlement.population));
     detailChips.push(makeInspectChip("Nearby Food", settlement.foodStock));
     detailChips.push(makeInspectChip("Stored", settlement.storedFood));
+    if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
+      var resourceSummary = PS.sim.resources.getSettlementSummary(settlement);
+      detailChips.push(makeInspectChip("Resources", resourceSummary.entries.map(function(entry) {
+        return entry.id + " " + Math.round(entry.stock);
+      }).slice(0, 5).join(" / ")));
+    }
     detailChips.push(makeInspectChip("Dev", settlement.development.toFixed(1)));
     detailChips.push(makeInspectChip("Growth", "last " + settlement.lastGrowthTick + " supply " + settlement.lastSupplyGrowthTick));
     detailChips.push(makeInspectChip("Outpost", "last " + settlement.lastOutpostTick));
@@ -221,7 +290,7 @@ function updateInspectPanel() {
   setElementHtml(inspectDetailsText, detailChips.join(""));
 }
 
-function getInspectSurfaceLabel(tileX, tileY) {
+export function getInspectSurfaceLabel(tileX, tileY) {
   if (!isPlanetLocalView()) {
     return "global";
   }
@@ -241,7 +310,7 @@ function getInspectSurfaceLabel(tileX, tileY) {
     " @ " + detail.sampleMeters + "m";
 }
 
-function getInspectGroundFeatureLabel(tileX, tileY) {
+export function getInspectGroundFeatureLabel(tileX, tileY) {
   if (!isPlanetLocalView() || typeof getPlanetGroundFeatureSummary !== "function") {
     return "-";
   }

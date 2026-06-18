@@ -1,3 +1,9 @@
+import { PS } from "../core/namespace.js";
+import { clamp, hashSeedText } from "../core/utils.js";
+import { getDeterministicUnitNoise } from "./planet-surface.js";
+import { getLatitudeDistanceKmPerDegree, getLongitudeDistanceKmPerDegree } from "./planet-view.js";
+import { world } from "../systems/state.js";
+
 PS.render = PS.render || {};
 PS.render.surfaceNoise = PS.render.surfaceNoise || {};
 
@@ -83,12 +89,14 @@ PS.render.surfaceNoise.getSnowSignal = function (tile, latitude) {
 };
 
 PS.render.surfaceNoise.getRegionalContext = function (tile) {
+  var seaLevelDelta = tile ? Number(tile.seaLevelDelta) : 0;
+
   return {
     continentShape: clamp(tile && Number.isFinite(Number(tile.continentShape)) ? Number(tile.continentShape) : 0, 0, 1.15),
     plateInfluence: clamp(tile && Number.isFinite(Number(tile.plateInfluence)) ? Number(tile.plateInfluence) : 0, 0, 1),
     islandArc: clamp(tile && Number.isFinite(Number(tile.islandArc)) ? Number(tile.islandArc) : 0, 0, 1),
     shelfStrength: clamp(tile && Number.isFinite(Number(tile.shelfStrength)) ? Number(tile.shelfStrength) : 0, 0, 1),
-    seaLevelDelta: Number.isFinite(Number(tile && tile.seaLevelDelta)) ? Number(tile.seaLevelDelta) : 0,
+    seaLevelDelta: Number.isFinite(seaLevelDelta) ? seaLevelDelta : 0,
     highlandLift: clamp(tile && Number.isFinite(Number(tile.highlandLift)) ? Number(tile.highlandLift) : 0, 0, 1.4),
     coastFactor: clamp(tile && Number.isFinite(Number(tile.coastFactor)) ? Number(tile.coastFactor) : 0, 0, 1),
     coastlineNoise: clamp(tile && Number.isFinite(Number(tile.coastlineNoise)) ? Number(tile.coastlineNoise) : 0, 0, 1)

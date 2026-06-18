@@ -1,3 +1,6 @@
+import { PS } from "../core/namespace.js";
+import { escapeSummaryText } from "./summary.js";
+
 PS.ui = PS.ui || {};
 
 PS.ui.modal = PS.ui.modal || {

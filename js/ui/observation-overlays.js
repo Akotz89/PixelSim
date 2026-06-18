@@ -1,3 +1,13 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { clamp } from "../core/utils.js";
+import { getTileManhattanDistance } from "../render/planet-grid.js";
+import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
+import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { world } from "../systems/state.js";
+import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
+import { setElementText } from "./foundation.js";
+
 PS.ui = PS.ui || {};
 PS.render = PS.render || {};
 PS.render.overlays = PS.render.overlays || {
@@ -21,6 +31,27 @@ PS.render.overlays = PS.render.overlays || {
       semantic: "Resources",
       blendMode: "lighter",
       alpha: 0.78,
+      shortcut: "O"
+    },
+    {
+      id: "observation.foodweb",
+      semantic: "Food Web",
+      blendMode: "screen",
+      alpha: 0.74,
+      shortcut: "O"
+    },
+    {
+      id: "observation.selection",
+      semantic: "Selection",
+      blendMode: "screen",
+      alpha: 0.72,
+      shortcut: "O"
+    },
+    {
+      id: "observation.extinction",
+      semantic: "Extinction",
+      blendMode: "screen",
+      alpha: 0.76,
       shortcut: "O"
     },
     {
@@ -68,6 +99,9 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     "observation.temperature",
     "observation.population",
     "observation.resources",
+    "observation.foodweb",
+    "observation.selection",
+    "observation.extinction",
     "observation.atmosphere",
     "observation.microbial"
   ],
@@ -128,6 +162,14 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
       alpha: clamp(Math.round(Number(alpha) || 0), 0, 255)
     };
   },
+  /**
+   * @description Converts a named observation overlay and tile state into an RGBA sample used for terrain diagnostics and visualization layers.
+   * @param {string} id Overlay identifier, for example temperature, moisture, biomass, or civilization pressure.
+   * @param {number} tileX World tile x coordinate.
+   * @param {number} tileY World tile y coordinate.
+   * @param {Object|null} tile Terrain tile data used by the selected overlay.
+   * @returns {Object} RGBA sample with red, green, blue, and alpha channels.
+   */
   getOverlaySample: function (id, tileX, tileY, tile) {
     var activeId = String(id || "none");
     var safeTile = tile || {};
@@ -149,14 +191,86 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
       return this.makeSample(86, 255, 118, resources * 220);
     }
 
+    if (activeId === "observation.foodweb") {
+      var nearby = typeof collectOrganismsInRadius === "function"
+        ? collectOrganismsInRadius(tileX, tileY, 2, 0, 16)
+        : [];
+      var predators = 0;
+      var prey = 0;
+
+      for (var nearbyIndex = 0; nearbyIndex < nearby.length; nearbyIndex++) {
+        var nearbyTraits = typeof ensureOrganismTraits === "function" ? ensureOrganismTraits(nearby[nearbyIndex]) : nearby[nearbyIndex].traits;
+        var role = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
+          ? PS.sim.foodWeb.getRole(nearbyTraits)
+          : (Number(nearbyTraits && nearbyTraits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD ? "predator" : "herbivore");
+
+        if (role === "predator") {
+          predators++;
+        } else {
+          prey++;
+        }
+      }
+
+      var pressure = clamp(predators / Math.max(1, prey), 0, 1);
+      return this.makeSample(255 * pressure, 210 - pressure * 90, 70 + prey * 8, Math.min(230, (predators + prey) * 34));
+    }
+
+    if (activeId === "observation.selection") {
+      var sample = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function"
+        ? PS.sim.terrainPressure.getSample(tileX, tileY)
+        : null;
+      var selection = sample ? clamp(Number(sample.pressure) || 0, 0, 1) : 0;
+      var isolation = sample ? clamp(Number(sample.isolation) || 0, 0, 1) : 0;
+      var innovation = sample ? clamp(Number(sample.innovationPressure) || 0, 0, 1) : 0;
+      var lineage = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getHighlightAt === "function"
+        ? PS.sim.lineageTracking.getHighlightAt(tileX, tileY)
+        : 0;
+
+      return this.makeSample(90 + selection * 120 + lineage * 45, 110 + innovation * 90 + lineage * 130, 210 - isolation * 80, 40 + Math.max(selection, isolation, lineage) * 185);
+    }
+
+    if (activeId === "observation.extinction") {
+      var summary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
+        ? PS.sim.massExtinction.getSummary()
+        : null;
+      var latest = summary && (summary.activeEvent || summary.latest);
+      var recovery = summary && summary.recoveryWindow;
+      var eventLocation = latest && latest.location ? latest.location : null;
+      var distance = eventLocation && Number.isFinite(Number(eventLocation.x)) && Number.isFinite(Number(eventLocation.y))
+        ? getTileManhattanDistance(tileX, tileY, eventLocation.x, eventLocation.y)
+        : Infinity;
+      var radius = latest ? Math.max(5, Math.round((Number(latest.severityScore) || 0.3) * 24)) : 1;
+      var devastation = Number.isFinite(distance) ? clamp(1 - distance / radius, 0, 1) : 0;
+      var recoveryBloom = recovery
+        ? clamp(1 - (Math.max(0, Number(recovery.endTick) || 0) - Math.max(0, Number(world.tick) || 0)) / Math.max(1, Number(recovery.durationTicks) || 1), 0, 1)
+        : 0;
+
+      return this.makeSample(220 + devastation * 35, 80 + recoveryBloom * 130, 70 + recoveryBloom * 120, Math.max(devastation * 230, recoveryBloom * 90));
+    }
+
     if (activeId === "observation.atmosphere") {
       var gases = world.atmosphere && world.atmosphere.gases ? world.atmosphere.gases : {};
-      var oxygen = clamp(Number(gases.o2) || 0, 0, 1);
-      var carbon = clamp(Number(gases.co2) || 0, 0, 1);
-      return this.makeSample(80 + oxygen * 120, 150 + oxygen * 80, 220 + carbon * 35, 70 + Math.max(oxygen, carbon) * 120);
+      var chemistry = world.geochemistry || {};
+      var oxygen = Number.isFinite(Number(chemistry.oxygenPercent))
+        ? clamp(Number(chemistry.oxygenPercent) / 35, 0, 1)
+        : clamp(Number(gases.o2) || 0, 0, 1);
+      var carbon = Number.isFinite(Number(chemistry.co2Ppm))
+        ? clamp(Number(chemistry.co2Ppm) / 100000, 0, 1)
+        : clamp(Number(gases.co2) || 0, 0, 1);
+      var acid = Number.isFinite(Number(chemistry.oceanPh)) ? clamp((8.2 - Number(chemistry.oceanPh)) / 2, 0, 1) : 0;
+      return this.makeSample(80 + oxygen * 120 + acid * 45, 150 + oxygen * 80 - acid * 55, 220 + carbon * 35, 70 + Math.max(oxygen, carbon, acid) * 120);
     }
 
     if (activeId === "observation.microbial") {
+      var lenia = PS.sim && PS.sim.lenia;
+      if (lenia && lenia.state && typeof lenia.getCellDensity === "function") {
+        var microbes = lenia.getCellDensity(tileX, tileY, "microbes");
+        var vegetation = lenia.getCellDensity(tileX, tileY, "vegetation");
+        var coral = lenia.getCellDensity(tileX, tileY, "coral");
+        var lichen = lenia.getCellDensity(tileX, tileY, "lichen");
+        var density = Math.max(microbes, vegetation, coral, lichen);
+        return this.makeSample(82 + coral * 160 + lichen * 70, 120 + vegetation * 135 + microbes * 70, 128 + microbes * 110 + coral * 70, density * 230);
+      }
       var cell = this.getMicrobialCell(tileX, tileY);
       var bloom = clamp(Number(cell && cell.bloomIntensity) || 0, 0, 1);
       var stress = clamp(Number(cell && cell.stress) || 0, 0, 1);

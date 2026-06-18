@@ -1,3 +1,7 @@
+import { CONFIG } from "../../config.js";
+import { PS } from "../core/namespace.js";
+import { world } from "../systems/state.js";
+
 PS.debug = PS.debug || {};
 
 PS.debug.performance = {
@@ -14,7 +18,11 @@ PS.debug.performance = {
     overBudget: false,
     droppedMs: 0,
     droppedTicks: 0,
-    drawCalls: 0
+    drawCalls: 0,
+    targetSpeed: 1,
+    effectiveSpeed: 1,
+    governorActive: false,
+    governorPressureMs: 0
   },
   setup: function() {
     this.element = document.getElementById("debug-performance");
@@ -51,6 +59,10 @@ PS.debug.performance = {
       ticks: Math.max(0, Math.round(Number(source.ticks) || 0)),
       droppedMs: Math.max(0, Number(source.droppedMs) || 0),
       droppedTicks: Math.max(0, Math.round(Number(source.droppedTicks) || 0)),
+      targetSpeed: PS.time ? Math.max(0, Number(PS.time.targetSpeed) || 0) : Math.max(0, Number(world.speed) || 0),
+      effectiveSpeed: PS.time ? Math.max(0, Number(PS.time.effectiveSpeed) || 0) : Math.max(0, Number(world.speed) || 0),
+      governorActive: Boolean(PS.time && PS.time.speedGovernor && PS.time.speedGovernor.active),
+      governorPressureMs: PS.time && PS.time.speedGovernor ? Math.max(0, Number(PS.time.speedGovernor.pressureMs) || 0) : 0,
       drawCalls: rendererStats ? Math.max(0, Math.round(Number(rendererStats.drawCalls) || 0)) : 0,
       tilemapDraws: rendererStats ? Math.max(0, Math.round(Number(rendererStats.tilemapDraws) || 0)) : 0,
       entityDraws: rendererStats ? Math.max(0, Math.round(Number(rendererStats.entityDraws) || 0)) : 0,
@@ -101,6 +113,10 @@ PS.debug.performance = {
       overBudgetFrames: overBudgetFrames,
       droppedFrames: droppedFrames,
       catchUp: PS.time && PS.time.catchUpStats ? Object.assign({}, PS.time.catchUpStats) : null,
+      speedGovernor: PS.time && PS.time.speedGovernor ? Object.assign({
+        targetSpeed: PS.time.targetSpeed,
+        effectiveSpeed: PS.time.effectiveSpeed
+      }, PS.time.speedGovernor) : null,
       pools: PS.poolManager && typeof PS.poolManager.getStats === "function" ? PS.poolManager.getStats() : null
     };
   },
@@ -142,6 +158,10 @@ PS.debug.performance = {
       " | over " + frameStats.overBudgetFrames + "/" + frameStats.historyLength +
       " | dropped " + last.droppedTicks + " ticks" +
       " | draw calls " + last.drawCalls +
+      "\nSpeed target " + last.targetSpeed.toFixed(2) +
+      "x | effective " + last.effectiveSpeed.toFixed(2) +
+      "x | governor " + (last.governorActive ? "active" : "idle") +
+      " | pressure " + last.governorPressureMs.toFixed(2) + "ms" +
       "\n" + this.getFrameGraph() +
       " | Entities " + world.organisms.length + "/" + world.food.length +
       " | Memory " + this.getMemoryLabel() +
