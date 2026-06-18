@@ -157,12 +157,19 @@ PS.render.surfaceTileBatcher.beginBatches = function () {
 };
 
 PS.render.surfaceTileBatcher.getVisualPolicy = function (lodState) {
-  if (lodState && lodState.visualPolicy) {
+  if (!(PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function") && lodState && lodState.visualPolicy) {
     return lodState.visualPolicy;
   }
 
-  return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
-    ? PS.render.lod.getVisualPolicy()
+  return PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function"
+    ? PS.render.lod.resolveVisualPolicy(lodState, {
+      level: "SURFACE",
+      pointLightScale: 1,
+      waterUvScrollScale: 1,
+      autotileTransitions: "full",
+      transitionAlphaScale: 1,
+      normalLightingStrength: 1
+    })
     : {
       level: "SURFACE",
       pointLightScale: 1,
@@ -208,7 +215,7 @@ PS.render.surfaceTileBatcher.appendPointLight = function (target, x, y, radius, 
   return true;
 };
 
-PS.render.surfaceTileBatcher.getSampleTileAmbient = function (sample, biome) {
+PS.render.surfaceTileBatcher.extractSampleSignals = function (sample, biome) {
   var detail = sample && sample.detail ? sample.detail : {};
   var surface = String(detail.surface || "").toLowerCase();
   var feature = String(detail.feature || "").toLowerCase();
@@ -217,37 +224,77 @@ PS.render.surfaceTileBatcher.getSampleTileAmbient = function (sample, biome) {
   var civilizationKey = String(civilization.key || sample && sample.civilizationKey || "").toLowerCase();
   var family = String(civilization.family || civilization.type || "").toLowerCase();
   var settlementPressure = Number(civilization.settlementPressure || civilization.pressure || signals.settlementPressure) || 0;
+  var heat = Number(signals.heat) || 0;
+  var lavaMaterial = Number(signals.lava) || 0;
+  var hasLavaSurface = surface.indexOf("lava") >= 0 || surface.indexOf("magma") >= 0;
+  var ventSignal = surface.indexOf("volcano") >= 0 || surface.indexOf("vent") >= 0 ||
+    feature.indexOf("volcano") >= 0 || feature.indexOf("vent") >= 0;
+  var civilizationPressure = Math.max(
+    Number(signals.settlementDensity) || 0,
+    Number(signals.workedGround) || 0,
+    Number(signals.routeTraffic) || 0,
+    Number(signals.borderInfluence) || 0,
+    Number(civilization.pressure) || 0
+  );
 
-  if (surface.indexOf("cave") >= 0 || surface.indexOf("cavern") >= 0 || surface.indexOf("underground") >= 0 || feature.indexOf("cave") >= 0) {
+  return {
+    detail: detail,
+    signals: signals,
+    civilization: civilization,
+    surface: surface,
+    feature: feature,
+    biome: String(biome || sample && sample.biome || "").toLowerCase(),
+    civilizationKey: civilizationKey,
+    family: family,
+    settlementPressure: settlementPressure,
+    civilizationPressure: civilizationPressure,
+    lavaLightSignal: Math.max(hasLavaSurface ? 1 : 0, lavaMaterial, heat > 0.75 ? heat : 0),
+    lavaDisplacementSignal: Math.max(hasLavaSurface ? 1 : 0, lavaMaterial, heat > 0.68 ? heat : 0),
+    ventSignal: ventSignal,
+    waterDepth: Number(signals.waterDepth) || Number(sample && sample.waterDepth) || 0,
+    coastal: surface.indexOf("open water") >= 0 ||
+      surface.indexOf("whitecap") >= 0 ||
+      feature.indexOf("foam") >= 0 ||
+      feature.indexOf("shoal") >= 0 ||
+      Number(signals.coast) > 0.18 ||
+      Number(signals.shallowWater) > 0.18,
+    deepWater: surface.indexOf("deep water") >= 0
+  };
+};
+
+PS.render.surfaceTileBatcher.getSampleTileAmbient = function (sample, biome, sampleSignals) {
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample, biome);
+
+  if (extracted.surface.indexOf("cave") >= 0 || extracted.surface.indexOf("cavern") >= 0 || extracted.surface.indexOf("underground") >= 0 || extracted.feature.indexOf("cave") >= 0) {
     return { intensity: 0.38, kind: "cave" };
   }
 
   if (
-    civilizationKey.indexOf("building") >= 0 ||
-    civilizationKey.indexOf("settlement.3.block") >= 0 ||
-    family.indexOf("block") >= 0 ||
-    family.indexOf("production") >= 0 ||
-    family.indexOf("residential") >= 0 ||
-    surface.indexOf("building") >= 0 ||
-    feature.indexOf("wall") >= 0 ||
-    feature.indexOf("roof") >= 0
+    extracted.civilizationKey.indexOf("building") >= 0 ||
+    extracted.civilizationKey.indexOf("settlement.3.block") >= 0 ||
+    extracted.family.indexOf("block") >= 0 ||
+    extracted.family.indexOf("production") >= 0 ||
+    extracted.family.indexOf("residential") >= 0 ||
+    extracted.surface.indexOf("building") >= 0 ||
+    extracted.feature.indexOf("wall") >= 0 ||
+    extracted.feature.indexOf("roof") >= 0
   ) {
     return { intensity: 0.58, kind: "building" };
   }
 
-  if (settlementPressure > 0.72 || civilizationKey.indexOf("settlement") >= 0) {
+  if (extracted.settlementPressure > 0.72 || extracted.civilizationKey.indexOf("settlement") >= 0) {
     return { intensity: 0.82, kind: "settlement" };
   }
 
-  if (surface.indexOf("dense canopy") >= 0 || surface.indexOf("woodland") >= 0 || String(biome || "").toLowerCase() === "forest") {
+  if (extracted.surface.indexOf("dense canopy") >= 0 || extracted.surface.indexOf("woodland") >= 0 || extracted.biome === "forest") {
     return { intensity: 0.88, kind: "canopy" };
   }
 
   return { intensity: 1, kind: "outdoor" };
 };
 
-PS.render.surfaceTileBatcher.appendSampleTileLight = function (target, sample, biome, screenX, screenY, samplePixelSize, alpha) {
-  var ambient = PS.render.surfaceTileBatcher.getSampleTileAmbient(sample, biome);
+PS.render.surfaceTileBatcher.appendSampleTileLight = function (target, sample, biome, screenX, screenY, samplePixelSize, alpha, sampleSignals) {
+  var ambient = PS.render.surfaceTileBatcher.getSampleTileAmbient(sample, biome, sampleSignals);
 
   if (!target || !target.tileLights || !ambient || ambient.intensity >= 0.999) {
     return false;
@@ -265,22 +312,11 @@ PS.render.surfaceTileBatcher.appendSampleTileLight = function (target, sample, b
   return true;
 };
 
-PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState) {
+PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState, sampleSignals) {
   var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
-  var detail = sample && sample.detail ? sample.detail : {};
-  var surface = String(detail.surface || "").toLowerCase();
-  var feature = String(detail.feature || "").toLowerCase();
-  var signals = detail.materialSignals || {};
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample, biome);
   var centerX = screenX + samplePixelSize * 0.5;
   var centerY = screenY + samplePixelSize * 0.5;
-  var lavaSignal = Math.max(
-    surface.indexOf("lava") >= 0 || surface.indexOf("magma") >= 0 ? 1 : 0,
-    Number(signals.lava) || 0,
-    Number(signals.heat) > 0.75 ? Number(signals.heat) || 0 : 0
-  );
-  var ventSignal = surface.indexOf("volcano") >= 0 || surface.indexOf("vent") >= 0 ||
-    feature.indexOf("volcano") >= 0 || feature.indexOf("vent") >= 0;
-  var waterDepth = Number(signals.waterDepth) || Number(sample && sample.waterDepth) || 0;
   var sparseBio = PS.ranmap && PS.ranmap.variant
     ? PS.ranmap.variant(tileX, tileY, 13) === 0
     : Math.abs(Math.round(tileX) * 7 + Math.round(tileY) * 11) % 13 === 0;
@@ -289,43 +325,34 @@ PS.render.surfaceTileBatcher.appendSamplePointLights = function (target, sample,
     return false;
   }
 
-  if (ventSignal) {
+  if (extracted.ventSignal) {
     return PS.render.surfaceTileBatcher.appendPointLight(target, centerX, centerY, samplePixelSize * 8, [1, 0.2, 0], 1.05 * policy.pointLightScale, "volcano");
   }
 
-  if (lavaSignal > 0.35) {
+  if (extracted.lavaLightSignal > 0.35) {
     return PS.render.surfaceTileBatcher.appendPointLight(
       target,
       centerX,
       centerY,
       samplePixelSize * 4,
       [1, 0.35, 0.05],
-      Math.max(0.55, Math.min(1.2, lavaSignal)) * policy.pointLightScale,
+      Math.max(0.55, Math.min(1.2, extracted.lavaLightSignal)) * policy.pointLightScale,
       "lava"
     );
   }
 
-  if (String(biome || "") === "ocean" && waterDepth > 0.7 && sparseBio) {
+  if (extracted.biome === "ocean" && extracted.waterDepth > 0.7 && sparseBio) {
     return PS.render.surfaceTileBatcher.appendPointLight(target, centerX, centerY, samplePixelSize * 2, [0.1, 0.6, 1], 0.42 * policy.pointLightScale, "bioluminescence");
   }
 
   return false;
 };
 
-PS.render.surfaceTileBatcher.getSampleHeatDisplacement = function (sample) {
-  var detail = sample && sample.detail ? sample.detail : {};
-  var surface = String(detail.surface || "").toLowerCase();
-  var feature = String(detail.feature || "").toLowerCase();
-  var signals = detail.materialSignals || {};
-  var lavaSignal = Math.max(
-    surface.indexOf("lava") >= 0 || surface.indexOf("magma") >= 0 ? 1 : 0,
-    Number(signals.lava) || 0,
-    Number(signals.heat) > 0.68 ? Number(signals.heat) || 0 : 0
-  );
-  var ventSignal = surface.indexOf("volcano") >= 0 || surface.indexOf("vent") >= 0 ||
-    feature.indexOf("volcano") >= 0 || feature.indexOf("vent") >= 0;
+PS.render.surfaceTileBatcher.getSampleHeatDisplacement = function (sample, sampleSignals) {
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample);
+  var lavaSignal = extracted.lavaDisplacementSignal;
 
-  if (ventSignal) {
+  if (extracted.ventSignal) {
     lavaSignal = Math.max(lavaSignal, 0.92);
   }
 
@@ -335,16 +362,16 @@ PS.render.surfaceTileBatcher.getSampleHeatDisplacement = function (sample) {
 
   return {
     intensity: Math.max(0, Math.min(1.35, lavaSignal)),
-    kind: ventSignal ? "volcanic-vent" : "lava"
+    kind: extracted.ventSignal ? "volcanic-vent" : "lava"
   };
 };
 
-PS.render.surfaceTileBatcher.appendSampleDisplacement = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState) {
+PS.render.surfaceTileBatcher.appendSampleDisplacement = function (target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState, sampleSignals) {
   var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
   var displacementScale = policy.spriteDisplacementScale === undefined
     ? (policy.waterUvScrollScale === undefined ? 1 : Number(policy.waterUvScrollScale))
     : Number(policy.spriteDisplacementScale);
-  var heat = PS.render.surfaceTileBatcher.getSampleHeatDisplacement(sample, biome);
+  var heat = PS.render.surfaceTileBatcher.getSampleHeatDisplacement(sample, sampleSignals);
   var centerX = screenX + samplePixelSize * 0.5;
   var centerY = screenY + samplePixelSize * 0.5;
   var radius;
@@ -638,20 +665,11 @@ PS.render.surfaceTileBatcher.getAcceptedTransitionCellName = function (sample, b
   return pair && shape ? pair + "." + shape : "";
 };
 
-PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName = function (sample, tileX, tileY) {
-  var detail = sample && sample.detail ? sample.detail : {};
-  var surface = String(detail.surface || "").toLowerCase();
-  var feature = String(detail.feature || "").toLowerCase();
-  var signals = detail.materialSignals || {};
-  var coastal = surface.indexOf("open water") >= 0 ||
-    surface.indexOf("whitecap") >= 0 ||
-    feature.indexOf("foam") >= 0 ||
-    feature.indexOf("shoal") >= 0 ||
-    Number(signals.coast) > 0.18 ||
-    Number(signals.shallowWater) > 0.18;
+PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName = function (sample, tileX, tileY, sampleSignals) {
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample);
   var direction;
 
-  if (!coastal || surface.indexOf("deep water") >= 0) {
+  if (!extracted.coastal || extracted.deepWater) {
     return "";
   }
 
@@ -746,7 +764,7 @@ PS.render.surfaceTileBatcher.getResolverTransitionCellNames = function (tileX, t
   return names;
 };
 
-PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address, sample, biome, tileX, tileY, lodState) {
+PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address, sample, biome, tileX, tileY, lodState, sampleSignals) {
   var gridNames = PS.render.surfaceTileBatcher.getResolverTransitionCellNames(
     tileX,
     tileY,
@@ -760,28 +778,23 @@ PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames = function (address,
   }
 
   fallbackName = PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) ||
-    PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY);
+    PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY, sampleSignals);
 
   return fallbackName ? [fallbackName] : [];
 };
 
-PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions = function (address, sample, tileX, tileY, lodState) {
+PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions = function (address, sample, tileX, tileY, lodState, hasCivilizationMaterialSignal) {
   var policy = PS.render.surfaceTileBatcher.getVisualPolicy(lodState);
-  if (PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal(sample)) {
+  if (hasCivilizationMaterialSignal === true || hasCivilizationMaterialSignal !== false && PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal(sample)) {
     return false;
   }
 
   return Boolean(PS.render.surfaceTileBatcher.getTransitionGrid(address, sample)) && policy.autotileTransitions !== "disabled";
 };
 
-PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal = function (sample) {
-  var signals = sample && sample.detail && sample.detail.materialSignals ? sample.detail.materialSignals : {};
-  var signal = Math.max(
-    Number(signals.settlementDensity) || 0,
-    Number(signals.routeTraffic) || 0,
-    Number(signals.borderInfluence) || 0,
-    Number(sample && sample.civilization && sample.civilization.pressure) || 0
-  );
+PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal = function (sample, sampleSignals) {
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample);
+  var signal = extracted.civilizationPressure;
   var nearest;
 
   if (signal > 0.06) {
@@ -852,7 +865,7 @@ PS.render.surfaceTileBatcher.canSelectAcceptedTerrainMaterial = function (sample
   return (!ecologyKey || ecologyKey === "eco.0.0") && (!civilizationKey || civilizationKey === "civ0");
 };
 
-PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample, tileX, tileY, fallbackCell) {
+PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample, tileX, tileY, fallbackCell, sampleSignals) {
   if (
     typeof world !== "undefined" &&
     world &&
@@ -866,7 +879,7 @@ PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample
   }
 
   var transitionCellName = PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) ||
-    PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY);
+    PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY, sampleSignals);
   var selected;
   var transitionPhase = Math.abs(Math.round(Number(tileX) || 0) + Math.round(Number(tileY) || 0)) % 256;
   var terrainPhase = Math.abs(Math.round(Number(tileX) || 0) * 3 + Math.round(Number(tileY) || 0) * 5) % 256;
@@ -1190,6 +1203,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       ecologyMicroKey = PS.atlas.getTerrainEcologyMicroKey(sample, tileX, tileY);
     }
     var drawSample = Object.assign({ x: tileX, y: tileY }, sample || {});
+    var sampleSignals = PS.render.surfaceTileBatcher.extractSampleSignals(drawSample, biome);
     var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
       ? PS.render.surfaceColor.getGroundMoistureKey(drawSample)
       : "gmoist.none";
@@ -1220,6 +1234,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       ? PS.atlas.getTerrainCivilizationKey(drawSample)
       : (sample && sample.civilization ? sample.civilization.key : "civ0");
     var hasCivilizationMaterial = civilizationKey !== "civ0";
+    var hasCivilizationMaterialSignal = PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal(drawSample, sampleSignals);
     var atlasKeyId = PS.render.surfaceTileBatcher.getTerrainAtlasKeyId(
       ecologyKey,
       ecologyMicroKey,
@@ -1244,7 +1259,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       continue;
     }
 
-    var canAttemptAccepted = !nearSettlementGround && !PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal(sample) && !(
+    var canAttemptAccepted = !nearSettlementGround && !hasCivilizationMaterialSignal && !(
       typeof world !== "undefined" &&
       world &&
       (world.isCameraInteracting || world.isPaused === false) &&
@@ -1253,14 +1268,14 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     if (canAttemptAccepted && !hasCivilizationMaterial) {
       var acceptedCellKey = (
         PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) ||
-        PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY) ||
+        PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY, sampleSignals) ||
         PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY) ||
         "terrain"
       );
       var acceptedKeyId = PS.render.surfaceTileBatcher.getAcceptedKeyId(atlasKeyId, acceptedCellKey);
       var acceptedSelection = cellData.terrainEquivalenceKeyId === acceptedKeyId ? cellData.terrainEquivalenceSelection || null : null;
       if (!acceptedSelection) {
-        acceptedSelection = PS.render.surfaceTileBatcher.selectAcceptedTerrainCell(biome, sample, tileX, tileY, cell);
+        acceptedSelection = PS.render.surfaceTileBatcher.selectAcceptedTerrainCell(biome, sample, tileX, tileY, cell, sampleSignals);
         cellData.terrainEquivalenceSelection = acceptedSelection;
         cellData.terrainEquivalenceKeyId = acceptedKeyId;
       }
@@ -1300,9 +1315,9 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       ? PS.render.waterRendering.getRenderInfo(sample, biome, tileX, tileY, lodState)
       : null;
 
-    PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState);
-    PS.render.surfaceTileBatcher.appendSampleTileLight(target, sample, biome, screenX, screenY, samplePixelSize, tileAlpha * featherAlpha);
-    PS.render.surfaceTileBatcher.appendSampleDisplacement(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState);
+    PS.render.surfaceTileBatcher.appendSamplePointLights(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState, sampleSignals);
+    PS.render.surfaceTileBatcher.appendSampleTileLight(target, sample, biome, screenX, screenY, samplePixelSize, tileAlpha * featherAlpha, sampleSignals);
+    PS.render.surfaceTileBatcher.appendSampleDisplacement(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState, sampleSignals);
     PS.render.surfaceTileBatcher.appendWaterDecoration(target, sample, biome, screenX, screenY, samplePixelSize, tileX, tileY, lodState);
 
     var embeddedCivilizationSettlementDensity = civilizationInfo ? Math.max(
@@ -1391,18 +1406,11 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     );
     target.count++;
     if (PS.render.mountains && typeof PS.render.mountains.appendMountain === "function") {
-      var mountainCivilizationPressure = Math.max(
-        Number(sample && sample.civilization && sample.civilization.pressure) || 0,
-        Number(sample && sample.detail && sample.detail.materialSignals && sample.detail.materialSignals.settlementDensity) || 0,
-        Number(sample && sample.detail && sample.detail.materialSignals && sample.detail.materialSignals.workedGround) || 0,
-        Number(sample && sample.detail && sample.detail.materialSignals && sample.detail.materialSignals.routeTraffic) || 0
-      );
-
       if (
         !hasCivilizationMaterial &&
-        mountainCivilizationPressure <= 0.06 &&
-        !PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal(sample) &&
-        !PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint(sample, 2.75) &&
+        sampleSignals.civilizationPressure <= 0.06 &&
+        !hasCivilizationMaterialSignal &&
+        !nearSettlementGround &&
         !(
           settlementScale &&
           Array.isArray(world && world.settlements) &&
@@ -1415,11 +1423,11 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     if (
       canAttemptAccepted &&
       (!hasCivilizationMaterial || sample && sample.acceptedTransitionCellName) &&
-      PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions(address, sample, tileX, tileY, lodState)
+      PS.render.surfaceTileBatcher.shouldAppendAcceptedTransitions(address, sample, tileX, tileY, lodState, hasCivilizationMaterialSignal)
     ) {
       PS.render.surfaceTileBatcher.appendAcceptedTransitionOverlays(
         target,
-        PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames(address, sample, biome, tileX, tileY, lodState),
+        PS.render.surfaceTileBatcher.getAcceptedTransitionCellNames(address, sample, biome, tileX, tileY, lodState, sampleSignals),
         cell,
         screenX,
         screenY,
