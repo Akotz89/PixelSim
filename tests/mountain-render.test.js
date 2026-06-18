@@ -98,6 +98,16 @@ vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js
 vm.runInContext(mountainSource, context, { filename: "js/render/mountain-render.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 
+function buildSurfaceBatches(address, cellCache, alpha, lodState) {
+  return context.PS.render.surfaceTileBatcher.appendBatches(
+    context.PS.render.surfaceTileBatcher.beginBatches(),
+    address,
+    cellCache,
+    alpha,
+    lodState
+  );
+}
+
 const centerInfo = context.PS.render.mountains.getFormationInfo(4, 4, {
   biome: "highland",
   detail: { surface: "rock ridge", materialSignals: { elevation: 0.9, snow: 0.6 } }
@@ -129,7 +139,7 @@ const mountainCellCache = Array.from({ length: 9 }, (_, index) => ({
   screenX: (index % 3) * 16,
   screenY: Math.floor(index / 3) * 16
 }));
-const batches = context.PS.render.surfaceTileBatcher.makeBatches({
+const batches = buildSurfaceBatches({
   sampleEast: 3,
   sampleNorth: 3,
   renderScreenX: 0,
@@ -149,7 +159,7 @@ assert.ok(Object.keys(batches.pages).length >= 1, "mountain overlays should appe
 assert.ok(mountainCellCache.every((cellData) => cellData.terrainAtlasCell && cellData.terrainAtlasCell.name === "fallback.rock"), "mountain overlays should not overwrite base terrain atlas cache cells");
 assert.ok(mountainCellCache.every((cellData) => typeof cellData.terrainAtlasKeyId === "number"), "mountain overlays should not replace base terrain cache keys");
 
-const worldBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldBatches = buildSurfaceBatches({
   sampleEast: 3,
   sampleNorth: 3,
   renderScreenX: 0,
@@ -175,7 +185,7 @@ assert.strictEqual(worldBatches.count, 9, "world LOD should keep base terrain ti
 assert.strictEqual(worldBatches.mountainTiles, undefined, "world LOD should skip multi-tile mountain overlays");
 assert.strictEqual(worldBatches.shadowRects.length, 0, "world LOD should skip stamped mountain shadows");
 
-const plainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const plainBatches = buildSurfaceBatches({
   sampleEast: 0,
   sampleNorth: 0,
   renderScreenX: 0,

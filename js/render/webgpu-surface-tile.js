@@ -139,8 +139,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   getBatchCacheKey: function (chunks, alpha, options) {
     var spec = options || {};
     var lodState = spec.lodState || null;
-    var visualPolicy = lodState && lodState.visualPolicy ? lodState.visualPolicy : null;
-    if (!visualPolicy && PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function") {
+    var visualPolicy = null;
+    if (PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function") {
+      visualPolicy = PS.render.lod.resolveVisualPolicy(lodState, {});
+    } else if (lodState && lodState.visualPolicy) {
+      visualPolicy = lodState.visualPolicy;
+    } else if (PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function") {
       visualPolicy = PS.render.lod.getVisualPolicy();
     }
     visualPolicy = visualPolicy || {};
@@ -857,12 +861,12 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
   },
 
   getVisualPolicy: function (lodState) {
-    if (lodState && lodState.visualPolicy) {
+    if (!(PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function") && lodState && lodState.visualPolicy) {
       return lodState.visualPolicy;
     }
 
-    return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
-      ? PS.render.lod.getVisualPolicy()
+    return PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function"
+      ? PS.render.lod.resolveVisualPolicy(lodState, { level: "SURFACE", pointLightScale: 1, normalLightingStrength: 1 })
       : { level: "SURFACE", pointLightScale: 1, normalLightingStrength: 1 };
   },
 

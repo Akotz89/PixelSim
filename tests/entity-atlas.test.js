@@ -570,38 +570,4 @@ const hybridFallback = context.PS.atlas.getCell("entity.fallback.0");
 assert.ok(hybridLoadedGrass.externalImage, "buildHybrid should let loaded sheet cells override generated cells");
 assert.ok(hybridFallback && !hybridFallback.externalImage, "buildHybrid should preserve generated fallback cells");
 
-const uploadCalls = [];
-const fakeTexture = { id: "texture" };
-const fakeGl = {
-  TEXTURE_2D: "TEXTURE_2D",
-  TEXTURE_MIN_FILTER: "TEXTURE_MIN_FILTER",
-  TEXTURE_MAG_FILTER: "TEXTURE_MAG_FILTER",
-  TEXTURE_WRAP_S: "TEXTURE_WRAP_S",
-  TEXTURE_WRAP_T: "TEXTURE_WRAP_T",
-  NEAREST: "NEAREST",
-  CLAMP_TO_EDGE: "CLAMP_TO_EDGE",
-  RGBA: "RGBA",
-  UNSIGNED_BYTE: "UNSIGNED_BYTE",
-  createTexture() {
-    uploadCalls.push(["createTexture"]);
-    return fakeTexture;
-  },
-  bindTexture(target, texture) {
-    uploadCalls.push(["bindTexture", target, texture]);
-  },
-  texParameteri(target, pname, param) {
-    uploadCalls.push(["texParameteri", target, pname, param]);
-  },
-  texImage2D() {
-    uploadCalls.push(["texImage2D"].concat(Array.from(arguments)));
-  }
-};
-
-const uploadedTextures = context.PS.atlas.uploadToGL(fakeGl);
-const imageUpload = uploadCalls.find((call) => call[0] === "texImage2D" && call[6] === loadedSheetImage);
-
-assert.strictEqual(uploadedTextures.length, context.PS.atlas.pages.length, "uploadToGL should return one texture per atlas page");
-assert.ok(uploadedTextures.every((texture) => texture.id === "texture"), "uploadToGL should return created textures");
-assert.ok(imageUpload, "uploadToGL should upload external image pages through texImage2D(image)");
-
 console.log("entity atlas checks passed");

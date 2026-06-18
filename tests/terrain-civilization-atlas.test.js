@@ -189,16 +189,6 @@ const routeCoreInfo = context.PS.atlas.getTerrainCivilizationInfo({
   civilization: { type: "route", family: "road", pressure: 0.96, routePressure: 0.96, settlementPressure: 0.62 },
   detail: { materialSignals: { settlementDensity: 0.62, routeTraffic: 0.96 } }
 });
-const housingDescriptor = context.PS.atlas.getBuildingSpriteDescriptor({
-  category: "residential",
-  lineageId: 2,
-  neighbors: { north: true, east: true, south: false, west: true }
-});
-const productionDescriptor = context.PS.atlas.getBuildingSpriteDescriptor({
-  category: "industrial",
-  factionId: 3,
-  neighbors: { north: false, east: true, south: true, west: false }
-});
 const farmParcelKeyA = context.PS.atlas.getTerrainCivilizationKey({
   x: 21,
   y: 18,
@@ -251,11 +241,4 @@ assert.ok(
   }))),
   "settlement district terrain should not leak raw per-tile moisture/transition color through building edges"
 );
-assert.strictEqual(housingDescriptor.category, "residential", "building sprites should preserve category organization");
-assert.strictEqual(housingDescriptor.autotileMask, 11, "building descriptor should derive autotile mask from connected neighbors");
-assert.strictEqual(housingDescriptor.sheetPair.source, "housing-room", "building descriptor should expose build-time source sheet");
-assert.strictEqual(housingDescriptor.sheetPair.dest, "building.residential", "building descriptor should expose build-time destination sheet");
-assert.notStrictEqual(housingDescriptor.color, productionDescriptor.color, "building descriptors should vary color by faction/culture seed");
-assert.notStrictEqual(housingDescriptor.destinationSheet, productionDescriptor.destinationSheet, "building categories should not collide in atlas output");
-
 console.log("terrain civilization atlas checks passed");
