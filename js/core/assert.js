@@ -1,7 +1,6 @@
-import { PS } from "./namespace.js";
 import { world } from "../systems/state.js";
 
-PS.assert = function (condition, message) {
+function assertRuntime(condition, message) {
   if (condition) {
     return;
   }
@@ -12,13 +11,11 @@ PS.assert = function (condition, message) {
     world.isPaused = true;
   }
 
-  if (PS.world) {
-    PS.world.isPaused = true;
-  }
-
   if (typeof showDebugMessage === "function") {
     showDebugMessage("ASSERT: " + errorMessage);
   }
 
   throw new Error(errorMessage);
-};
+}
+
+export { assertRuntime as assert };

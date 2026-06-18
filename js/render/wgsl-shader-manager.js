@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { assert } from "../core/assert.js";
 
 PS.render = PS.render || {};
 
@@ -261,10 +262,7 @@ PS.render.WgslShaderManager.prototype.checkCompilationInfo = function (name, mod
 
     self.recordError(name, text);
 
-    if (PS.assert) {
-      PS.assert(false, text);
-    }
-
+    assert(false, text);
     throw new Error(text);
   });
 };

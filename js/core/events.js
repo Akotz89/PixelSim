@@ -1,5 +1,6 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "./namespace.js";
+import { assert } from "./assert.js";
 import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
 import { world } from "../systems/state.js";
 
@@ -67,8 +68,8 @@ PS.events.contract = {
 };
 
 PS.events.on = function (name, handler) {
-  PS.assert(typeof name === "string" && name.length > 0, "Event name is required");
-  PS.assert(typeof handler === "function", "Event handler must be a function");
+  assert(typeof name === "string" && name.length > 0, "Event name is required");
+  assert(typeof handler === "function", "Event handler must be a function");
 
   if (!PS.events.listeners[name]) {
     PS.events.listeners[name] = [];
@@ -99,7 +100,7 @@ PS.events.off = function (name, handler) {
 };
 
 PS.events.emit = function (name, payload) {
-  PS.assert(typeof name === "string" && name.length > 0, "Event name is required");
+  assert(typeof name === "string" && name.length > 0, "Event name is required");
 
   var entry = {
     name: name,
@@ -289,10 +290,10 @@ PS.events.normalizeMilestonePayload = function (payload) {
     }
   };
 
-  PS.assert(normalized.type.length > 0, "Milestone type is required");
-  PS.assert(normalized.label.length > 0, "Milestone label is required");
-  PS.assert(normalized.source.length > 0, "Milestone source is required");
-  PS.assert(normalized.category.length > 0, "Milestone category is required");
+  assert(normalized.type.length > 0, "Milestone type is required");
+  assert(normalized.label.length > 0, "Milestone label is required");
+  assert(normalized.source.length > 0, "Milestone source is required");
+  assert(normalized.category.length > 0, "Milestone category is required");
 
   return normalized;
 };

@@ -1,17 +1,11 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
+import { assert } from "../core/assert.js";
 
 PS.systems = PS.systems || {};
 
 export function assertPoolManager(condition, message) {
-  if (PS.assert && typeof PS.assert === "function") {
-    PS.assert(condition, message);
-    return;
-  }
-
-  if (!condition) {
-    throw new Error(message);
-  }
+  assert(condition, message);
 }
 
 PS.poolManager = PS.poolManager || {
@@ -308,4 +302,3 @@ PS.poolManager = PS.poolManager || {
 };
 
 PS.systems.poolManager = PS.poolManager;
-
