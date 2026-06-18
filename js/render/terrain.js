@@ -610,6 +610,7 @@ PS.render.terrain.drawStableUnderlay = function (options) {
       ? PS.render.pipeline.getZoomBand(zoomLevel)
       : ""
   );
+  var transitionAlpha = Math.max(0, Number(pipelineStats.transitionAlpha) || 0);
   var terrainTexture;
   var drawn;
 
@@ -634,6 +635,19 @@ PS.render.terrain.drawStableUnderlay = function (options) {
       fallbackStaleCoverage: spec.fallbackStaleCoverage
     })
     : PS.render.webgpuGlobe.uploadTerrainTexture(device);
+
+  if (
+    zoomBand === "region" &&
+    zoomLevel >= 4.8 &&
+    transitionAlpha > 0.01 &&
+    typeof PS.render.webgpuGlobe.prewarmTerrainPyramidTexture === "function"
+  ) {
+    PS.render.webgpuGlobe.prewarmTerrainPyramidTexture(device, {
+      underlayLevel: 3,
+      zoomLevel: zoomLevel,
+      zoomBand: "local"
+    });
+  }
 
   drawn = PS.render.webgpuSurfaceUnderlay.draw({
     terrainTexture: terrainTexture,

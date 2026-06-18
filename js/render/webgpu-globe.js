@@ -331,34 +331,14 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     };
   },
 
-  buildUnderlayPyramidRgbaData: function (levelSpec, sourceRgb) {
+  buildUnderlaySourceCellRgbaData: function (levelSpec, sourceRgb) {
     var level = levelSpec || this.getUnderlayPyramidLevel(0);
     var source = sourceRgb || this.getTerrainSourceRgb();
-    var width = Math.max(1, Math.round(Number(level.width) || 1));
-    var height = Math.max(1, Math.round(Number(level.height) || 1));
     var sourceWidth = Math.max(1, Math.round(Number(source && source.width) || 1));
     var sourceHeight = Math.max(1, Math.round(Number(source && source.height) || 1));
     var sourceData = source && source.data ? source.data : null;
-    var data = new Uint8Array(width * height * 4);
-    var buckets = new Uint8Array(512);
-    var bucketCount = 0;
-    var minLuma = 255;
-    var maxLuma = 0;
+    var data = new Uint8Array(sourceWidth * sourceHeight * 4);
     var detail = Math.max(0, Math.min(1, Number(level.detailStrength) || 0));
-    var xToTile = [];
-    var longitude7 = [];
-    var longitude23 = [];
-    var longitude97 = [];
-    var u;
-    var y;
-    var x;
-    var v;
-    var tileY;
-    var latitude;
-    var latitude7;
-    var latitude23;
-    var latitude97;
-    var tileX;
     var sourceIndex;
     var tileIndex;
     var baseRed;
@@ -371,6 +351,10 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var ridge;
     var hillshade;
     var longitude;
+    var latitude;
+    var latitude7;
+    var latitude23;
+    var latitude97;
     var broad;
     var regional;
     var material;
@@ -383,33 +367,19 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var red;
     var green;
     var blue;
-    var outputRed;
-    var outputGreen;
-    var outputBlue;
     var outputIndex;
-    var luma;
-    var bucket;
+    var x;
+    var y;
 
-    for (x = 0; x < width; x += 1) {
-      u = (x + 0.5) / width;
-      xToTile[x] = ((Math.floor(Math.max(0, Math.min(0.999999, u)) * sourceWidth) % sourceWidth) + sourceWidth) % sourceWidth;
-      longitude = u * 360 - 180;
-      longitude7[x] = Math.floor(longitude * 7);
-      longitude23[x] = Math.floor(longitude * 23);
-      longitude97[x] = Math.floor(longitude * 97);
-    }
-
-    for (y = 0; y < height; y += 1) {
-      v = (y + 0.5) / height;
-      tileY = Math.max(0, Math.min(sourceHeight - 1, Math.floor(Math.max(0, Math.min(0.999999, v)) * sourceHeight)));
-      latitude = 90 - v * 180;
+    for (y = 0; y < sourceHeight; y += 1) {
+      latitude = 90 - ((y + 0.5) / sourceHeight) * 180;
       latitude7 = Math.floor(latitude * 7);
       latitude23 = Math.floor(latitude * 23);
       latitude97 = Math.floor(latitude * 97);
 
-      for (x = 0; x < width; x += 1) {
-        tileX = xToTile[x];
-        tileIndex = tileY * sourceWidth + tileX;
+      for (x = 0; x < sourceWidth; x += 1) {
+        longitude = ((x + 0.5) / sourceWidth) * 360 - 180;
+        tileIndex = y * sourceWidth + x;
         sourceIndex = tileIndex * 3;
         baseRed = sourceData[sourceIndex];
         baseGreen = sourceData[sourceIndex + 1];
@@ -421,9 +391,9 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
         river = source.river ? source.river[tileIndex] : 0;
         ridge = source.ridge ? source.ridge[tileIndex] : 0;
         hillshade = source.hillshade ? source.hillshade[tileIndex] : 0.55;
-        broad = this.hashTerrainCell(longitude7[x], latitude7, level.level + 11) - 0.5;
-        regional = this.hashTerrainCell(longitude23[x], latitude23, level.level + 29) - 0.5;
-        material = this.hashTerrainCell(longitude97[x], latitude97, level.level + 47) - 0.5;
+        broad = this.hashTerrainCell(Math.floor(longitude * 7), latitude7, level.level + 11) - 0.5;
+        regional = this.hashTerrainCell(Math.floor(longitude * 23), latitude23, level.level + 29) - 0.5;
+        material = this.hashTerrainCell(Math.floor(longitude * 97), latitude97, level.level + 47) - 0.5;
         water = baseBlue > Math.max(baseRed, baseGreen) * 1.12 ? 1 : 0;
         relief = (elevation * 0.28 + ridge * 0.22 + (hillshade - 0.5) * 0.42 + broad * 0.18 + regional * 0.12 + material * 0.07) * detail;
         wetness = (moisture - 0.5) * detail;
@@ -440,14 +410,64 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
           reliefLight * 0.62 + (material * 18 - regional * 8 + broad * 5) * detail +
           riverLine * 16 - ridge * detail * 4;
 
+        outputIndex = tileIndex * 4;
+        data[outputIndex] = Math.max(0, Math.min(255, Math.round(red)));
+        data[outputIndex + 1] = Math.max(0, Math.min(255, Math.round(green)));
+        data[outputIndex + 2] = Math.max(0, Math.min(255, Math.round(blue)));
+        data[outputIndex + 3] = 255;
+      }
+    }
+
+    return {
+      width: sourceWidth,
+      height: sourceHeight,
+      data: data
+    };
+  },
+
+  buildUnderlayPyramidRgbaData: function (levelSpec, sourceRgb) {
+    var level = levelSpec || this.getUnderlayPyramidLevel(0);
+    var source = sourceRgb || this.getTerrainSourceRgb();
+    var width = Math.max(1, Math.round(Number(level.width) || 1));
+    var height = Math.max(1, Math.round(Number(level.height) || 1));
+    var sourceWidth = Math.max(1, Math.round(Number(source && source.width) || 1));
+    var sourceHeight = Math.max(1, Math.round(Number(source && source.height) || 1));
+    var cellRgba = this.buildUnderlaySourceCellRgbaData(level, source);
+    var data = new Uint8Array(width * height * 4);
+    var buckets = new Uint8Array(512);
+    var bucketCount = 0;
+    var minLuma = 255;
+    var maxLuma = 0;
+    var xToSource = [];
+    var yToSource;
+    var sourceIndex;
+    var outputIndex;
+    var outputRed;
+    var outputGreen;
+    var outputBlue;
+    var luma;
+    var bucket;
+    var x;
+    var y;
+
+    for (x = 0; x < width; x += 1) {
+      xToSource[x] = ((Math.floor(Math.max(0, Math.min(0.999999, (x + 0.5) / width)) * sourceWidth) % sourceWidth) + sourceWidth) % sourceWidth;
+    }
+
+    for (y = 0; y < height; y += 1) {
+      yToSource = Math.max(0, Math.min(sourceHeight - 1, Math.floor(Math.max(0, Math.min(0.999999, (y + 0.5) / height)) * sourceHeight)));
+
+      for (x = 0; x < width; x += 1) {
+        sourceIndex = (yToSource * sourceWidth + xToSource[x]) * 4;
         outputIndex = (y * width + x) * 4;
-        outputRed = Math.max(0, Math.min(255, Math.round(red)));
-        outputGreen = Math.max(0, Math.min(255, Math.round(green)));
-        outputBlue = Math.max(0, Math.min(255, Math.round(blue)));
+        outputRed = cellRgba.data[sourceIndex];
+        outputGreen = cellRgba.data[sourceIndex + 1];
+        outputBlue = cellRgba.data[sourceIndex + 2];
         data[outputIndex] = outputRed;
         data[outputIndex + 1] = outputGreen;
         data[outputIndex + 2] = outputBlue;
         data[outputIndex + 3] = 255;
+
         if ((x & 3) === 0 && (y & 3) === 0) {
           luma = outputRed * 0.299 + outputGreen * 0.587 + outputBlue * 0.114;
           minLuma = Math.min(minLuma, luma);
@@ -624,15 +644,13 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     return state.terrainTexture;
   },
 
-  uploadTerrainPyramidTexture: function (device, options) {
+  getOrCreateTerrainPyramidTexture: function (device, levelSpec) {
     var state = this.state;
     var targetDevice = this.getDevice(device);
-    var spec = options || {};
-    var requestedLevel = this.getRequestedUnderlayLevel(spec);
-    var levelSpec = this.getUnderlayPyramidLevel(requestedLevel);
+    var activeLevel = levelSpec || this.getUnderlayPyramidLevel(0);
     var signature = this.getTextureSignature();
     var pyramid = state.terrainPyramid || { signature: null, textures: {}, metrics: {} };
-    var textureKey = String(levelSpec.level);
+    var textureKey = String(activeLevel.level);
     var startedAt;
     var sourceRgb;
     var built;
@@ -643,30 +661,48 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     }
 
     if (pyramid.textures && pyramid.textures[textureKey]) {
-      this.publishUnderlayPyramidSelection(levelSpec, levelSpec, spec, pyramid.metrics[textureKey]);
       return pyramid.textures[textureKey];
     }
 
-    if (!targetDevice || !levelSpec.width || !levelSpec.height) {
+    if (!targetDevice || !activeLevel.width || !activeLevel.height) {
       throw new Error("WebGPU globe underlay pyramid upload requires world dimensions");
     }
 
     startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     sourceRgb = this.getTerrainSourceRgb();
-    built = this.buildUnderlayPyramidRgbaData(levelSpec, sourceRgb);
+    built = this.buildUnderlayPyramidRgbaData(activeLevel, sourceRgb);
 
     pyramid.textures[textureKey] = this.createRgbaTexture(
       targetDevice,
-      "globe-underlay-pyramid." + levelSpec.name,
-      levelSpec.width,
-      levelSpec.height,
+      "globe-underlay-pyramid." + activeLevel.name,
+      activeLevel.width,
+      activeLevel.height,
       built.data
     );
     pyramid.metrics[textureKey] = built.metrics;
     state.underlayPyramidUploadCount += 1;
     state.lastUnderlayPyramidUploadMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
-    this.publishUnderlayPyramidSelection(levelSpec, levelSpec, spec, pyramid.metrics[textureKey]);
     return pyramid.textures[textureKey];
+  },
+
+  prewarmTerrainPyramidTexture: function (device, options) {
+    var spec = options || {};
+    var requestedLevel = this.getRequestedUnderlayLevel(spec);
+    var levelSpec = this.getUnderlayPyramidLevel(requestedLevel);
+
+    return this.getOrCreateTerrainPyramidTexture(device, levelSpec);
+  },
+
+  uploadTerrainPyramidTexture: function (device, options) {
+    var spec = options || {};
+    var requestedLevel = this.getRequestedUnderlayLevel(spec);
+    var levelSpec = this.getUnderlayPyramidLevel(requestedLevel);
+    var texture = this.getOrCreateTerrainPyramidTexture(device, levelSpec);
+    var pyramid = this.state.terrainPyramid || { metrics: {} };
+    var textureKey = String(levelSpec.level);
+
+    this.publishUnderlayPyramidSelection(levelSpec, levelSpec, spec, pyramid.metrics[textureKey]);
+    return texture;
   },
 
   publishUnderlayPyramidSelection: function (requestedLevelSpec, activeLevelSpec, options, metrics) {
