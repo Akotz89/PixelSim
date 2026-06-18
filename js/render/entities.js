@@ -51,21 +51,6 @@ PS.render.entities.getTileRenderPosition = function (tileX, tileY) {
   };
 };
 
-PS.render.entities.drawTileEntity = function (tileX, tileY, size, color) {
-  var point = PS.render.entities.getTileRenderPosition(tileX, tileY);
-
-  if (!point) {
-    return;
-  }
-
-  drawEntityAtCanvasPosition(
-    point.x,
-    point.y,
-    Math.max(1, size * (point.scale || 1)),
-    color
-  );
-};
-
 PS.render.entities.getInterpolationAmount = function (interpolation) {
   var rawInterpolation = Number(interpolation);
   return Number.isFinite(rawInterpolation) ? clamp(rawInterpolation, 0, 1) : 1;
@@ -182,31 +167,6 @@ PS.render.entities.writeRenderPosition = function (entity, interpolation, output
   out.visibility = 1;
   out.visible = true;
   return out;
-};
-
-PS.render.entities.drawSurfaceEntity = function (entity, interpolation, size, color, spriteId, state) {
-  var point = PS.render.entities.getRenderPosition(entity, interpolation);
-  var cell = spriteId && PS.atlas && typeof PS.atlas.getCell === "function"
-    ? PS.atlas.getCell(spriteId)
-    : null;
-  var drawSize = Math.max(1, Number(size) || CONFIG.ORGANISM_DRAW_SIZE || 4);
-  var alpha = point && Number.isFinite(Number(point.visibility)) ? Number(point.visibility) : 1;
-
-  if (!point || point.visible === false || !cell || !PS.render.webgpuEntity || typeof PS.render.webgpuEntity.drawCell !== "function") {
-    return false;
-  }
-
-  return PS.render.webgpuEntity.drawCell(
-    cell,
-    point.x - drawSize / 2,
-    point.y - drawSize / 2,
-    drawSize,
-    drawSize,
-    {
-      alpha: alpha,
-      kind: state && state.kind ? state.kind : ""
-    }
-  );
 };
 
 PS.render.entities.shouldDrawGlobeScaleEntities = function () {
@@ -363,23 +323,6 @@ PS.render.entities.getOrganismColor = function (organism) {
   }
 
   return PS.render.entities.getLineageColor(organism);
-};
-
-PS.render.entities.drawRepresentativeMarker = function (organism, interpolation) {
-  var representative = organism && organism.representative ? organism.representative : organism;
-  var point = PS.render.entities.getRenderPosition(organism, interpolation);
-  var size = Math.max(4, Number(CONFIG.ORGANISM_DRAW_SIZE) || 4) * 1.35;
-  var cell = PS.atlas && typeof PS.atlas.getRepresentativeIntentCell === "function"
-    ? PS.atlas.getRepresentativeIntentCell(representative)
-    : null;
-  var batches = PS.render.entities.createEntityBatches();
-
-  if (!PS.render.entities.shouldDrawDetailedLocalEntities()) {
-    return false;
-  }
-
-  return PS.render.entities.appendEntityCell(batches, cell, point, size, 1, "intent", 0, -size * 0.55) &&
-    PS.render.entities.drawEntityBatches(batches, 1);
 };
 
 PS.render.entities.drawRepresentativeIntents = function () {

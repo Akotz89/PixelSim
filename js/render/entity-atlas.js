@@ -571,42 +571,6 @@ PS.atlas.buildingCategories = {
   civic: { source: "assembly-room", autotile: true }
 };
 
-PS.atlas.getBuildingAutotileMask = function (neighbors) {
-  var n = neighbors || {};
-  var mask = 0;
-
-  if (n.north) { mask |= 1; }
-  if (n.east) { mask |= 2; }
-  if (n.south) { mask |= 4; }
-  if (n.west) { mask |= 8; }
-  return mask;
-};
-
-PS.atlas.getBuildingSpriteDescriptor = function (building) {
-  var category = String(building && building.category || building && building.family || "residential").toLowerCase();
-  var definition = PS.atlas.buildingCategories[category] || PS.atlas.buildingCategories.residential;
-  var lineageId = Math.max(1, Math.round(Number(building && (building.lineageId || building.factionId)) || 1));
-  var mask = PS.atlas.getBuildingAutotileMask(building && building.neighbors);
-  var variant = PS.atlas.getBitShiftedPaletteIndex
-    ? PS.atlas.getBitShiftedPaletteIndex(lineageId * 2654435761 + mask, 3, 16)
-    : mask % 16;
-  var colors = CONFIG && Array.isArray(CONFIG.LINEAGE_COLORS) && CONFIG.LINEAGE_COLORS.length > 0
-    ? CONFIG.LINEAGE_COLORS
-    : ["#72d7ff"];
-
-  return {
-    category: category,
-    sourceSheet: definition.source,
-    destinationSheet: "building." + category + "." + mask + "." + variant,
-    autotileMask: mask,
-    color: colors[(lineageId + variant) % colors.length],
-    sheetPair: {
-      source: definition.source,
-      dest: "building." + category
-    }
-  };
-};
-
 PS.atlas.getSettlementLevelBucket = function (settlement) {
   return clamp(Math.floor((Math.max(1, Math.round(Number(settlement && settlement.level) || 1)) - 1) / 2), 0, 5);
 };
@@ -1540,44 +1504,6 @@ PS.atlas.buildHybrid = function (generated, sheets) {
   return PS.atlas.buildFromSheets(sheets || [], {
     append: true,
     overrideExisting: true
-  });
-};
-
-PS.atlas.uploadToGL = function (gl) {
-  if (!gl || typeof gl.createTexture !== "function") {
-    throw new Error("GPU context is required for atlas upload");
-  }
-
-  return PS.atlas.pages.map(function (page) {
-    var texture = gl.createTexture();
-
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-
-    if (typeof gl.texParameteri === "function") {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    }
-
-    if (page.externalImage && page.image) {
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, page.image);
-    } else {
-      gl.texImage2D(
-        gl.TEXTURE_2D,
-        0,
-        gl.RGBA,
-        page.width,
-        page.height,
-        0,
-        gl.RGBA,
-        gl.UNSIGNED_BYTE,
-        page.data
-      );
-    }
-
-    page.texture = texture;
-    return texture;
   });
 };
 
