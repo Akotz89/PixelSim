@@ -1,5 +1,5 @@
 const assert = require("assert");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 const { chromium } = require("playwright");
 
 const PORT = 3210;
@@ -53,33 +53,34 @@ function startDevServer() {
 
         child.once("exit", finish);
 
-        try {
-          if (process.platform === "win32") {
-            child.kill();
-          } else {
-            process.kill(-child.pid, "SIGTERM");
-          }
-        } catch (error) {
-          child.kill();
-        }
+        stopProcessTree(child, "SIGTERM");
 
         setTimeout(function() {
           if (child.exitCode === null) {
-            try {
-              if (process.platform === "win32") {
-                child.kill("SIGKILL");
-              } else {
-                process.kill(-child.pid, "SIGKILL");
-              }
-            } catch (error) {
-              // The process may already have exited.
-            }
+            stopProcessTree(child, "SIGKILL");
           }
           finish();
         }, 2000);
       });
     }
   };
+}
+
+function stopProcessTree(child, signal) {
+  try {
+    if (process.platform === "win32") {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"], { stdio: "ignore" });
+      return;
+    }
+
+    process.kill(-child.pid, signal);
+  } catch (error) {
+    try {
+      child.kill(signal);
+    } catch (innerError) {
+      // The process may already have exited.
+    }
+  }
 }
 
 async function waitForServer(server) {
