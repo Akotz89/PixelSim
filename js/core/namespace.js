@@ -196,6 +196,7 @@ PS.core.manifest = [
   "js/ui/tooltip.js",
   "js/ui/modal.js",
   "js/ui/statistics-dashboard.js",
+  "js/ui/summary-html.js",
   "js/ui/summary.js",
   "js/ui/evolutionary-tree.js",
   "js/ui/history-summary.js",

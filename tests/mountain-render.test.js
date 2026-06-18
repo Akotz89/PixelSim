@@ -147,7 +147,7 @@ assert.ok(Object.keys(batches.materialCounts).some((name) => name.indexOf("terra
 assert.ok(Object.keys(batches.materialCounts).some((name) => name.indexOf("terrain.snow.") === 0), "snow caps should use authored snow terrain assets");
 assert.ok(Object.keys(batches.pages).length >= 1, "mountain overlays should append to WebGPU surface pages");
 assert.ok(mountainCellCache.every((cellData) => cellData.terrainAtlasCell && cellData.terrainAtlasCell.name === "fallback.rock"), "mountain overlays should not overwrite base terrain atlas cache cells");
-assert.ok(mountainCellCache.every((cellData) => typeof cellData.terrainAtlasEcologyKey === "string"), "mountain overlays should not replace base terrain cache keys");
+assert.ok(mountainCellCache.every((cellData) => typeof cellData.terrainAtlasKeyId === "number"), "mountain overlays should not replace base terrain cache keys");
 
 const worldBatches = context.PS.render.surfaceTileBatcher.makeBatches({
   sampleEast: 3,

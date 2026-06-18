@@ -487,12 +487,12 @@ PS.render.pipeline.registerLayer("environment.cloudShadows", {
   order: 36,
   drawLayer: PS.render.DrawLayer.SHADOW,
   family: "environment",
-  semantic: "G-buffer compose cloud-shadow source preparation",
+  semantic: "scrolling cloud shadow overlay from the environment system",
   minTier: "continent",
   maxTier: "local",
-  draw: function () {
-    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.ensureCloudShadowMap === "function") {
-      PS.render.environmentOverlays.ensureCloudShadowMap();
+  draw: function (lodState) {
+    if (PS.render.environmentOverlays && typeof PS.render.environmentOverlays.drawCloudShadowOverlay === "function") {
+      PS.render.environmentOverlays.drawCloudShadowOverlay(lodState);
     }
   }
 });

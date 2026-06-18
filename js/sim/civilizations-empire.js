@@ -1,3 +1,7 @@
+"use strict";
+// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
+// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
+
 import { CONFIG } from "../../config.js";
 // fallow-ignore-next-line circular-dependency
 import { getClaimedStarSystemCount, getCompletedProbeMissionCount } from "./civilizations-probes.js";
@@ -5,9 +9,6 @@ import { getClaimedStarSystemCount, getCompletedProbeMissionCount } from "./civi
 import { ensureInterstellarFleetState, getClaimedStarSystems, getCompletedInterstellarFleetCount, getInterstellarFleetEndpoints, makeInterstellarFleet, updateInterstellarFleetEra, updateInterstellarFleetTravel } from "./civilizations-stars.js";
 import { restoreSettlementGrowthNumber } from "./settlements-state.js";
 import { world } from "../systems/state.js";
-
-// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
-// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
 export function updateInterstellarFleetReadiness() {
   ensureInterstellarFleetState();

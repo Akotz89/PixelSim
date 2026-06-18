@@ -1,3 +1,7 @@
+"use strict";
+// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
+// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
+
 import { CONFIG } from "../../config.js";
 // fallow-ignore-next-line circular-dependency
 import { getEmpireLegacyLevel, getEmpireSectorCount } from "./civilizations-empire.js";
@@ -5,9 +9,6 @@ import { getEmpireLegacyLevel, getEmpireSectorCount } from "./civilizations-empi
 import { ensureStarMapState, getClaimedStarSystemCount, getCompletedProbeMissionCount, getDiscoveredStarSystemCount, getMappedStarSystemValue, makeStarSystem, normalizeStarSystems, rebuildStarSystemIndexes, registerStarSystemInIndex, updateStarMapEra, updateStarMapReadiness } from "./civilizations-probes.js";
 import { restoreSettlementGrowthNumber } from "./settlements-state.js";
 import { world } from "../systems/state.js";
-
-// SCAFFOLDING: This file is a progress bar, not a game system. Redesign required.
-// Freeze new features here until intelligence, predation/body traits, and real technology progression exist.
 
 export function updateStarMapState() {
   if (!updateStarMapReadiness()) {

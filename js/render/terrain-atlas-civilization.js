@@ -496,7 +496,21 @@ PS.atlas.drawTerrainCivilizationMarks = function (cell, palette, variant, sample
   ], relief.ground);
 
   if (civilization.type === "settlement") {
-    PS.atlas.writeTerrainDistrictFlatBase(cell, ground);
+    if (sample && sample.renderSettlementParcelFillOnly) {
+      PS.atlas.writeTerrainDistrictFlatBase(cell, ground);
+    } else {
+      PS.atlas.writeTerrainDistrictFlatBase(cell, ground);
+      PS.atlas.writePixel(cell, 2 + (phase % 4), 2 + (parcelVariant % 3), PS.atlas.withTerrainHeightAlpha(light, relief.ground));
+      PS.atlas.writePixel(cell, 9 + (parcelVariant % 4), 3 + (phase % 2), PS.atlas.withTerrainHeightAlpha(warm, relief.ground));
+      PS.atlas.writePixel(cell, 4 + ((phase + parcelVariant) % 5), 12, PS.atlas.withTerrainHeightAlpha(PS.atlas.mixTerrainCivilizationColor(light, warm, 0.48, relief.ground), relief.ground));
+      PS.atlas.writePixel(cell, 12, 8 + (parcelVariant % 4), PS.atlas.withTerrainHeightAlpha(PS.atlas.mixTerrainCivilizationColor(warm, shadow, 0.38, relief.ground), relief.ground));
+      PS.atlas.writePixel(cell, 6 + (parcelVariant % 3), 7 + (phase % 3), [
+        clamp(ground[0] + 18, 0, 255),
+        clamp(ground[1] + 10, 0, 255),
+        clamp(ground[2] + 6, 0, 255),
+        relief.ground
+      ]);
+    }
     return;
   }
 
