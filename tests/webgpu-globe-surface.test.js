@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const lightingCycleSource = read("js/render/lighting-cycle.js");
 const globeSource = read("js/render/webgpu-globe.js");
@@ -11,18 +12,18 @@ const underlayWgsl = read("shaders/surface-underlay.wgsl");
 const chunkWgsl = read("shaders/surface-chunk.wgsl");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-globe.js") > namespaceSource.indexOf("js/render/webgpu-targets.js"),
+  manifestSource.indexOf("js/render/webgpu-globe.js") > manifestSource.indexOf("js/render/webgpu-targets.js"),
   "WebGPU globe should load after WebGPU targets"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-surface-underlay.js") > namespaceSource.indexOf("js/render/webgpu-globe.js"),
+  manifestSource.indexOf("js/render/webgpu-surface-underlay.js") > manifestSource.indexOf("js/render/webgpu-globe.js"),
   "WebGPU surface underlay should load after WebGPU globe"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-surface-underlay.js") < namespaceSource.indexOf("js/render/webgpu-renderer.js"),
+  manifestSource.indexOf("js/render/webgpu-surface-underlay.js") < manifestSource.indexOf("js/render/webgpu-renderer.js"),
   "WebGPU planet renderers should load before the WebGPU renderer"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
+assert.strictEqual(manifestSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
 
 [
   "@vertex",

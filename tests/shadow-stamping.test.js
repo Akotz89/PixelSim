@@ -1,10 +1,11 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const shadowSource = read("js/render/shadow-stamping.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/shadow-stamping.js") < namespaceSource.indexOf("js/render/entities.js"),
+  manifestSource.indexOf("js/render/shadow-stamping.js") < manifestSource.indexOf("js/render/entities.js"),
   "shadow stamping should load before entity facades"
 );
 assert.ok(shadowSource.indexOf("heightLookup") >= 0, "shadow module should expose the precomputed height lookup");

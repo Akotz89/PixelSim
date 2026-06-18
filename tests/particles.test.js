@@ -2,6 +2,7 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 
 const particleData = JSON.parse(read("data/particles.json"));
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const particleSource = read("js/render/particles.js");
 const pipelineSource = read("js/render/pipeline.js");
 
@@ -11,7 +12,7 @@ assert.ok(particleData.effects.snow, "particle data should define snow");
 assert.ok(particleData.effects.falling_leaves, "particle data should define falling leaf particles");
 assert.ok(particleData.effects.birth_sparkle, "particle data should define birth sparkle burst");
 assert.ok(particleData.effects.settlement_activity, "particle data should define settlement activity burst");
-assert.ok(namespaceSource.indexOf("js/render/particles.js") >= 0, "runtime manifest should load particles");
+assert.ok(manifestSource.indexOf("js/render/particles.js") >= 0, "runtime manifest should load particles");
 assert.ok(pipelineSource.indexOf("PS.render.particles.update") >= 0, "render pipeline should update particles");
 assert.ok(pipelineSource.indexOf("PS.render.particles.render") >= 0, "render pipeline should render particles");
 assert.strictEqual(particleSource.indexOf("getContext(\"2d\""), -1, "particle runtime must not use Canvas2D");

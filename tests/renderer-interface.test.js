@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const rendererSource = read("js/render/renderer.js");
 const webgpuRendererSource = read("js/render/webgpu-renderer.js");
 const pipelineSource = read("js/render/pipeline.js");
@@ -23,10 +24,10 @@ const legacyRuntimeScripts = [
   "js/render/webgl2-renderer.js"
 ];
 
-assert.ok(namespaceSource.indexOf("js/render/renderer.js") >= 0, "script manifest should load renderer interface");
-assert.ok(namespaceSource.indexOf("js/render/webgpu-renderer.js") > namespaceSource.indexOf("js/render/renderer.js"), "WebGPU renderer should load after the renderer interface");
+assert.ok(manifestSource.indexOf("js/render/renderer.js") >= 0, "script manifest should load renderer interface");
+assert.ok(manifestSource.indexOf("js/render/webgpu-renderer.js") > manifestSource.indexOf("js/render/renderer.js"), "WebGPU renderer should load after the renderer interface");
 legacyRuntimeScripts.forEach(function (script) {
-  assert.strictEqual(namespaceSource.indexOf(script), -1, "script manifest must not load " + script);
+  assert.strictEqual(manifestSource.indexOf(script), -1, "script manifest must not load " + script);
 });
 
 assert.ok(rendererSource.indexOf("beginFrame") >= 0, "renderer interface should expose beginFrame");

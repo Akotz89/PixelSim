@@ -5,6 +5,7 @@ function nearly(actual, expected) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
@@ -24,15 +25,15 @@ const shadowWgsl = read("shaders/shadow.wgsl");
 const spriteDisplaceWgsl = read("shaders/sprite-displace.wgsl");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-surface-tile.js") > namespaceSource.indexOf("js/render/webgpu-surface-underlay.js"),
+  manifestSource.indexOf("js/render/webgpu-surface-tile.js") > manifestSource.indexOf("js/render/webgpu-surface-underlay.js"),
   "WebGPU surface tile renderer should load after WebGPU surface underlay"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/water-rendering.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js") &&
-    namespaceSource.indexOf("js/render/surface-tile-batcher.js") < namespaceSource.indexOf("js/render/webgpu-surface-tile.js"),
+  manifestSource.indexOf("js/render/water-rendering.js") < manifestSource.indexOf("js/render/surface-tile-batcher.js") &&
+    manifestSource.indexOf("js/render/surface-tile-batcher.js") < manifestSource.indexOf("js/render/webgpu-surface-tile.js"),
   "water rendering helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
+assert.strictEqual(manifestSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
 assert.ok(
   surfaceTileSource.indexOf("return PS.render.surfaceTileBatcher.appendBatches(batches, address, cellCache, alpha, lodState)") >= 0 &&

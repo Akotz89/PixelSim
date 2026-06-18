@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const thermoSource = read("js/sim/thermohaline.js");
@@ -11,8 +12,8 @@ const densitySidecar = read("shaders/density.wgsl.js");
 const configSource = read("sim/configs/thermohaline.json");
 const configSidecar = read("sim/configs/thermohaline.json.js");
 
-assert.ok(namespaceSource.indexOf("js/sim/thermohaline.js") > namespaceSource.indexOf("js/sim/lbm-ocean.js"), "thermohaline should load after LBM ocean");
-assert.ok(namespaceSource.indexOf("js/sim/thermohaline.js") < namespaceSource.indexOf("js/sim/biome-lut.js"), "thermohaline should load before biome rendering");
+assert.ok(manifestSource.indexOf("js/sim/thermohaline.js") > manifestSource.indexOf("js/sim/lbm-ocean.js"), "thermohaline should load after LBM ocean");
+assert.ok(manifestSource.indexOf("js/sim/thermohaline.js") < manifestSource.indexOf("js/sim/biome-lut.js"), "thermohaline should load before biome rendering");
 
 [
   "salinity_in",

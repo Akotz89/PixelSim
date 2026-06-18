@@ -21,7 +21,7 @@ vm.runInContext(read("js/sim/resource-registry.js"), context, { filename: "js/si
 const registry = context.window.PS.sim.resources;
 const definitions = registry.getDefinitions();
 assert.ok(JSON.parse(read("package.json")).scripts.test.includes("tests/resource-registry.test.js"), "npm test should include resource registry checks");
-assert.ok(read("js/core/namespace.js").includes("js/sim/resource-registry.js"), "manifest should load resource registry");
+assert.ok(read("js/core/manifest.js").includes("js/sim/resource-registry.js"), "manifest should load resource registry");
 assert.ok(definitions.length >= 5, "registry should define at least five resources");
 assert.deepStrictEqual(
   Array.from(definitions, (definition) => definition.id),

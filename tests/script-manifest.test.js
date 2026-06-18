@@ -14,6 +14,10 @@ function collectJavaScriptFiles(dir, files) {
 
 const indexSource = read("index.html");
 const namespaceSource = read("js/core/namespace.js");
+const mainSource = read("js/main.js");
+const manifestPath = "js/core/manifest.js";
+assert.ok(fs.existsSync(path.join(root, manifestPath)), "script manifest should live in js/core/manifest.js");
+const manifestSource = read(manifestPath);
 const scriptSources = Array.from(indexSource.matchAll(/<script\s+(?:type="[^"]*"\s+)?src="([^"]+)"/g)).map(function(match) {
   return match[1];
 });
@@ -37,6 +41,15 @@ assert.ok(context.window.PS, "namespace should expose window.PS");
 assert.ok(context.window.PS.core, "namespace should expose PS.core");
 assert.strictEqual(context.window.PS.core.bootstrapScript, "js/core/namespace.js", "bootstrap script should identify namespace.js");
 assert.ok(Array.isArray(context.window.PS.core.manifest), "PS.core.manifest should be an array");
+assert.ok(/export\s+const\s+manifest\s*=/.test(manifestSource), "manifest.js should export the script manifest");
+assert.ok(namespaceSource.indexOf("from \"./manifest.js\"") >= 0, "namespace.js should import the script manifest");
+assert.ok(namespaceSource.indexOf("PS.core.manifest = [") === -1, "namespace.js should not own the manifest array");
+assert.ok(/export\s+function\s+init\s*\(/.test(mainSource), "main.js should expose init as an ES module export");
+assert.ok(mainSource.indexOf("PS.init") === -1, "main.js should not register init through the PS facade");
+assert.ok(
+  !context.window.PS.runtime.requiredFunctions.includes("PS.init"),
+  "runtime health should not require the PS.init facade"
+);
 const manifest = Array.from(context.window.PS.core.manifest);
 assert.ok(manifest.length > 100, "manifest should contain the current game script set");
 assert.strictEqual(manifest[0], "config.js", "manifest should start after namespace bootstrap");

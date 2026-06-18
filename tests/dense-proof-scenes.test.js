@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const proofSceneSource = read("js/render/proof-scenes.js");
 const proofSceneDoc = read("docs/proof-scene-acceptance.md");
 const visualSpec = read("docs/google-earth-snake2d-visual-experience.md");
@@ -17,8 +18,8 @@ vm.createContext(context);
 vm.runInContext(proofSceneSource, context, { filename: "js/render/proof-scenes.js" });
 
 assert.ok(
-  namespaceSource.indexOf("js/render/proof-scenes.js") > namespaceSource.indexOf("js/render/lod.js") &&
-    namespaceSource.indexOf("js/render/proof-scenes.js") < namespaceSource.indexOf("js/render/projection.js"),
+  manifestSource.indexOf("js/render/proof-scenes.js") > manifestSource.indexOf("js/render/lod.js") &&
+    manifestSource.indexOf("js/render/proof-scenes.js") < manifestSource.indexOf("js/render/projection.js"),
   "proof scenes should load after LOD and before projection/pipeline consumers"
 );
 

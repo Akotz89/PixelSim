@@ -1,10 +1,11 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const iteratorSource = read("js/render/tile-iterator.js");
 const packageSource = read("package.json");
 
-assert.ok(namespaceSource.indexOf("js/render/tile-iterator.js") > namespaceSource.indexOf("js/render/ranmap.js"), "tile iterator should load after RANMAP");
+assert.ok(manifestSource.indexOf("js/render/tile-iterator.js") > manifestSource.indexOf("js/render/ranmap.js"), "tile iterator should load after RANMAP");
 assert.ok(JSON.parse(packageSource).scripts.test.includes("tests/render-iterator.test.js"), "npm test should include render iterator checks");
 assert.strictEqual(iteratorSource.indexOf("new Uint8Array"), -1, "render iterator should not allocate per-tile buffers");
 assert.strictEqual(iteratorSource.indexOf("Array.from"), -1, "render iterator should not allocate arrays while iterating");

@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const bitsmapSource = read("js/core/bitsmap.js");
 const drawOrderSource = read("js/render/draw-order.js");
 const vegetationGridSource = read("js/sim/vegetation.js");
@@ -14,14 +15,14 @@ const pipelineSource = read("js/render/pipeline.js");
 const atlasSource = read("js/render/entity-atlas.js");
 const selectedVegetationCells = [];
 
-assert.ok(namespaceSource.indexOf("js/render/shadow-stamping.js") < namespaceSource.indexOf("js/render/entities.js"), "shadow stamping should load before entity facades");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-render.js") > namespaceSource.indexOf("js/render/entities.js"), "vegetation render should load after entity facade");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-cells.js") > namespaceSource.indexOf("js/render/entities.js"), "vegetation cell helpers should load after entity facade");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-cells.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation cell helpers should load before vegetation renderer");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-shadows.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation shadow policy should load before vegetation renderer");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-overlays.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation overlay helpers should load before vegetation renderer");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-draw-list.js") < namespaceSource.indexOf("js/render/vegetation-render.js"), "vegetation draw-list helpers should load before vegetation renderer");
-assert.ok(namespaceSource.indexOf("js/render/vegetation-render.js") < namespaceSource.indexOf("js/render/pipeline.js"), "vegetation render should load before pipeline registration");
+assert.ok(manifestSource.indexOf("js/render/shadow-stamping.js") < manifestSource.indexOf("js/render/entities.js"), "shadow stamping should load before entity facades");
+assert.ok(manifestSource.indexOf("js/render/vegetation-render.js") > manifestSource.indexOf("js/render/entities.js"), "vegetation render should load after entity facade");
+assert.ok(manifestSource.indexOf("js/render/vegetation-cells.js") > manifestSource.indexOf("js/render/entities.js"), "vegetation cell helpers should load after entity facade");
+assert.ok(manifestSource.indexOf("js/render/vegetation-cells.js") < manifestSource.indexOf("js/render/vegetation-render.js"), "vegetation cell helpers should load before vegetation renderer");
+assert.ok(manifestSource.indexOf("js/render/vegetation-shadows.js") < manifestSource.indexOf("js/render/vegetation-render.js"), "vegetation shadow policy should load before vegetation renderer");
+assert.ok(manifestSource.indexOf("js/render/vegetation-overlays.js") < manifestSource.indexOf("js/render/vegetation-render.js"), "vegetation overlay helpers should load before vegetation renderer");
+assert.ok(manifestSource.indexOf("js/render/vegetation-draw-list.js") < manifestSource.indexOf("js/render/vegetation-render.js"), "vegetation draw-list helpers should load before vegetation renderer");
+assert.ok(manifestSource.indexOf("js/render/vegetation-render.js") < manifestSource.indexOf("js/render/pipeline.js"), "vegetation render should load before pipeline registration");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("vegetation.world"') >= 0, "pipeline should register world vegetation layer");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("vegetation.grass"') >= 0, "pipeline should register grass density overlay layer");
 assert.ok(pipelineSource.indexOf("order: 34") >= 0, "grass density overlay should render below world vegetation");

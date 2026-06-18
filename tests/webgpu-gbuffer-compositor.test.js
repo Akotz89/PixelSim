@@ -5,6 +5,7 @@ function nearly(actual, expected) {
 }
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
 const lightingCycleSource = read("js/render/lighting-cycle.js");
@@ -14,19 +15,19 @@ const shaderSource = read("shaders/gbuffer-compose.wgsl");
 const sidecarSource = read("shaders/gbuffer-compose.wgsl.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-targets.js") < namespaceSource.indexOf("js/render/webgpu-gbuffer.js"),
+  manifestSource.indexOf("js/render/webgpu-targets.js") < manifestSource.indexOf("js/render/webgpu-gbuffer.js"),
   "WebGPU G-buffer should load after WebGPU targets"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-gbuffer.js") < namespaceSource.indexOf("js/render/webgpu-compositor.js"),
+  manifestSource.indexOf("js/render/webgpu-gbuffer.js") < manifestSource.indexOf("js/render/webgpu-compositor.js"),
   "WebGPU compositor should load after WebGPU G-buffer"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-compositor.js") < namespaceSource.indexOf("js/render/webgpu-globe.js"),
+  manifestSource.indexOf("js/render/webgpu-compositor.js") < manifestSource.indexOf("js/render/webgpu-globe.js"),
   "WebGPU compositor should load before globe consumers"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/webgl-gbuffer.js"), -1, "runtime manifest must not load legacy WebGL G-buffer");
-assert.strictEqual(namespaceSource.indexOf("js/render/webgl-compositor.js"), -1, "runtime manifest must not load legacy WebGL compositor");
+assert.strictEqual(manifestSource.indexOf("js/render/webgl-gbuffer.js"), -1, "runtime manifest must not load legacy WebGL G-buffer");
+assert.strictEqual(manifestSource.indexOf("js/render/webgl-compositor.js"), -1, "runtime manifest must not load legacy WebGL compositor");
 assert.ok(sidecarSource.indexOf("SHADER_SHADERS_GBUFFER_COMPOSE_WGSL") >= 0, "G-buffer compositor sidecar should expose global WGSL source");
 assert.ok(sidecarSource.indexOf(JSON.stringify(shaderSource)) >= 0, "G-buffer compositor sidecar should embed raw WGSL source");
 assert.ok(sidecarSource.indexOf('PS.assets.registerText("shaders/gbuffer-compose.wgsl"') >= 0, "G-buffer compositor sidecar should register shader text");

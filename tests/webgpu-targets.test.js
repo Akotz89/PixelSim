@@ -6,17 +6,18 @@ const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
 const namespaceSource = fs.readFileSync(path.join(root, "js/core/namespace.js"), "utf8");
+const manifestSource = fs.readFileSync(path.join(root, "js/core/manifest.js"), "utf8");
 const targetsSource = fs.readFileSync(path.join(root, "js/render/webgpu-targets.js"), "utf8");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-targets.js") > namespaceSource.indexOf("js/render/wgsl-shader-manager.js"),
+  manifestSource.indexOf("js/render/webgpu-targets.js") > manifestSource.indexOf("js/render/wgsl-shader-manager.js"),
   "WebGPU targets should load after the WGSL manager"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-targets.js") < namespaceSource.indexOf("js/render/webgpu-renderer.js"),
+  manifestSource.indexOf("js/render/webgpu-targets.js") < manifestSource.indexOf("js/render/webgpu-renderer.js"),
   "WebGPU targets should load before the WebGPU renderer"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
+assert.strictEqual(manifestSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
 
 const context = {
   PS: {

@@ -1,13 +1,14 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const shadowSource = read("js/render/shadow-stamping.js");
 const mountainSource = read("js/render/mountain-render.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 
-assert.ok(namespaceSource.indexOf("js/render/shadow-stamping.js") < namespaceSource.indexOf("js/render/mountain-render.js"), "mountain renderer should load after shadow stamping");
-assert.ok(namespaceSource.indexOf("js/render/mountain-render.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js"), "mountain renderer should load before surface tile batching");
+assert.ok(manifestSource.indexOf("js/render/shadow-stamping.js") < manifestSource.indexOf("js/render/mountain-render.js"), "mountain renderer should load after shadow stamping");
+assert.ok(manifestSource.indexOf("js/render/mountain-render.js") < manifestSource.indexOf("js/render/surface-tile-batcher.js"), "mountain renderer should load before surface tile batching");
 assert.ok(mountainSource.indexOf("getFormationInfo") >= 0, "mountain renderer should expose multi-tile formation metadata");
 assert.ok(mountainSource.indexOf("terrainMaterials.selectCell") >= 0, "mountain renderer should use authored terrain material cells");
 assert.ok(mountainSource.indexOf("appendStampedRects") >= 0, "mountain renderer should cast stamped long shadows");

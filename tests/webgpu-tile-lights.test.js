@@ -2,6 +2,7 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const { createFakeRenderDevice } = require("./helpers/mock-factories.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const mainLoopSource = read("js/main-loop.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
@@ -14,8 +15,8 @@ const tileLightWgsl = read("shaders/tile-light.wgsl");
 const tileLightSidecar = read("shaders/tile-light.wgsl.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-compositor.js") < namespaceSource.indexOf("js/render/webgpu-tile-lights.js") &&
-    namespaceSource.indexOf("js/render/webgpu-tile-lights.js") < namespaceSource.indexOf("js/render/webgpu-point-lights.js"),
+  manifestSource.indexOf("js/render/webgpu-compositor.js") < manifestSource.indexOf("js/render/webgpu-tile-lights.js") &&
+    manifestSource.indexOf("js/render/webgpu-tile-lights.js") < manifestSource.indexOf("js/render/webgpu-point-lights.js"),
   "WebGPU tile lights should load after compositor and before point lights"
 );
 assert.ok(mainLoopSource.indexOf("PS.render.webgpuTileLights") >= 0, "startup should register tile-light WGSL before first draw");

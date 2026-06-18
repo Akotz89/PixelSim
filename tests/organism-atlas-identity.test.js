@@ -1,18 +1,19 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const atlasSource = read("js/render/entity-atlas.js");
 const organismAtlasSource = read("js/render/entity-atlas-organisms.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/entity-atlas-organisms.js") > namespaceSource.indexOf("js/render/entity-atlas.js"),
+  manifestSource.indexOf("js/render/entity-atlas-organisms.js") > manifestSource.indexOf("js/render/entity-atlas.js"),
   "organism atlas identity sidecar should load after atlas core"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/entity-atlas-organisms.js") < namespaceSource.indexOf("js/render/entity-atlas-intents.js"),
+  manifestSource.indexOf("js/render/entity-atlas-organisms.js") < manifestSource.indexOf("js/render/entity-atlas-intents.js"),
   "organism atlas identity sidecar should load before later atlas consumers"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
+assert.strictEqual(manifestSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
 
 const context = {
   PS: {

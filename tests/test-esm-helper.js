@@ -9,6 +9,27 @@
  */
 
 const vm = require("vm");
+const fs = require("fs");
+const path = require("path");
+
+const root = path.resolve(__dirname, "..");
+let manifestArrayLiteral = null;
+
+function getManifestArrayLiteral() {
+  if (manifestArrayLiteral) {
+    return manifestArrayLiteral;
+  }
+
+  const source = fs.readFileSync(path.join(root, "js/core/manifest.js"), "utf8");
+  const match = source.match(/export\s+const\s+manifest\s*=\s*(\[[\s\S]*?\n\]);/);
+
+  if (!match) {
+    throw new Error("Could not parse js/core/manifest.js for VM import shim");
+  }
+
+  manifestArrayLiteral = match[1];
+  return manifestArrayLiteral;
+}
 
 /**
  * Strip ESM syntax from source code so it can run in a vm context.
@@ -18,8 +39,8 @@ function prepareSourceForVM(source) {
   // load files into shared vm contexts, so imported bindings are usually already
   // present as globals or mocks on window.
   source = source.replace(
-    /^import\s+\{([^}]+)\}\s+from\s+["'][^"']+["'];\s*$/gm,
-    function(match, importedNames) {
+    /^import\s+\{([^}]+)\}\s+from\s+["']([^"']+)["'];\s*$/gm,
+    function(match, importedNames, importPath) {
       return importedNames
         .split(",")
         .map(function(part) {
@@ -29,6 +50,10 @@ function prepareSourceForVM(source) {
 
           if (!localName) {
             return "";
+          }
+
+          if (/\/?manifest\.js$/.test(importPath) && importedName === "manifest") {
+            return `var ${localName} = ${getManifestArrayLiteral()}`;
           }
 
           return `try { if (typeof ${localName} === "undefined") { eval("var ${localName} = window.${importedName};"); } } catch(e) {}`;

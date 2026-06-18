@@ -1,12 +1,13 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const bitsmapSource = read("js/core/bitsmap.js");
 const overlaySource = read("js/render/environment-overlays.js");
 const pipelineSource = read("js/render/pipeline.js");
 
-assert.ok(namespaceSource.indexOf("js/render/environment-overlays.js") > namespaceSource.indexOf("js/render/vegetation-render.js"), "environment overlays should load after vegetation renderer");
-assert.ok(namespaceSource.indexOf("js/render/environment-overlays.js") < namespaceSource.indexOf("js/render/pipeline.js"), "environment overlays should load before pipeline registration");
+assert.ok(manifestSource.indexOf("js/render/environment-overlays.js") > manifestSource.indexOf("js/render/vegetation-render.js"), "environment overlays should load after vegetation renderer");
+assert.ok(manifestSource.indexOf("js/render/environment-overlays.js") < manifestSource.indexOf("js/render/pipeline.js"), "environment overlays should load before pipeline registration");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.snow"') >= 0, "pipeline should register snow environment overlay");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.ice"') >= 0, "pipeline should register ice environment overlay");
 assert.ok(pipelineSource.indexOf('PS.render.pipeline.registerLayer("environment.cloudShadows"') >= 0, "pipeline should register cloud shadow environment overlay");

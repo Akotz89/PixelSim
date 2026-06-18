@@ -1,18 +1,18 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
-const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const gpuSource = read("js/render/gpu.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/render/gpu.js") < namespaceSource.indexOf("js/render/wgsl-shader-manager.js"),
+  manifestSource.indexOf("js/render/gpu.js") < manifestSource.indexOf("js/render/wgsl-shader-manager.js"),
   "WGSL manager should load after the WebGPU bootstrap"
 );
 assert.ok(
-  namespaceSource.indexOf("js/render/wgsl-shader-manager.js") < namespaceSource.indexOf("js/render/webgpu-renderer.js"),
+  manifestSource.indexOf("js/render/wgsl-shader-manager.js") < manifestSource.indexOf("js/render/webgpu-renderer.js"),
   "WGSL manager should load before the WebGPU renderer"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
+assert.strictEqual(manifestSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
 
 const runtimeErrors = [];
 const context = {

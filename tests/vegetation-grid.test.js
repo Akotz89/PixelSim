@@ -6,15 +6,16 @@ const vm = require("vm");
 
 const root = path.resolve(__dirname, "..");
 const namespaceSource = fs.readFileSync(path.join(root, "js/core/namespace.js"), "utf8");
+const manifestSource = fs.readFileSync(path.join(root, "js/core/manifest.js"), "utf8");
 const bitsmapSource = fs.readFileSync(path.join(root, "js/core/bitsmap.js"), "utf8");
 const vegetationSource = fs.readFileSync(path.join(root, "js/sim/vegetation.js"), "utf8");
 
 assert.ok(
-  namespaceSource.indexOf("js/sim/vegetation.js") > namespaceSource.indexOf("js/sim/food-runtime.js"),
+  manifestSource.indexOf("js/sim/vegetation.js") > manifestSource.indexOf("js/sim/food-runtime.js"),
   "vegetation grid should load with sim runtime modules"
 );
 assert.ok(
-  namespaceSource.indexOf("js/sim/vegetation.js") < namespaceSource.indexOf("js/sim/tile-worker.js"),
+  manifestSource.indexOf("js/sim/vegetation.js") < manifestSource.indexOf("js/sim/tile-worker.js"),
   "vegetation grid should load before worker and growth systems can consume it"
 );
 

@@ -1,18 +1,19 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const computeSource = read("js/sim/compute-harness.js");
 const wgslSource = read("js/render/wgsl-shader-manager.js");
 
 assert.ok(
-  namespaceSource.indexOf("js/sim/compute-harness.js") > namespaceSource.indexOf("js/render/webgpu-targets.js"),
+  manifestSource.indexOf("js/sim/compute-harness.js") > manifestSource.indexOf("js/render/webgpu-targets.js"),
   "compute harness should load after WebGPU target primitives"
 );
 assert.ok(
-  namespaceSource.indexOf("js/sim/compute-harness.js") < namespaceSource.indexOf("js/sim/heat-diffusion.js"),
+  manifestSource.indexOf("js/sim/compute-harness.js") < manifestSource.indexOf("js/sim/heat-diffusion.js"),
   "compute harness should load before WebGPU compute jobs"
 );
-assert.strictEqual(namespaceSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
+assert.strictEqual(manifestSource.indexOf("js/render/gl.js"), -1, "runtime manifest must not load the legacy WebGL bootstrap");
 
 const queueWrites = [];
 const queueSubmits = [];

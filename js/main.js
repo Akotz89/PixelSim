@@ -1,7 +1,7 @@
 import { PS } from "./core/namespace.js";
 import { startGame } from "./main-loop.js";
 
-PS.init = function() {
+export function init() {
   if (PS.isInitialized) {
     return false;
   }
@@ -27,6 +27,6 @@ PS.init = function() {
   }
 
   return true;
-};
+}
 
-PS.init();
+init();

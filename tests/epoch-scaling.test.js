@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const epochRegistrySource = read("js/epochs/registry.js");
 const epochStateSource = read("js/epochs/state-machine.js");
 const heatSource = read("js/sim/heat-diffusion.js");
@@ -19,9 +20,9 @@ const agentDocs = read("docs/agent-simulation-control.md");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.ok(packageJson.scripts.test.includes("tests/epoch-scaling.test.js"), "npm test should include epoch scaling checks");
-assert.ok(namespaceSource.indexOf("js/epochs/state-machine.js") > namespaceSource.indexOf("js/epochs/registry.js"), "epoch state machine should load after epoch registry");
-assert.ok(namespaceSource.indexOf("sim/configs/epoch-configs.json.js") < namespaceSource.indexOf("js/epochs/state-machine.js"), "epoch config sidecar should load before epoch state machine");
-assert.ok(namespaceSource.indexOf("js/epochs/state-machine.js") < namespaceSource.indexOf("js/epochs/primordial.js"), "epoch state machine should load before concrete epoch modules");
+assert.ok(manifestSource.indexOf("js/epochs/state-machine.js") > manifestSource.indexOf("js/epochs/registry.js"), "epoch state machine should load after epoch registry");
+assert.ok(manifestSource.indexOf("sim/configs/epoch-configs.json.js") < manifestSource.indexOf("js/epochs/state-machine.js"), "epoch config sidecar should load before epoch state machine");
+assert.ok(manifestSource.indexOf("js/epochs/state-machine.js") < manifestSource.indexOf("js/epochs/primordial.js"), "epoch state machine should load before concrete epoch modules");
 assert.ok(docs.includes("Transitions change upstream environmental state"), "docs should define epoch changes as causal inputs");
 assert.ok(agentDocs.includes("Agents should treat those values as causes"), "agent docs should preserve no-downstream-tuning rule");
 assert.ok(sidecarSource.includes('PS.assets.registerJSON("sim/configs/epoch-configs.json"'), "epoch sidecar should register JSON");

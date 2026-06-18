@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const geochemistrySource = read("js/sim/geochemistry.js");
@@ -14,8 +15,8 @@ const docs = read("docs/lenia-ecosystem-simulation.md");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.ok(packageJson.scripts.test.includes("tests/lenia.test.js"), "npm test should include Lenia checks");
-assert.ok(namespaceSource.indexOf("js/sim/lenia.js") > namespaceSource.indexOf("js/sim/geochemistry.js"), "Lenia should load after physical and chemical Phase 2 sims");
-assert.ok(namespaceSource.indexOf("js/sim/lenia.js") < namespaceSource.indexOf("js/layers/geology.js"), "Lenia should load before always-on layers");
+assert.ok(manifestSource.indexOf("js/sim/lenia.js") > manifestSource.indexOf("js/sim/geochemistry.js"), "Lenia should load after physical and chemical Phase 2 sims");
+assert.ok(manifestSource.indexOf("js/sim/lenia.js") < manifestSource.indexOf("js/layers/geology.js"), "Lenia should load before always-on layers");
 assert.ok(docs.includes("Agent And Render Handoff"), "docs should cover agent and render handoff");
 
 [

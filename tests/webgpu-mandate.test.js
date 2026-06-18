@@ -11,7 +11,7 @@ function read(file) {
 const agents = read("AGENTS.md");
 const architecture = read("docs/ARCHITECTURE.md");
 const rendering = read("docs/RENDERING.md");
-const namespace = read("js/core/namespace.js");
+const manifest = read("js/core/manifest.js");
 const gpu = read("js/render/gpu.js");
 
 assert.ok(
@@ -32,11 +32,11 @@ assert.ok(
   "rendering doc should state that WebGPU is the required renderer"
 );
 assert.ok(
-  namespace.indexOf('"js/render/gpu.js"') >= 0,
+  manifest.indexOf('"js/render/gpu.js"') >= 0,
   "script manifest should load the WebGPU bootstrap"
 );
 assert.ok(
-  namespace.indexOf('"js/render/gpu.js"') < namespace.indexOf('"js/render/webgpu-renderer.js"'),
+  manifest.indexOf('"js/render/gpu.js"') < manifest.indexOf('"js/render/webgpu-renderer.js"'),
   "WebGPU bootstrap should load before the WebGPU renderer"
 );
 [
@@ -46,7 +46,7 @@ assert.ok(
   "js/render/surface-tile-webgl.js",
   "js/render/entity-webgl.js"
 ].forEach(function (script) {
-  assert.strictEqual(namespace.indexOf(script), -1, "runtime manifest must not load " + script);
+  assert.strictEqual(manifest.indexOf(script), -1, "runtime manifest must not load " + script);
 });
 assert.ok(
   gpu.indexOf("PS.gpu.required = true") >= 0,

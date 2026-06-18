@@ -1,8 +1,9 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 assert.ok(
-  namespaceSource.indexOf("js/render/webgpu-pipeline.js") > namespaceSource.indexOf("js/render/webgpu-renderer.js"),
+  manifestSource.indexOf("js/render/webgpu-pipeline.js") > manifestSource.indexOf("js/render/webgpu-renderer.js"),
   "WebGPU pipeline should load after the WebGPU renderer facade"
 );
 assert.strictEqual(

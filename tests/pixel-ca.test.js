@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const source = read("js/sim/pixel-ca.js");
@@ -9,8 +10,8 @@ const shaderSidecar = read("shaders/pixel-ca.wgsl.js");
 const configSource = read("sim/configs/pixel-ca.json");
 const configSidecar = read("sim/configs/pixel-ca.json.js");
 
-assert.ok(namespaceSource.indexOf("js/sim/pixel-ca.js") > namespaceSource.indexOf("js/sim/moisture.js"), "pixel CA should load after moisture inputs");
-assert.ok(namespaceSource.indexOf("js/sim/pixel-ca.js") < namespaceSource.indexOf("js/sim/biome-lut.js"), "pixel CA should load before biome visualization");
+assert.ok(manifestSource.indexOf("js/sim/pixel-ca.js") > manifestSource.indexOf("js/sim/moisture.js"), "pixel CA should load after moisture inputs");
+assert.ok(manifestSource.indexOf("js/sim/pixel-ca.js") < manifestSource.indexOf("js/sim/biome-lut.js"), "pixel CA should load before biome visualization");
 
 [
   "@compute @workgroup_size(8, 8, 1)",

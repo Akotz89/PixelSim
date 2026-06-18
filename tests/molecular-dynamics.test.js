@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const wgslManagerSource = read("js/render/wgsl-shader-manager.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const mdSource = read("js/sim/molecular-dynamics.js");
@@ -12,8 +13,8 @@ const docs = read("docs/molecular-dynamics-zoom.md");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.ok(packageJson.scripts.test.includes("tests/molecular-dynamics.test.js"), "npm test should include molecular dynamics checks");
-assert.ok(namespaceSource.indexOf("js/sim/molecular-dynamics.js") > namespaceSource.indexOf("js/sim/geochemistry.js"), "molecular dynamics should load after geochemistry for macro chemistry inputs");
-assert.ok(namespaceSource.indexOf("js/sim/molecular-dynamics.js") < namespaceSource.indexOf("js/sim/lenia.js"), "molecular dynamics should load before Lenia and coupled biology consumers");
+assert.ok(manifestSource.indexOf("js/sim/molecular-dynamics.js") > manifestSource.indexOf("js/sim/geochemistry.js"), "molecular dynamics should load after geochemistry for macro chemistry inputs");
+assert.ok(manifestSource.indexOf("js/sim/molecular-dynamics.js") < manifestSource.indexOf("js/sim/lenia.js"), "molecular dynamics should load before Lenia and coupled biology consumers");
 assert.ok(docs.includes("Causal Inputs"), "docs should describe causal macro inputs");
 assert.ok(docs.includes("Temperature sets particle kinetic energy"), "docs should document temperature coupling");
 

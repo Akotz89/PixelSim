@@ -1,6 +1,7 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
+const manifestSource = read("js/core/manifest.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const harnessSource = read("js/sim/compute-harness.js");
 const wasmBridgeSource = read("js/sim/wasm-bridge.js");
@@ -9,8 +10,8 @@ const docs = read("docs/multi-physics-coupling.md");
 const packageJson = JSON.parse(read("package.json"));
 
 assert.ok(packageJson.scripts.test.includes("tests/coupling.test.js"), "npm test should include coupling checks");
-assert.ok(namespaceSource.indexOf("js/sim/coupling.js") > namespaceSource.indexOf("js/sim/wasm-bridge.js"), "coupling should load after WASM bridge");
-assert.ok(namespaceSource.indexOf("js/sim/coupling.js") < namespaceSource.indexOf("js/layers/geology.js"), "coupling should load before Phase 2 layers");
+assert.ok(manifestSource.indexOf("js/sim/coupling.js") > manifestSource.indexOf("js/sim/wasm-bridge.js"), "coupling should load after WASM bridge");
+assert.ok(manifestSource.indexOf("js/sim/coupling.js") < manifestSource.indexOf("js/layers/geology.js"), "coupling should load before Phase 2 layers");
 assert.ok(docs.includes("Canonical Tick Order"), "docs should describe canonical tick order");
 
 const queueWrites = [];
