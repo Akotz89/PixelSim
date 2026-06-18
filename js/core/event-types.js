@@ -18,6 +18,7 @@ PS.eventTypes.TERRAIN_INVALIDATED = "terrain.invalidated";
 PS.eventTypes.ATLAS_REBUILT = "atlas.rebuilt";
 PS.eventTypes.RENDER_CONTEXT_LOST = "render.contextlost";
 PS.eventTypes.RENDER_BACKEND_READY = "render.backend";
+PS.eventTypes.CANVAS_RESIZED = "canvas.resized";
 
 PS.eventTypes.TILE_INSPECTED = "tile.inspected";
 PS.eventTypes.MENU_TOGGLED = "menu.toggled";
@@ -67,6 +68,9 @@ PS.eventPayloads[PS.eventTypes.RENDER_CONTEXT_LOST] = {
 };
 PS.eventPayloads[PS.eventTypes.RENDER_BACKEND_READY] = {
   jsdoc: "@payload { backend }"
+};
+PS.eventPayloads[PS.eventTypes.CANVAS_RESIZED] = {
+  jsdoc: "@payload { width, height, dpr }"
 };
 PS.eventPayloads[PS.eventTypes.TILE_INSPECTED] = {
   jsdoc: "@payload { tileX, tileY, surfacePosition, entityType, representativeId, tick }"
