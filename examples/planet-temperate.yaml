@@ -1,0 +1,16 @@
+seed: AZR-835-TEMPERATE
+width: 128
+height: 128
+climate:
+  meanTemperatureC: 14
+  temperatureAmplitudeC: 28
+  oceanRatio: 0.64
+  salinityPsu: 35
+  currentStrength: 2.2
+simulation:
+  dt: 0.5
+  diffusion: 0.1
+  iterations: 1000
+exports:
+  format: png
+  sidecar: true

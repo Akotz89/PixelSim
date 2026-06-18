@@ -1,8 +1,11 @@
+"use strict";
+
 (function () {
-  var PS = window.PS || {};
+  var globalScope = typeof window !== "undefined" ? window : globalThis;
+  var PS = globalScope.PS || {};
 
   PS.core = PS.core || {};
-  window.PS = PS;
+  globalScope.PS = PS;
 
   var core = PS.core;
   var state = {
@@ -32,8 +35,8 @@
       });
     }
 
-    if (typeof showDebugMessage === "function") {
-      showDebugMessage("LOAD ERROR: " + message);
+    if (typeof globalThis.showDebugMessage === "function") {
+      globalThis.showDebugMessage("LOAD ERROR: " + message);
     }
 
     if (typeof PS.assert === "function") {

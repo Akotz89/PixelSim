@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -145,10 +146,6 @@ function createContext(width, height, seed) {
   };
 
   context.refreshLineageRegistry = function() {};
-  context.buildTerrainCache = function() {
-    context.world.terrainCacheBuilt = true;
-  };
-
   vm.createContext(context);
   vm.runInContext(mathSource, context, { filename: "js/core/math.js" });
   vm.runInContext(prngSource, context, { filename: "js/core/prng.js" });

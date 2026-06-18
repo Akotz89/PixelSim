@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const namespaceSource = read("js/core/namespace.js");
 const tileRegistrySource = read("js/core/tile-registry.js");
@@ -17,22 +8,17 @@ const atlasCivilizationSource = read("js/render/entity-atlas-civilization.js");
 const atlasEventsSource = read("js/render/entity-atlas-events.js");
 const terrainAtlasCivilizationSource = read("js/render/terrain-atlas-civilization.js");
 const terrainAtlasDetailSource = read("js/render/terrain-atlas-detail.js");
-const entityWebglSource = read("js/render/entity-webgl.js");
 const tilesData = JSON.parse(read("data/tiles.json"));
 
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas.js") >= 0, "entity atlas should load before entity WebGL");
+assert.ok(namespaceSource.indexOf("js/render/entity-atlas.js") >= 0, "entity atlas should load in the runtime manifest");
 assert.ok(namespaceSource.indexOf("js/render/entity-atlas-intents.js") > namespaceSource.indexOf("js/render/entity-atlas.js"), "intent atlas sidecar should load after atlas core");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-intents.js") < namespaceSource.indexOf("js/render/entity-webgl.js"), "intent atlas sidecar should load before entity WebGL");
 assert.ok(namespaceSource.indexOf("js/render/entity-atlas-civilization.js") > namespaceSource.indexOf("js/render/entity-atlas-intents.js"), "civilization atlas sidecar should load after intent atlas helpers");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-civilization.js") < namespaceSource.indexOf("js/render/entity-webgl.js"), "civilization atlas sidecar should load before entity WebGL");
 assert.ok(namespaceSource.indexOf("js/render/entity-atlas-events.js") > namespaceSource.indexOf("js/render/entity-atlas-civilization.js"), "event atlas sidecar should load after entity civilization helpers");
-assert.ok(namespaceSource.indexOf("js/render/entity-atlas-events.js") < namespaceSource.indexOf("js/render/entity-webgl.js"), "event atlas sidecar should load before entity WebGL");
+assert.ok(namespaceSource.indexOf("js/render/entity-atlas-events.js") < namespaceSource.indexOf("js/render/entities.js"), "event atlas sidecar should load before the entity facade");
 assert.ok(namespaceSource.indexOf("js/render/terrain-atlas-civilization.js") > namespaceSource.indexOf("js/render/entity-atlas-civilization.js"), "terrain civilization atlas sidecar should load after entity civilization helpers");
 assert.ok(namespaceSource.indexOf("js/render/terrain-atlas-civilization.js") < namespaceSource.indexOf("js/render/terrain-atlas-detail.js"), "terrain civilization atlas sidecar should load before terrain detail overlays");
 assert.ok(namespaceSource.indexOf("js/render/terrain-atlas-detail.js") > namespaceSource.indexOf("js/render/entity-atlas.js"), "terrain atlas detail should load after atlas core");
-assert.ok(entityWebglSource.indexOf("getTraitOrganismCell") >= 0, "entity WebGL should request trait-specific organism cells");
-assert.ok(entityWebglSource.indexOf("getRgbaTexture") >= 0, "entity WebGL should upload atlas pages as RGBA buffers");
-assert.strictEqual(entityWebglSource.indexOf("PS.spriteSystem"), -1, "entity WebGL should not depend on the removed sprite system");
+assert.strictEqual(namespaceSource.indexOf("js/render/entity-webgl.js"), -1, "runtime manifest must not load the legacy entity WebGL renderer");
 
 const context = {
   PS: {
@@ -403,6 +389,18 @@ function uniqueColorCount(cell) {
   return colors.size;
 }
 
+function uniqueAlphaCount(cell) {
+  const alphas = new Set();
+
+  for (let y = 0; y < cell.h; y++) {
+    for (let x = 0; x < cell.w; x++) {
+      alphas.add(pixelAt(cell, x, y)[3]);
+    }
+  }
+
+  return alphas.size;
+}
+
 assert.ok(page.data instanceof Uint8Array, "atlas page should be a packed RGBA buffer");
 assert.strictEqual(page.width, 256, "atlas page should use stable packed width");
 assert.strictEqual(page.height, 256, "atlas page should use stable packed height");
@@ -413,6 +411,8 @@ assert.strictEqual(roundCell.h, 16, "organism cell should use a 16px pixel sprit
 assert.notDeepStrictEqual(pixelAt(roundCell, 7, 7), pixelAt(angularCell, 7, 7), "trait/lineage differences should change sprite pixels");
 assert.notDeepStrictEqual(pixelAt(oceanCell, 7, 7), pixelAt(forestCell, 7, 7), "ocean and forest terrain cells should use distinct material pixels");
 assert.notDeepStrictEqual(pixelAt(desertCell, 7, 7), pixelAt(volcanicCell, 7, 7), "desert and volcanic terrain cells should use distinct material pixels");
+assert.ok(pixelAt(cliffCell, 7, 7)[3] > pixelAt(deepWaterCell, 7, 7)[3], "terrain atlas alpha should encode higher elevation for G-buffer normals");
+assert.ok(uniqueAlphaCount(cliffCell) > 1, "terrain atlas alpha should include local relief variation");
 assert.ok(uniqueColorCount(oceanCell) >= 5, "water atlas cells should include foam/shadow detail beyond base palette colors");
 assert.ok(uniqueColorCount(forestCell) >= 5, "forest atlas cells should include canopy detail beyond base palette colors");
 assert.ok(uniqueColorCount(desertCell) >= 5, "desert atlas cells should include dune detail beyond base palette colors");
@@ -513,5 +513,95 @@ assert.ok(stats.influenceCells >= 2, "atlas stats should count generated influen
 assert.ok(stats.eventMarkerCells >= 2, "atlas stats should count generated orbit event marker cells");
 assert.ok(stats.intentCells >= 2, "atlas stats should count generated representative intent cells");
 assert.ok(stats.pageBytes > 0, "atlas stats should expose packed atlas bytes");
+
+const loadedSheetImage = { width: 256, height: 32, naturalWidth: 256, naturalHeight: 32 };
+const loadedGrassSheet = {
+  id: "terrain_grass",
+  image: loadedSheetImage,
+  getCells() {
+    return [
+      { name: "terrain.grass.0", x: 0, y: 0, w: 32, h: 32, image: loadedSheetImage },
+      { name: "terrain.grass.1", x: 32, y: 0, w: 32, h: 32, image: loadedSheetImage }
+    ];
+  }
+};
+
+context.PS.atlas.buildFromSheets([loadedGrassSheet]);
+const loadedGrassCell = context.PS.atlas.getCell("terrain.grass.1");
+
+assert.ok(loadedGrassCell, "buildFromSheets should make loaded sheet cells addressable by id");
+assert.strictEqual(context.PS.atlas.pages.length, 1, "buildFromSheets should create an external image atlas page");
+assert.strictEqual(context.PS.atlas.pages[0].externalImage, true, "loaded sheet page should be marked as an external image");
+assert.strictEqual(loadedGrassCell.pageIndex, 0, "loaded sheet cell should reference its image page");
+assert.deepStrictEqual(
+  {
+    x: loadedGrassCell.x,
+    y: loadedGrassCell.y,
+    w: loadedGrassCell.w,
+    h: loadedGrassCell.h,
+    u0: loadedGrassCell.u0,
+    v0: loadedGrassCell.v0,
+    u1: loadedGrassCell.u1,
+    v1: loadedGrassCell.v1
+  },
+  {
+    x: 32,
+    y: 0,
+    w: 32,
+    h: 32,
+    u0: 32 / 256,
+    v0: 0,
+    u1: 64 / 256,
+    v1: 1
+  },
+  "buildFromSheets should derive correct atlas coordinates and UVs"
+);
+
+context.PS.atlas.buildHybrid({
+  cells: [
+    { name: "terrain.grass.0", width: 16, height: 16 },
+    { name: "entity.fallback.0", width: 16, height: 16 }
+  ]
+}, [loadedGrassSheet]);
+
+const hybridLoadedGrass = context.PS.atlas.getCell("terrain.grass.0");
+const hybridFallback = context.PS.atlas.getCell("entity.fallback.0");
+
+assert.ok(hybridLoadedGrass.externalImage, "buildHybrid should let loaded sheet cells override generated cells");
+assert.ok(hybridFallback && !hybridFallback.externalImage, "buildHybrid should preserve generated fallback cells");
+
+const uploadCalls = [];
+const fakeTexture = { id: "texture" };
+const fakeGl = {
+  TEXTURE_2D: "TEXTURE_2D",
+  TEXTURE_MIN_FILTER: "TEXTURE_MIN_FILTER",
+  TEXTURE_MAG_FILTER: "TEXTURE_MAG_FILTER",
+  TEXTURE_WRAP_S: "TEXTURE_WRAP_S",
+  TEXTURE_WRAP_T: "TEXTURE_WRAP_T",
+  NEAREST: "NEAREST",
+  CLAMP_TO_EDGE: "CLAMP_TO_EDGE",
+  RGBA: "RGBA",
+  UNSIGNED_BYTE: "UNSIGNED_BYTE",
+  createTexture() {
+    uploadCalls.push(["createTexture"]);
+    return fakeTexture;
+  },
+  bindTexture(target, texture) {
+    uploadCalls.push(["bindTexture", target, texture]);
+  },
+  texParameteri(target, pname, param) {
+    uploadCalls.push(["texParameteri", target, pname, param]);
+  },
+  texImage2D() {
+    uploadCalls.push(["texImage2D"].concat(Array.from(arguments)));
+  }
+};
+
+const uploadedTextures = context.PS.atlas.uploadToGL(fakeGl);
+const imageUpload = uploadCalls.find((call) => call[0] === "texImage2D" && call[6] === loadedSheetImage);
+
+assert.strictEqual(uploadedTextures.length, context.PS.atlas.pages.length, "uploadToGL should return one texture per atlas page");
+assert.ok(uploadedTextures.every((texture) => texture.id === "texture"), "uploadToGL should return created textures");
+assert.ok(imageUpload, "uploadToGL should upload external image pages through texImage2D(image)");
 
 console.log("entity atlas checks passed");

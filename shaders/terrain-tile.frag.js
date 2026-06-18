@@ -1,1 +1,0 @@
-PS.assets.registerText("shaders/terrain-tile.frag", "#version 300 es\nprecision mediump float;\nuniform sampler2D u_atlas;\nin vec2 v_uv;\nin float v_alpha;\nin float v_shade;\nout vec4 outColor;\nvoid main() {\n  vec4 color = texture(u_atlas, v_uv);\n  outColor = vec4(color.rgb * v_shade, color.a * v_alpha);\n}\n");

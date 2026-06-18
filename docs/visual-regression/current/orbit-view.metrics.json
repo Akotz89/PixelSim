@@ -1,0 +1,18 @@
+{
+  "name": "orbit-view",
+  "source": "webgpu-readback",
+  "band": "orbit",
+  "scene": {
+    "width": 1016,
+    "height": 540,
+    "opaqueCoverage": 1,
+    "nonblankCoverage": 0.438,
+    "coarseColorCount": 136,
+    "luminanceMin": 3.08,
+    "luminanceMax": 176.05,
+    "luminanceMean": 26.84,
+    "contrastRange": 172.97
+  },
+  "screenshot": null,
+  "screenshotDiffSkipped": "webgpu-readback-gate"
+}

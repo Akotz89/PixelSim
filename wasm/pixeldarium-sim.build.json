@@ -1,0 +1,14 @@
+{
+  "module": "pixeldarium-sim",
+  "wasmPackTarget": "no-modules",
+  "fileProtocol": "script-tag + base64 sidecar, no fetch required",
+  "wasmOptAvailable": false,
+  "sizeBytes": 37122,
+  "sizeLimitBytes": 512000,
+  "sizePass": true,
+  "outputs": [
+    "wasm/pixeldarium-sim.js",
+    "wasm/pixeldarium-sim_bg.wasm",
+    "wasm/pixeldarium-sim.wasm.js"
+  ]
+}

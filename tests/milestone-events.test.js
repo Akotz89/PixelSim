@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -99,6 +90,46 @@ assert.ok(configurable.some(function(result) {
 assert.ok(emittedPayloads.every(function(payload) {
   return payload.type && payload.details;
 }), "every emitted milestone should include type and details");
+
+var terrainPayload = PS.events.emitMilestone({
+  type: "biology.terrain-pressure.test",
+  label: "Terrain test",
+  detail: "desert pressure",
+  source: "biology",
+  terrainDriver: "desert",
+  trait: "waterDependency",
+  lineageId: 3,
+  speciesId: 4,
+  populationId: 5,
+  pressure: 0.91,
+  effect: "adaptation-pressure"
+}).payload;
+
+assert.strictEqual(terrainPayload.terrainDriver, "desert", "milestone payload should preserve terrain driver");
+assert.strictEqual(terrainPayload.trait, "waterDependency", "milestone payload should preserve affected terrain trait");
+assert.strictEqual(terrainPayload.populationId, 5, "milestone payload should preserve population id");
+assert.strictEqual(world.timelineEvents[world.timelineEvents.length - 1].effect, "adaptation-pressure", "timeline should preserve terrain event effect");
+
+var speciesPayload = PS.events.emitMilestone({
+  type: "biology.speciation",
+  label: "Speciation",
+  detail: "S8 split from S3",
+  source: "biology",
+  id: 8,
+  parentId: 3,
+  lineageId: 2,
+  speciesId: 8,
+  populationId: 11,
+  traits: { camouflage: 0.75 },
+  cause: "trait-divergence",
+  divergence: 0.66,
+  effect: "species-split"
+}).payload;
+
+assert.strictEqual(speciesPayload.id, 8, "speciation payload should preserve new species id");
+assert.strictEqual(speciesPayload.parentId, 3, "speciation payload should preserve parent species id");
+assert.strictEqual(speciesPayload.cause, "trait-divergence", "speciation payload should preserve cause");
+assert.strictEqual(speciesPayload.divergence, 0.66, "speciation payload should preserve divergence");
 
 console.log("milestone event checks passed");
 `, context);

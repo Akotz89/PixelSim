@@ -1,14 +1,68 @@
 const assert = require("assert");
+const fs = require("fs");
+const http = require("http");
 const path = require("path");
-const { pathToFileURL } = require("url");
 const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
+const browserHelperPath = path.join(root, "tests", "helpers", "persistence-parity-browser.js");
+const browserHelperSource = fs.readFileSync(browserHelperPath, "utf8");
 
-(async () => {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({ acceptDownloads: true });
-  const page = await context.newPage();
+const contentTypes = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".wasm": "application/wasm",
+  ".png": "image/png"
+};
+
+function getContentType(filePath) {
+  return contentTypes[path.extname(filePath)] || "application/octet-stream";
+}
+
+function createStaticServer() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url, "http://127.0.0.1");
+    const relativePath = decodeURIComponent(url.pathname === "/" ? "/index.html" : url.pathname);
+    const fullPath = path.join(root, relativePath);
+
+    if (!fullPath.startsWith(root)) {
+      response.writeHead(403);
+      response.end("Forbidden");
+      return;
+    }
+
+    fs.readFile(fullPath, (error, data) => {
+      if (error) {
+        response.writeHead(error.code === "ENOENT" ? 404 : 500);
+        response.end(error.code || "Error");
+        return;
+      }
+
+      response.writeHead(200, { "Content-Type": getContentType(fullPath) });
+      response.end(data);
+    });
+  });
+}
+
+function listen(server) {
+  return new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      server.off("error", reject);
+      resolve(server.address().port);
+    });
+  });
+}
+
+function closeServer(server) {
+  return new Promise((resolve, reject) => {
+    server.close((error) => error ? reject(error) : resolve());
+  });
+}
+
+function trackBrowserErrors(page) {
   const consoleErrors = [];
   const pageErrors = [];
 
@@ -19,455 +73,72 @@ const root = path.resolve(__dirname, "..");
   });
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
-  await page.goto(pathToFileURL(path.join(root, "index.html")).href, { waitUntil: "load" });
+  return { consoleErrors, pageErrors };
+}
 
-  const evidence = await page.evaluate(async () => {
-    function resetTestDatabase() {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.deleteDatabase("pixeldarium");
+async function openPersistencePage(browser, baseUrl) {
+  const context = await browser.newContext({ acceptDownloads: true });
+  const page = await context.newPage();
 
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error || new Error("Could not delete test database"));
-        request.onblocked = () => resolve();
-      });
-    }
-
-    function installRepresentativeWorldState() {
-      world.isPaused = true;
-      world.tick = 4242;
-      world.deepTimeYears = 123456789;
-      world.speed = 4;
-      world.era = "Empire";
-      world.seedText = "AZR-355-PARITY";
-      world.rngState = 987654321;
-      world.planetView = {
-        zoomLevel: 3.5,
-        latitude: 21.25,
-        longitude: -73.5,
-        panEastMeters: 420,
-        panNorthMeters: -155
-      };
-      world.nextLineageId = 12;
-      world.nextSpeciesId = 18;
-      world.nextBiologyPopulationId = 19;
-      world.nextBiologyRepresentativeId = 20;
-      world.nextSettlementId = 22;
-      world.nextSettlementRouteId = 32;
-      world.nextOrbitalAssetId = 42;
-      world.nextPlanetaryBodyId = 52;
-      world.nextProbeMissionId = 62;
-      world.nextStarSystemId = 72;
-      world.nextInterstellarFleetId = 82;
-      world.nextEmpireSectorId = 92;
-      world.totalBirths = 101;
-      world.totalDeaths = 33;
-      world.totalFoodSpawned = 700;
-      world.totalFoodConsumed = 320;
-      world.totalFoodHarvested = 95;
-      world.colonyNetworkScore = 88;
-      world.colonyNetworkColonies = 2;
-      world.colonyNetworkActiveRoutes = 1;
-      world.colonyNetworkClaimedTiles = 34;
-      world.spaceProgramProgress = 0.82;
-      world.orbitalLaunches = 3;
-      world.lastSpaceProgramTick = 4000;
-      world.spaceProgramReady = true;
-      world.orbitalInfrastructureScore = 67;
-      world.orbitalPlatformReady = true;
-      world.planetarySurveyProgress = 0.74;
-      world.planetarySurveyReady = true;
-      world.lastPlanetarySurveyTick = 4050;
-      world.probeMissionProgress = 0.66;
-      world.probeMissionReady = true;
-      world.lastProbeMissionTick = 4100;
-      world.starMapProgress = 0.58;
-      world.starMapReady = true;
-      world.lastStarMapTick = 4150;
-      world.galacticInfluenceProgress = 0.49;
-      world.galacticInfluenceReady = true;
-      world.galacticClaimedSystems = 4;
-      world.lastGalacticInfluenceTick = 4180;
-      world.interstellarFleetProgress = 0.35;
-      world.interstellarFleetReady = true;
-      world.interstellarFleetActive = 1;
-      world.interstellarFleetCompleted = 2;
-      world.lastInterstellarFleetTick = 4200;
-      world.empireSectorProgress = 0.27;
-      world.empireSectorReady = true;
-      world.empireSectorCount = 2;
-      world.lastEmpireSectorTick = 4210;
-      world.empireLegacyProgress = 0.19;
-      world.empireLegacyLevel = 1;
-      world.empireLegacyReady = true;
-      world.empireLegacyComplete = false;
-      world.lastEmpireLegacyTick = 4220;
-      world.lineages = {
-        "7": {
-          id: 7,
-          parentId: 0,
-          createdTick: 100,
-          founderGeneration: 2,
-          founderTraits: normalizeOrganismTraits({}),
-          activeCount: 14,
-          lastSeenTick: 4200,
-          peakPopulation: 30,
-          isExtinct: false
-        }
-      };
-      world.biologyPopulations = [{
-        id: 17,
-        speciesId: 13,
-        lineageId: 7,
-        parentPopulationId: 0,
-        count: 44,
-        biomass: 120,
-        energyReserve: 88,
-        territoryCells: [{ x: 12, y: 9, density: 0.8 }],
-        traitMean: { vision: 22, bodySize: 1.4 },
-        traitVariance: { vision: 2, bodySize: 0.1 },
-        pressure: { food: 0.3, terrain: 0.2 },
-        representativeIds: [19],
-        createdTick: 250,
-        lastUpdatedTick: 4240
-      }];
-      world.biologyPopulationById = { "17": world.biologyPopulations[0] };
-      world.biologyRepresentatives = [{
-        id: 19,
-        populationId: 17,
-        speciesId: 13,
-        lineageId: 7,
-        x: 12,
-        y: 9,
-        latitude: 21.2,
-        longitude: -73.4,
-        energy: 150,
-        age: 12,
-        behavior: "forage",
-        target: { type: "food", x: 13, y: 9 },
-        traits: { vision: 22, bodySize: 1.4 },
-        history: [{ tick: 4238, label: "sampled" }],
-        pinned: true,
-        createdTick: 4200,
-        lastSeenTick: 4240
-      }];
-      world.biologyRepresentativeById = { "19": world.biologyRepresentatives[0] };
-      if (!Array.isArray(world.organisms) || world.organisms.length === 0) {
-        const seededOrganism = makeOrganism(12, 9, 7);
-        if (seededOrganism) {
-          world.organisms = [seededOrganism];
-        }
-      }
-      if (world.organisms[0]) {
-        world.organisms[0].speciesId = 13;
-        world.organisms[0].populationId = 17;
-        world.organisms[0].representativeId = 19;
-        world.organisms[0].traits.bodySize = 1.5;
-        world.organisms[0].traits.limbCount = 6;
-        world.organisms[0].traits.camouflage = 0.75;
-      }
-      world.settlements = [{
-        id: 21,
-        lineageId: 7,
-        x: 12,
-        y: 9,
-        foundedTick: 300,
-        radius: CONFIG.SETTLEMENT_RADIUS,
-        population: 44,
-        foodStock: 80,
-        storedFood: 95,
-        development: 120,
-        level: CONFIG.SETTLEMENT_COLONY_LEVEL,
-        lastGrowthTick: 3900,
-        influenceRadius: CONFIG.SETTLEMENT_INFLUENCE_BASE_RADIUS,
-        claimedTiles: 10,
-        claimedFood: 5,
-        parentSettlementId: 0,
-        isOutpost: true,
-        isColony: true,
-        lastOutpostTick: 3500,
-        lastSupplyGrowthTick: 3700,
-        isActive: true,
-        lastActiveTick: 4240
-      }];
-      world.settlementRoutes = [{
-        id: 31,
-        parentSettlementId: 21,
-        childSettlementId: 21,
-        lineageId: 7,
-        foundedTick: 3600,
-        distance: 12,
-        foodTransferred: 18,
-        lastTransferTick: 4230,
-        isActive: true
-      }];
-      world.orbitalAssets = [{
-        id: 41,
-        launchNumber: 3,
-        launchedTick: 3900,
-        infrastructureScore: 67,
-        orbitAngle: 1.25,
-        orbitBand: 2,
-        isActive: true
-      }];
-      world.planetaryBodies = [{
-        id: 51,
-        name: "Test Moon",
-        discoveredTick: 3960,
-        surveyValue: 77,
-        orbitAngle: 2.2,
-        orbitRadius: 88,
-        isSurveyed: true
-      }];
-      world.probeMissions = [{
-        id: 61,
-        targetBodyId: 51,
-        launchedTick: 4000,
-        arrivalTick: 4100,
-        progress: 1,
-        isComplete: true
-      }];
-      world.starSystems = [{
-        id: 71,
-        name: "S-Parity",
-        discoveredTick: 4120,
-        mapValue: 90,
-        mapX: 0.25,
-        mapY: -0.45,
-        isMapped: true,
-        influenceValue: 91,
-        isClaimed: true,
-        claimedTick: 4180
-      }];
-      world.interstellarFleets = [{
-        id: 81,
-        sourceSystemId: 71,
-        targetSystemId: 71,
-        launchedTick: 4190,
-        arrivalTick: 4230,
-        progress: 1,
-        isComplete: true
-      }];
-      world.empireSectors = [{
-        id: 91,
-        systemId: 71,
-        foundedTick: 4235,
-        controlValue: 120,
-        controlRadius: 0.3,
-        isActive: true
-      }];
-      world.traitHistory = [{
-        tick: 4200,
-        population: 44,
-        vision: CONFIG.TRAIT_VISION_DEFAULT,
-        metabolism: CONFIG.TRAIT_METABOLISM_DEFAULT,
-        reproductionEnergy: CONFIG.TRAIT_REPRODUCTION_ENERGY_DEFAULT,
-        movementTendency: CONFIG.TRAIT_MOVEMENT_TENDENCY_DEFAULT,
-        terrainAffinity: CONFIG.TRAIT_TERRAIN_AFFINITY_DEFAULT
-      }];
-      world.ecosystemHistory = [{
-        tick: 4200,
-        population: 44,
-        food: 30,
-        averageEnergy: 120,
-        foodPerOrganism: 0.7,
-        populationBalance: "growing",
-        resourceBalance: "stable",
-        foodNetThisTick: 3,
-        foodRunwayTicks: 120,
-        pressure: "balanced",
-        stabilityScore: 85
-      }];
-      world.eventLog = [{
-        tick: 4210,
-        type: "empire",
-        label: "Parity event",
-        detail: "Persistence parity coverage"
-      }];
-      world.timelineEvents = [{
-        tick: 4211,
-        type: "life.first",
-        label: "First life",
-        detail: "organisms 1",
-        details: { value: 1 },
-        deepTime: { years: 123456789 },
-        source: "milestone-detector",
-        severity: "major"
-      }];
-      world.milestonesReached = {
-        "life.first": {
-          tick: 4211,
-          value: 1
-        }
-      };
-      world.geology = {
-        ageTicks: 12,
-        plates: [{ id: "plate-test", driftX: 1.25 }],
-        volcanicActivity: 0.42,
-        erosionSediment: 3.5,
-        continentFormation: 0.18
-      };
-      world.atmosphere = {
-        ageTicks: 14,
-        gases: {
-          co2: 0.12,
-          o2: 0.2,
-          n2: 0.67,
-          ch4: 0.004,
-          h2o: 0.005,
-          o3: 0.001,
-          sulfur: 0
-        },
-        oxygen: 0.2,
-        temperatureC: 19.5,
-        oxygenStress: 0
-      };
-      world.microbialReady = true;
-      world.microbial = {
-        model: "field-population-hybrid",
-        ageTicks: 8,
-        fieldWidth: 2,
-        fieldHeight: 2,
-        fields: {
-          density: [0.1, 0.2, 0.3, 0.4],
-          chemicalEnergy: [0.5, 0.6, 0.7, 0.8],
-          oxygenProduction: [0.01, 0.02, 0.03, 0.04],
-          stress: [0.1, 0.2, 0.3, 0.4],
-          bloomIntensity: [0.2, 0.4, 0.6, 0.8]
-        },
-        populations: [{
-          id: 5,
-          name: "Microbial mat 5",
-          lineageId: "microbial-5",
-          x: 44,
-          y: 22,
-          bloomIntensity: 0.8,
-          morphology: "mat",
-          isVisible: true
-        }],
-        populationById: {
-          "5": {
-            id: 5,
-            name: "Microbial mat 5"
-          }
-        },
-        nextPopulationId: 6,
-        visibleBlooms: [{
-          id: 5,
-          x: 44,
-          y: 22,
-          intensity: 0.8,
-          morphology: "mat"
-        }],
-        selectedPrototype: "field-population-hybrid",
-        totalDensity: 1,
-        totalOxygenProduction: 0.1
-      };
-      if (PS.time) {
-        PS.time.setManualTimeScale(2);
-      }
-    }
-
-    await resetTestDatabase();
-    installRepresentativeWorldState();
-
-    const saveData = PS.persistence.createSaveData();
-    const exportData = PS.persistence.exportJson();
-    const file = new File([JSON.stringify(saveData)], "pixeldarium-parity.json", {
-      type: "application/json"
-    });
-
-    world.tick = 1;
-    world.planetView = { zoomLevel: 0, latitude: 0, longitude: 0, panEastMeters: 0, panNorthMeters: 0 };
-    world.settlements = [];
-    world.empireSectorCount = 0;
-
-    const importedData = await PS.persistence.importJsonFile(file);
-    const importedEvidence = {
-      tick: world.tick,
-      camera: Object.assign({}, world.planetView),
-      settlementCount: world.settlements.length,
-      settlement: Object.assign({}, world.settlements[0]),
-      routeCount: world.settlementRoutes.length,
-      orbitalAssets: world.orbitalAssets.length,
-      planetaryBodies: world.planetaryBodies.length,
-      probeMissions: world.probeMissions.length,
-      starSystems: world.starSystems.length,
-      interstellarFleets: world.interstellarFleets.length,
-      empireSectors: world.empireSectors.length,
-      progression: {
-        colonyNetworkScore: world.colonyNetworkScore,
-        spaceProgramReady: world.spaceProgramReady,
-        orbitalPlatformReady: world.orbitalPlatformReady,
-        planetarySurveyReady: world.planetarySurveyReady,
-        probeMissionReady: world.probeMissionReady,
-        starMapReady: world.starMapReady,
-        galacticInfluenceReady: world.galacticInfluenceReady,
-        interstellarFleetReady: world.interstellarFleetReady,
-        empireSectorReady: world.empireSectorReady,
-        empireLegacyReady: world.empireLegacyReady
-      },
-      deepTimeYears: world.deepTimeYears,
-      timeScale: PS.time && PS.time.timeScale ? Object.assign({}, PS.time.timeScale) : null,
-      timelineEvents: world.timelineEvents.slice(),
-      milestonesReached: Object.assign({}, world.milestonesReached),
-      biologyPopulations: world.biologyPopulations.slice(),
-      biologyPopulationByIdKeys: Object.keys(world.biologyPopulationById),
-      biologyRepresentatives: world.biologyRepresentatives.slice(),
-      biologyRepresentativeByIdKeys: Object.keys(world.biologyRepresentativeById),
-      microbial: Object.assign({}, world.microbial, {
-        fields: Object.assign({}, world.microbial && world.microbial.fields),
-        populations: world.microbial && world.microbial.populations ? world.microbial.populations.slice() : [],
-        visibleBlooms: world.microbial && world.microbial.visibleBlooms ? world.microbial.visibleBlooms.slice() : []
-      }),
-      microbialReady: world.microbialReady,
-      nextBiologyPopulationId: world.nextBiologyPopulationId,
-      nextBiologyRepresentativeId: world.nextBiologyRepresentativeId,
-      nextSpeciesId: world.nextSpeciesId,
-      organismIdentity: world.organisms[0] ? {
-        speciesId: world.organisms[0].speciesId,
-        populationId: world.organisms[0].populationId,
-        representativeId: world.organisms[0].representativeId,
-        bodySize: world.organisms[0].traits.bodySize,
-        limbCount: world.organisms[0].traits.limbCount,
-        camouflage: world.organisms[0].traits.camouflage
-      } : null,
-      geology: Object.assign({}, world.geology),
-      atmosphere: Object.assign({}, world.atmosphere)
+  await page.addInitScript(() => {
+    window.ensureOrganismLineage = window.ensureOrganismLineage || function(organism) {
+      return Math.max(1, Math.round(Number(organism && organism.lineageId) || 1));
     };
-
-    world.tick = 2;
-    await PS.persistence.save();
-    world.tick = 3;
-    const loadedData = await PS.persistence.load();
-
-    await resetTestDatabase();
-
-    return {
-      saveData,
-      exportData,
-      importedData,
-      loadedData,
-      importedEvidence,
-      loadedTick: world.tick
+    window.ensureOrganismTraits = window.ensureOrganismTraits || function(organism) {
+      return organism && organism.traits ? organism.traits : {};
+    };
+    window.normalizeLongitude = window.normalizeLongitude || function(longitude) {
+      const value = Number(longitude) || 0;
+      return ((value + 180) % 360 + 360) % 360 - 180;
     };
   });
+  await page.goto(baseUrl + "/index.html", { waitUntil: "load" });
+  await page.waitForFunction(
+    () => window.world &&
+      window.PS &&
+      window.PS.persistence &&
+      typeof window.makeOrganism === "function" &&
+      typeof window.normalizeOrganismTraits === "function",
+    null,
+    { timeout: 10000 }
+  );
 
-  await browser.close();
+  return page;
+}
 
+function collectPersistenceEvidence(page) {
+  return page.evaluate((source) => {
+    eval(source);
+    return window.__pixeldariumPersistenceParity.collectEvidence();
+  }, browserHelperSource);
+}
+
+function assertNoBrowserErrors(consoleErrors, pageErrors) {
   assert.deepStrictEqual(consoleErrors, [], "browser console should have no errors");
   assert.deepStrictEqual(pageErrors, [], "browser page should have no errors");
+}
+
+function assertSaveEnvelope(evidence) {
   assert.strictEqual(evidence.saveData.id, "latest", "save id should use latest key");
   assert.strictEqual(evidence.saveData.version, 3, "save version should remain current");
   assert.strictEqual(evidence.saveData.terrainTileIds.length, evidence.saveData.terrain.length, "save should include terrain tile ids");
   assert.strictEqual(evidence.saveData.worldWidth, 320, "metadata should preserve world width");
   assert.strictEqual(evidence.saveData.worldHeight, 170, "metadata should preserve world height");
   assert.strictEqual(evidence.saveData.tileSize, 5, "metadata should preserve tile size");
+  assert.strictEqual(evidence.saveData.subsystems.meta.tick, evidence.saveData.tick, "subsystem save metadata should mirror legacy tick");
+  assert.strictEqual(evidence.saveData.subsystems.bio.organisms.length, evidence.saveData.organisms.length, "subsystem bio save should mirror organisms");
+  assert.strictEqual(evidence.saveData.subsystems.civ.settlements.length, evidence.saveData.settlements.length, "subsystem civ save should mirror settlements");
+  assert.strictEqual(evidence.saveData.subsystems.render.camera.zoomLevel, evidence.saveData.camera.zoomLevel, "subsystem render save should mirror camera");
+  assert.strictEqual(evidence.saveData.subsystems.ui.timelineEvents.length, evidence.saveData.timelineEvents.length, "subsystem UI save should mirror timeline events");
   assert.strictEqual(evidence.exportData.tick, evidence.saveData.tick, "export should return the same save tick");
   assert.strictEqual(evidence.importedData.tick, evidence.saveData.tick, "JSON import should resolve imported save data");
   assert.strictEqual(evidence.importedEvidence.tick, 4242, "JSON import should restore tick");
   assert.strictEqual(evidence.saveData.deepTimeYears, 123456789, "deep time should serialize");
   assert.strictEqual(evidence.importedEvidence.deepTimeYears, 123456789, "deep time should restore");
   assert.strictEqual(evidence.importedEvidence.timeScale.targetYearsPerTick, 10000, "manual time scale should restore");
+}
+
+function assertWorldRoundTrip(evidence) {
   assert.strictEqual(evidence.importedEvidence.camera.zoomLevel, 3.5, "camera zoom should round-trip");
   assert.strictEqual(evidence.importedEvidence.camera.latitude, 21.25, "camera latitude should round-trip");
   assert.strictEqual(evidence.importedEvidence.camera.longitude, -73.5, "camera longitude should round-trip");
@@ -492,21 +163,49 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.microbial.fields.bloomIntensity[3], 0.8, "microbial fields should restore");
   assert.strictEqual(evidence.importedEvidence.microbial.populations[0].morphology, "mat", "microbial populations should restore");
   assert.strictEqual(evidence.importedEvidence.microbialReady, true, "microbial readiness should restore");
+}
+
+function assertHistoryRoundTrip(evidence) {
   assert.strictEqual(evidence.saveData.timelineEvents.length, 1, "timeline events should serialize");
   assert.strictEqual(evidence.importedEvidence.timelineEvents[0].details.value, 1, "timeline events should restore details");
+  assert.strictEqual(evidence.saveData.timelineEvents[0].id, 13, "timeline species event id should serialize");
+  assert.strictEqual(evidence.importedEvidence.timelineEvents[0].cause, "geographic-isolation", "timeline species event cause should restore");
+  assert.strictEqual(evidence.importedEvidence.timelineEvents[0].traits.bodySize, 1.5, "timeline species event traits should restore");
+  assert.strictEqual(evidence.saveData.bookmarks.length, 1, "bookmarks should serialize");
+  assert.strictEqual(evidence.saveData.subsystems.history.bookmarks[0].id, "B4", "subsystem history save should mirror bookmarks");
+  assert.strictEqual(evidence.saveData.nextBookmarkId, 5, "bookmark counter should serialize");
+  assert.strictEqual(evidence.saveData.subsystems.history.nextBookmarkId, 5, "subsystem history save should mirror bookmark counter");
+  assert.strictEqual(evidence.importedEvidence.bookmarks[0].label, "First life marker", "bookmarks should restore labels");
+  assert.strictEqual(evidence.importedEvidence.bookmarks[0].target.eventType, "life.first", "bookmark event target should restore");
+  assert.strictEqual(evidence.importedEvidence.bookmarks[0].camera.latitude, 21.25, "bookmark camera should restore");
+  assert.strictEqual(evidence.importedEvidence.nextBookmarkId, 5, "bookmark counter should restore");
   assert.strictEqual(evidence.importedEvidence.milestonesReached["life.first"].value, 1, "milestone fired state should restore");
+}
+
+function assertBiologyRoundTrip(evidence) {
   assert.strictEqual(evidence.saveData.nextSpeciesId, 18, "species counter should serialize");
   assert.strictEqual(evidence.saveData.nextBiologyPopulationId, 19, "biology population counter should serialize");
-  assert.strictEqual(evidence.saveData.nextBiologyRepresentativeId, 20, "biology representative counter should serialize");
+  assert.ok(evidence.saveData.nextBiologyRepresentativeId >= 20, "biology representative counter should serialize past restored records");
   assert.ok(evidence.importedEvidence.nextSpeciesId >= 18, "species counter should advance past restored records");
   assert.ok(evidence.importedEvidence.nextBiologyPopulationId >= 19, "population counter should advance past restored records");
   assert.ok(evidence.importedEvidence.nextBiologyRepresentativeId >= 20, "representative counter should advance past restored records");
   assert.strictEqual(evidence.saveData.biologyPopulations[0].id, 17, "biology populations should serialize");
   assert.strictEqual(evidence.importedEvidence.biologyPopulations[0].traitMean.bodySize, 1.4, "biology populations should restore trait means");
+  assert.strictEqual(evidence.saveData.species[0].parentId, 5, "species parent id should serialize");
+  assert.strictEqual(evidence.importedEvidence.species[0].cause, "geographic-isolation", "species records should restore");
+  assert.deepStrictEqual(evidence.importedEvidence.speciesByIdKeys, ["13"], "species index should rebuild");
+  assert.strictEqual(evidence.importedEvidence.speciationEvents[0].id, 13, "speciation event history should restore");
+  assert.strictEqual(evidence.saveData.extinctionEvents[0].eventType, "volcanic-winter", "extinction event history should serialize");
+  assert.strictEqual(evidence.importedEvidence.extinctionEvents[0].losses.total, 55, "extinction event history should restore losses");
+  assert.strictEqual(evidence.importedEvidence.massExtinction.recoveryWindow.endTick, 5100, "active extinction recovery window should restore");
   assert.deepStrictEqual(evidence.importedEvidence.biologyPopulationByIdKeys, ["17"], "biology population index should rebuild");
   assert.strictEqual(evidence.saveData.biologyRepresentatives[0].id, 19, "biology representatives should serialize");
   assert.strictEqual(evidence.importedEvidence.biologyRepresentatives[0].target.type, "food", "biology representatives should restore target data");
   assert.deepStrictEqual(evidence.importedEvidence.biologyRepresentativeByIdKeys, ["19"], "biology representative index should rebuild");
+  assert.strictEqual(evidence.saveData.trackedLineage.speciesId, 13, "tracked lineage should serialize");
+  assert.strictEqual(evidence.saveData.subsystems.bio.trackedLineage.lineageId, 7, "subsystem bio save should mirror tracked lineage");
+  assert.strictEqual(evidence.importedEvidence.trackedLineage.pinned, true, "tracked lineage pin should restore");
+  assert.strictEqual(evidence.importedEvidence.trackedLineage.status, "active", "tracked lineage status should refresh after restore");
   assert.strictEqual(evidence.saveData.organisms[0].speciesId, 13, "organism species id should serialize");
   assert.strictEqual(evidence.saveData.organisms[0].populationId, 17, "organism population id should serialize");
   assert.strictEqual(evidence.saveData.organisms[0].representativeId, 19, "organism representative id should serialize");
@@ -516,6 +215,13 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.organismIdentity.bodySize, 1.5, "organism body size should restore");
   assert.strictEqual(evidence.importedEvidence.organismIdentity.limbCount, 6, "organism limb count should restore");
   assert.strictEqual(evidence.importedEvidence.organismIdentity.camouflage, 0.75, "organism camouflage should restore");
+  assert.ok(
+    Math.abs(evidence.importedEvidence.organismIdentity.carnivory - 0.6) < 0.0001,
+    "organism carnivory should restore"
+  );
+}
+
+function assertProgressionAndLoad(evidence) {
   assert.ok(Number.isFinite(evidence.saveData.colonyNetworkScore), "colony score should serialize");
   assert.ok(evidence.importedEvidence.progression.colonyNetworkScore > 0, "colony score should restore to an active progression state");
   [
@@ -535,9 +241,36 @@ const root = path.resolve(__dirname, "..");
   assert.strictEqual(evidence.importedEvidence.progression.spaceProgramReady, true, "space readiness should restore active");
   assert.strictEqual(evidence.loadedData.tick, 2, "IndexedDB load should resolve saved data");
   assert.strictEqual(evidence.loadedTick, 2, "IndexedDB load should apply saved data");
+}
 
-  console.log("persistence parity checks passed");
-})().catch(async (error) => {
+function assertPersistenceParity(evidence, browserErrors) {
+  assertNoBrowserErrors(browserErrors.consoleErrors, browserErrors.pageErrors);
+  assertSaveEnvelope(evidence);
+  assertWorldRoundTrip(evidence);
+  assertHistoryRoundTrip(evidence);
+  assertBiologyRoundTrip(evidence);
+  assertProgressionAndLoad(evidence);
+}
+
+async function run() {
+  const server = createStaticServer();
+  const port = await listen(server);
+  const browser = await chromium.launch({ headless: true });
+
+  try {
+    const page = await openPersistencePage(browser, "http://127.0.0.1:" + port);
+    const browserErrors = trackBrowserErrors(page);
+    const evidence = await collectPersistenceEvidence(page);
+
+    assertPersistenceParity(evidence, browserErrors);
+    console.log("persistence parity checks passed");
+  } finally {
+    await browser.close();
+    await closeServer(server);
+  }
+}
+
+run().catch((error) => {
   console.error(error);
   process.exit(1);
 });

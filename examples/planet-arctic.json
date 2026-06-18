@@ -1,0 +1,21 @@
+{
+  "seed": "AZR-835-ARCTIC",
+  "width": 128,
+  "height": 128,
+  "climate": {
+    "meanTemperatureC": -18,
+    "temperatureAmplitudeC": 42,
+    "oceanRatio": 0.67,
+    "salinityPsu": 34,
+    "currentStrength": 1.4
+  },
+  "simulation": {
+    "dt": 0.5,
+    "diffusion": 0.12,
+    "iterations": 1000
+  },
+  "exports": {
+    "format": "png",
+    "sidecar": true
+  }
+}

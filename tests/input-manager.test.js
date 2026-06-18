@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -66,3 +57,19 @@ assert.strictEqual(pointerHandled, true, "pointer action should pass event paylo
 
 console.log("input manager checks passed");
 `, context);
+
+const interactionSource = read("js/ui/interaction.js");
+const handleShortcutSource = interactionSource.slice(
+  interactionSource.indexOf("function handleSimulationShortcut"),
+  interactionSource.indexOf("function handleSimulationShortcut") + 420
+);
+assert.ok(
+  handleShortcutSource.indexOf("shouldIgnoreSimulationShortcut(event.target)") >= 0,
+  "handleSimulationShortcut should check ignored targets once at entry"
+);
+assert.strictEqual(
+  (interactionSource.match(/shouldIgnoreSimulationShortcut\(event\.target\)/g) || []).length,
+  1,
+  "shortcut handlers should not repeat the ignored-target guard"
+);
+assert.strictEqual(interactionSource.indexOf("!window.PS"), -1, "shortcut handlers should not keep redundant window.PS guards");

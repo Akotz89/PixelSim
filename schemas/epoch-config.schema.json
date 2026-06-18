@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pixeldarium.local/schemas/epoch-config.schema.json",
+  "title": "Pixeldarium Epoch Config",
+  "type": "object",
+  "required": ["epochs"],
+  "additionalProperties": false,
+  "properties": {
+    "epochs": {
+      "type": "array",
+      "minItems": 13,
+      "maxItems": 13,
+      "items": { "$ref": "#/$defs/epoch" }
+    }
+  },
+  "$defs": {
+    "epoch": {
+      "type": "object",
+      "required": ["id", "name", "sim_time_ga", "year_range", "active_passes", "ticks_per_year", "years_per_game_second", "atmosphere", "ocean", "life", "visual_palette"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "integer", "minimum": 0, "maximum": 12 },
+        "name": { "type": "string", "minLength": 1 },
+        "sim_time_ga": { "type": "number", "minimum": 0 },
+        "year_range": { "type": "string", "minLength": 1 },
+        "active_passes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "ticks_per_year": { "type": "number", "exclusiveMinimum": 0 },
+        "years_per_game_second": { "type": "number", "minimum": 0 },
+        "atmosphere": {
+          "type": "object",
+          "required": ["co2_ppm", "o2_ppm", "ch4_ppm", "n2_ppm"],
+          "additionalProperties": false,
+          "properties": {
+            "co2_ppm": { "type": "number", "minimum": 0 },
+            "o2_ppm": { "type": "number", "minimum": 0 },
+            "ch4_ppm": { "type": "number", "minimum": 0 },
+            "n2_ppm": { "type": "number", "minimum": 0 }
+          }
+        },
+        "ocean": {
+          "type": "object",
+          "required": ["exists", "salinity_psu"],
+          "additionalProperties": false,
+          "properties": {
+            "exists": { "type": "boolean" },
+            "salinity_psu": { "type": "number", "minimum": 0, "maximum": 80 }
+          }
+        },
+        "life": {
+          "type": "object",
+          "required": ["exists", "lenia_species"],
+          "additionalProperties": true,
+          "properties": {
+            "exists": { "type": "boolean" },
+            "type": { "type": "string" },
+            "spawn_after": { "type": "string" },
+            "lenia_species": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
+          }
+        },
+        "visual_palette": {
+          "type": "object",
+          "required": ["id", "colors"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "colors": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+              "minItems": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}

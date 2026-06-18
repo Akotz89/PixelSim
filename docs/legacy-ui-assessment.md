@@ -20,6 +20,9 @@ The modern UI modules currently loaded are:
 - `js/ui/summary.js`
 - `js/ui/history-summary.js`
 - `js/ui/inspect-history.js`
+- `js/ui/inspect.js`
+- `js/ui/camera-input.js`
+- `js/ui/persistence-controls.js`
 - `js/ui/interaction.js`
 - `js/ui/setup.js`
 
@@ -60,3 +63,21 @@ The following implementation slice moved `js/legacy/ui/part-04.js` to `js/ui/ins
 The next implementation slice moved `js/legacy/ui/part-05.js` to `js/ui/interaction.js`, reducing the loaded legacy UI shard count to one.
 
 The final implementation slice moved `js/legacy/ui/part-06.js` to `js/ui/setup.js`, removing `js/legacy/ui/*` from the runtime loader.
+
+## AZR-366 Ownership Cleanup
+
+Commit `d99e04f` handled persistence-schema cleanup outside the UI lane. The
+AZR-366 UI cleanup slice splits the largest migrated interaction shard into
+focused ownership modules:
+
+- `js/ui/inspect.js`: inspect surface positions, inspectable entity resolution,
+  and tile selection.
+- `js/ui/camera-input.js`: pointer drag state, camera settle state, wheel zoom,
+  canvas-to-tile conversion, and keyboard panning helpers.
+- `js/ui/persistence-controls.js`: save/import/export status text and restart
+  confirmation behavior.
+- `js/ui/interaction.js`: remaining input action registration and shortcut
+  dispatch bridge.
+
+The runtime still uses static script tags through `PS.core.manifest`, keeps
+`file://` compatibility, and keeps every `js/ui/*.js` file under 500 lines.

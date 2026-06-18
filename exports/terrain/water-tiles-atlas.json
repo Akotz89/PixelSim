@@ -1,0 +1,61 @@
+{
+  "type": "grid",
+  "tileWidth": 32,
+  "tileHeight": 32,
+  "columns": 4,
+  "rows": 1,
+  "names": [
+    "terrain.water.deep-swell",
+    "terrain.water.deep-glint",
+    "terrain.water.shallow-gradient",
+    "terrain.water.shore-foam"
+  ],
+  "variants": [
+    {
+      "id": "terrain.water.deep-swell",
+      "label": "Deep water swell",
+      "depth": "deep",
+      "rect": [
+        0,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.water.deep-glint",
+      "label": "Deep water glint",
+      "depth": "deep",
+      "rect": [
+        32,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.water.shallow-gradient",
+      "label": "Shallow depth gradient",
+      "depth": "shallow",
+      "rect": [
+        64,
+        0,
+        32,
+        32
+      ]
+    },
+    {
+      "id": "terrain.water.shore-foam",
+      "label": "Shore foam",
+      "depth": "shallow",
+      "rect": [
+        96,
+        0,
+        32,
+        32
+      ]
+    }
+  ],
+  "sourceIssue": "AZR-523",
+  "notes": "Standalone candidate export for water terrain tiles. Runtime split-atlas terrain sheets remain under assets/terrain/."
+}

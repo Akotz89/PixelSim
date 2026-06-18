@@ -1,0 +1,6 @@
+*
+!.gitignore
+!pixeldarium-sim.js
+!pixeldarium-sim_bg.wasm
+!pixeldarium-sim.wasm.js
+!pixeldarium-sim.build.json

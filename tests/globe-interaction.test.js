@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -11,6 +12,9 @@ const source = [
   "js/systems/persistence-save-data.js",
   "js/systems/persistence-restore-core.js",
   "js/systems/persistence-io.js",
+  "js/ui/inspect.js",
+  "js/ui/camera-input.js",
+  "js/ui/persistence-controls.js",
   "js/ui/interaction.js",
   "js/ui/touch.js"
 ].map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
@@ -96,7 +100,6 @@ const context = {
     return true;
   },
   setElementText() {},
-  invalidateTerrainCache() {},
   updateHud() {},
   redrawPlanetView() {},
   toggleSimulationPaused() {
@@ -162,6 +165,14 @@ PS.camera = {
         canvasY: (Number(clientY) - rect.top) * (canvas.height / rect.height)
       };
     }
+  },
+  getMotionConfig: function() {
+    return {
+      touchPinchZoomMultiplier: 0.16,
+      touchPinchZoomMaxDelta: 0.018,
+      touchRotatePanMultiplier: 0,
+      touchPanInputMaxDelta: 24
+    };
   }
 };
 
@@ -229,8 +240,7 @@ updatePlanetDrag({
   clientY: 450,
   preventDefault: function() { this.prevented = true; }
 });
-assert.notStrictEqual(lastScreenPan, lastRotatePanBefore, "two-finger rotate should pan the globe camera");
-assert.ok(Math.abs(lastScreenPan.deltaX) > 0, "two-finger rotate should map angle changes to horizontal globe rotation");
+assert.strictEqual(lastScreenPan, lastRotatePanBefore, "two-finger rotate should not pan during pinch zoom");
 endPlanetDrag({ pointerType: "touch", pointerId: 1 });
 endPlanetDrag({ pointerType: "touch", pointerId: 2 });
 

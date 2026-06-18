@@ -1,3 +1,4 @@
+require("./test-esm-helper.js");
 const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
@@ -296,6 +297,60 @@ async function testManifestLoading() {
   assert.strictEqual(loader.getProgress().failed, 1, "manifest should report failed child loads");
 }
 
+async function testSpriteSheetUsesPixelDataFallbackForFileProtocol() {
+  const context = createContext({
+    protocol: "file:",
+    failedImages: {
+      "assets/terrain/grass.png": true
+    },
+    scriptJSON: {
+      "assets/manifest.json.js": {
+        sheets: {
+          terrain_grass: {
+            path: "assets/terrain/grass.png",
+            meta: "assets/terrain/grass.json",
+            pixelData: "assets/terrain/grass.rgba.json"
+          }
+        }
+      },
+      "assets/terrain/grass.json.js": {
+        type: "grid",
+        tileWidth: 32,
+        tileHeight: 32,
+        columns: 1,
+        rows: 1,
+        names: ["terrain.grass.0"]
+      },
+      "assets/terrain/grass.rgba.json.js": {
+        type: "rgba-base64",
+        width: 32,
+        height: 32,
+        byteLength: 4096,
+        data: ""
+      }
+    }
+  });
+  const loader = new context.PS.assets.AssetLoader();
+
+  context.PS.assets.SpriteSheet = {
+    detect: function(image, meta) {
+      assert.strictEqual(image.pixelDataBacked, true, "file protocol sheet should use a pixel-data-backed image proxy");
+      assert.strictEqual(meta.names[0], "terrain.grass.0", "sheet metadata should still be loaded");
+      return { detected: true };
+    }
+  };
+
+  const manifest = await loader.loadManifest("assets/manifest.json");
+  const loaded = context.PS.assets.loadedSheets.terrain_grass;
+
+  assert.ok(manifest.sheets.terrain_grass, "sprite sheet manifest should load");
+  assert.deepStrictEqual(context.imageLoads, [], "file protocol sheet with pixel data should not probe the raw PNG");
+  assert.strictEqual(context.runtimeErrors.length, 0, "pixel-data-backed file sheet should not record image asset errors");
+  assert.strictEqual(loaded.image.pixelDataBacked, true, "loaded sheet should expose the pixel-data image proxy");
+  assert.strictEqual(loaded.pixelDataPath, "assets/terrain/grass.rgba.json", "loaded sheet should retain pixel-data provenance");
+  assert.strictEqual(loader.getProgress().failed, 0, "pixel-data-backed sheet should not increment failed progress");
+}
+
 (async function() {
   await testImageAndJSONCache();
   await testFailedLoadReports();
@@ -303,6 +358,7 @@ async function testManifestLoading() {
   await testFileJSONSidecarFallback();
   await testTextSidecarFallbackAfterFetchFailure();
   await testManifestLoading();
+  await testSpriteSheetUsesPixelDataFallbackForFileProtocol();
   console.log("asset loader checks passed");
 }()).catch(function(error) {
   console.error(error);

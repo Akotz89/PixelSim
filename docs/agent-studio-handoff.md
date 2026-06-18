@@ -29,6 +29,7 @@ integration change. That change should include:
 - Accepted asset files placed under the runtime asset path chosen by the game
   integration issue.
 - Any required runtime manifest, loader, or script-tag changes.
+- Evidence that the output follows `docs/pixeldarium-art-bible.md`.
 - A short provenance note naming the studio job, source asset, and acceptance
   evidence without copying raw reports or secrets.
 - Focused runtime tests or visual evidence for the integration.

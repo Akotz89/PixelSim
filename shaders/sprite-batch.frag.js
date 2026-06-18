@@ -1,1 +1,0 @@
-PS.assets.registerText("shaders/sprite-batch.frag", "#version 300 es\nprecision highp float;\n\nin vec2 v_diffuseUv;\nin vec2 v_normalUv;\nin vec4 v_tintColor;\n\nuniform sampler2D u_atlas;\n\nout vec4 fragColor;\n\nvoid main() {\n  vec4 texColor = texture(u_atlas, v_diffuseUv);\n\n  if (texColor.a < 0.01) {\n    discard;\n  }\n\n  fragColor = texColor * v_tintColor;\n}\n");

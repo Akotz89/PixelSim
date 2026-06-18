@@ -22,13 +22,19 @@ test evidence, or Linear handoff:
 
 If one of these fields is not applicable, the implementation must say why.
 
+When a gated implementation changes visible gameplay, simulation, entity, VFX,
+camera, overlay, or interaction behavior, it must also include the proof-scene
+fields from `docs/proof-scene-acceptance.md`. The proof scene supplies the
+watcher-facing pass/fail observation; the optimization gate supplies the
+representation and performance proof.
+
 ## Pass/Fail Rule
 
 An implementation passes the AZR-637 gate only when:
 
 1. The active Linear issue or final handoff includes all required gate fields.
-2. Runtime changes require WebGL2 batches, data textures, packed buffers,
-   fields, chunks, or aggregate state for production pixel throughput.
+2. Runtime changes use WebGPU batches, WGSL shaders, storage buffers, packed
+   buffers, fields, chunks, or aggregate state for production pixel throughput.
 3. Canvas2D is not a runtime requirement or fallback target. Transitional,
    unloaded Canvas2D files must not be accepted as active runtime paths.
 4. Async or generated data is promoted only after a readiness state proves it is
@@ -44,7 +50,7 @@ An implementation passes the AZR-637 gate only when:
 When the active issue is one of the AZR-637 steering issues, read it before
 editing and apply the gate in the first implementation update:
 
-- AZR-372: WebGL2 Tile Renderer Core.
+- AZR-372: WebGPU Tile Renderer Core.
 - AZR-383: Data-texture tilemap shader.
 - AZR-368: Surface Render Performance Optimization.
 - AZR-607: Deprecate redundant Canvas2D terrain cache path.
@@ -65,6 +71,7 @@ Optimization gate:
 - Player-perception contract:
 - New constraint or encoding limit:
 - Proof metric:
+- Proof scene, if user-visible behavior changes:
 ```
 
 ## Current Gate Baseline

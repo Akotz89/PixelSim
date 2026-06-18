@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const context = {
   assert,
@@ -35,6 +26,7 @@ const context = {
 const source = [
   "js/core/namespace.js",
   "config.js",
+  "js/ui/dom-refs.js",
   "js/systems/state.js",
   "js/core/utils.js",
   "js/core/config.js",
@@ -62,8 +54,27 @@ function removeFoodInRadius() {
   return 0;
 }
 
+var settlementPopulation = 12;
+
 function countOrganismsInRadiusForLineage() {
-  return 12;
+  return settlementPopulation;
+}
+
+var indexedOrganismsByLineage = {};
+
+function getIndexedOrganismsForLineage(lineageId) {
+  return indexedOrganismsByLineage[String(lineageId)] || [];
+}
+
+function ensureOrganismTraits(organism) {
+  organism.traits = organism.traits || {};
+  organism.traits.intelligence = Number.isFinite(Number(organism.traits.intelligence))
+    ? organism.traits.intelligence
+    : CONFIG.TRAIT_INTELLIGENCE_DEFAULT;
+  organism.traits.sociality = Number.isFinite(Number(organism.traits.sociality))
+    ? organism.traits.sociality
+    : CONFIG.TRAIT_SOCIALITY_DEFAULT;
+  return organism.traits;
 }
 
 function isFertile() {
@@ -74,6 +85,93 @@ world.tick = 10000;
 world.settlements = [];
 world.settlementRoutes = [];
 PS.sim.settlements.ensureState();
+
+var lowReadinessLineage = {
+  id: 7,
+  activeCount: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+  peakPopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION,
+  isExtinct: false
+};
+indexedOrganismsByLineage[String(lowReadinessLineage.id)] = [];
+for (var lowIndex = 0; lowIndex < CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION; lowIndex++) {
+  indexedOrganismsByLineage[String(lowReadinessLineage.id)].push({
+    x: 10 + lowIndex,
+    y: 10,
+    lineageId: lowReadinessLineage.id,
+    traits: {
+      intelligence: CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE - 0.1,
+      sociality: CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY + 0.1
+    }
+  });
+}
+assert.strictEqual(canFoundSettlement(lowReadinessLineage), false, "low-intelligence lineage should not found settlements");
+assert.ok(
+  lowReadinessLineage.settlementReadiness.intelligence < CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE,
+  "low-intelligence lineage should record readiness evidence"
+);
+
+var highReadinessLineage = {
+  id: 8,
+  activeCount: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+  peakPopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION,
+  isExtinct: false
+};
+indexedOrganismsByLineage[String(highReadinessLineage.id)] = [];
+for (var highIndex = 0; highIndex < CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION; highIndex++) {
+  indexedOrganismsByLineage[String(highReadinessLineage.id)].push({
+    x: 30 + highIndex,
+    y: 12,
+    lineageId: highReadinessLineage.id,
+    traits: {
+      intelligence: CONFIG.SETTLEMENT_MIN_LINEAGE_INTELLIGENCE + 0.1,
+      sociality: CONFIG.SETTLEMENT_MIN_LINEAGE_SOCIALITY + 0.1
+    }
+  });
+}
+assert.strictEqual(canFoundSettlement(highReadinessLineage), true, "high-intelligence social lineage should found settlements");
+assert.ok(foundSettlementForLineage(highReadinessLineage), "high-readiness lineage should create a settlement");
+assert.strictEqual(world.settlements.length, 1, "only high-readiness lineage should found a settlement");
+
+world.settlements = [];
+world.settlementRoutes = [];
+PS.sim.settlements.rebuildIndexes();
+
+var seamLineage = {
+  id: 99,
+  activeCount: CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION,
+  peakPopulation: CONFIG.SETTLEMENT_MIN_LINEAGE_PEAK_POPULATION,
+  isExtinct: false
+};
+
+var seamOrganisms = [];
+for (var seamIndex = 0; seamIndex < CONFIG.SETTLEMENT_MIN_LINEAGE_POPULATION; seamIndex++) {
+  seamOrganisms.push({
+    x: seamIndex % 3 === 0 ? 0 : (seamIndex % 3 === 1 ? 1 : WORLD_WIDTH - 1),
+    y: 20,
+    lineageId: seamLineage.id
+  });
+}
+world.organisms = seamOrganisms;
+
+var seamSettlement = makeSettlement(seamLineage, seamOrganisms);
+assert.ok(seamSettlement, "wrap seam lineage should found a settlement");
+assert.ok(
+  seamSettlement.x <= 1 || seamSettlement.x >= WORLD_WIDTH - 1,
+  "wrap seam settlement should be founded near the actual cluster center"
+);
+
+var westSettlement = PS.sim.settlements.makeAt(1, 0, 20, { isColony: true });
+var eastSettlement = PS.sim.settlements.makeAt(1, WORLD_WIDTH - 1, 20, { isColony: true });
+assert.strictEqual(
+  getDistanceBetweenSettlements(westSettlement, eastSettlement),
+  1,
+  "settlement distance should use wrapped horizontal distance"
+);
+
+world.organisms = [];
+world.settlements = [];
+world.settlementRoutes = [];
+PS.sim.settlements.rebuildIndexes();
 
 var capital = PS.sim.settlements.makeAt(1, 20, 20, { isColony: true });
 capital.storedFood = 500;
@@ -176,6 +274,37 @@ world.empireLegacyProgress = CONFIG.EMPIRE_LEGACY_THRESHOLD - 1;
 world.lastEmpireLegacyTick = 0;
 PS.sim.civilizations.updateEmpireLegacy();
 assert.ok(world.empireLegacyLevel > 0, "legacy progression should advance empire legacy level");
+
+settlementPopulation = 0;
+var ghostTown = PS.sim.settlements.makeAt(1, 55, 25, {});
+ghostTown.development = CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT * 2 + 2;
+ghostTown.storedFood = 0;
+ghostTown.lastGrowthTick = world.tick;
+PS.sim.settlements.updateMetrics(ghostTown);
+assert.strictEqual(ghostTown.isActive, false, "test settlement should be empty before decay");
+var ghostDevelopmentBeforeDecay = ghostTown.development;
+for (var decayTick = 1; decayTick <= 100; decayTick++) {
+  world.tick += 1;
+  PS.sim.settlements.updateMetrics(ghostTown);
+  runSettlementGrowth(ghostTown);
+}
+assert.ok(ghostTown.development < ghostDevelopmentBeforeDecay, "empty settlement should lose development over 100 ticks");
+assert.ok(ghostTown.declineTicks > 0, "empty settlement should record decline intervals");
+assert.strictEqual(ghostTown.isActive, false, "empty settlement should not become active from preserved development");
+
+settlementPopulation = 0;
+var regressingTown = PS.sim.settlements.makeAt(1, 65, 25, {});
+regressingTown.development = CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT * 2 + 2;
+regressingTown.storedFood = 0;
+regressingTown.lastGrowthTick = world.tick;
+PS.sim.settlements.updateMetrics(regressingTown);
+assert.strictEqual(regressingTown.level, 3, "regression fixture should start at level 3");
+for (var regressionTick = 1; regressionTick <= 100; regressionTick++) {
+  world.tick += 1;
+  PS.sim.settlements.updateMetrics(regressingTown);
+  runSettlementGrowth(regressingTown);
+}
+assert.strictEqual(regressingTown.level, 2, "settlement development decay should allow level 3 to regress to level 2");
 
 console.log("settlement progression checks passed");
 `, context);

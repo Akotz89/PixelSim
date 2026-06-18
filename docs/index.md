@@ -11,16 +11,28 @@
 | [Legacy UI Assessment](legacy-ui-assessment.md) | `docs/legacy-ui-assessment.md` | Completed UI runtime shard retirement record |
 | [Legacy Runtime Assessment](legacy-runtime-assessment.md) | `docs/legacy-runtime-assessment.md` | AZR-352 non-UI legacy runtime inventory and migration decisions |
 | [Architecture](ARCHITECTURE.md) | `docs/ARCHITECTURE.md` | AZR-585 current runtime architecture, data flow, initialization order, and optimization boundaries |
-| [Rendering](RENDERING.md) | `docs/RENDERING.md` | AZR-586 current WebGL2 rendering pipeline, coordinate systems, zoom bands, atlas, shaders, and frame budget |
+| [Rendering](RENDERING.md) | `docs/RENDERING.md` | AZR-586 current WebGPU rendering pipeline, coordinate systems, zoom bands, atlas, shaders, and frame budget |
+| [Getting Started](GETTING_STARTED.md) | `docs/GETTING_STARTED.md` | Phase 0 onboarding guide for setup, runtime shape, terrain/entity changes, config edits, and verification |
+| [Coding Conventions](CODING_CONVENTIONS.md) | `docs/CODING_CONVENTIONS.md` | Phase 0 source conventions for script-tag JS, WebGPU runtime boundaries, data sidecars, config, simulation, rendering, tests, and comments |
+| [Pixeldarium Art Bible](pixeldarium-art-bible.md) | `docs/pixeldarium-art-bible.md` | AZR-420 original pixel-art dimensions, sheet layouts, animation specs, naming, palette rules, and WebGPU-only asset contract |
 | [Visual Quality Gate](visual-quality-gate.md) | `docs/visual-quality-gate.md` | AZR-364 Google-Earth smoothness and Songs-of-Syx-style simulation readability checklist |
+| [Google Earth x Snake2D Visual Experience](google-earth-snake2d-visual-experience.md) | `docs/google-earth-snake2d-visual-experience.md` | BMAD planning spec and audit for continuous planetary zoom, causal LOD, dense WebGPU top-down rendering, and runtime/Agent Studio boundaries |
+| [Proof Scene Acceptance](proof-scene-acceptance.md) | `docs/proof-scene-acceptance.md` | AZR-1037/AZR-1038 local proof-scene fields, actor-scale readability gates, and AZR-1074 canonical dense proof-scene suite |
 | [Biological Model Decision](biological-model-decision.md) | `docs/biological-model-decision.md` | AZR-361 aggregate population and representative organism model gate |
 | [Optimization Operating Model](optimization-operating-model.md) | `docs/optimization-operating-model.md` | Scale-first rendering/simulation rules derived from the YouTube deep-dive analysis |
 | [Optimization Implementation Gate](optimization-implementation-gate.md) | `docs/optimization-implementation-gate.md` | AZR-637 implementation handoff gate for rendering, streaming, performance, mass-simulation, and observation work |
 | [Phase 2 Readiness](phase-2-readiness.md) | `docs/phase-2-readiness.md` | AZR-353 reconciliation of GDD, Linear Phase 2 stories, and current repo evidence |
 | [Agent Studio Handoff](agent-studio-handoff.md) | `docs/agent-studio-handoff.md` | Runtime-safe contract for accepting outputs from the private Pixeldarium Agent Studio repo |
+| [Agent Simulation Control](agent-simulation-control.md) | `docs/agent-simulation-control.md` | AZR-835 planet-spec schema, headless runner, validator, WASM worker protocol, and tuner playbook |
+| [WASM Simulation Module](wasm-sim-module.md) | `docs/wasm-sim-module.md` | AZR-836 Rust/WASM computation module, file-protocol sidecar, D8 rivers, and WebGPU upload bridge |
+| [Geochemistry Simulation](geochemistry-simulation.md) | `docs/geochemistry-simulation.md` | AZR-837 atmospheric, ocean, and soil chemistry grid contract with agent control and debug rows |
+| [Molecular Dynamics Zoom](molecular-dynamics-zoom.md) | `docs/molecular-dynamics-zoom.md` | AZR-840 pixel-art molecular dynamics zoom view with Lennard-Jones forces, Velocity Verlet validation, salt hydration, ice ordering, and macro-cell causal inputs |
+| [Lenia Ecosystem Simulation](lenia-ecosystem-simulation.md) | `docs/lenia-ecosystem-simulation.md` | AZR-838 continuous cellular automata ecosystem, species competition, pH collapse, overlay, and JSON export |
+| [Multi-Physics Coupling](multi-physics-coupling.md) | `docs/multi-physics-coupling.md` | AZR-839 canonical nine-pass simulation order, texture registry, previous-tick read discipline, WASM elevation upload, and timing logs |
+| [Parameter Provenance And Environmental Drivers](parameter-provenance-drivers.md) | `docs/parameter-provenance-drivers.md` | AZR-1059 baseline parameter provenance, environmental driver fields, and causal no-downstream-tuning contract |
+| [Simulation Causality Audit](simulation-causality-audit.md) | `docs/simulation-causality-audit.md` | AZR-1069 target-like constant inventory, classifications, replacement models, and causal-system checklist |
+| [Epoch Scaling](epoch-scaling.md) | `docs/epoch-scaling.md` | AZR-841 13-epoch state machine, upstream atmosphere changes, active pass overlays, timescale scaling, and palette swaps |
 | [Top-Down Simulation Art Contract](top-down-simulation-art-contract.md) | `docs/top-down-simulation-art-contract.md` | Pointer to the Agent Studio art bible controlling Songs-of-Syx-quality map-view art |
-| [Agent Studio Pipeline](agent-studio-pipeline.md) | `docs/agent-studio-pipeline.md` | Agent Studio Pipeline lane and tool configurations |
-| [Agent Studio Research](agent-studio-research.md) | `docs/agent-studio-research.md` | Technical research on Blender, Aseprite, ComfyUI, Playwright, and FFmpeg interop |
 
 ## Planning Artifacts
 
@@ -49,6 +61,9 @@ All planning documents live in `skills/planning-artifacts/gdds/gdd-Pixeldarium-2
 - **Linear:** [Pixeldarium Agent Studio](https://linear.app/openclaw-mock-up/project/pixeldarium-agent-studio-35c2d43bfca8)
 - **Private GitHub:** `Akotz89/Pixeldarium-Agent-Studio`
 - **Local root:** `/mnt/c/Users/Aaron/Azyrra/projects/pixeldarium-agent-studio`
+- **Runtime boundary:** this game repo keeps only `docs/agent-studio-handoff.md`
+  and reviewed runtime assets. Pipeline docs, tools, tests, reports, and raw
+  generation outputs belong in the standalone Agent Studio repo.
 
 ## Linear Project
 

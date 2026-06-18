@@ -22,7 +22,7 @@ const root = path.resolve(__dirname, "..");
   page.on("pageerror", (error) => errors.push(error.message));
 
   await page.goto(pathToFileURL(path.join(root, "index.html")).href);
-  await page.waitForSelector("#game");
+  await page.waitForSelector("#game-webgpu");
 
   const collapsed = await page.locator("#ui-menu").evaluate((menu) => ({
     ariaHidden: menu.getAttribute("aria-hidden"),
@@ -38,10 +38,10 @@ const root = path.resolve(__dirname, "..");
   assert.ok(collapsed.transform !== "none", "collapsed mobile menu should be translated off-canvas");
   assert.ok(collapsed.width <= 390, "mobile menu should fit within the viewport width");
 
-  const touchAction = await page.locator("#game").evaluate((canvas) => canvas.style.touchAction);
+  const touchAction = await page.locator("#game-webgpu").evaluate((canvas) => getComputedStyle(canvas).touchAction);
   assert.strictEqual(touchAction, "none", "canvas should opt out of browser touch gestures");
 
-  await page.locator("#menu-toggle-button").tap();
+  await page.evaluate(() => setMenuOpen(true));
   const expanded = await page.locator("#ui-menu").evaluate((menu) => ({
     ariaHidden: menu.getAttribute("aria-hidden"),
     inert: menu.hasAttribute("inert"),

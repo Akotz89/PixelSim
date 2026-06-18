@@ -1,13 +1,4 @@
-const assert = require("assert");
-const fs = require("fs");
-const path = require("path");
-const vm = require("vm");
-
-const root = path.resolve(__dirname, "..");
-
-function read(file) {
-  return fs.readFileSync(path.join(root, file), "utf8");
-}
+const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
 const emitted = [];
 const context = {
@@ -96,6 +87,8 @@ const state = context.world.abiogenesis;
 const cell = context.PS.epochs.primordial.getCellForTile(48, 27);
 
 assert.ok(state, "abiogenesis state should be created");
+assert.ok(ArrayBuffer.isView(state.fields.complexity), "complexity field should use typed arrays");
+assert.ok(ArrayBuffer.isView(state.fields.lightning), "lightning source field should use typed arrays");
 assert.strictEqual(state.fields.complexity.length, state.fieldWidth * state.fieldHeight, "complexity field should cover chunks");
 assert.strictEqual(state.fields.lightning.length, state.fields.complexity.length, "lightning source field should match chunks");
 assert.strictEqual(state.fields.hydrothermal.length, state.fields.complexity.length, "hydrothermal source field should match chunks");
