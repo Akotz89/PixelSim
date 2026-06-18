@@ -7,6 +7,9 @@ PS.render.tileTypeLut = PS.render.tileTypeLut || {};
 PS.render.tileTypeLut.state = PS.render.tileTypeLut.state || {
   keyIds: {},
   nextKeyId: 1,
+  terrainSignatureChecks: 0,
+  terrainKeyCacheHits: 0,
+  terrainKeyCacheMisses: 0,
   terrainKeyLookups: 0,
   acceptedKeyLookups: 0,
   parcelKeyLookups: 0
@@ -34,6 +37,17 @@ PS.render.tileTypeLut.hashKeyId = function (hash, id) {
   result ^= (value >>> 16) & 0xffff;
   result = Math.imul(result, 16777619);
   return result >>> 0;
+};
+
+PS.render.tileTypeLut.recordTerrainKeyCache = function (hit) {
+  var state = PS.render.tileTypeLut.state;
+
+  state.terrainSignatureChecks += 1;
+  if (hit) {
+    state.terrainKeyCacheHits += 1;
+  } else {
+    state.terrainKeyCacheMisses += 1;
+  }
 };
 
 PS.render.tileTypeLut.combineKeyIds = function (ids) {
@@ -109,6 +123,9 @@ PS.render.tileTypeLut.getStats = function () {
 
   return {
     registeredKeys: Object.keys(state.keyIds).length,
+    terrainSignatureChecks: state.terrainSignatureChecks,
+    terrainKeyCacheHits: state.terrainKeyCacheHits,
+    terrainKeyCacheMisses: state.terrainKeyCacheMisses,
     terrainKeyLookups: state.terrainKeyLookups,
     acceptedKeyLookups: state.acceptedKeyLookups,
     parcelKeyLookups: state.parcelKeyLookups

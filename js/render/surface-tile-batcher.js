@@ -133,6 +133,292 @@ PS.render.surfaceTileBatcher.getSettlementParcelKeyId = function (atlasKeyId, pa
   ]);
 };
 
+PS.render.surfaceTileBatcher.hashTileTypeId = function (hash, id) {
+  var lut = PS.render.tileTypeLut;
+
+  if (lut && typeof lut.hashKeyId === "function") {
+    return lut.hashKeyId(hash, id);
+  }
+
+  var value = Number(id) || 0;
+  var result = hash >>> 0;
+
+  result ^= value & 0xffff;
+  result = Math.imul(result, 16777619);
+  result ^= (value >>> 16) & 0xffff;
+  result = Math.imul(result, 16777619);
+  return result >>> 0;
+};
+
+PS.render.surfaceTileBatcher.hashTileTypeString = function (hash, value) {
+  return PS.render.surfaceTileBatcher.hashTileTypeId(
+    hash,
+    PS.render.surfaceTileBatcher.getStableKeyId(value)
+  );
+};
+
+PS.render.surfaceTileBatcher.hashTileTypeNumber = function (hash, value, scale) {
+  var multiplier = Number(scale) || 1000;
+  var bucket = Math.round((Number(value) || 0) * multiplier) + 2147483648;
+
+  return PS.render.surfaceTileBatcher.hashTileTypeId(
+    hash,
+    bucket >>> 0
+  );
+};
+
+PS.render.surfaceTileBatcher.getTerrainAtlasSourceSignature = function (sourceSample, sample, biome, tileX, tileY) {
+  var detail = sample && sample.detail ? sample.detail : {};
+  var signals = detail.materialSignals || {};
+  var strata = detail.materialStrata || {};
+  var ecology = sample && sample.ecology ? sample.ecology : {};
+  var civilization = sample && sample.civilization ? sample.civilization : {};
+  var tileBlend = sample && sample.tileBlend ? sample.tileBlend : {};
+  var blendTiles = Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var neighbor0 = blendTiles[0] || {};
+  var neighbor0Tile = neighbor0.tile || {};
+  var neighbor0Detail = neighbor0.detail || {};
+  var neighbor0Signals = neighbor0Detail.materialSignals || {};
+  var neighbor1 = blendTiles[1] || {};
+  var neighbor1Tile = neighbor1.tile || {};
+  var neighbor1Detail = neighbor1.detail || {};
+  var neighbor1Signals = neighbor1Detail.materialSignals || {};
+  var neighbor2 = blendTiles[2] || {};
+  var neighbor2Tile = neighbor2.tile || {};
+  var neighbor2Detail = neighbor2.detail || {};
+  var neighbor2Signals = neighbor2Detail.materialSignals || {};
+  var neighbor3 = blendTiles[3] || {};
+  var neighbor3Tile = neighbor3.tile || {};
+  var neighbor3Detail = neighbor3.detail || {};
+  var neighbor3Signals = neighbor3Detail.materialSignals || {};
+
+  return {
+    sourceSample: sourceSample || null,
+    biome: biome,
+    sampleBiome: sample && sample.biome,
+    surface: detail.surface,
+    feature: detail.feature,
+    strataSecondary: strata.secondary,
+    ecologyKey: ecology.key,
+    civilizationType: civilization.type,
+    civilizationFamily: civilization.family,
+    tileX: Number(tileX) || 0,
+    tileY: Number(tileY) || 0,
+    ecologyFoodPressure: Number(ecology.foodPressure) || 0,
+    ecologyOrganismPressure: Number(ecology.organismPressure) || 0,
+    ecologyOrganicMatter: Number(ecology.organicMatter) || 0,
+    moisture: Number(signals.moisture) || 0,
+    waterDepth: Number(signals.waterDepth) || 0,
+    shoreMask: Number(signals.shoreMask) || 0,
+    flow: Number(signals.flow) || 0,
+    lava: Number(signals.lava) || 0,
+    heat: Number(signals.heat) || 0,
+    ash: Number(signals.ash) || 0,
+    lichen: Number(signals.lichen) || 0,
+    reedDensity: Number(signals.reedDensity) || 0,
+    mineralDensity: Number(signals.mineralDensity) || 0,
+    oreDensity: Number(signals.oreDensity) || 0,
+    resourceDensity: Number(signals.resourceDensity) || 0,
+    nutrientRichness: Number(signals.nutrientRichness) || 0,
+    foodPotential: Number(signals.foodPotential) || 0,
+    resourceFertility: Number(signals.resourceFertility) || 0,
+    settlementDensity: Number(signals.settlementDensity) || 0,
+    routeTraffic: Number(signals.routeTraffic) || 0,
+    borderInfluence: Number(signals.borderInfluence) || 0,
+    detailMineralDensity: Number(detail.mineralDensity) || 0,
+    detailResourceDensity: Number(detail.resourceDensity) || 0,
+    sampleMineralDensity: Number(sample && sample.mineralDensity) || 0,
+    sampleResourceRichness: Number(sample && sample.resourceRichness) || 0,
+    civilizationPressure: Number(civilization.pressure) || 0,
+    civilizationSettlementPressure: Number(civilization.settlementPressure) || 0,
+    civilizationRoutePressure: Number(civilization.routePressure) || 0,
+    civilizationBorderPressure: Number(civilization.borderPressure) || 0,
+    civilizationLineageId: Number(civilization.lineageId) || 0,
+    civilizationLevel: Number(civilization.level) || 0,
+    civilizationIsColony: civilization.isColony ? 1 : 0,
+    transitionStrength: Number(tileBlend.transitionStrength) || 0,
+    neighbor0Biome: neighbor0.biome || neighbor0Tile.biome,
+    neighbor0Surface: neighbor0Detail.surface,
+    neighbor0Weight: Number(neighbor0.weight) || 0,
+    neighbor0Moisture: Number(neighbor0Tile.moisture) || 0,
+    neighbor0SignalMoisture: Number(neighbor0Signals.moisture) || 0,
+    neighbor1Biome: neighbor1.biome || neighbor1Tile.biome,
+    neighbor1Surface: neighbor1Detail.surface,
+    neighbor1Weight: Number(neighbor1.weight) || 0,
+    neighbor1Moisture: Number(neighbor1Tile.moisture) || 0,
+    neighbor1SignalMoisture: Number(neighbor1Signals.moisture) || 0,
+    neighbor2Biome: neighbor2.biome || neighbor2Tile.biome,
+    neighbor2Surface: neighbor2Detail.surface,
+    neighbor2Weight: Number(neighbor2.weight) || 0,
+    neighbor2Moisture: Number(neighbor2Tile.moisture) || 0,
+    neighbor2SignalMoisture: Number(neighbor2Signals.moisture) || 0,
+    neighbor3Biome: neighbor3.biome || neighbor3Tile.biome,
+    neighbor3Surface: neighbor3Detail.surface,
+    neighbor3Weight: Number(neighbor3.weight) || 0,
+    neighbor3Moisture: Number(neighbor3Tile.moisture) || 0,
+    neighbor3SignalMoisture: Number(neighbor3Signals.moisture) || 0
+  };
+};
+
+PS.render.surfaceTileBatcher.matchesTerrainAtlasSourceSignature = function (signature, sourceSample, sample, biome, tileX, tileY) {
+  if (!signature) {
+    return false;
+  }
+
+  var detail = sample && sample.detail ? sample.detail : {};
+  var signals = detail.materialSignals || {};
+  var strata = detail.materialStrata || {};
+  var ecology = sample && sample.ecology ? sample.ecology : {};
+  var civilization = sample && sample.civilization ? sample.civilization : {};
+  var tileBlend = sample && sample.tileBlend ? sample.tileBlend : {};
+  var blendTiles = Array.isArray(tileBlend.tiles) ? tileBlend.tiles : [];
+  var i;
+
+  if (
+    signature.sourceSample !== (sourceSample || null) ||
+    signature.biome !== biome ||
+    signature.sampleBiome !== (sample && sample.biome) ||
+    signature.surface !== detail.surface ||
+    signature.feature !== detail.feature ||
+    signature.strataSecondary !== strata.secondary ||
+    signature.ecologyKey !== ecology.key ||
+    signature.civilizationType !== civilization.type ||
+    signature.civilizationFamily !== civilization.family ||
+    signature.tileX !== (Number(tileX) || 0) ||
+    signature.tileY !== (Number(tileY) || 0) ||
+    signature.ecologyFoodPressure !== (Number(ecology.foodPressure) || 0) ||
+    signature.ecologyOrganismPressure !== (Number(ecology.organismPressure) || 0) ||
+    signature.ecologyOrganicMatter !== (Number(ecology.organicMatter) || 0) ||
+    signature.moisture !== (Number(signals.moisture) || 0) ||
+    signature.waterDepth !== (Number(signals.waterDepth) || 0) ||
+    signature.shoreMask !== (Number(signals.shoreMask) || 0) ||
+    signature.flow !== (Number(signals.flow) || 0) ||
+    signature.lava !== (Number(signals.lava) || 0) ||
+    signature.heat !== (Number(signals.heat) || 0) ||
+    signature.ash !== (Number(signals.ash) || 0) ||
+    signature.lichen !== (Number(signals.lichen) || 0) ||
+    signature.reedDensity !== (Number(signals.reedDensity) || 0) ||
+    signature.mineralDensity !== (Number(signals.mineralDensity) || 0) ||
+    signature.oreDensity !== (Number(signals.oreDensity) || 0) ||
+    signature.resourceDensity !== (Number(signals.resourceDensity) || 0) ||
+    signature.nutrientRichness !== (Number(signals.nutrientRichness) || 0) ||
+    signature.foodPotential !== (Number(signals.foodPotential) || 0) ||
+    signature.resourceFertility !== (Number(signals.resourceFertility) || 0) ||
+    signature.settlementDensity !== (Number(signals.settlementDensity) || 0) ||
+    signature.routeTraffic !== (Number(signals.routeTraffic) || 0) ||
+    signature.borderInfluence !== (Number(signals.borderInfluence) || 0) ||
+    signature.detailMineralDensity !== (Number(detail.mineralDensity) || 0) ||
+    signature.detailResourceDensity !== (Number(detail.resourceDensity) || 0) ||
+    signature.sampleMineralDensity !== (Number(sample && sample.mineralDensity) || 0) ||
+    signature.sampleResourceRichness !== (Number(sample && sample.resourceRichness) || 0) ||
+    signature.civilizationPressure !== (Number(civilization.pressure) || 0) ||
+    signature.civilizationSettlementPressure !== (Number(civilization.settlementPressure) || 0) ||
+    signature.civilizationRoutePressure !== (Number(civilization.routePressure) || 0) ||
+    signature.civilizationBorderPressure !== (Number(civilization.borderPressure) || 0) ||
+    signature.civilizationLineageId !== (Number(civilization.lineageId) || 0) ||
+    signature.civilizationLevel !== (Number(civilization.level) || 0) ||
+    signature.civilizationIsColony !== (civilization.isColony ? 1 : 0) ||
+    signature.transitionStrength !== (Number(tileBlend.transitionStrength) || 0)
+  ) {
+    return false;
+  }
+
+  for (i = 0; i < 4; i += 1) {
+    var neighbor = blendTiles[i] || {};
+    var neighborTile = neighbor.tile || {};
+    var neighborDetail = neighbor.detail || {};
+    var neighborSignals = neighborDetail.materialSignals || {};
+
+    if (
+      signature["neighbor" + i + "Biome"] !== (neighbor.biome || neighborTile.biome) ||
+      signature["neighbor" + i + "Surface"] !== neighborDetail.surface ||
+      signature["neighbor" + i + "Weight"] !== (Number(neighbor.weight) || 0) ||
+      signature["neighbor" + i + "Moisture"] !== (Number(neighborTile.moisture) || 0) ||
+      signature["neighbor" + i + "SignalMoisture"] !== (Number(neighborSignals.moisture) || 0)
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+PS.render.surfaceTileBatcher.recordTerrainKeyCache = function (hit) {
+  var lut = PS.render.tileTypeLut;
+
+  if (lut && typeof lut.recordTerrainKeyCache === "function") {
+    lut.recordTerrainKeyCache(hit);
+  }
+};
+
+PS.render.surfaceTileBatcher.resolveTerrainAtlasKeyState = function (cellData, sourceSample, sample, drawSample, biome, tileX, tileY) {
+  var cached = cellData && cellData.terrainAtlasKeyState ? cellData.terrainAtlasKeyState : null;
+
+  if (
+    cached &&
+    PS.render.surfaceTileBatcher.matchesTerrainAtlasSourceSignature(cellData.terrainAtlasSourceSignature, sourceSample, drawSample, biome, tileX, tileY) &&
+    typeof cached.atlasKeyId === "number"
+  ) {
+    PS.render.surfaceTileBatcher.recordTerrainKeyCache(true);
+    return cached;
+  }
+
+  var ecologyKey = sample && sample.ecology ? sample.ecology.key : "eco.0.0";
+  var ecologyMicroKey = sample && PS.atlas && typeof PS.atlas.getTerrainEcologyMicroKey === "function"
+    ? PS.atlas.getTerrainEcologyMicroKey(sample, tileX, tileY)
+    : "";
+  var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
+    ? PS.render.surfaceColor.getGroundMoistureKey(drawSample)
+    : "gmoist.none";
+  var eraKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getEraPaletteKey === "function"
+    ? PS.render.surfaceColor.getEraPaletteKey(drawSample)
+    : "era.none";
+  var tileDefinitionForKey = PS.atlas && typeof PS.atlas.getTerrainMaterialTile === "function"
+    ? PS.atlas.getTerrainMaterialTile(biome, tileX, tileY, drawSample)
+    : null;
+  var transitionKey = PS.atlas && typeof PS.atlas.getTerrainTransitionKey === "function"
+    ? PS.atlas.getTerrainTransitionKey(drawSample, biome)
+    : "plain";
+  var stencilKey = PS.atlas && typeof PS.atlas.getTerrainTextureOverlayKey === "function"
+    ? PS.atlas.getTerrainTextureOverlayKey(drawSample, biome)
+    : "stencil.none";
+  var featureKey = PS.atlas && typeof PS.atlas.getTerrainFeatureKey === "function"
+    ? PS.atlas.getTerrainFeatureKey(drawSample, biome, tileDefinitionForKey)
+    : "feature0";
+  var biologyKey = PS.atlas && typeof PS.atlas.getTerrainBiologyKey === "function"
+    ? PS.atlas.getTerrainBiologyKey(drawSample)
+    : "bio0";
+  var resourceKey = PS.atlas && typeof PS.atlas.getTerrainResourceKey === "function"
+    ? PS.atlas.getTerrainResourceKey(drawSample)
+    : "";
+  var civilizationKey = PS.atlas && typeof PS.atlas.getTerrainCivilizationKey === "function"
+    ? PS.atlas.getTerrainCivilizationKey(drawSample)
+    : (sample && sample.civilization ? sample.civilization.key : "civ0");
+  var resolved = {
+    atlasKeyId: PS.render.surfaceTileBatcher.getTerrainAtlasKeyId(
+      ecologyKey,
+      ecologyMicroKey,
+      transitionKey,
+      stencilKey,
+      featureKey,
+      moistureKey,
+      eraKey,
+      biologyKey,
+      resourceKey,
+      civilizationKey
+    ),
+    civilizationKey: civilizationKey,
+    tileDefinitionForKey: tileDefinitionForKey
+  };
+
+  if (cellData) {
+    cellData.terrainAtlasSourceSignature = PS.render.surfaceTileBatcher.getTerrainAtlasSourceSignature(sourceSample, drawSample, biome, tileX, tileY);
+    cellData.terrainAtlasKeyState = resolved;
+  }
+  PS.render.surfaceTileBatcher.recordTerrainKeyCache(false);
+  return resolved;
+};
+
 PS.render.surfaceTileBatcher.beginBatches = function () {
   var state = PS.render.surfaceTileBatcher.state;
 
@@ -1188,54 +1474,21 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     if (PS.render.surface && typeof PS.render.surface.withCivilization === "function") {
       sample = PS.render.surface.withCivilization(sample);
     }
-    var ecologyKey = sample && sample.ecology ? sample.ecology.key : "eco.0.0";
-    var ecologyMicroKey = "";
-    if (sample && PS.atlas && typeof PS.atlas.getTerrainEcologyMicroKey === "function") {
-      ecologyMicroKey = PS.atlas.getTerrainEcologyMicroKey(sample, tileX, tileY);
-    }
     var drawSample = Object.assign({ x: tileX, y: tileY }, sample || {});
-    var moistureKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getGroundMoistureKey === "function"
-      ? PS.render.surfaceColor.getGroundMoistureKey(drawSample)
-      : "gmoist.none";
-    var eraKey = PS.render && PS.render.surfaceColor && typeof PS.render.surfaceColor.getEraPaletteKey === "function"
-      ? PS.render.surfaceColor.getEraPaletteKey(drawSample)
-      : "era.none";
     var nearSettlementGround = settlementScale &&
       PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint(drawSample, 2.75);
-    var tileDefinitionForKey = PS.atlas && typeof PS.atlas.getTerrainMaterialTile === "function"
-      ? PS.atlas.getTerrainMaterialTile(biome, tileX, tileY, drawSample)
-      : null;
-    var transitionKey = PS.atlas && typeof PS.atlas.getTerrainTransitionKey === "function"
-      ? PS.atlas.getTerrainTransitionKey(drawSample, biome)
-      : "plain";
-    var stencilKey = PS.atlas && typeof PS.atlas.getTerrainTextureOverlayKey === "function"
-      ? PS.atlas.getTerrainTextureOverlayKey(drawSample, biome)
-      : "stencil.none";
-    var featureKey = PS.atlas && typeof PS.atlas.getTerrainFeatureKey === "function"
-      ? PS.atlas.getTerrainFeatureKey(drawSample, biome, tileDefinitionForKey)
-      : "feature0";
-    var biologyKey = PS.atlas && typeof PS.atlas.getTerrainBiologyKey === "function"
-      ? PS.atlas.getTerrainBiologyKey(drawSample)
-      : "bio0";
-    var resourceKey = PS.atlas && typeof PS.atlas.getTerrainResourceKey === "function"
-      ? PS.atlas.getTerrainResourceKey(drawSample)
-      : "";
-    var civilizationKey = PS.atlas && typeof PS.atlas.getTerrainCivilizationKey === "function"
-      ? PS.atlas.getTerrainCivilizationKey(drawSample)
-      : (sample && sample.civilization ? sample.civilization.key : "civ0");
-    var hasCivilizationMaterial = civilizationKey !== "civ0";
-    var atlasKeyId = PS.render.surfaceTileBatcher.getTerrainAtlasKeyId(
-      ecologyKey,
-      ecologyMicroKey,
-      transitionKey,
-      stencilKey,
-      featureKey,
-      moistureKey,
-      eraKey,
-      biologyKey,
-      resourceKey,
-      civilizationKey
+    var terrainKeyState = PS.render.surfaceTileBatcher.resolveTerrainAtlasKeyState(
+      cellData,
+      rawSample,
+      sample,
+      drawSample,
+      biome,
+      tileX,
+      tileY
     );
+    var civilizationKey = terrainKeyState.civilizationKey;
+    var hasCivilizationMaterial = civilizationKey !== "civ0";
+    var atlasKeyId = terrainKeyState.atlasKeyId;
     var cell = cellData.terrainAtlasKeyId === atlasKeyId ? cellData.terrainAtlasCell || null : null;
     if (!cell) {
       cell = PS.atlas.getTerrainCell(biome, tileX, tileY, sample);

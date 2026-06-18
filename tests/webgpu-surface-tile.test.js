@@ -462,7 +462,27 @@ assert.strictEqual(typeof acceptedTerrainCache[0].terrainAtlasKeyId, "number", "
 assert.strictEqual(typeof acceptedTerrainCache[0].terrainEquivalenceKeyId, "number", "surface tile cache should store numeric accepted-terrain key ids");
 assert.strictEqual(acceptedTerrainCache[0].terrainAtlasEcologyKey, undefined, "surface tile cache should not rebuild composite atlas key strings");
 assert.strictEqual(acceptedTerrainCache[0].terrainEquivalenceKey, undefined, "surface tile cache should not rebuild composite equivalence key strings");
+assert.strictEqual(typeof acceptedTerrainCache[0].terrainAtlasSourceSignature, "object", "surface tile cache should track reusable terrain source signatures");
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
+const acceptedTerrainLutStats = context.PS.render.tileTypeLut.getStats();
+context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 0,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, acceptedTerrainCache, 1);
+const acceptedTerrainReuseStats = context.PS.render.tileTypeLut.getStats();
+assert.strictEqual(
+  acceptedTerrainReuseStats.terrainKeyLookups,
+  acceptedTerrainLutStats.terrainKeyLookups,
+  "unchanged surface tile cells should reuse numeric terrain key state instead of resolving terrain keys every frame"
+);
+assert.ok(
+  acceptedTerrainReuseStats.terrainKeyCacheHits > acceptedTerrainLutStats.terrainKeyCacheHits,
+  "unchanged surface tile cells should report terrain key cache hits"
+);
 Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
   var page = acceptedTerrainBatches.pages[pageIndex];
   for (let offset = 10; offset < page.length; offset += 15) {
@@ -963,6 +983,21 @@ context.PS.render.surfaceTileBatcher.makeBatches({
 }, [reusableTransitionCellData], 1);
 const firstReuseKey = reusableTransitionCellData.terrainAtlasKeyId;
 const firstReuseCellName = reusableTransitionCellData.terrainAtlasCell.name;
+const reusableTransitionStats = context.PS.render.tileTypeLut.getStats();
+context.PS.render.surfaceTileBatcher.makeBatches({
+  sampleEast: 9,
+  sampleNorth: 9,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [reusableTransitionCellData], 1);
+const reusableTransitionCacheStats = context.PS.render.tileTypeLut.getStats();
+assert.strictEqual(
+  reusableTransitionCacheStats.terrainKeyLookups,
+  reusableTransitionStats.terrainKeyLookups,
+  "unchanged transition cells should not rebuild terrain LUT keys on the next frame"
+);
 reusableTransitionCellData.sample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
 reusableTransitionCellData.sample.tileBlend.tiles[0].tile.moisture = 2.2;
 context.PS.render.surfaceTileBatcher.makeBatches({
@@ -973,6 +1008,10 @@ context.PS.render.surfaceTileBatcher.makeBatches({
   renderSamplePixelSize: 16,
   chunkSamples: 1
 }, [reusableTransitionCellData], 1);
+assert.ok(
+  context.PS.render.tileTypeLut.getStats().terrainKeyLookups > reusableTransitionCacheStats.terrainKeyLookups,
+  "changed transition neighbor identity should rebuild the terrain LUT key once"
+);
 assert.notStrictEqual(reusableTransitionCellData.terrainAtlasKeyId, firstReuseKey, "batcher terrain cache key should include transition neighbor ground identity");
 assert.notStrictEqual(reusableTransitionCellData.terrainAtlasCell.name, firstReuseCellName, "batcher should regenerate terrain cells when transition neighbor ground identity changes");
 
