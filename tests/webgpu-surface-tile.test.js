@@ -12,6 +12,7 @@ const compositorSource = read("js/render/webgpu-compositor.js");
 const entitySource = read("js/render/webgpu-entity.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const waterRenderingSource = read("js/render/water-rendering.js");
+const tileTypeLutSource = read("js/render/tile-type-lut.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
 const terrainWgsl = read("shaders/terrain.wgsl");
@@ -29,8 +30,9 @@ assert.ok(
 );
 assert.ok(
   namespaceSource.indexOf("js/render/water-rendering.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js") &&
+    namespaceSource.indexOf("js/render/tile-type-lut.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js") &&
     namespaceSource.indexOf("js/render/surface-tile-batcher.js") < namespaceSource.indexOf("js/render/webgpu-surface-tile.js"),
-  "water rendering helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
+  "water rendering and tile type LUT helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
 );
 assert.strictEqual(namespaceSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
@@ -187,6 +189,30 @@ assert.ok(
   batcherSource.indexOf("appendSampleDisplacement") >= 0 &&
     batcherSource.indexOf("getSampleHeatDisplacement") >= 0,
   "surface tile batcher should derive heat haze displacement from terrain material signals"
+);
+assert.ok(
+  batcherSource.indexOf("getTerrainAtlasKeyId = function") >= 0 &&
+    batcherSource.indexOf("getAcceptedKeyId = function") >= 0 &&
+    batcherSource.indexOf("getSettlementParcelKeyId = function") >= 0 &&
+    batcherSource.indexOf("lut.getTerrainAtlasKeyId") >= 0,
+  "surface tile batcher should route terrain, accepted, and parcel keys through integer LUT helpers"
+);
+assert.strictEqual(
+  batcherSource.indexOf("var atlasKeyId = PS.render.surfaceTileBatcher.combineKeyIds(["),
+  -1,
+  "surface tile batcher hot loop should not allocate composite atlas key arrays"
+);
+assert.ok(
+  batcherSource.indexOf("extractSampleSignals") >= 0,
+  "surface tile batcher should centralize per-sample signal extraction"
+);
+assert.ok(
+  (batcherSource.match(/String\(detail\.surface \|\| ""\)\.toLowerCase\(\)/g) || []).length <= 1,
+  "surface tile batcher should not duplicate detail surface lowercasing across hot-path helpers"
+);
+assert.ok(
+  (batcherSource.match(/String\(detail\.feature \|\| ""\)\.toLowerCase\(\)/g) || []).length <= 1,
+  "surface tile batcher should not duplicate detail feature lowercasing across hot-path helpers"
 );
 
 const queueWrites = [];
@@ -355,6 +381,7 @@ vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-composi
 vm.runInContext(entitySource, context, { filename: "js/render/webgpu-entity.js" });
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
 vm.runInContext(waterRenderingSource, context, { filename: "js/render/water-rendering.js" });
+vm.runInContext(tileTypeLutSource, context, { filename: "js/render/tile-type-lut.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 vm.runInContext(surfaceTileSource, context, { filename: "js/render/webgpu-surface-tile.js" });
 
@@ -428,7 +455,7 @@ const acceptedTerrainCache = [{
   screenX: 0,
   screenY: 0
 }];
-const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const acceptedTerrainBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 0,
   sampleNorth: 0,
   renderScreenX: 0,
@@ -438,6 +465,8 @@ const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches(
 }, acceptedTerrainCache, 1);
 
 assert.strictEqual(acceptedTerrainBatches.equivalenceTerrain, 1, "explicit accepted terrain cells should count as equivalence terrain draws");
+assert.ok(context.PS.render.tileTypeLut.getStats().terrainKeyLookups > 0, "surface tile batching should resolve terrain keys through the integer LUT");
+assert.ok(context.PS.render.tileTypeLut.getStats().acceptedKeyLookups > 0, "accepted terrain batching should resolve equivalence keys through the integer LUT");
 assert.strictEqual(acceptedTerrainSelection.family, "terrain", "explicit accepted terrain cell should use the terrain equivalence family");
 assert.strictEqual(acceptedTerrainSelection.cellName, "rock-mountain.0", "explicit accepted terrain cell name should be passed to the selector");
 assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit accepted non-water terrain should use terrainGround stats");
@@ -445,7 +474,27 @@ assert.strictEqual(typeof acceptedTerrainCache[0].terrainAtlasKeyId, "number", "
 assert.strictEqual(typeof acceptedTerrainCache[0].terrainEquivalenceKeyId, "number", "surface tile cache should store numeric accepted-terrain key ids");
 assert.strictEqual(acceptedTerrainCache[0].terrainAtlasEcologyKey, undefined, "surface tile cache should not rebuild composite atlas key strings");
 assert.strictEqual(acceptedTerrainCache[0].terrainEquivalenceKey, undefined, "surface tile cache should not rebuild composite equivalence key strings");
+assert.strictEqual(typeof acceptedTerrainCache[0].terrainAtlasSourceSignature, "object", "surface tile cache should track reusable terrain source signatures");
 assert.ok(acceptedTerrainBatches.materialCounts[acceptedTerrainCell.name] > 0, "accepted terrain cell should replace fallback material in batches");
+const acceptedTerrainLutStats = context.PS.render.tileTypeLut.getStats();
+context.PS.render.webgpuSurfaceTile.makeBatches({
+  sampleEast: 0,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, acceptedTerrainCache, 1);
+const acceptedTerrainReuseStats = context.PS.render.tileTypeLut.getStats();
+assert.strictEqual(
+  acceptedTerrainReuseStats.terrainKeyLookups,
+  acceptedTerrainLutStats.terrainKeyLookups,
+  "unchanged surface tile cells should reuse numeric terrain key state instead of resolving terrain keys every frame"
+);
+assert.ok(
+  acceptedTerrainReuseStats.terrainKeyCacheHits > acceptedTerrainLutStats.terrainKeyCacheHits,
+  "unchanged surface tile cells should report terrain key cache hits"
+);
 Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
   var page = acceptedTerrainBatches.pages[pageIndex];
   for (let offset = 10; offset < page.length; offset += 15) {
@@ -484,7 +533,7 @@ context.PS.atlas.getTerrainTransitionInfo = function () {
   };
 };
 
-const automaticTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const automaticTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 256,
   sampleNorth: 0,
   renderScreenX: 0,
@@ -538,7 +587,7 @@ const resolverGrid = {
     return x === 4 && y === 7 ? "sand" : "grass_lush";
   }
 };
-const resolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const resolverTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 7,
   renderScreenX: 0,
@@ -568,7 +617,7 @@ const regionVisualLod = {
     normalLightingStrength: 0.3
   }
 };
-const simplifiedResolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const simplifiedResolverTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 7,
   renderScreenX: 0,
@@ -596,7 +645,7 @@ const worldVisualLod = {
     normalLightingStrength: 0
   }
 };
-const disabledResolverTransitionBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const disabledResolverTransitionBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 7,
   renderScreenX: 0,
@@ -664,7 +713,7 @@ context.PS.assets.loadedSheets = {
   }
 };
 
-const automaticTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const automaticTerrainBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 1,
   sampleNorth: 1,
   renderScreenX: 0,
@@ -704,7 +753,7 @@ assert.strictEqual(context.PS.render.surfaceTileBatcher.getAcceptedTerrainMateri
 }, 4, 6), "water-deep.1", "accepted deep water material selection should use the current animated frame phase");
 
 context.world.timeMs = 0;
-const waterMaterialStart = context.PS.render.surfaceTileBatcher.makeBatches({
+const waterMaterialStart = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -717,7 +766,7 @@ const waterMaterialStart = context.PS.render.surfaceTileBatcher.makeBatches({
   screenY: 0
 }], 1);
 context.world.timeMs = 500;
-const waterMaterialNext = context.PS.render.surfaceTileBatcher.makeBatches({
+const waterMaterialNext = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -733,7 +782,7 @@ assert.ok(waterMaterialStart.materialCounts["terrain.water.2"], "water material 
 assert.ok(waterMaterialNext.materialCounts["terrain.water.3"], "water material batching should advance to the next phased water cell");
 
 context.world.timeMs = 1600;
-const waterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const waterBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -772,7 +821,7 @@ assert.strictEqual(context.PS.render.waterRendering.shouldPlaceDecoration({
   biome: "ocean",
   detail: { surface: "tidal shore", materialSignals: { waterDepth: 0.22, shallowWater: 0.8 } }
 }, "ocean", 4, 6), false, "floating decorations should not spawn on shore water tiles");
-const worldWaterBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldWaterBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 4,
   sampleNorth: 6,
   renderScreenX: 0,
@@ -825,7 +874,7 @@ assert.notDeepStrictEqual(
 );
 
 context.world.timeMs = 0;
-const decorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const decorationBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: decorationTile.x,
   sampleNorth: decorationTile.y,
   renderScreenX: 0,
@@ -840,7 +889,7 @@ const decorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
 assert.strictEqual(decorationBatches.shadowRects.length, 8, "open-water decorations should emit one batched shadow rect");
 assert.strictEqual(decorationBatches.waterDecorationRects.length, 8, "open-water decorations should emit one batched decoration rect");
 assert.ok(decorationBatches.shadowRects[7] > 0, "decoration shadow rect should include visible alpha");
-const worldDecorationBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldDecorationBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: decorationTile.x,
   sampleNorth: decorationTile.y,
   renderScreenX: 0,
@@ -855,7 +904,7 @@ const worldDecorationBatches = context.PS.render.surfaceTileBatcher.makeBatches(
 assert.strictEqual(worldDecorationBatches.shadowRects.length, 0, "world LOD should skip open-water decoration shadows");
 assert.strictEqual(worldDecorationBatches.waterDecorationRects.length, 0, "world LOD should skip open-water decoration particles");
 
-const regionLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const regionLightBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 3,
   renderScreenX: 0,
@@ -879,7 +928,7 @@ assert.strictEqual(regionLightBatches.displacementRects.length, 16, "region LOD 
 assert.ok(regionLightBatches.displacementRects[7] > 0, "heat-haze displacement should carry a positive source-scaled intensity");
 assert.ok(regionLightBatches.displacementRects[7] < 16 * 0.58, "region LOD should reduce heat-haze displacement intensity");
 assert.ok(regionLightBatches.displacementRects[6] > 16, "heat-haze displacement should carry a source radius for distance falloff");
-const worldLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
+const worldLightBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 3,
   renderScreenX: 0,
@@ -899,6 +948,62 @@ const worldLightBatches = context.PS.render.surfaceTileBatcher.makeBatches({
 }], 1, worldVisualLod);
 assert.strictEqual(worldLightBatches.pointLights.length, 0, "world LOD should skip point-light submissions");
 assert.strictEqual(worldLightBatches.displacementRects.length, 0, "world LOD should skip heat-haze displacement submissions");
+
+const originalHasCivilizationMaterialSignal = context.PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal;
+const originalIsNearSettlementVisualFootprint = context.PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint;
+const originalMountains = context.PS.render.mountains;
+let civilizationSignalCalls = 0;
+let nearSettlementCalls = 0;
+
+context.PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal = function () {
+  civilizationSignalCalls += 1;
+  return false;
+};
+context.PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint = function () {
+  nearSettlementCalls += 1;
+  return false;
+};
+context.PS.render.mountains = {
+  appendMountain() {
+    return true;
+  }
+};
+context.world.settlements = [{ id: 1 }];
+
+context.PS.render.webgpuSurfaceTile.makeBatches({
+  sampleEast: 0,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1,
+  transitionGrid: {}
+}, [{
+  sample: {
+    biome: "grassland",
+    detail: { surface: "grass", materialSignals: {} }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, {
+  zoomBand: "settlement",
+  visualPolicy: {
+    level: "SURFACE",
+    mountainOverlays: "full",
+    autotileTransitions: "full",
+    transitionAlphaScale: 1,
+    pointLightScale: 1,
+    waterUvScrollScale: 1,
+    normalLightingStrength: 1
+  }
+});
+
+assert.ok(civilizationSignalCalls <= 1, "surface tile batcher should compute civilization material signal at most once per tile");
+assert.ok(nearSettlementCalls <= 1, "surface tile batcher should compute settlement visual footprint at most once per tile");
+context.PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal = originalHasCivilizationMaterialSignal;
+context.PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint = originalIsNearSettlementVisualFootprint;
+context.PS.render.mountains = originalMountains;
+context.world.settlements = [];
 
 context.PS.atlas.getTerrainTransitionKey = function (sample) {
   const neighbor = sample && sample.tileBlend && sample.tileBlend.tiles && sample.tileBlend.tiles[0];
@@ -936,7 +1041,7 @@ const reusableTransitionCellData = {
   screenX: 0,
   screenY: 0
 };
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 9,
   sampleNorth: 9,
   renderScreenX: 0,
@@ -946,9 +1051,8 @@ context.PS.render.surfaceTileBatcher.makeBatches({
 }, [reusableTransitionCellData], 1);
 const firstReuseKey = reusableTransitionCellData.terrainAtlasKeyId;
 const firstReuseCellName = reusableTransitionCellData.terrainAtlasCell.name;
-reusableTransitionCellData.sample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
-reusableTransitionCellData.sample.tileBlend.tiles[0].tile.moisture = 2.2;
-context.PS.render.surfaceTileBatcher.makeBatches({
+const reusableTransitionStats = context.PS.render.tileTypeLut.getStats();
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 9,
   sampleNorth: 9,
   renderScreenX: 0,
@@ -956,6 +1060,26 @@ context.PS.render.surfaceTileBatcher.makeBatches({
   renderSamplePixelSize: 16,
   chunkSamples: 1
 }, [reusableTransitionCellData], 1);
+const reusableTransitionCacheStats = context.PS.render.tileTypeLut.getStats();
+assert.strictEqual(
+  reusableTransitionCacheStats.terrainKeyLookups,
+  reusableTransitionStats.terrainKeyLookups,
+  "unchanged transition cells should not rebuild terrain LUT keys on the next frame"
+);
+reusableTransitionCellData.sample.tileBlend.tiles[0].detail.materialSignals.moisture = 1;
+reusableTransitionCellData.sample.tileBlend.tiles[0].tile.moisture = 2.2;
+context.PS.render.webgpuSurfaceTile.makeBatches({
+  sampleEast: 9,
+  sampleNorth: 9,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, [reusableTransitionCellData], 1);
+assert.ok(
+  context.PS.render.tileTypeLut.getStats().terrainKeyLookups > reusableTransitionCacheStats.terrainKeyLookups,
+  "changed transition neighbor identity should rebuild the terrain LUT key once"
+);
 assert.notStrictEqual(reusableTransitionCellData.terrainAtlasKeyId, firstReuseKey, "batcher terrain cache key should include transition neighbor ground identity");
 assert.notStrictEqual(reusableTransitionCellData.terrainAtlasCell.name, firstReuseCellName, "batcher should regenerate terrain cells when transition neighbor ground identity changes");
 
@@ -1003,7 +1127,7 @@ const settlementParcelCacheCell = {
   screenX: 0,
   screenY: 0
 };
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 2,
   renderScreenX: 0,
@@ -1011,7 +1135,7 @@ context.PS.render.surfaceTileBatcher.makeBatches({
   renderSamplePixelSize: 16,
   chunkSamples: 1
 }, [settlementParcelCacheCell], 1, { zoomBand: "settlement", visualPolicy: { level: "LOCAL", transitionAlphaScale: 1 } });
-context.PS.render.surfaceTileBatcher.makeBatches({
+context.PS.render.webgpuSurfaceTile.makeBatches({
   sampleEast: 2,
   sampleNorth: 2,
   renderScreenX: 0,

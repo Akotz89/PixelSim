@@ -121,12 +121,12 @@ PS.render.webgpuWaterDisplacement = Object.assign(PS.render.webgpuWaterDisplacem
   },
 
   getVisualPolicy: function (lodState) {
-    if (lodState && lodState.visualPolicy) {
+    if (!(PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function") && lodState && lodState.visualPolicy) {
       return lodState.visualPolicy;
     }
 
-    return PS.render.lod && typeof PS.render.lod.getVisualPolicy === "function"
-      ? PS.render.lod.getVisualPolicy()
+    return PS.render.lod && typeof PS.render.lod.resolveVisualPolicy === "function"
+      ? PS.render.lod.resolveVisualPolicy(lodState, { level: "SURFACE", waterUvScrollScale: 1 })
       : { level: "SURFACE", waterUvScrollScale: 1 };
   },
 
