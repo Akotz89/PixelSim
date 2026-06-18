@@ -8,10 +8,10 @@
     "opaqueCoverage": 1,
     "nonblankCoverage": 1,
     "coarseColorCount": 42,
-    "luminanceMin": 20.3,
-    "luminanceMax": 80.08,
-    "luminanceMean": 45.8,
-    "contrastRange": 59.78
+    "luminanceMin": 19.31,
+    "luminanceMax": 81.22,
+    "luminanceMean": 45.68,
+    "contrastRange": 61.91
   },
   "screenshot": null,
   "screenshotDiffSkipped": "webgpu-readback-gate"

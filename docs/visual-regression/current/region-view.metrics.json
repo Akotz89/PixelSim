@@ -7,11 +7,11 @@
     "height": 540,
     "opaqueCoverage": 1,
     "nonblankCoverage": 1,
-    "coarseColorCount": 63,
-    "luminanceMin": 14.95,
+    "coarseColorCount": 68,
+    "luminanceMin": 14.23,
     "luminanceMax": 246.94,
-    "luminanceMean": 31.56,
-    "contrastRange": 231.99
+    "luminanceMean": 33.02,
+    "contrastRange": 232.71
   },
   "screenshot": null,
   "screenshotDiffSkipped": "webgpu-readback-gate"
