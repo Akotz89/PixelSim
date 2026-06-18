@@ -746,16 +746,18 @@ PS.render.surfaceTileBatcher.appendWaterDecoration = function (target, sample, b
  * @param {Object|null} sample Surface sample with detail, material, and civilization metadata.
  * @param {number} tileX Wrapped world tile x coordinate.
  * @param {number} tileY Clamped world tile y coordinate.
+ * @param {Object|null} sampleSignals Optional pre-extracted per-sample signal bundle.
  * @returns {string} Accepted terrain material cell name for atlas lookup.
  */
-PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biome, sample, tileX, tileY) {
+PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biome, sample, tileX, tileY, sampleSignals) {
   if (sample && sample.acceptedTerrainCellName) {
     return String(sample.acceptedTerrainCellName);
   }
 
-  var surface = String(sample && sample.detail && sample.detail.surface || "").toLowerCase();
-  var signals = sample && sample.detail && sample.detail.materialSignals ? sample.detail.materialSignals : {};
-  var civilization = sample && sample.civilization ? sample.civilization : null;
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample, biome);
+  var surface = extracted.surface;
+  var signals = extracted.signals;
+  var civilization = extracted.civilization;
   var civilizationType = String(civilization && civilization.type || "").toLowerCase();
   var civilizationFamily = String(civilization && civilization.family || "").toLowerCase();
   var civilizationPressure = Math.max(
@@ -788,7 +790,7 @@ PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biom
     }
   }
 
-  if (surface.indexOf("deep water") >= 0 || String(biome || "") === "ocean" && Number(signals.waterDepth) > 0.62) {
+  if (surface.indexOf("deep water") >= 0 || extracted.biome === "ocean" && Number(signals.waterDepth) > 0.62) {
     if (PS.render.waterRendering && typeof PS.render.waterRendering.getAnimatedVariant === "function") {
       variant = PS.render.waterRendering.getAnimatedVariant(tileX, tileY, 2);
     }
@@ -802,22 +804,23 @@ PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName = function (biom
     return "water-shallow." + variant;
   }
 
-  if (surface.indexOf("rock") >= 0 || surface.indexOf("stone") >= 0 || surface.indexOf("ridge") >= 0 || String(biome || "") === "mountain") {
+  if (surface.indexOf("rock") >= 0 || surface.indexOf("stone") >= 0 || surface.indexOf("ridge") >= 0 || extracted.biome === "mountain") {
     return "rock-mountain." + variant;
   }
 
-  if (surface.indexOf("sand") >= 0 || surface.indexOf("dune") >= 0 || String(biome || "") === "desert") {
+  if (surface.indexOf("sand") >= 0 || surface.indexOf("dune") >= 0 || extracted.biome === "desert") {
     return "dirt-soil." + variant;
   }
 
   return "grass-lush." + variant;
 };
 
-PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId = function (biome, sample) {
-  var surface = String(sample && sample.detail && sample.detail.surface || "").toLowerCase();
-  var biomeKey = String(biome || "").toLowerCase();
-  var signals = sample && sample.detail && sample.detail.materialSignals ? sample.detail.materialSignals : {};
-  var civilization = sample && sample.civilization ? sample.civilization : null;
+PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId = function (biome, sample, sampleSignals) {
+  var extracted = sampleSignals || PS.render.surfaceTileBatcher.extractSampleSignals(sample, biome);
+  var surface = extracted.surface;
+  var biomeKey = extracted.biome;
+  var signals = extracted.signals;
+  var civilization = extracted.civilization;
   var civilizationFamily = String(civilization && civilization.family || "").toLowerCase();
   var sampleX = Number.isFinite(Number(sample && sample.surfaceSampleX)) ? Number(sample.surfaceSampleX) : Number(sample && sample.x) || 0;
   var sampleY = Number.isFinite(Number(sample && sample.surfaceSampleY)) ? Number(sample.surfaceSampleY) : Number(sample && sample.y) || 0;
@@ -867,8 +870,8 @@ PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId = function (biome, sample
   return "grass";
 };
 
-PS.render.surfaceTileBatcher.selectTerrainMaterialCell = function (biome, sample, tileX, tileY, fallbackCell) {
-  var material = PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId(biome, sample);
+PS.render.surfaceTileBatcher.selectTerrainMaterialCell = function (biome, sample, tileX, tileY, fallbackCell, sampleSignals) {
+  var material = PS.render.surfaceTileBatcher.getTerrainMaterialAtlasId(biome, sample, sampleSignals);
   var variant = PS.ranmap && PS.ranmap.variant
     ? PS.ranmap.variant(tileX, tileY, 8)
     : Math.abs(Math.round(Number(tileX) || 0) * 3 + Math.round(Number(tileY) || 0) * 5) % 8;
@@ -1194,7 +1197,7 @@ PS.render.surfaceTileBatcher.selectAcceptedTerrainCell = function (biome, sample
     typeof PS.assets.equivalence.selectCell === "function" &&
     (hasAcceptedTerrainCell || terrainPhase === 0)
   ) {
-    var terrainCellName = PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY);
+    var terrainCellName = PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY, sampleSignals);
     var use = terrainCellName.indexOf("water-") === 0 ? "terrainWater" : "terrainGround";
     selected = PS.assets.equivalence.selectCell("terrain", terrainCellName, use, fallbackCell && fallbackCell.name ? fallbackCell.name : "");
     if (selected && selected.renderCell) {
@@ -1522,7 +1525,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       var acceptedCellKey = (
         PS.render.surfaceTileBatcher.getAcceptedTransitionCellName(sample, biome) ||
         PS.render.surfaceTileBatcher.getAcceptedWaterTransitionCellName(sample, tileX, tileY, sampleSignals) ||
-        PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY) ||
+        PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY, sampleSignals) ||
         "terrain"
       );
       var acceptedKeyId = PS.render.surfaceTileBatcher.getAcceptedKeyId(atlasKeyId, acceptedCellKey);
@@ -1543,7 +1546,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     }
 
     if (!(cell && cell.splitAtlas) && !(sample && sample.acceptedTransitionCellName) && !hasCivilizationMaterial) {
-      var materialCell = PS.render.surfaceTileBatcher.selectTerrainMaterialCell(biome, sample, tileX, tileY, cell);
+      var materialCell = PS.render.surfaceTileBatcher.selectTerrainMaterialCell(biome, sample, tileX, tileY, cell, sampleSignals);
       if (materialCell) {
         cell = materialCell;
         target.equivalenceTerrain++;
