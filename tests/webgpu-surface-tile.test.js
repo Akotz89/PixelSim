@@ -202,6 +202,18 @@ assert.strictEqual(
   -1,
   "surface tile batcher hot loop should not allocate composite atlas key arrays"
 );
+assert.ok(
+  batcherSource.indexOf("extractSampleSignals") >= 0,
+  "surface tile batcher should centralize per-sample signal extraction"
+);
+assert.ok(
+  (batcherSource.match(/String\(detail\.surface \|\| ""\)\.toLowerCase\(\)/g) || []).length <= 1,
+  "surface tile batcher should not duplicate detail surface lowercasing across hot-path helpers"
+);
+assert.ok(
+  (batcherSource.match(/String\(detail\.feature \|\| ""\)\.toLowerCase\(\)/g) || []).length <= 1,
+  "surface tile batcher should not duplicate detail feature lowercasing across hot-path helpers"
+);
 
 const queueWrites = [];
 const textureWrites = [];
@@ -916,6 +928,62 @@ const worldLightBatches = context.PS.render.webgpuSurfaceTile.makeBatches({
 }], 1, worldVisualLod);
 assert.strictEqual(worldLightBatches.pointLights.length, 0, "world LOD should skip point-light submissions");
 assert.strictEqual(worldLightBatches.displacementRects.length, 0, "world LOD should skip heat-haze displacement submissions");
+
+const originalHasCivilizationMaterialSignal = context.PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal;
+const originalIsNearSettlementVisualFootprint = context.PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint;
+const originalMountains = context.PS.render.mountains;
+let civilizationSignalCalls = 0;
+let nearSettlementCalls = 0;
+
+context.PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal = function () {
+  civilizationSignalCalls += 1;
+  return false;
+};
+context.PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint = function () {
+  nearSettlementCalls += 1;
+  return false;
+};
+context.PS.render.mountains = {
+  appendMountain() {
+    return true;
+  }
+};
+context.world.settlements = [{ id: 1 }];
+
+context.PS.render.webgpuSurfaceTile.makeBatches({
+  sampleEast: 0,
+  sampleNorth: 0,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1,
+  transitionGrid: {}
+}, [{
+  sample: {
+    biome: "grassland",
+    detail: { surface: "grass", materialSignals: {} }
+  },
+  screenX: 0,
+  screenY: 0
+}], 1, {
+  zoomBand: "settlement",
+  visualPolicy: {
+    level: "SURFACE",
+    mountainOverlays: "full",
+    autotileTransitions: "full",
+    transitionAlphaScale: 1,
+    pointLightScale: 1,
+    waterUvScrollScale: 1,
+    normalLightingStrength: 1
+  }
+});
+
+assert.ok(civilizationSignalCalls <= 1, "surface tile batcher should compute civilization material signal at most once per tile");
+assert.ok(nearSettlementCalls <= 1, "surface tile batcher should compute settlement visual footprint at most once per tile");
+context.PS.render.surfaceTileBatcher.hasCivilizationMaterialSignal = originalHasCivilizationMaterialSignal;
+context.PS.render.surfaceTileBatcher.isNearSettlementVisualFootprint = originalIsNearSettlementVisualFootprint;
+context.PS.render.mountains = originalMountains;
+context.world.settlements = [];
 
 context.PS.atlas.getTerrainTransitionKey = function (sample) {
   const neighbor = sample && sample.tileBlend && sample.tileBlend.tiles && sample.tileBlend.tiles[0];
