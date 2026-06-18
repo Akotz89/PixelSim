@@ -17,30 +17,120 @@ PS.render.surfaceTileBatcher.state = PS.render.surfaceTileBatcher.state || {
 };
 
 PS.render.surfaceTileBatcher.getStableKeyId = function (value) {
-  var state = PS.render.surfaceTileBatcher.state;
-  var key = String(value || "");
-  var id = state.keyIds[key];
+  var lut = PS.render.tileTypeLut;
+  var state;
+  var key;
+  var id;
 
+  if (lut && typeof lut.getStableKeyId === "function") {
+    return lut.getStableKeyId(value);
+  }
+
+  state = PS.render.surfaceTileBatcher.state;
+  key = String(value || "");
+  id = state.keyIds[key];
   if (!id) {
     id = state.nextKeyId++;
     state.keyIds[key] = id;
   }
-
   return id;
 };
 
 PS.render.surfaceTileBatcher.combineKeyIds = function (ids) {
-  var list = Array.isArray(ids) ? ids : [];
-  var hash = 2166136261;
+  var lut = PS.render.tileTypeLut;
+  var list;
+  var hash;
 
+  if (lut && typeof lut.combineKeyIds === "function") {
+    return lut.combineKeyIds(ids);
+  }
+
+  list = Array.isArray(ids) ? ids : [];
+  hash = 2166136261;
   for (var i = 0; i < list.length; i += 1) {
     hash ^= (Number(list[i]) || 0) & 0xffff;
     hash = Math.imul(hash, 16777619);
     hash ^= ((Number(list[i]) || 0) >>> 16) & 0xffff;
     hash = Math.imul(hash, 16777619);
   }
-
   return hash >>> 0;
+};
+
+PS.render.surfaceTileBatcher.getTerrainAtlasKeyId = function (
+  ecologyKey,
+  ecologyMicroKey,
+  transitionKey,
+  stencilKey,
+  featureKey,
+  moistureKey,
+  eraKey,
+  biologyKey,
+  resourceKey,
+  civilizationKey
+) {
+  var lut = PS.render.tileTypeLut;
+
+  if (lut && typeof lut.getTerrainAtlasKeyId === "function") {
+    return lut.getTerrainAtlasKeyId(
+      ecologyKey,
+      ecologyMicroKey,
+      transitionKey,
+      stencilKey,
+      featureKey,
+      moistureKey,
+      eraKey,
+      biologyKey,
+      resourceKey,
+      civilizationKey
+    );
+  }
+
+  return PS.render.surfaceTileBatcher.combineKeyIds([
+    PS.render.surfaceTileBatcher.getStableKeyId(ecologyKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(ecologyMicroKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(transitionKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(stencilKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(featureKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(moistureKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(eraKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(biologyKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(resourceKey),
+    PS.render.surfaceTileBatcher.getStableKeyId(civilizationKey)
+  ]);
+};
+
+PS.render.surfaceTileBatcher.getAcceptedKeyId = function (atlasKeyId, acceptedCellKey) {
+  var lut = PS.render.tileTypeLut;
+
+  if (lut && typeof lut.getAcceptedKeyId === "function") {
+    return lut.getAcceptedKeyId(atlasKeyId, acceptedCellKey);
+  }
+
+  return PS.render.surfaceTileBatcher.combineKeyIds([
+    atlasKeyId,
+    PS.render.surfaceTileBatcher.getStableKeyId("equiv"),
+    PS.render.surfaceTileBatcher.getStableKeyId(acceptedCellKey)
+  ]);
+};
+
+PS.render.surfaceTileBatcher.getSettlementParcelKeyId = function (atlasKeyId, parcelCivilizationInfo, density) {
+  var lut = PS.render.tileTypeLut;
+  var info = parcelCivilizationInfo || {};
+
+  if (lut && typeof lut.getSettlementParcelKeyId === "function") {
+    return lut.getSettlementParcelKeyId(atlasKeyId, info, density);
+  }
+
+  return PS.render.surfaceTileBatcher.combineKeyIds([
+    atlasKeyId,
+    PS.render.surfaceTileBatcher.getStableKeyId("settlement-parcel-fill"),
+    PS.render.surfaceTileBatcher.getStableKeyId(info.type),
+    PS.render.surfaceTileBatcher.getStableKeyId(info.family),
+    PS.render.surfaceTileBatcher.getStableKeyId(info.bucket),
+    PS.render.surfaceTileBatcher.getStableKeyId(info.lineageId),
+    PS.render.surfaceTileBatcher.getStableKeyId(Math.round((Number(info.pressure) || 0) * 1000)),
+    PS.render.surfaceTileBatcher.getStableKeyId(Math.round((Number(density) || 0) * 1000))
+  ]);
 };
 
 PS.render.surfaceTileBatcher.beginBatches = function () {
@@ -1134,18 +1224,18 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
       ? PS.atlas.getTerrainCivilizationKey(drawSample)
       : (sample && sample.civilization ? sample.civilization.key : "civ0");
     var hasCivilizationMaterial = civilizationKey !== "civ0";
-    var atlasKeyId = PS.render.surfaceTileBatcher.combineKeyIds([
-      PS.render.surfaceTileBatcher.getStableKeyId(ecologyKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(ecologyMicroKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(transitionKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(stencilKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(featureKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(moistureKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(eraKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(biologyKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(resourceKey),
-      PS.render.surfaceTileBatcher.getStableKeyId(civilizationKey)
-    ]);
+    var atlasKeyId = PS.render.surfaceTileBatcher.getTerrainAtlasKeyId(
+      ecologyKey,
+      ecologyMicroKey,
+      transitionKey,
+      stencilKey,
+      featureKey,
+      moistureKey,
+      eraKey,
+      biologyKey,
+      resourceKey,
+      civilizationKey
+    );
     var cell = cellData.terrainAtlasKeyId === atlasKeyId ? cellData.terrainAtlasCell || null : null;
     if (!cell) {
       cell = PS.atlas.getTerrainCell(biome, tileX, tileY, sample);
@@ -1171,11 +1261,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
         PS.render.surfaceTileBatcher.getAcceptedTerrainMaterialCellName(biome, sample, tileX, tileY) ||
         "terrain"
       );
-      var acceptedKeyId = PS.render.surfaceTileBatcher.combineKeyIds([
-        atlasKeyId,
-        PS.render.surfaceTileBatcher.getStableKeyId("equiv"),
-        PS.render.surfaceTileBatcher.getStableKeyId(acceptedCellKey)
-      ]);
+      var acceptedKeyId = PS.render.surfaceTileBatcher.getAcceptedKeyId(atlasKeyId, acceptedCellKey);
       var acceptedSelection = cellData.terrainEquivalenceKeyId === acceptedKeyId ? cellData.terrainEquivalenceSelection || null : null;
       if (!acceptedSelection) {
         acceptedSelection = PS.render.surfaceTileBatcher.selectAcceptedTerrainCell(biome, sample, tileX, tileY, cell);
@@ -1255,16 +1341,11 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
             settlementPressure: Math.max(0.32, embeddedCivilizationSettlementDensity)
           })
       });
-      var parcelKeyId = PS.render.surfaceTileBatcher.combineKeyIds([
+      var parcelKeyId = PS.render.surfaceTileBatcher.getSettlementParcelKeyId(
         atlasKeyId,
-        PS.render.surfaceTileBatcher.getStableKeyId("settlement-parcel-fill"),
-        PS.render.surfaceTileBatcher.getStableKeyId(parcelCivilizationInfo.type),
-        PS.render.surfaceTileBatcher.getStableKeyId(parcelCivilizationInfo.family),
-        PS.render.surfaceTileBatcher.getStableKeyId(parcelCivilizationInfo.bucket),
-        PS.render.surfaceTileBatcher.getStableKeyId(parcelCivilizationInfo.lineageId),
-        PS.render.surfaceTileBatcher.getStableKeyId(Math.round((Number(parcelCivilizationInfo.pressure) || 0) * 1000)),
-        PS.render.surfaceTileBatcher.getStableKeyId(Math.round(embeddedCivilizationSettlementDensity * 1000))
-      ]);
+        parcelCivilizationInfo,
+        embeddedCivilizationSettlementDensity
+      );
       var mergeCell = cellData.settlementParcelKeyId === parcelKeyId
         ? cellData.settlementParcelCell || null
         : null;

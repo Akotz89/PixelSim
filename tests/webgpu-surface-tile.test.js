@@ -12,6 +12,7 @@ const compositorSource = read("js/render/webgpu-compositor.js");
 const entitySource = read("js/render/webgpu-entity.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const waterRenderingSource = read("js/render/water-rendering.js");
+const tileTypeLutSource = read("js/render/tile-type-lut.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
 const terrainWgsl = read("shaders/terrain.wgsl");
@@ -29,8 +30,9 @@ assert.ok(
 );
 assert.ok(
   namespaceSource.indexOf("js/render/water-rendering.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js") &&
+    namespaceSource.indexOf("js/render/tile-type-lut.js") < namespaceSource.indexOf("js/render/surface-tile-batcher.js") &&
     namespaceSource.indexOf("js/render/surface-tile-batcher.js") < namespaceSource.indexOf("js/render/webgpu-surface-tile.js"),
-  "water rendering helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
+  "water rendering and tile type LUT helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
 );
 assert.strictEqual(namespaceSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
@@ -187,6 +189,18 @@ assert.ok(
   batcherSource.indexOf("appendSampleDisplacement") >= 0 &&
     batcherSource.indexOf("getSampleHeatDisplacement") >= 0,
   "surface tile batcher should derive heat haze displacement from terrain material signals"
+);
+assert.ok(
+  batcherSource.indexOf("getTerrainAtlasKeyId = function") >= 0 &&
+    batcherSource.indexOf("getAcceptedKeyId = function") >= 0 &&
+    batcherSource.indexOf("getSettlementParcelKeyId = function") >= 0 &&
+    batcherSource.indexOf("lut.getTerrainAtlasKeyId") >= 0,
+  "surface tile batcher should route terrain, accepted, and parcel keys through integer LUT helpers"
+);
+assert.strictEqual(
+  batcherSource.indexOf("var atlasKeyId = PS.render.surfaceTileBatcher.combineKeyIds(["),
+  -1,
+  "surface tile batcher hot loop should not allocate composite atlas key arrays"
 );
 
 const queueWrites = [];
@@ -355,6 +369,7 @@ vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-composi
 vm.runInContext(entitySource, context, { filename: "js/render/webgpu-entity.js" });
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
 vm.runInContext(waterRenderingSource, context, { filename: "js/render/water-rendering.js" });
+vm.runInContext(tileTypeLutSource, context, { filename: "js/render/tile-type-lut.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 vm.runInContext(surfaceTileSource, context, { filename: "js/render/webgpu-surface-tile.js" });
 
@@ -438,6 +453,8 @@ const acceptedTerrainBatches = context.PS.render.surfaceTileBatcher.makeBatches(
 }, acceptedTerrainCache, 1);
 
 assert.strictEqual(acceptedTerrainBatches.equivalenceTerrain, 1, "explicit accepted terrain cells should count as equivalence terrain draws");
+assert.ok(context.PS.render.tileTypeLut.getStats().terrainKeyLookups > 0, "surface tile batching should resolve terrain keys through the integer LUT");
+assert.ok(context.PS.render.tileTypeLut.getStats().acceptedKeyLookups > 0, "accepted terrain batching should resolve equivalence keys through the integer LUT");
 assert.strictEqual(acceptedTerrainSelection.family, "terrain", "explicit accepted terrain cell should use the terrain equivalence family");
 assert.strictEqual(acceptedTerrainSelection.cellName, "rock-mountain.0", "explicit accepted terrain cell name should be passed to the selector");
 assert.strictEqual(acceptedTerrainSelection.use, "terrainGround", "explicit accepted non-water terrain should use terrainGround stats");

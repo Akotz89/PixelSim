@@ -87,6 +87,7 @@ PS.core.manifest = [
   "js/render/water-rendering.js",
   "js/render/shadow-stamping.js",
   "js/render/mountain-render.js",
+  "js/render/tile-type-lut.js",
   "js/render/surface-tile-batcher.js",
   "js/render/webgpu-surface-tile.js",
   "js/render/webgpu-renderer.js",
