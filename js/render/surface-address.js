@@ -245,10 +245,7 @@ PS.render.surface.getVisibleChunks = function (guardSamples, maxChunks) {
   );
 
   if (world.isCameraInteracting) {
-    visibleChunkLimit = Math.min(
-      visibleChunkLimit,
-      Math.max(16, Math.round(Number(CONFIG.PLANET_SURFACE_INTERACTIVE_VISIBLE_CHUNK_LIMIT) || 96))
-    );
+    visibleChunkLimit = PS.render.surface.getInteractiveVisibleChunkLimit(visibleChunkLimit);
   }
 
   if (world.isCameraInteracting) {

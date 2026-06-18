@@ -269,6 +269,8 @@ assert.ok(context.PS.render.wgslShaderManifest.some(function(entry) { return ent
 assert.ok(globeSource.indexOf("terrainDigest") >= 0, "globe texture signature should include the generated terrain digest");
 assert.ok(globeSource.indexOf("getTerrainTextureSize") >= 0, "globe texture upload should derive a higher-resolution terrain texture size");
 assert.ok(globeSource.indexOf("getUnderlayPyramidLevels") >= 0, "globe renderer should define multi-resolution underlay pyramid levels");
+assert.ok(globeSource.indexOf("getTerrainSourceRgb") >= 0, "globe renderer should cache terrain source RGB for pyramid uploads");
+assert.ok(globeSource.indexOf("buildUnderlayPyramidRgbaData") >= 0, "globe renderer should build underlay pyramid RGBA data through the optimized builder");
 assert.ok(globeSource.indexOf("uploadTerrainPyramidTexture") >= 0, "globe renderer should expose underlay pyramid texture uploads");
 assert.ok(underlaySource.indexOf("uploadTerrainPyramidTexture") >= 0, "surface underlay should request pyramid textures when drawing parent coverage");
 

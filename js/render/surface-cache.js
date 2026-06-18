@@ -39,6 +39,16 @@ PS.render.surface.getVisibleChunkLimit = function () {
   return Math.max(16, Math.min(effectiveLimit, Math.max(16, cacheLimited)));
 };
 
+PS.render.surface.getInteractiveVisibleChunkLimit = function (maxChunks) {
+  const configuredLimit = Math.round(Number(maxChunks) || PS.render.surface.getVisibleChunkLimit());
+  const interactiveLimit = Math.max(
+    16,
+    Math.round(Number(CONFIG.PLANET_SURFACE_INTERACTIVE_VISIBLE_CHUNK_LIMIT) || 96)
+  );
+
+  return Math.max(16, Math.min(configuredLimit, interactiveLimit));
+};
+
 PS.render.surface.resetChunkCache = function () {
   planetSurfaceChunkCache.chunks = {};
   planetSurfaceChunkCache.order = [];

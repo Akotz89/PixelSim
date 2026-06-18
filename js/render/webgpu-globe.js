@@ -23,6 +23,8 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
       textures: {},
       metrics: {}
     },
+    terrainSourceRgb: null,
+    terrainSourceSignature: null,
     overlayTexture: null,
     textureSignature: null,
     overlaySignature: null,
@@ -130,28 +132,74 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var width = Math.max(1, typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1);
     var height = Math.max(1, typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1);
     var data = new Uint8Array(width * height * 3);
+    var cellCount = width * height;
+    var elevation = new Float32Array(cellCount);
+    var moisture = new Float32Array(cellCount);
+    var coast = new Float32Array(cellCount);
+    var river = new Float32Array(cellCount);
+    var ridge = new Float32Array(cellCount);
+    var hillshade = new Float32Array(cellCount);
     var x;
     var y;
     var index;
+    var cellIndex;
+    var tile;
     var rgb;
 
     for (y = 0; y < height; y += 1) {
       for (x = 0; x < width; x += 1) {
-        index = (y * width + x) * 3;
+        cellIndex = y * width + x;
+        index = cellIndex * 3;
+        tile = typeof getPlanetTile === "function" ? getPlanetTile(x, y) : null;
         rgb = PS.render.terrain.getRgbFromHex(
-          getPlanetTileCompositedColor(getPlanetTile(x, y))
+          getPlanetTileCompositedColor(tile)
         );
         data[index] = Math.max(0, Math.min(255, Math.round(rgb.red)));
         data[index + 1] = Math.max(0, Math.min(255, Math.round(rgb.green)));
         data[index + 2] = Math.max(0, Math.min(255, Math.round(rgb.blue)));
+        elevation[cellIndex] = this.getTileSignal(tile, "elevation", 0);
+        moisture[cellIndex] = this.getTileSignal(tile, "moisture", 0.65);
+        coast[cellIndex] = Math.max(
+          this.getTileSignal(tile, "coastFactor", 0),
+          this.getTileSignal(tile, "shallowWater", 0)
+        );
+        river[cellIndex] = Math.max(
+          this.getTileSignal(tile, "riverStrength", 0),
+          this.getTileSignal(tile, "riverMouth", 0)
+        );
+        ridge[cellIndex] = Math.max(
+          this.getTileSignal(tile, "ridgeStrength", 0),
+          this.getTileSignal(tile, "roughness", 0),
+          Math.abs(this.getTileSignal(tile, "terrainSlope", 0))
+        );
+        hillshade[cellIndex] = this.getTileSignal(tile, "terrainHillshade", 0.55);
       }
     }
 
     return {
       width: width,
       height: height,
-      data: data
+      data: data,
+      elevation: elevation,
+      moisture: moisture,
+      coast: coast,
+      river: river,
+      ridge: ridge,
+      hillshade: hillshade
     };
+  },
+
+  getTerrainSourceRgb: function () {
+    var state = this.state;
+    var signature = this.getTextureSignature();
+
+    if (state.terrainSourceRgb && state.terrainSourceSignature === signature) {
+      return state.terrainSourceRgb;
+    }
+
+    state.terrainSourceRgb = this.buildTerrainSourceRgb();
+    state.terrainSourceSignature = signature;
+    return state.terrainSourceRgb;
   },
 
   getTileRgb: function (x, y, sourceRgb) {
@@ -214,6 +262,16 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     return value - Math.floor(value);
   },
 
+  hashTerrainCell: function (a, b, seed) {
+    var value = Math.imul(Math.trunc(Number(a) || 0), 374761393) ^
+      Math.imul(Math.trunc(Number(b) || 0), 668265263) ^
+      Math.imul(Math.trunc(Number(seed) || 0), 2246822519);
+
+    value = Math.imul(value ^ (value >>> 13), 1274126177);
+    value = (value ^ (value >>> 16)) >>> 0;
+    return value / 4294967295;
+  },
+
   getTileSignal: function (tile, key, fallback) {
     var value = tile && Number(tile[key]);
 
@@ -270,6 +328,146 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
       red: Math.max(0, Math.min(255, red)),
       green: Math.max(0, Math.min(255, green)),
       blue: Math.max(0, Math.min(255, blue))
+    };
+  },
+
+  buildUnderlayPyramidRgbaData: function (levelSpec, sourceRgb) {
+    var level = levelSpec || this.getUnderlayPyramidLevel(0);
+    var source = sourceRgb || this.getTerrainSourceRgb();
+    var width = Math.max(1, Math.round(Number(level.width) || 1));
+    var height = Math.max(1, Math.round(Number(level.height) || 1));
+    var sourceWidth = Math.max(1, Math.round(Number(source && source.width) || 1));
+    var sourceHeight = Math.max(1, Math.round(Number(source && source.height) || 1));
+    var sourceData = source && source.data ? source.data : null;
+    var data = new Uint8Array(width * height * 4);
+    var buckets = new Uint8Array(512);
+    var bucketCount = 0;
+    var minLuma = 255;
+    var maxLuma = 0;
+    var detail = Math.max(0, Math.min(1, Number(level.detailStrength) || 0));
+    var xToTile = [];
+    var longitude7 = [];
+    var longitude23 = [];
+    var longitude97 = [];
+    var u;
+    var y;
+    var x;
+    var v;
+    var tileY;
+    var latitude;
+    var latitude7;
+    var latitude23;
+    var latitude97;
+    var tileX;
+    var sourceIndex;
+    var tileIndex;
+    var baseRed;
+    var baseGreen;
+    var baseBlue;
+    var elevation;
+    var moisture;
+    var coast;
+    var river;
+    var ridge;
+    var hillshade;
+    var longitude;
+    var broad;
+    var regional;
+    var material;
+    var water;
+    var relief;
+    var wetness;
+    var coastLine;
+    var riverLine;
+    var reliefLight;
+    var red;
+    var green;
+    var blue;
+    var outputRed;
+    var outputGreen;
+    var outputBlue;
+    var outputIndex;
+    var luma;
+    var bucket;
+
+    for (x = 0; x < width; x += 1) {
+      u = (x + 0.5) / width;
+      xToTile[x] = ((Math.floor(Math.max(0, Math.min(0.999999, u)) * sourceWidth) % sourceWidth) + sourceWidth) % sourceWidth;
+      longitude = u * 360 - 180;
+      longitude7[x] = Math.floor(longitude * 7);
+      longitude23[x] = Math.floor(longitude * 23);
+      longitude97[x] = Math.floor(longitude * 97);
+    }
+
+    for (y = 0; y < height; y += 1) {
+      v = (y + 0.5) / height;
+      tileY = Math.max(0, Math.min(sourceHeight - 1, Math.floor(Math.max(0, Math.min(0.999999, v)) * sourceHeight)));
+      latitude = 90 - v * 180;
+      latitude7 = Math.floor(latitude * 7);
+      latitude23 = Math.floor(latitude * 23);
+      latitude97 = Math.floor(latitude * 97);
+
+      for (x = 0; x < width; x += 1) {
+        tileX = xToTile[x];
+        tileIndex = tileY * sourceWidth + tileX;
+        sourceIndex = tileIndex * 3;
+        baseRed = sourceData[sourceIndex];
+        baseGreen = sourceData[sourceIndex + 1];
+        baseBlue = sourceData[sourceIndex + 2];
+
+        elevation = source.elevation ? source.elevation[tileIndex] : 0;
+        moisture = source.moisture ? source.moisture[tileIndex] : 0.65;
+        coast = source.coast ? source.coast[tileIndex] : 0;
+        river = source.river ? source.river[tileIndex] : 0;
+        ridge = source.ridge ? source.ridge[tileIndex] : 0;
+        hillshade = source.hillshade ? source.hillshade[tileIndex] : 0.55;
+        broad = this.hashTerrainCell(longitude7[x], latitude7, level.level + 11) - 0.5;
+        regional = this.hashTerrainCell(longitude23[x], latitude23, level.level + 29) - 0.5;
+        material = this.hashTerrainCell(longitude97[x], latitude97, level.level + 47) - 0.5;
+        water = baseBlue > Math.max(baseRed, baseGreen) * 1.12 ? 1 : 0;
+        relief = (elevation * 0.28 + ridge * 0.22 + (hillshade - 0.5) * 0.42 + broad * 0.18 + regional * 0.12 + material * 0.07) * detail;
+        wetness = (moisture - 0.5) * detail;
+        coastLine = coast * detail;
+        riverLine = river * detail;
+        reliefLight = (broad * 42 + regional * 28 + material * 20) * detail;
+        red = baseRed * (1 + relief - water * 0.05) +
+          reliefLight + (broad * 18 + regional * 10) * detail +
+          coastLine * 10 - wetness * 6 + ridge * detail * 8;
+        green = baseGreen * (1 + relief * 0.82 + wetness * 0.12) +
+          reliefLight * 0.88 + (regional * 16 + material * 8 - broad * 6) * detail +
+          coastLine * 8 + riverLine * 8;
+        blue = baseBlue * (1 + relief * 0.56 + water * wetness * 0.08) +
+          reliefLight * 0.62 + (material * 18 - regional * 8 + broad * 5) * detail +
+          riverLine * 16 - ridge * detail * 4;
+
+        outputIndex = (y * width + x) * 4;
+        outputRed = Math.max(0, Math.min(255, Math.round(red)));
+        outputGreen = Math.max(0, Math.min(255, Math.round(green)));
+        outputBlue = Math.max(0, Math.min(255, Math.round(blue)));
+        data[outputIndex] = outputRed;
+        data[outputIndex + 1] = outputGreen;
+        data[outputIndex + 2] = outputBlue;
+        data[outputIndex + 3] = 255;
+        if ((x & 3) === 0 && (y & 3) === 0) {
+          luma = outputRed * 0.299 + outputGreen * 0.587 + outputBlue * 0.114;
+          minLuma = Math.min(minLuma, luma);
+          maxLuma = Math.max(maxLuma, luma);
+          bucket = (Math.floor(outputRed / 32) * 64) + (Math.floor(outputGreen / 32) * 8) + Math.floor(outputBlue / 32);
+          if (!buckets[bucket]) {
+            buckets[bucket] = 1;
+            bucketCount += 1;
+          }
+        }
+      }
+    }
+
+    return {
+      data: data,
+      metrics: {
+        contrastRange: maxLuma - minLuma,
+        coarseColorCount: bucketCount,
+        flatParentEvidence: maxLuma - minLuma < 12 && bucketCount < 4 ? 1 : 0
+      }
     };
   },
 
@@ -401,7 +599,7 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
 
     startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     data = new Uint8Array(width * height * 4);
-    sourceRgb = this.buildTerrainSourceRgb();
+    sourceRgb = this.getTerrainSourceRgb();
 
     for (y = 0; y < height; y += 1) {
       for (x = 0; x < width; x += 1) {
@@ -436,18 +634,8 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     var pyramid = state.terrainPyramid || { signature: null, textures: {}, metrics: {} };
     var textureKey = String(levelSpec.level);
     var startedAt;
-    var data;
     var sourceRgb;
-    var x;
-    var y;
-    var index;
-    var rgb;
-    var luma;
-    var minLuma = 255;
-    var maxLuma = 0;
-    var bucket;
-    var buckets = {};
-    var bucketCount = 0;
+    var built;
 
     if (pyramid.signature !== signature) {
       this.resetTerrainPyramidTextures();
@@ -464,44 +652,17 @@ PS.render.webgpuGlobe = PS.render.webgpuGlobe || {
     }
 
     startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
-    data = new Uint8Array(levelSpec.width * levelSpec.height * 4);
-    sourceRgb = this.buildTerrainSourceRgb();
-
-    for (y = 0; y < levelSpec.height; y += 1) {
-      for (x = 0; x < levelSpec.width; x += 1) {
-        index = (y * levelSpec.width + x) * 4;
-        rgb = this.getUnderlayTerrainRgb((x + 0.5) / levelSpec.width, (y + 0.5) / levelSpec.height, sourceRgb, levelSpec);
-        data[index] = Math.max(0, Math.min(255, Math.round(rgb.red)));
-        data[index + 1] = Math.max(0, Math.min(255, Math.round(rgb.green)));
-        data[index + 2] = Math.max(0, Math.min(255, Math.round(rgb.blue)));
-        data[index + 3] = 255;
-        luma = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
-        minLuma = Math.min(minLuma, luma);
-        maxLuma = Math.max(maxLuma, luma);
-        bucket = [
-          Math.floor(data[index] / 32),
-          Math.floor(data[index + 1] / 32),
-          Math.floor(data[index + 2] / 32)
-        ].join(":");
-        if (!buckets[bucket]) {
-          buckets[bucket] = true;
-          bucketCount += 1;
-        }
-      }
-    }
+    sourceRgb = this.getTerrainSourceRgb();
+    built = this.buildUnderlayPyramidRgbaData(levelSpec, sourceRgb);
 
     pyramid.textures[textureKey] = this.createRgbaTexture(
       targetDevice,
       "globe-underlay-pyramid." + levelSpec.name,
       levelSpec.width,
       levelSpec.height,
-      data
+      built.data
     );
-    pyramid.metrics[textureKey] = {
-      contrastRange: maxLuma - minLuma,
-      coarseColorCount: bucketCount,
-      flatParentEvidence: maxLuma - minLuma < 12 && bucketCount < 4 ? 1 : 0
-    };
+    pyramid.metrics[textureKey] = built.metrics;
     state.underlayPyramidUploadCount += 1;
     state.lastUnderlayPyramidUploadMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
     this.publishUnderlayPyramidSelection(levelSpec, levelSpec, spec, pyramid.metrics[textureKey]);
