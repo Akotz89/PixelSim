@@ -16,11 +16,18 @@ function postError(id, message) {
   });
 }
 
+function makeInlineClassicSource(source) {
+  return String(source || "")
+    .replace(/^\s*import\s+\{\s*PS\s*\}\s+from\s+["'][^"']+["'];\s*/m, "var PS = self.PS;\n")
+    .replace(/^\s*export\s+let\s+wasm_bindgen\s*=/m, "var wasm_bindgen =")
+    .replace(/\bwindow\.wasm_bindgen\s*=/g, "self.wasm_bindgen =");
+}
+
 function evaluateInlineWasmSources(message) {
   var source = [
-    message.wasmGlueSource || "",
-    message.wasmSidecarSource || "",
-    message.wasmBridgeSource || ""
+    makeInlineClassicSource(message.wasmGlueSource),
+    makeInlineClassicSource(message.wasmSidecarSource),
+    makeInlineClassicSource(message.wasmBridgeSource)
   ].join("\n;\n");
 
   if (!source.trim()) {

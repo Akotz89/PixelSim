@@ -26,7 +26,10 @@ assert.ok(clientSource.includes("uploadElevationResultToGpu"), "client should ex
 assert.ok(packageJson.scripts.test.includes("tests/wasm-worker-bridge.test.js"), "npm test should include WASM worker bridge checks");
 
 (async () => {
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--allow-file-access-from-files"]
+  });
   const page = await browser.newPage();
   const consoleErrors = [];
   const pageErrors = [];
@@ -39,7 +42,9 @@ assert.ok(packageJson.scripts.test.includes("tests/wasm-worker-bridge.test.js"),
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto(pathToFileURL(path.join(root, "index.html")).href, { waitUntil: "load" });
-  await page.addScriptTag({ content: clientSource });
+  await page.waitForFunction(() => Boolean(window.PS && window.PS.sim && window.PS.sim.simWorkerClient), null, {
+    timeout: 10000
+  });
 
   const evidence = await page.evaluate(async (sources) => {
     const client = window.PS.sim.simWorkerClient;
