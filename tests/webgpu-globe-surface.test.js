@@ -269,6 +269,9 @@ assert.ok(context.PS.render.wgslShaderManifest.some(function(entry) { return ent
 assert.ok(globeSource.indexOf("terrainDigest") >= 0, "globe texture signature should include the generated terrain digest");
 assert.ok(globeSource.indexOf("getTerrainTextureSize") >= 0, "globe texture upload should derive a higher-resolution terrain texture size");
 assert.ok(globeSource.indexOf("getUnderlayPyramidLevels") >= 0, "globe renderer should define multi-resolution underlay pyramid levels");
+assert.ok(globeSource.indexOf("getTerrainSourceRgb") >= 0, "globe renderer should cache terrain source RGB for pyramid uploads");
+assert.ok(globeSource.indexOf("buildUnderlayPyramidRgbaData") >= 0, "globe renderer should build underlay pyramid RGBA data through the optimized builder");
+assert.ok(globeSource.indexOf("buildUnderlaySourceCellRgbaData") >= 0, "underlay pyramid builder should precompute source-cell colors before expanding to the target texture");
 assert.ok(globeSource.indexOf("uploadTerrainPyramidTexture") >= 0, "globe renderer should expose underlay pyramid texture uploads");
 assert.ok(underlaySource.indexOf("uploadTerrainPyramidTexture") >= 0, "surface underlay should request pyramid textures when drawing parent coverage");
 
@@ -356,6 +359,15 @@ assert.strictEqual(underlayStats.readyChildCoverage, 0.25, "underlay stats shoul
 assert.strictEqual(underlayStats.fallbackStaleCoverage, 0.75, "underlay stats should expose fallback/stale coverage");
 assert.strictEqual(underlayStats.smearEvidence, 0, "active requested pyramid level should report no source-level smear fallback");
 assert.strictEqual(underlayStats.flatParentEvidence, 0, "terrain-derived local underlay should not report flat-parent evidence");
+const prewarmWritesBefore = queueTextureWrites.length;
+const prewarmStatsBefore = globe.getStats();
+const prewarmedRegionUnderlay = globe.prewarmTerrainPyramidTexture(fakeDevice, { underlayLevel: 2 });
+assert.strictEqual(prewarmedRegionUnderlay.descriptor.label, "globe-underlay-pyramid.region", "underlay prewarm should build the requested future pyramid level");
+assert.strictEqual(queueTextureWrites.length, prewarmWritesBefore + 1, "underlay prewarm should upload a missing pyramid texture");
+assert.strictEqual(globe.getStats().underlaySourceLevel, prewarmStatsBefore.underlaySourceLevel, "underlay prewarm should not publish the prewarmed source level as active");
+assert.strictEqual(globe.getStats().readyChildCoverage, prewarmStatsBefore.readyChildCoverage, "underlay prewarm should not overwrite visible child coverage evidence");
+assert.strictEqual(globe.prewarmTerrainPyramidTexture(fakeDevice, { underlayLevel: 2 }), prewarmedRegionUnderlay, "cached prewarmed underlay should be reused");
+assert.strictEqual(queueTextureWrites.length, prewarmWritesBefore + 1, "cached underlay prewarm should not re-upload");
 
 const terrainTexture = makeTexture("terrain");
 const overlayTexture = makeTexture("overlay");

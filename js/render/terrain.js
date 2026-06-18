@@ -610,6 +610,7 @@ PS.render.terrain.drawStableUnderlay = function (options) {
       ? PS.render.pipeline.getZoomBand(zoomLevel)
       : ""
   );
+  var transitionAlpha = Math.max(0, Number(pipelineStats.transitionAlpha) || 0);
   var terrainTexture;
   var drawn;
 
@@ -634,6 +635,19 @@ PS.render.terrain.drawStableUnderlay = function (options) {
       fallbackStaleCoverage: spec.fallbackStaleCoverage
     })
     : PS.render.webgpuGlobe.uploadTerrainTexture(device);
+
+  if (
+    zoomBand === "region" &&
+    zoomLevel >= 4.8 &&
+    transitionAlpha > 0.01 &&
+    typeof PS.render.webgpuGlobe.prewarmTerrainPyramidTexture === "function"
+  ) {
+    PS.render.webgpuGlobe.prewarmTerrainPyramidTexture(device, {
+      underlayLevel: 3,
+      zoomLevel: zoomLevel,
+      zoomBand: "local"
+    });
+  }
 
   drawn = PS.render.webgpuSurfaceUnderlay.draw({
     terrainTexture: terrainTexture,
@@ -673,7 +687,6 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
   var startedAt = performance.now();
   var chunkSamples = PS.render.surface.getChunkSampleCount();
   var maxChunks = PS.render.surface.getVisibleChunkLimit();
-  var queue = PS.render.surfaceStreaming.makeQueue(chunkSamples, maxChunks);
   var generatedBudget = PS.render.surfaceRender.getChunksPerPass();
   var generatedThisPass = 0;
   var drawnChunks = 0;
@@ -704,6 +717,19 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
     zoomBand === "settlement" ||
     (!zoomBand && architectureZoom >= 15);
   var minimumReadyCoverageRatio = holdPartialChildCoverage ? 1 : 0.65;
+  var transitionAlpha = Math.max(0, Number(pipelineStats.transitionAlpha) || 0);
+
+  if (
+    !world.isCameraInteracting &&
+    holdPartialChildCoverage &&
+    transitionAlpha > 0.01 &&
+    PS.render.surface &&
+    typeof PS.render.surface.getInteractiveVisibleChunkLimit === "function"
+  ) {
+    maxChunks = PS.render.surface.getInteractiveVisibleChunkLimit(maxChunks);
+  }
+
+  var queue = PS.render.surfaceStreaming.makeQueue(chunkSamples, maxChunks);
 
   function queueReadyChunk(address, chunk, chunkAlpha, extra) {
     var screenRect = PS.render.surface.getChunkScreenRect(address);

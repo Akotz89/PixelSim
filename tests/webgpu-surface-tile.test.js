@@ -495,6 +495,48 @@ assert.ok(
   acceptedTerrainReuseStats.terrainKeyCacheHits > acceptedTerrainLutStats.terrainKeyCacheHits,
   "unchanged surface tile cells should report terrain key cache hits"
 );
+let dryTerrainWaterInfoCalls = 0;
+const originalDryTerrainWaterInfo = context.PS.render.waterRendering.getRenderInfo;
+context.PS.render.waterRendering.getRenderInfo = function () {
+  dryTerrainWaterInfoCalls++;
+  return originalDryTerrainWaterInfo.apply(this, arguments);
+};
+const dryTerrainDrawCache = [{
+  sample: {
+    biome: "grassland",
+    detail: {
+      surface: "grass",
+      materialSignals: {
+        moisture: 0.42,
+        waterDepth: 0
+      }
+    }
+  },
+  screenX: 0,
+  screenY: 0
+}];
+context.PS.render.webgpuSurfaceTile.makeBatches({
+  sampleEast: 2,
+  sampleNorth: 2,
+  renderScreenX: 0,
+  renderScreenY: 0,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, dryTerrainDrawCache, 1);
+const firstDryTerrainDrawRecord = dryTerrainDrawCache[0].terrainDrawRecord;
+context.PS.render.webgpuSurfaceTile.makeBatches({
+  sampleEast: 2,
+  sampleNorth: 2,
+  renderScreenX: 8,
+  renderScreenY: 8,
+  renderSamplePixelSize: 16,
+  chunkSamples: 1
+}, dryTerrainDrawCache, 1);
+assert.ok(firstDryTerrainDrawRecord instanceof Float32Array, "unchanged dry terrain should cache a flat typed draw record");
+assert.strictEqual(dryTerrainDrawCache[0].terrainDrawRecord, firstDryTerrainDrawRecord, "unchanged dry terrain should reuse the typed draw record on repeated frames");
+assert.strictEqual(typeof dryTerrainDrawCache[0].terrainDrawKeyId, "number", "typed terrain draw cache should be addressed by a numeric key");
+assert.strictEqual(dryTerrainWaterInfoCalls, 0, "dry terrain draw reuse should avoid per-frame water render info resolution");
+context.PS.render.waterRendering.getRenderInfo = originalDryTerrainWaterInfo;
 Object.keys(acceptedTerrainBatches.pages).forEach(function (pageIndex) {
   var page = acceptedTerrainBatches.pages[pageIndex];
   for (let offset = 10; offset < page.length; offset += 15) {

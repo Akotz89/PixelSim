@@ -204,5 +204,13 @@ assert.ok(
   terrainSource.indexOf("coveredByUnderlayChunks") >= 0,
   "local tilemap rendering should count chunks protected by stable underlay"
 );
+assert.ok(
+  terrainSource.indexOf("getInteractiveVisibleChunkLimit(maxChunks)") >= 0,
+  "local transition handoff should clamp visible chunk work to the interactive limit"
+);
+assert.ok(
+  terrainSource.indexOf("getInteractiveVisibleChunkLimit(maxChunks)") < terrainSource.indexOf("PS.render.surfaceStreaming.makeQueue"),
+  "local transition chunk clamp should run before building the streaming queue"
+);
 
 console.log("surface render fallback checks passed");
