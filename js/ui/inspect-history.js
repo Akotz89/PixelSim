@@ -8,6 +8,7 @@ import { isFertile } from "../render/terrain-hydrology.js";
 import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
 import { foodExistsAt } from "../sim/food-growth.js";
 import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { resourceRegistry } from "../sim/resource-registry.js";
 import { world } from "../systems/state.js";
 import { eventLogText, inspectDetailsText, inspectSummaryText, traitHistoryCanvas } from "./dom-refs.js";
 import { getNearestOrganismToTile, getNearestSettlementToTile, setElementClass, setElementHtml, setElementText } from "./foundation.js";
@@ -252,12 +253,10 @@ export function updateInspectPanel() {
     detailChips.push(makeInspectChip("Population", settlement.population));
     detailChips.push(makeInspectChip("Nearby Food", settlement.foodStock));
     detailChips.push(makeInspectChip("Stored", settlement.storedFood));
-    if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
-      var resourceSummary = PS.sim.resources.getSettlementSummary(settlement);
-      detailChips.push(makeInspectChip("Resources", resourceSummary.entries.map(function(entry) {
-        return entry.id + " " + Math.round(entry.stock);
-      }).slice(0, 5).join(" / ")));
-    }
+    var resourceSummary = resourceRegistry.getSettlementSummary(settlement);
+    detailChips.push(makeInspectChip("Resources", resourceSummary.entries.map(function(entry) {
+      return entry.id + " " + Math.round(entry.stock);
+    }).slice(0, 5).join(" / ")));
     detailChips.push(makeInspectChip("Dev", settlement.development.toFixed(1)));
     detailChips.push(makeInspectChip("Growth", "last " + settlement.lastGrowthTick + " supply " + settlement.lastSupplyGrowthTick));
     detailChips.push(makeInspectChip("Outpost", "last " + settlement.lastOutpostTick));

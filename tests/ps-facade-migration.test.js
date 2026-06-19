@@ -2,6 +2,7 @@ const { assert, read } = require("./helpers/world-context.js");
 
 const assertSource = read("js/core/assert.js");
 const bitsmapSource = read("js/core/bitsmap.js");
+const resourceRegistrySource = read("js/sim/resource-registry.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -11,6 +12,13 @@ const migratedAssertConsumers = [
 const migratedBitsmapConsumers = [
   "js/render/environment-overlays.js",
   "js/sim/vegetation.js"
+];
+const migratedResourceRegistryConsumers = [
+  "js/sim/settlements-growth.js",
+  "js/sim/settlements-founding.js",
+  "js/sim/settlements-routes.js",
+  "js/ui/inspect-history.js",
+  "js/ui/summary.js"
 ];
 
 assert.ok(
@@ -64,6 +72,35 @@ migratedBitsmapConsumers.forEach(function(file) {
     source.indexOf("PS.core.Bitsmap"),
     -1,
     file + " should instantiate Bitsmap directly instead of using PS.core.Bitsmap"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+resourceRegistry\s*=/.test(resourceRegistrySource),
+  "resource registry should expose resourceRegistry as a direct ES module export"
+);
+assert.strictEqual(
+  resourceRegistrySource.indexOf("namespace.js"),
+  -1,
+  "resource registry should not import the PS namespace"
+);
+assert.strictEqual(
+  resourceRegistrySource.indexOf("PS.sim.resources"),
+  -1,
+  "resource registry should not register through PS.sim.resources"
+);
+
+migratedResourceRegistryConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { resourceRegistry }") >= 0,
+    file + " should import resourceRegistry directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.resources"),
+    -1,
+    file + " should use resourceRegistry directly instead of PS.sim.resources"
   );
 });
 

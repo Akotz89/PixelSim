@@ -1,6 +1,7 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { getCompletedProbeMissionCount } from "./civilizations-probes.js";
+import { resourceRegistry } from "./resource-registry.js";
 import { ensureSettlementRoute, normalizeSettlementRoute } from "./settlements-founding.js";
 import { countActiveRoutesForSettlement, normalizeSettlementGrowth, updateSettlementLevel } from "./settlements-growth.js";
 import { ensureSettlementState, getDistanceBetweenSettlements, getSettlementById, rebuildSettlementRouteStats } from "./settlements-state.js";
@@ -24,13 +25,8 @@ export function transferSettlementRouteFood(route, parentSettlement, childSettle
     return 0;
   }
 
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
-    PS.sim.resources.recordFlow(parentSettlement, "food", "consumed", transferAmount);
-    PS.sim.resources.recordFlow(childSettlement, "food", "traded", transferAmount);
-  } else {
-    parentSettlement.storedFood -= transferAmount;
-    childSettlement.storedFood += transferAmount;
-  }
+  resourceRegistry.recordFlow(parentSettlement, "food", "consumed", transferAmount);
+  resourceRegistry.recordFlow(childSettlement, "food", "traded", transferAmount);
   route.foodTransferred += transferAmount;
   return transferAmount;
 }
@@ -101,11 +97,7 @@ export function runSuppliedOutpostGrowth(settlement) {
     return;
   }
 
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
-    PS.sim.resources.recordFlow(settlement, "food", "consumed", foodCost);
-  } else {
-    settlement.storedFood -= foodCost;
-  }
+  resourceRegistry.recordFlow(settlement, "food", "consumed", foodCost);
   settlement.development += foodCost * CONFIG.SETTLEMENT_DEVELOPMENT_PER_SUPPLIED_FOOD;
   updateSettlementLevel(settlement);
 }

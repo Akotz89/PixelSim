@@ -4,6 +4,7 @@ import { getClampedBucketIndexes, getWrappedBucketIndexes } from "../render/plan
 import { isFertile } from "../render/terrain-hydrology.js";
 import { countFoodInRadius } from "./food-runtime.js";
 import { ensureOrganismTraits } from "./organisms-traits.js";
+import { resourceRegistry } from "./resource-registry.js";
 import { countChildOutposts, updateSettlementLevel, updateSettlementMetrics } from "./settlements-growth.js";
 // fallow-ignore-next-line circular-dependency
 import { refreshSettlementSummaryCache } from "./settlements-routes.js";
@@ -278,11 +279,7 @@ export function foundOutpostFromSettlement(parentSettlement) {
     return null;
   }
 
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
-    PS.sim.resources.recordFlow(parentSettlement, "food", "consumed", CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
-  } else {
-    parentSettlement.storedFood = Math.max(0, parentSettlement.storedFood - CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
-  }
+  resourceRegistry.recordFlow(parentSettlement, "food", "consumed", CONFIG.SETTLEMENT_OUTPOST_FOOD_COST);
   parentSettlement.development = Math.max(0, parentSettlement.development - CONFIG.SETTLEMENT_OUTPOST_DEVELOPMENT_COST);
   parentSettlement.lastOutpostTick = world.tick;
   updateSettlementLevel(parentSettlement);

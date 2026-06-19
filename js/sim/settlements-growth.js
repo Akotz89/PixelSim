@@ -6,6 +6,7 @@ import { updateOrbitalInfrastructureState } from "./civilizations-orbital.js";
 import { removeFoodInRadius } from "./food-growth.js";
 import { countFoodInRadius } from "./food-runtime.js";
 import { countOrganismsInRadiusForLineage } from "./organisms-indexes.js";
+import { resourceRegistry } from "./resource-registry.js";
 import { ensureSettlementState, getSettlementById, getSettlementInfluenceRadius, getSettlementLevelForDevelopment, getSettlementRouteStats, restoreSettlementGrowthNumber, updateSettlementInfluence } from "./settlements-state.js";
 import { world } from "../systems/state.js";
 
@@ -45,9 +46,7 @@ export function normalizeSettlementGrowth(settlement) {
   settlement.claimedTiles = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.claimedTiles, 0)));
   settlement.claimedFood = Math.max(0, Math.round(restoreSettlementGrowthNumber(settlement.claimedFood, 0)));
 
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.normalizeSettlement === "function") {
-    PS.sim.resources.normalizeSettlement(settlement);
-  }
+  resourceRegistry.normalizeSettlement(settlement);
 }
 
 export function updateSettlementLevel(settlement) {
@@ -89,9 +88,7 @@ export function harvestSettlementFood(settlement) {
   var harvestedFood = removeFoodInRadius(settlement.x, settlement.y, settlement.radius, harvestLimit);
 
   settlement.storedFood += harvestedFood;
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
-    PS.sim.resources.recordFlow(settlement, "food", "produced", harvestedFood);
-  }
+  resourceRegistry.recordFlow(settlement, "food", "produced", harvestedFood);
   settlement.foodStock = countSettlementFoodStock(settlement);
 
   if (typeof recordFoodHarvested === "function") {
@@ -162,9 +159,7 @@ export function runSettlementGrowth(settlement) {
     return;
   }
 
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.applySpoilage === "function") {
-    PS.sim.resources.applySpoilage(settlement, world.tick);
-  }
+  resourceRegistry.applySpoilage(settlement, world.tick);
 
   applySettlementDevelopmentDecay(settlement);
 
@@ -356,11 +351,7 @@ export function updateSpaceProgramState(networkSummary) {
   }
 
   for (var i = 0; i < investmentColonies.length; i++) {
-    if (PS.sim && PS.sim.resources && typeof PS.sim.resources.recordFlow === "function") {
-      PS.sim.resources.recordFlow(investmentColonies[i], "food", "consumed", foodCost);
-    } else {
-      investmentColonies[i].storedFood = Math.max(0, investmentColonies[i].storedFood - foodCost);
-    }
+    resourceRegistry.recordFlow(investmentColonies[i], "food", "consumed", foodCost);
   }
 
   world.spaceProgramProgress +=
@@ -393,4 +384,3 @@ export function ensureOrbitalState() {
   world.orbitalInfrastructureScore = Math.max(0, Math.round(restoreSettlementGrowthNumber(world.orbitalInfrastructureScore, 0)));
   world.orbitalPlatformReady = Boolean(world.orbitalPlatformReady);
 }
-

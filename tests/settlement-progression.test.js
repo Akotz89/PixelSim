@@ -32,6 +32,7 @@ const source = [
   "js/core/config.js",
   "js/core/world-grid.js",
   "js/sim/settlements-state.js",
+  "js/sim/resource-registry.js",
   "js/sim/settlements-growth.js",
   "js/sim/civilizations-orbital.js",
   "js/sim/civilizations-probes.js",

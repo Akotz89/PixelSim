@@ -18,7 +18,7 @@ vm.runInContext(read("config.js"), context, { filename: "config.js" });
 vm.runInContext(read("js/core/utils.js"), context, { filename: "js/core/utils.js" });
 vm.runInContext(read("js/sim/resource-registry.js"), context, { filename: "js/sim/resource-registry.js" });
 
-const registry = context.window.PS.sim.resources;
+const registry = context.resourceRegistry;
 const definitions = registry.getDefinitions();
 assert.ok(JSON.parse(read("package.json")).scripts.test.includes("tests/resource-registry.test.js"), "npm test should include resource registry checks");
 assert.ok(read("js/core/manifest.js").includes("js/sim/resource-registry.js"), "manifest should load resource registry");

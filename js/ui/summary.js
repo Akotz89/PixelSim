@@ -7,6 +7,7 @@ import { getTileGreatCircleDistanceKm, getTileManhattanDistance } from "../rende
 import { countFoodInRadius, findNearestFoodInBuckets } from "../sim/food-runtime.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { resourceRegistry } from "../sim/resource-registry.js";
 import { getDistanceToNearestSettlement } from "../sim/settlements-founding.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "../sim/settlements-routes.js";
 import { getSettlementRouteStats } from "../sim/settlements-state.js";
@@ -102,16 +103,7 @@ export function getRouteSummaryForSettlement(settlementId) {
 }
 
 export function getResourceSummaryForSettlement(settlement) {
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
-    return PS.sim.resources.getSettlementSummary(settlement);
-  }
-
-  return {
-    entries: [],
-    totalStock: 0,
-    net: 0,
-    top: null
-  };
+  return resourceRegistry.getSettlementSummary(settlement);
 }
 
 export function formatResourceBreakdown(summary) {
@@ -371,9 +363,8 @@ export function updateEcosystemSummary() {
   var stats = typeof getStatisticsDashboardSnapshot === "function"
     ? getStatisticsDashboardSnapshot(summary)
     : null;
-  var resourceRegistry = PS.sim && PS.sim.resources ? PS.sim.resources : null;
-  var worldResourceSummary = resourceRegistry ? resourceRegistry.getWorldSummary() : null;
-  var resourceDefinitions = resourceRegistry ? resourceRegistry.getDefinitions() : [];
+  var worldResourceSummary = resourceRegistry.getWorldSummary();
+  var resourceDefinitions = resourceRegistry.getDefinitions();
   var cards = [
     makeDashboardCard("Planet Stats", "status",
       makePrimaryMetric("Epoch", stats ? stats.epoch : world.era, stats ? stats.deepTime : "-") +

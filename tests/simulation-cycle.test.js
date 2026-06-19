@@ -79,6 +79,7 @@ const source = [
   "js/sim/evolution.js",
   "js/sim/organisms.js",
   "js/sim/settlements-state.js",
+  "js/sim/resource-registry.js",
   "js/sim/settlements-growth.js",
   "js/sim/civilizations-orbital.js",
   "js/sim/civilizations-probes.js",
