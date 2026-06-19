@@ -1,8 +1,4 @@
-import { PS } from "./namespace.js";
-
-PS.core = PS.core || {};
-
-PS.core.Bitsmap = function Bitsmap(bits, length, data) {
+export function Bitsmap(bits, length, data) {
   this.bits = Math.round(Number(bits) || 0);
   this.length = Math.max(0, Math.round(Number(length) || 0));
 
@@ -17,9 +13,9 @@ PS.core.Bitsmap = function Bitsmap(bits, length, data) {
   if (this.data.length < this.wordCount) {
     throw new RangeError("Bitsmap backing data is smaller than required");
   }
-};
+}
 
-PS.core.Bitsmap.prototype.checkIndex = function (index) {
+Bitsmap.prototype.checkIndex = function (index) {
   var i = Math.round(Number(index));
 
   if (!Number.isFinite(i) || i < 0 || i >= this.length) {
@@ -29,11 +25,11 @@ PS.core.Bitsmap.prototype.checkIndex = function (index) {
   return i;
 };
 
-PS.core.Bitsmap.prototype.clampValue = function (value) {
+Bitsmap.prototype.clampValue = function (value) {
   return Math.max(0, Math.min(this.mask, Math.round(Number(value) || 0)));
 };
 
-PS.core.Bitsmap.prototype.get = function (index) {
+Bitsmap.prototype.get = function (index) {
   var i = this.checkIndex(index);
   var bitIndex = i * this.bits;
   var wordIndex = bitIndex >>> 5;
@@ -48,7 +44,7 @@ PS.core.Bitsmap.prototype.get = function (index) {
   return value & this.mask;
 };
 
-PS.core.Bitsmap.prototype.set = function (index, value) {
+Bitsmap.prototype.set = function (index, value) {
   var i = this.checkIndex(index);
   var next = this.clampValue(value);
   var bitIndex = i * this.bits;
@@ -67,12 +63,12 @@ PS.core.Bitsmap.prototype.set = function (index, value) {
   return next;
 };
 
-PS.core.Bitsmap.prototype.clear = function () {
+Bitsmap.prototype.clear = function () {
   this.data.fill(0);
   return this;
 };
 
-PS.core.Bitsmap.prototype.setAll = function (value) {
+Bitsmap.prototype.setAll = function (value) {
   var next = this.clampValue(value);
 
   this.clear();
@@ -83,12 +79,12 @@ PS.core.Bitsmap.prototype.setAll = function (value) {
   return this;
 };
 
-PS.core.Bitsmap.prototype.inc = function (index, delta) {
+Bitsmap.prototype.inc = function (index, delta) {
   var next = this.get(index) + Math.round(Number(delta) || 0);
   return this.set(index, next);
 };
 
-PS.core.Bitsmap.prototype.serialize = function () {
+Bitsmap.prototype.serialize = function () {
   return {
     bits: this.bits,
     length: this.length,
@@ -96,9 +92,9 @@ PS.core.Bitsmap.prototype.serialize = function () {
   };
 };
 
-PS.core.Bitsmap.deserialize = function (payload) {
+Bitsmap.deserialize = function (payload) {
   var source = payload || {};
-  return new PS.core.Bitsmap(
+  return new Bitsmap(
     source.bits,
     source.length,
     new Uint32Array(Array.isArray(source.data) ? source.data : [])

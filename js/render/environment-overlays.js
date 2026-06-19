@@ -1,4 +1,5 @@
 import { CONFIG } from "../../config.js";
+import { Bitsmap } from "../core/bitsmap.js";
 import { PS } from "../core/namespace.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
@@ -19,7 +20,7 @@ PS.render.environmentOverlays = PS.render.environmentOverlays || {
   initSnowBase: function (width, height) {
     this.width = Math.max(1, Math.round(Number(width) || (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1)));
     this.height = Math.max(1, Math.round(Number(height) || (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1)));
-    this.snowBaseMap = new PS.core.Bitsmap(2, this.width * this.height);
+    this.snowBaseMap = new Bitsmap(2, this.width * this.height);
     this.snowBaseData = this.snowBaseMap.data;
     return this;
   },

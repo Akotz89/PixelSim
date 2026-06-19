@@ -1,3 +1,4 @@
+import { Bitsmap } from "../core/bitsmap.js";
 import { PS } from "../core/namespace.js";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
@@ -23,7 +24,7 @@ PS.vegetation = PS.vegetation || {
     this.width = Math.max(1, Math.round(Number(width) || (typeof WORLD_WIDTH !== "undefined" ? WORLD_WIDTH : 1)));
     this.height = Math.max(1, Math.round(Number(height) || (typeof WORLD_HEIGHT !== "undefined" ? WORLD_HEIGHT : 1)));
     this.data = new Uint8Array(this.width * this.height);
-    this.grassDensityMap = new PS.core.Bitsmap(4, this.width * this.height);
+    this.grassDensityMap = new Bitsmap(4, this.width * this.height);
     this.grassDensityData = this.grassDensityMap.data;
     return this;
   },
@@ -32,7 +33,7 @@ PS.vegetation = PS.vegetation || {
     if (!this.data) {
       this.init();
     } else if (!this.grassDensityMap || this.grassDensityMap.length !== this.data.length || this.grassDensityMap.data !== this.grassDensityData) {
-      this.grassDensityMap = new PS.core.Bitsmap(4, this.data.length, this.grassDensityData instanceof Uint32Array ? this.grassDensityData : null);
+      this.grassDensityMap = new Bitsmap(4, this.data.length, this.grassDensityData instanceof Uint32Array ? this.grassDensityData : null);
       this.grassDensityData = this.grassDensityMap.data;
     }
 
