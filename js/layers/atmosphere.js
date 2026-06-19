@@ -2,7 +2,7 @@ import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { world } from "../systems/state.js";
-import "./registry.js";
+import { layerRegistry } from "./registry.js";
 
 export function getAtmosphereConfig() {
   var constants = typeof CONFIG !== "undefined" ? CONFIG : {};
@@ -231,7 +231,7 @@ export function applyAtmosphereGeochemistrySummary(state) {
   return state;
 }
 
-PS.layers.atmosphere = PS.layers.register("atmosphere", {
+export const atmosphereLayer = layerRegistry.register("atmosphere", {
   family: "planet",
   alwaysOn: true,
   watcherOutputs: ["overlays", "timeline", "inspect"],

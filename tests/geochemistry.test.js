@@ -221,8 +221,8 @@ assert.ok(harness.passes.geochemistry, "geochemistry should register compute pas
 
 vm.runInContext(layerRegistrySource, context, { filename: "js/layers/registry.js" });
 vm.runInContext(atmosphereSource, context, { filename: "js/layers/atmosphere.js" });
-context.PS.layers.atmosphere.ensureState();
-context.PS.layers.atmosphere.update(1000);
+context.layerRegistry.get("atmosphere").ensureState();
+context.layerRegistry.get("atmosphere").update(1000);
 assert.strictEqual(context.world.atmosphere.carbonDioxidePpm, geo.state.summary.co2Ppm, "atmosphere layer should surface geochemistry CO2 ppm when available");
 assert.ok(Array.isArray(context.world.atmosphere.debugOverlayRows), "atmosphere layer should surface debug rows");
 

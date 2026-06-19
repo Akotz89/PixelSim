@@ -101,6 +101,7 @@ const source = [
   "js/main-ecosystem-summary.js",
   "js/main-ecosystem-stability.js",
   "js/main-runtime.js",
+  "js/layers/registry.js",
   "js/main-simulation.js"
 ].map(read).join("\n");
 

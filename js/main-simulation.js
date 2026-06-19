@@ -3,6 +3,7 @@ import { PS } from "./core/namespace.js";
 import { formatEcosystemStabilityFactorScore, formatEcosystemTrendDelta, recordSimulationMilestones } from "./main-ecosystem-stability.js";
 import { formatFoodRunway, getSimulationAlertSeverityRank, makeSimulationAlert, recordEcosystemHistorySample, refreshEcosystemSummary, resetFoodFlowCounters, resetPopulationFlowCounters } from "./main-ecosystem-summary.js";
 import { formatMilestoneSignedNumber, getSimulationMilestoneSnapshot, recordSimulationEvent } from "./main-runtime.js";
+import { layerRegistry } from "./layers/registry.js";
 import { growFood } from "./sim/food-growth.js";
 import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePooledOrganismsForTick } from "./sim/organisms-behavior.js";
 import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
@@ -274,9 +275,7 @@ export function updateWorld(dt) {
   var profileStart = performance.now();
 
   world.tick++;
-  if (PS.layers && typeof PS.layers.updateAll === "function") {
-    PS.layers.updateAll(dt);
-  }
+  layerRegistry.updateAll(dt);
 
   if (PS.epochs && typeof PS.epochs.updateCurrent === "function") {
     PS.epochs.updateCurrent(dt);

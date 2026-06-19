@@ -3,6 +3,7 @@ const { assert, read } = require("./helpers/world-context.js");
 const assertSource = read("js/core/assert.js");
 const bitsmapSource = read("js/core/bitsmap.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
+const layerRegistrySource = read("js/layers/registry.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -19,6 +20,11 @@ const migratedResourceRegistryConsumers = [
   "js/sim/settlements-routes.js",
   "js/ui/inspect-history.js",
   "js/ui/summary.js"
+];
+const migratedLayerRegistryConsumers = [
+  "js/layers/geology.js",
+  "js/layers/atmosphere.js",
+  "js/main-simulation.js"
 ];
 
 assert.ok(
@@ -101,6 +107,35 @@ migratedResourceRegistryConsumers.forEach(function(file) {
     source.indexOf("PS.sim.resources"),
     -1,
     file + " should use resourceRegistry directly instead of PS.sim.resources"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+layerRegistry\s*=/.test(layerRegistrySource),
+  "layer registry should expose layerRegistry as a direct ES module export"
+);
+assert.strictEqual(
+  layerRegistrySource.indexOf("namespace.js"),
+  -1,
+  "layer registry should not import the PS namespace"
+);
+assert.strictEqual(
+  layerRegistrySource.indexOf("PS.layers"),
+  -1,
+  "layer registry should not register through PS.layers"
+);
+
+migratedLayerRegistryConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { layerRegistry }") >= 0,
+    file + " should import layerRegistry directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.layers"),
+    -1,
+    file + " should use layerRegistry directly instead of PS.layers"
   );
 });
 
