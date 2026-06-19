@@ -5,6 +5,7 @@ const bitsmapSource = read("js/core/bitsmap.js");
 const entityRegistrySource = read("js/core/entity-registry.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
+const civilizationsSource = read("js/sim/civilizations.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -172,5 +173,20 @@ migratedLayerRegistryConsumers.forEach(function(file) {
     file + " should use layerRegistry directly instead of PS.layers"
   );
 });
+
+assert.ok(
+  /export\s+const\s+civilizations\s*=/.test(civilizationsSource),
+  "civilizations wrapper should expose civilizations as a direct ES module export"
+);
+assert.strictEqual(
+  civilizationsSource.indexOf("namespace.js"),
+  -1,
+  "civilizations wrapper should not import the PS namespace"
+);
+assert.strictEqual(
+  civilizationsSource.indexOf("PS.sim.civilizations"),
+  -1,
+  "civilizations wrapper should not register through PS.sim.civilizations"
+);
 
 console.log("PS facade migration checks passed");

@@ -204,22 +204,22 @@ var routeStats = getSettlementRouteStats(capital.id);
 assert.strictEqual(routeStats.routeCount, 1, "route stats should index settlement routes");
 assert.strictEqual(routeStats.activeRoutes, 1, "route stats should count active routes");
 
-var colonySummary = PS.sim.civilizations.updateColonyNetwork();
+var colonySummary = civilizations.updateColonyNetwork();
 assert.ok(colonySummary.score >= CONFIG.SPACE_PROGRAM_MIN_NETWORK_SCORE, "colony network should reach space readiness score");
 assert.strictEqual(world.colonyNetworkActiveRoutes, 1, "colony network should record active routes");
 
 world.spaceProgramProgress = CONFIG.SPACE_PROGRAM_LAUNCH_THRESHOLD - 1;
-PS.sim.civilizations.updateSpaceProgram(colonySummary);
+civilizations.updateSpaceProgram(colonySummary);
 assert.ok(world.orbitalLaunches > 0, "space progression should create orbital launches");
 
 world.orbitalLaunches = Math.max(world.orbitalLaunches, 4);
-PS.sim.civilizations.updateSpaceProgram(colonySummary);
-PS.sim.civilizations.updatePlanetarySurvey();
+civilizations.updateSpaceProgram(colonySummary);
+civilizations.updatePlanetarySurvey();
 assert.strictEqual(world.orbitalPlatformReady, true, "orbital infrastructure should unlock platform readiness");
 
 world.planetarySurveyProgress = CONFIG.PLANETARY_DISCOVERY_THRESHOLD - 1;
 world.lastPlanetarySurveyTick = 0;
-PS.sim.civilizations.updatePlanetarySurvey();
+civilizations.updatePlanetarySurvey();
 assert.ok(world.planetaryBodies.length > 0, "planetary survey should discover bodies");
 
 while (world.planetaryBodies.length < CONFIG.PROBE_MISSION_MIN_BODIES) {
@@ -227,7 +227,7 @@ while (world.planetaryBodies.length < CONFIG.PROBE_MISSION_MIN_BODIES) {
 }
 world.probeMissionProgress = CONFIG.PROBE_MISSION_THRESHOLD - 1;
 world.lastProbeMissionTick = 0;
-PS.sim.civilizations.updateProbeMissions();
+civilizations.updateProbeMissions();
 assert.ok(world.probeMissions.length > 0, "probe progression should launch missions");
 
 while (world.probeMissions.length < CONFIG.STAR_MAP_MIN_COMPLETED_PROBES) {
@@ -238,7 +238,7 @@ for (var probeIndex = 0; probeIndex < world.probeMissions.length; probeIndex++) 
 }
 world.starMapProgress = CONFIG.STAR_SYSTEM_DISCOVERY_THRESHOLD - 1;
 world.lastStarMapTick = 0;
-PS.sim.civilizations.updateStarMap();
+civilizations.updateStarMap();
 assert.ok(world.starSystems.length > 0, "star map progression should discover systems");
 
 while (world.starSystems.length < CONFIG.GALACTIC_INFLUENCE_MIN_SYSTEMS) {
@@ -246,7 +246,7 @@ while (world.starSystems.length < CONFIG.GALACTIC_INFLUENCE_MIN_SYSTEMS) {
 }
 world.galacticInfluenceProgress = CONFIG.GALACTIC_SYSTEM_CLAIM_THRESHOLD - 1;
 world.lastGalacticInfluenceTick = 0;
-PS.sim.civilizations.updateGalacticInfluence();
+civilizations.updateGalacticInfluence();
 assert.ok(getClaimedStarSystemCount() > 0, "galactic influence should claim star systems");
 
 for (var systemIndex = 0; systemIndex < world.starSystems.length; systemIndex++) {
@@ -254,7 +254,7 @@ for (var systemIndex = 0; systemIndex < world.starSystems.length; systemIndex++)
 }
 world.interstellarFleetProgress = CONFIG.INTERSTELLAR_FLEET_BUILD_THRESHOLD - 1;
 world.lastInterstellarFleetTick = 0;
-PS.sim.civilizations.updateInterstellarFleets();
+civilizations.updateInterstellarFleets();
 assert.ok(world.interstellarFleets.length > 0, "fleet progression should launch interstellar fleets");
 
 while (world.interstellarFleets.length < CONFIG.EMPIRE_SECTOR_MIN_COMPLETED_FLEETS) {
@@ -265,7 +265,7 @@ for (var fleetIndex = 0; fleetIndex < world.interstellarFleets.length; fleetInde
 }
 world.empireSectorProgress = CONFIG.EMPIRE_SECTOR_BUILD_THRESHOLD - 1;
 world.lastEmpireSectorTick = 0;
-PS.sim.civilizations.updateEmpireSectors();
+civilizations.updateEmpireSectors();
 assert.ok(world.empireSectors.length > 0, "sector progression should found empire sectors");
 
 while (world.empireSectors.length < CONFIG.EMPIRE_LEGACY_MIN_SECTORS) {
@@ -273,7 +273,7 @@ while (world.empireSectors.length < CONFIG.EMPIRE_LEGACY_MIN_SECTORS) {
 }
 world.empireLegacyProgress = CONFIG.EMPIRE_LEGACY_THRESHOLD - 1;
 world.lastEmpireLegacyTick = 0;
-PS.sim.civilizations.updateEmpireLegacy();
+civilizations.updateEmpireLegacy();
 assert.ok(world.empireLegacyLevel > 0, "legacy progression should advance empire legacy level");
 
 settlementPopulation = 0;

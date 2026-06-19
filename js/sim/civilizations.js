@@ -1,13 +1,10 @@
-import { PS } from "../core/namespace.js";
 import { updateEmpireLegacyState, updateEmpireSectorState, updateInterstellarFleetState } from "./civilizations-empire.js";
 import { updatePlanetarySurveyState } from "./civilizations-orbital.js";
 import { updateProbeMissionState } from "./civilizations-probes.js";
 import { updateGalacticInfluenceState, updateStarMapState } from "./civilizations-stars.js";
 import { updateColonyNetworkState, updateSpaceProgramState } from "./settlements-growth.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.civilizations = {
+export const civilizations = {
   updateColonyNetwork: function() {
     return updateColonyNetworkState();
   },
