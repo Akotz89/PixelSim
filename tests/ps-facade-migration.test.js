@@ -2,6 +2,7 @@ const { assert, read } = require("./helpers/world-context.js");
 
 const assertSource = read("js/core/assert.js");
 const bitsmapSource = read("js/core/bitsmap.js");
+const entityRegistrySource = read("js/core/entity-registry.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const migratedAssertConsumers = [
@@ -13,6 +14,10 @@ const migratedAssertConsumers = [
 const migratedBitsmapConsumers = [
   "js/render/environment-overlays.js",
   "js/sim/vegetation.js"
+];
+const migratedEntityRegistryConsumers = [
+  "js/main-loop.js",
+  "js/sim/organisms-traits.js"
 ];
 const migratedResourceRegistryConsumers = [
   "js/sim/settlements-growth.js",
@@ -78,6 +83,35 @@ migratedBitsmapConsumers.forEach(function(file) {
     source.indexOf("PS.core.Bitsmap"),
     -1,
     file + " should instantiate Bitsmap directly instead of using PS.core.Bitsmap"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+EntityRegistry\s*=/.test(entityRegistrySource),
+  "EntityRegistry core should expose EntityRegistry as a direct ES module export"
+);
+assert.strictEqual(
+  entityRegistrySource.indexOf("namespace.js"),
+  -1,
+  "EntityRegistry core should not import the PS namespace"
+);
+assert.strictEqual(
+  entityRegistrySource.indexOf("PS.core.EntityRegistry"),
+  -1,
+  "EntityRegistry core should not register through PS.core.EntityRegistry"
+);
+
+migratedEntityRegistryConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { EntityRegistry }") >= 0,
+    file + " should import EntityRegistry directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.core.EntityRegistry"),
+    -1,
+    file + " should use EntityRegistry directly instead of PS.core.EntityRegistry"
   );
 });
 

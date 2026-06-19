@@ -1,4 +1,5 @@
 import { CONFIG } from "../../config.js";
+import { EntityRegistry } from "../core/entity-registry.js";
 import { PS } from "../core/namespace.js";
 import { chance, clamp, randomInt } from "../core/utils.js";
 import { getClampedWorldY, getWrappedWorldX } from "../render/planet-grid.js";
@@ -21,9 +22,7 @@ export function inheritTraitValue(parentValue, minValue, maxValue, stepValue) {
 
 export function makeInitialOrganismTraits(typeId) {
   // Use trait registry when available (AZR-493)
-  var typeDefaults = PS.core && PS.core.EntityRegistry && typeof PS.core.EntityRegistry.getTraitDefaults === "function"
-    ? PS.core.EntityRegistry.getTraitDefaults(typeId || "herbivore_basic")
-    : {};
+  var typeDefaults = EntityRegistry.getTraitDefaults(typeId || "herbivore_basic");
   var traits;
 
   if (PS.traitRegistry && PS.traitRegistry.definitionOrder.length > 0) {
@@ -328,7 +327,7 @@ export function makeOrganism(x, y, lineageId, typeId) {
   var surfacePosition = getRandomLatLonInTile(tileX, tileY);
   var organism = PS.pools && PS.pools.ensure() && PS.poolManager.acquire("organisms");
   var entityTypeId = typeId || "herbivore_basic";
-  var entityType = PS.core && PS.core.EntityRegistry ? PS.core.EntityRegistry.get(entityTypeId) : null;
+  var entityType = EntityRegistry.get(entityTypeId);
 
   if (!organism) {
     return null;
@@ -380,4 +379,3 @@ export function createOrganism(typeId, position) {
     typeId
   );
 }
-

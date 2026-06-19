@@ -38,6 +38,7 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/organisms-behavior.js",

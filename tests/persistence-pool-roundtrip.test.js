@@ -68,6 +68,7 @@ var sourceFiles = [
   "js/systems/pool-manager.js",
   "js/systems/pools.js",
   "js/sim/food-runtime.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-behavior.js",
   "js/sim/trait-registry.js",

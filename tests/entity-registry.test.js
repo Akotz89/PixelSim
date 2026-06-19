@@ -36,7 +36,7 @@ const registryContext = {
 vm.createContext(registryContext);
 vm.runInContext(entityRegistrySource, registryContext, { filename: "js/core/entity-registry.js" });
 
-const registry = registryContext.PS.core.EntityRegistry;
+const registry = registryContext.EntityRegistry;
 const loaded = registry.loadFromJSON(entitiesData);
 
 assert.ok(registry.types instanceof Map, "EntityRegistry should keep a Map of definitions");
@@ -128,7 +128,7 @@ function isFertile() {
 PS.config.pools.maxOrganisms = 8;
 PS.config.pools.maxFoodParticles = 8;
 PS.pools.reset();
-PS.core.EntityRegistry.loadFromJSON(${JSON.stringify(entitiesData)});
+EntityRegistry.loadFromJSON(${JSON.stringify(entitiesData)});
 setWorldSeed("ENTITY-REGISTRY-TEST");
 world.tick = 1;
 world.organisms = [];

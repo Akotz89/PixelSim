@@ -312,6 +312,7 @@ vm.createContext(context);
   "js/systems/persistence-db.js",
   "js/systems/persistence-restore-core.js",
   "js/systems/persistence-restore-entities.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js"
 ].forEach(function(file) {
   runFile(context, file);
