@@ -1,9 +1,6 @@
 import { CONFIG } from "../../config.js";
-import { PS } from "../core/namespace.js";
 import { clonePersistencePlainValue, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_VERSION } from "./persistence-db.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
-
-PS.systems = PS.systems || {};
 
 export function getTerrainTileIdForSave(terrainValue) {
   if (typeof terrainValue === "string") {
@@ -151,8 +148,6 @@ export const saveMigration = {
     };
   }
 };
-
-PS.systems.saveMigration = saveMigration;
 
 saveMigration.register(1, 2, function (data) {
   var organisms = Array.isArray(data.organisms) ? data.organisms : [];

@@ -422,6 +422,16 @@ assert.ok(
   /export\s+const\s+saveMigration\s*=/.test(saveMigrationSource),
   "save migration should expose saveMigration as a direct ES module export"
 );
+assert.strictEqual(
+  saveMigrationSource.indexOf("namespace.js"),
+  -1,
+  "save migration should not import the PS namespace"
+);
+assert.strictEqual(
+  saveMigrationSource.indexOf("PS.systems.saveMigration"),
+  -1,
+  "save migration should not register through PS.systems.saveMigration"
+);
 
 migratedSaveMigrationConsumers.forEach(function(file) {
   const source = read(file);
