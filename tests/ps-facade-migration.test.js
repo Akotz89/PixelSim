@@ -15,6 +15,7 @@ const environmentDriversSource = read("js/sim/environment-drivers.js");
 const geochemistrySource = read("js/sim/geochemistry.js");
 const molecularDynamicsSource = read("js/sim/molecular-dynamics.js");
 const moistureSource = read("js/sim/moisture.js");
+const pixelCaSource = read("js/sim/pixel-ca.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -423,6 +424,16 @@ assert.strictEqual(
   moistureSource.indexOf("PS.sim.moisture"),
   -1,
   "moisture wrapper should not register through PS.sim.moisture"
+);
+
+assert.ok(
+  /export\s+const\s+pixelCa\s*=/.test(pixelCaSource),
+  "pixel CA wrapper should expose pixelCa as a direct ES module export"
+);
+assert.strictEqual(
+  pixelCaSource.indexOf("PS.sim.pixelCa"),
+  -1,
+  "pixel CA wrapper should not register through PS.sim.pixelCa"
 );
 
 console.log("PS facade migration checks passed");

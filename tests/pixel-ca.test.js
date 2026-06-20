@@ -153,7 +153,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(source, context, { filename: "js/sim/pixel-ca.js" });
 
-const pixelCa = context.PS.sim.pixelCa;
+const pixelCa = context.pixelCa;
 pixelCa.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "pixel-ca" && entry.path === "shaders/pixel-ca.wgsl"), "pixel CA should register WGSL manifest entry");
 

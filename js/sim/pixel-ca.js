@@ -2,7 +2,7 @@ import { PS } from "../core/namespace.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.pixelCa = PS.sim.pixelCa || {
+export const pixelCa = {
   shaderName: "pixel-ca",
   shaderPath: "shaders/pixel-ca.wgsl",
   configPath: "sim/configs/pixel-ca.json",
