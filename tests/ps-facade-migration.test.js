@@ -16,6 +16,7 @@ const geochemistrySource = read("js/sim/geochemistry.js");
 const molecularDynamicsSource = read("js/sim/molecular-dynamics.js");
 const moistureSource = read("js/sim/moisture.js");
 const pixelCaSource = read("js/sim/pixel-ca.js");
+const reactionDiffusionSource = read("js/sim/reaction-diffusion.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -434,6 +435,16 @@ assert.strictEqual(
   pixelCaSource.indexOf("PS.sim.pixelCa"),
   -1,
   "pixel CA wrapper should not register through PS.sim.pixelCa"
+);
+
+assert.ok(
+  /export\s+const\s+reactionDiffusion\s*=/.test(reactionDiffusionSource),
+  "reaction diffusion wrapper should expose reactionDiffusion as a direct ES module export"
+);
+assert.strictEqual(
+  reactionDiffusionSource.indexOf("PS.sim.reactionDiffusion"),
+  -1,
+  "reaction diffusion wrapper should not register through PS.sim.reactionDiffusion"
 );
 
 console.log("PS facade migration checks passed");

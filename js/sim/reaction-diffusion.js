@@ -2,7 +2,7 @@ import { PS } from "../core/namespace.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
+export const reactionDiffusion = {
   shaderName: "reaction-diffusion",
   shaderPath: "shaders/reaction-diffusion.wgsl",
   configPath: "sim/configs/reaction-diffusion.json",

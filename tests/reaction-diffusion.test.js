@@ -149,7 +149,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(source, context, { filename: "js/sim/reaction-diffusion.js" });
 
-const rd = context.PS.sim.reactionDiffusion;
+const rd = context.reactionDiffusion;
 rd.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "reaction-diffusion" && entry.path === "shaders/reaction-diffusion.wgsl"), "reaction diffusion should register WGSL manifest entry");
 
