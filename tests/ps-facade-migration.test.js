@@ -9,6 +9,7 @@ const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
 const saveMigrationSource = read("js/systems/save-migration.js");
+const uiControlsSource = read("js/ui/controls.js");
 const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
@@ -80,6 +81,9 @@ const migratedSaveMigrationConsumers = [
   "js/systems/persistence.js",
   "js/systems/persistence-io.js",
   "js/systems/persistence-restore-core.js"
+];
+const migratedUiControlsConsumers = [
+  "js/ui/setup.js"
 ];
 const migratedOrganismAiConsumers = [
   "js/sim/organisms-behavior.js",
@@ -444,6 +448,35 @@ migratedSaveMigrationConsumers.forEach(function(file) {
     source.indexOf("PS.systems.saveMigration"),
     -1,
     file + " should use saveMigration directly instead of PS.systems.saveMigration"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+controls\s*=/.test(uiControlsSource),
+  "UI controls should expose controls as a direct ES module export"
+);
+assert.strictEqual(
+  uiControlsSource.indexOf("namespace.js"),
+  -1,
+  "UI controls should not import the PS namespace"
+);
+assert.strictEqual(
+  uiControlsSource.indexOf("PS.ui.controls"),
+  -1,
+  "UI controls should not register through PS.ui.controls"
+);
+
+migratedUiControlsConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { controls }") >= 0,
+    file + " should import controls directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.ui.controls"),
+    -1,
+    file + " should use controls directly instead of PS.ui.controls"
   );
 });
 

@@ -6,6 +6,7 @@ import { exportWorldToJsonFile, importWorldFromJsonFile, loadWorldFromIndexedDB 
 import { saveWorldToIndexedDB } from "../systems/persistence-restore-core.js";
 import { world } from "../systems/state.js";
 import { getCanvasPointFromEvent, getSurfacePositionFromCanvasEvent, getTileFromCanvasEvent, planetDragState, prepareTouchInput } from "./camera-input.js";
+import { controls } from "./controls.js";
 import { canvas, exportJsonButton, foodGrowthSlider, foodSizeSlider, importJsonButton, importJsonFile, loadButton, menuBackdrop, menuTabs, menuToggleButton, organismSizeSlider, pauseButton, restartButton, saveButton, seedInput, seedRandomButton, speedDownButton, speedSlider, speedUpButton, startingFoodSlider, stepButton, timeScaleSlider } from "./dom-refs.js";
 import { applyTuningFromControls, setMenuOpen, setMenuPage, syncControlStates, syncMenuPage, syncMenuState, syncTuningControls, toggleMenuOpen, updateHud } from "./foundation.js";
 import { getInspectableEntityFromTile, inspectTile } from "./inspect.js";
@@ -253,9 +254,7 @@ export function setupControls() {
       PS.ui.modal.setup();
     }
 
-    if (PS.ui.controls) {
-      PS.ui.controls.setup();
-    }
+    controls.setup();
 
     if (PS.ui.notifications) {
       PS.ui.notifications.setup();
