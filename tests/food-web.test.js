@@ -158,12 +158,12 @@ world.organisms.push(predator, preyA, preyB);
 addFoodAt(10, 10);
 addFoodAt(11, 10);
 
-assert.strictEqual(PS.sim.foodWeb.getRole(predator.traits), "predator", "high carnivory should classify as predator");
-assert.strictEqual(PS.sim.foodWeb.getRole(preyA.traits), "herbivore", "low carnivory should classify as herbivore");
-assert.strictEqual(PS.sim.foodWeb.findNearestPrey(predator, predator.traits, 6), preyA, "food-web prey lookup should use indexed local candidates");
+assert.strictEqual(foodWeb.getRole(predator.traits), "predator", "high carnivory should classify as predator");
+assert.strictEqual(foodWeb.getRole(preyA.traits), "herbivore", "low carnivory should classify as herbivore");
+assert.strictEqual(foodWeb.findNearestPrey(predator, predator.traits, 6), preyA, "food-web prey lookup should use indexed local candidates");
 
 var populations = PS.sim.representatives.refresh();
-var summary = PS.sim.foodWeb.refreshSummary(populations);
+var summary = foodWeb.refreshSummary(populations);
 assert.strictEqual(summary.roles.predator, 1, "food-web summary should count predators");
 assert.strictEqual(summary.roles.herbivore, 2, "food-web summary should count herbivores");
 assert.ok(summary.trophicBalance >= 0 && summary.trophicBalance <= 100, "food-web summary should bound trophic balance");

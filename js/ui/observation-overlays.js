@@ -2,6 +2,7 @@ import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
+import { foodWeb } from "../sim/food-web.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { lineageTracking } from "../sim/lineage-tracking.js";
@@ -203,8 +204,8 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
 
       for (var nearbyIndex = 0; nearbyIndex < nearby.length; nearbyIndex++) {
         var nearbyTraits = typeof ensureOrganismTraits === "function" ? ensureOrganismTraits(nearby[nearbyIndex]) : nearby[nearbyIndex].traits;
-        var role = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
-          ? PS.sim.foodWeb.getRole(nearbyTraits)
+        var role = foodWeb && typeof foodWeb.getRole === "function"
+          ? foodWeb.getRole(nearbyTraits)
           : (Number(nearbyTraits && nearbyTraits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD ? "predator" : "herbivore");
 
         if (role === "predator") {

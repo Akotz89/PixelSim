@@ -3,6 +3,7 @@ import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getClampedWorldY, getWrappedWorldX } from "../render/planet-grid.js";
 import { foodExistsAt } from "./food-growth.js";
+import { foodWeb } from "./food-web.js";
 import { findNearestFoodInBuckets } from "./food-runtime.js";
 import { getTerrainMismatchForTraits } from "./organisms-behavior.js";
 import { allocateBiologyRepresentativeId, allocateLineageId, ensureOrganismTraits } from "./organisms-traits.js";
@@ -745,8 +746,8 @@ export function updatePopulationFromOrganisms(population, organisms, signature) 
       }
     }
   }
-  population.foodWeb = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getPopulationMetrics === "function"
-    ? PS.sim.foodWeb.getPopulationMetrics(organisms, traitsList, population.pressure)
+  population.foodWeb = foodWeb && typeof foodWeb.getPopulationMetrics === "function"
+    ? foodWeb.getPopulationMetrics(organisms, traitsList, population.pressure)
     : null;
   population.representativeIds = representativeIds;
   population.lastUpdatedTick = Math.max(0, Math.round(Number(world.tick) || 0));
@@ -954,10 +955,10 @@ export function refreshBiologyRepresentatives() {
 
   representativePerfStats.lastRefreshMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
   world.biologyAggregateRefreshSignature = getRepresentativeAggregateSignature();
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.refreshSummary === "function") {
-    PS.sim.foodWeb.refreshSummary(world.biologyPopulations);
-    if (typeof PS.sim.foodWeb.emitMilestones === "function") {
-      PS.sim.foodWeb.emitMilestones(world.foodWebSummary);
+  if (foodWeb && typeof foodWeb.refreshSummary === "function") {
+    foodWeb.refreshSummary(world.biologyPopulations);
+    if (typeof foodWeb.emitMilestones === "function") {
+      foodWeb.emitMilestones(world.foodWebSummary);
     }
   }
   if (typeof terrainPressure.refreshSummary === "function") {

@@ -6,6 +6,7 @@ import { getClampedWorldY, getDirectionXToTile, getDirectionYToTile, getTileGrea
 import { assignRandomSurfacePositionInTile, getPlanetLatitudeForTile, getPlanetLongitudeForTile } from "../render/planet-view.js";
 import { isFertile } from "../render/terrain-hydrology.js";
 import { findNearestFoodInBuckets, removeFoodAtPosition } from "./food-runtime.js";
+import { foodWeb } from "./food-web.js";
 import { organismAi } from "./organism-ai.js";
 import { getLimbMovementMultiplierFromValue, getOrganismTravelKmPerTick } from "./organisms-indexes.js";
 import { assignChildLineage, ensureOrganismTraits, inheritOrganismTraits, makeOrganism } from "./organisms-traits.js";
@@ -126,9 +127,7 @@ export function eatFoodOnCurrentTile(organism) {
 }
 
 export function isCarnivoreTraitSet(traits) {
-  return PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
-    ? PS.sim.foodWeb.getRole(traits) === "predator"
-    : Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
+  return Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
 }
 
 export function getPredationSearchRadius(traits) {
@@ -151,8 +150,8 @@ export function isPredationPrey(candidate, attacker) {
 
 export function findNearestPrey(organism, traits) {
   var radius = getPredationSearchRadius(traits);
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.findNearestPrey === "function") {
-    return PS.sim.foodWeb.findNearestPrey(organism, traits, radius);
+  if (foodWeb && typeof foodWeb.findNearestPrey === "function") {
+    return foodWeb.findNearestPrey(organism, traits, radius);
   }
 
   var nearestPrey = null;
@@ -182,8 +181,8 @@ export function moveTowardPrey(organism, prey) {
 }
 
 export function getPredationAttackAdvantage(attackerTraits, victimTraits) {
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getAttackAdvantage === "function") {
-    return PS.sim.foodWeb.getAttackAdvantage(attackerTraits, victimTraits);
+  if (foodWeb && typeof foodWeb.getAttackAdvantage === "function") {
+    return foodWeb.getAttackAdvantage(attackerTraits, victimTraits);
   }
 
   var attackerSize = Number(attackerTraits.bodySize) || CONFIG.TRAIT_BODY_SIZE_DEFAULT;
@@ -222,8 +221,8 @@ export function tryAttackPrey(attacker, prey, attackerTraits) {
   syncPooledOrganismEnergy(attacker);
   attacker.lastPredationTick = world.tick;
   prey.deathCause = "predation";
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.recordPredation === "function") {
-    PS.sim.foodWeb.recordPredation(attacker, prey, transferredEnergy);
+  if (foodWeb && typeof foodWeb.recordPredation === "function") {
+    foodWeb.recordPredation(attacker, prey, transferredEnergy);
   }
   return true;
 }

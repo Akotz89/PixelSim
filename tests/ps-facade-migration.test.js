@@ -30,6 +30,7 @@ const tileWorkerSource = read("js/sim/tile-worker.js");
 const modifiersSource = read("js/sim/modifiers.js");
 const traitRegistrySource = read("js/sim/trait-registry.js");
 const evolutionSource = read("js/sim/evolution.js");
+const foodWebSource = read("js/sim/food-web.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -126,6 +127,12 @@ const migratedModifiersConsumers = [
 const migratedTraitRegistryConsumers = [
   "js/main-simulation.js",
   "js/sim/organisms-traits.js"
+];
+const migratedFoodWebConsumers = [
+  "js/sim/mass-extinction.js",
+  "js/sim/organisms-behavior.js",
+  "js/sim/representatives.js",
+  "js/ui/observation-overlays.js"
 ];
 
 assert.ok(
@@ -749,6 +756,30 @@ assert.strictEqual(
   evolutionSource.indexOf("PS.sim.evolution"),
   -1,
   "evolution should not register through PS.sim.evolution"
+);
+
+migratedFoodWebConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { foodWeb }") >= 0,
+    file + " should import foodWeb directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.foodWeb"),
+    -1,
+    file + " should use foodWeb directly instead of PS.sim.foodWeb"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+foodWeb\s*=/.test(foodWebSource),
+  "food web should expose foodWeb as a direct ES module export"
+);
+assert.strictEqual(
+  foodWebSource.indexOf("PS.sim.foodWeb"),
+  -1,
+  "food web should not register through PS.sim.foodWeb"
 );
 
 console.log("PS facade migration checks passed");
