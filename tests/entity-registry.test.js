@@ -141,13 +141,13 @@ world.organisms = [];
 world.organismBuckets = {};
 world.organismsByLineage = {};
 
-var herbivore = PS.sim.organisms.make(10, 10);
+var herbivore = organisms.make(10, 10);
 assert.strictEqual(herbivore.typeId, "herbivore_basic", "default organism should use herbivore_basic type");
 assert.strictEqual(herbivore.spriteSheet, "creatures/herbivore", "default organism should inherit herbivore sprite sheet");
 assert.strictEqual(herbivore.energy, 180, "default organism should use registry base energy");
 assert.strictEqual(herbivore.traits.vision, 12, "default organism should use registry trait defaults");
 
-var predator = PS.sim.organisms.create("predator_basic", { x: 12, y: 10 });
+var predator = organisms.create("predator_basic", { x: 12, y: 10 });
 assert.strictEqual(predator.typeId, "predator_basic", "create should assign requested entity type");
 assert.strictEqual(predator.spriteSheet, "creatures/predator", "predator should use registry sprite sheet");
 assert.strictEqual(predator.diet, "carnivore", "predator should use registry diet");
@@ -157,7 +157,7 @@ assert.strictEqual(predator.traits.metabolism, 2, "predator should use registry 
 assert.ok(Math.abs(predator.traits.bodySize - 0.7) < 0.0001, "predator should use registry body size default");
 assert.ok(predator.traits.carnivory > CONFIG.PREDATION_CARNIVORY_THRESHOLD, "predator should use registry carnivory default");
 
-var fish = PS.sim.organisms.make(2, 3, null, "fish_basic");
+var fish = organisms.make(2, 3, null, "fish_basic");
 assert.strictEqual(fish.typeId, "fish_basic", "make should accept optional entity type id");
 assert.strictEqual(fish.spriteSheet, "creatures/fish", "fish should use registry sprite sheet");
 assert.strictEqual(fish.energy, 120, "fish should use registry base energy");

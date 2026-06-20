@@ -9,6 +9,7 @@ import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
 import { foodExistsAt } from "../sim/food-growth.js";
 import { massExtinction } from "../sim/mass-extinction.js";
 import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { representatives } from "../sim/representatives.js";
 import { resourceRegistry } from "../sim/resource-registry.js";
 import { speciation } from "../sim/speciation.js";
 import { world } from "../systems/state.js";
@@ -191,8 +192,8 @@ export function updateInspectPanel() {
     var parentText = lineageRecord && lineageRecord.parentId > 0 ? " parent L" + lineageRecord.parentId : " founder";
     var traits = ensureOrganismTraits(organism);
     var organismSurfacePosition = getEntitySurfacePosition(organism);
-    var representativeContext = PS.sim.representatives && PS.sim.representatives.inspect
-      ? PS.sim.representatives.inspect(organism)
+    var representativeContext = representatives && representatives.inspect
+      ? representatives.inspect(organism)
       : null;
     var representativeRecord = representativeContext ? representativeContext.representative : null;
     var populationRecord = representativeContext ? representativeContext.population : null;

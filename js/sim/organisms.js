@@ -1,11 +1,8 @@
-import { PS } from "../core/namespace.js";
 import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism } from "./organisms-behavior.js";
 import { collectOrganismsInRadius, countOrganismsInRadiusForLineage, ensureOrganismIndexes, getIndexedOrganismsForLineage, getNearestOrganismInRadius, rebuildOrganismIndexes } from "./organisms-indexes.js";
 import { createOrganism, ensureOrganismLineage, ensureOrganismTraits, makeOrganism, registerLineage } from "./organisms-traits.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.organisms = {
+export const organisms = {
   make: function(x, y, lineageId, typeId) {
     return makeOrganism(x, y, lineageId, typeId);
   },

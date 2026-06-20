@@ -9,6 +9,7 @@ import { lineageTracking } from "./sim/lineage-tracking.js";
 import { massExtinction } from "./sim/mass-extinction.js";
 import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePooledOrganismsForTick } from "./sim/organisms-behavior.js";
 import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
+import { representatives } from "./sim/representatives.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./sim/settlements-routes.js";
 import { updateSettlements } from "./sim/settlements-runtime.js";
 import { traitRegistry } from "./sim/trait-registry.js";
@@ -248,8 +249,8 @@ export function syncLifecycleState() {
 export function seedWorld() {
   PS.core.worldGen.generateWorld(world.seedText, CONFIG);
 
-  if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function") {
-    PS.sim.representatives.refresh();
+  if (representatives && typeof representatives.refresh === "function") {
+    representatives.refresh();
   }
   if (lineageTracking && typeof lineageTracking.update === "function") {
     lineageTracking.update(true);
@@ -314,8 +315,8 @@ export function updateWorld(dt) {
     refreshLineageRegistry();
   }
 
-  if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function" && shouldRefreshSummaries) {
-    PS.sim.representatives.refresh();
+  if (representatives && typeof representatives.refresh === "function" && shouldRefreshSummaries) {
+    representatives.refresh();
   }
   if (lineageTracking && typeof lineageTracking.update === "function" && shouldRefreshSummaries) {
     lineageTracking.update(false);

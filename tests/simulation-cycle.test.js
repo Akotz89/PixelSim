@@ -91,6 +91,8 @@ const source = [
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js",
+  "js/sim/speciation.js",
+  "js/sim/representatives.js",
   "js/sim/settlements-state.js",
   "js/sim/resource-registry.js",
   "js/sim/settlements-growth.js",
@@ -245,7 +247,7 @@ function resetPerformanceFixture() {
   for (var perfIndex = 0; perfIndex < 1400; perfIndex++) {
     var perfX = perfIndex % WORLD_WIDTH;
     var perfY = Math.floor(perfIndex / WORLD_WIDTH) % WORLD_HEIGHT;
-    var perfOrganism = PS.sim.organisms.make(perfX, perfY, 1 + (perfIndex % 7));
+    var perfOrganism = organisms.make(perfX, perfY, 1 + (perfIndex % 7));
     perfOrganism.energy = 55 + (perfIndex % 45);
     perfOrganism.age = perfIndex % 80;
     perfOrganism.directionX = 0;
@@ -270,7 +272,7 @@ function resetPerformanceFixture() {
     world.organisms.push(perfOrganism);
   }
 
-  PS.sim.organisms.rebuildIndexes();
+  organisms.rebuildIndexes();
   for (var warmupTick = 0; warmupTick < 10; warmupTick++) {
     updateWorld(1 / 60);
   }

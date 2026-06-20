@@ -151,14 +151,14 @@ assert.deepStrictEqual(
   "organism AI should register the five required behavior modules"
 );
 
-var forager = PS.sim.organisms.make(10, 10);
+var forager = organisms.make(10, 10);
 forager.energy = 120;
 forager.traits.vision = 5;
 forager.traits.movementTendency = 0;
 forager.traits.reproductionEnergy = 9999;
 world.organisms.push(forager);
 var food = addFoodAt(12, 10);
-PS.sim.organisms.update(forager);
+organisms.update(forager);
 
 assert.strictEqual(forager.ai.moduleKey, "eat", "nearby food should select the eat module");
 assert.strictEqual(forager.ai.planKey, "forage-food", "eat module should create a named forage plan");

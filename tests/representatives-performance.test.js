@@ -129,7 +129,7 @@ findNearestFoodInBuckets = function(x, y, searchRadius) {
 };
 
 for (var i = 0; i < 1400; i++) {
-  var organism = PS.sim.organisms.make(i % WORLD_WIDTH, Math.floor(i / WORLD_WIDTH) % WORLD_HEIGHT, 1 + (i % 4));
+  var organism = organisms.make(i % WORLD_WIDTH, Math.floor(i / WORLD_WIDTH) % WORLD_HEIGHT, 1 + (i % 4));
   organism.energy = 80 + (i % 120);
   organism.age = i % 50;
   organism.traits.vision = 4 + (i % 8);
@@ -139,13 +139,13 @@ for (var i = 0; i < 1400; i++) {
   world.organisms.push(organism);
 }
 
-PS.sim.representatives.refresh();
+representatives.refresh();
 world.tick++;
 
 var startedAt = performance.now();
-PS.sim.representatives.refresh();
+representatives.refresh();
 var measuredMs = performance.now() - startedAt;
-var stats = PS.sim.representatives.getPerfStats();
+var stats = representatives.getPerfStats();
 
 assert.strictEqual(stats.lastRefreshOrganisms, 1400, "perf fixture should refresh 1400 organisms");
 assert.strictEqual(stats.lastTraitEnsureCalls, 0, "unchanged aggregate refresh should reuse ready trait summaries");
@@ -156,11 +156,11 @@ assert.strictEqual(stats.lastFoodSearchCount, 0, "unselected refresh should not 
 assert.strictEqual(foodSearchCalls, 0, "nearest-food lookup should be skipped for summary-only refresh");
 assert.ok(stats.lastRefreshMs < 1, "representative refresh should stay under 1ms for 1400 organisms, got " + stats.lastRefreshMs.toFixed(3) + "ms");
 
-PS.sim.representatives.select(world.organisms[0]);
+representatives.select(world.organisms[0]);
 foodSearchCalls = 0;
 world.tick++;
-PS.sim.representatives.refresh();
-stats = PS.sim.representatives.getPerfStats();
+representatives.refresh();
+stats = representatives.getPerfStats();
 
 assert.strictEqual(stats.lastFoodSearchCount, 1, "refresh should only search food for selected/pinned representatives");
 assert.strictEqual(foodSearchCalls, 1, "nearest-food lookup should run only for the selected representative");

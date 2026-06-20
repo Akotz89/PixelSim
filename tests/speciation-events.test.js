@@ -159,7 +159,7 @@ world.timelineEvents = [];
 world.tick = 300;
 world.nextSpeciesId = 2;
 
-var founder = PS.sim.organisms.make(2, 6);
+var founder = organisms.make(2, 6);
 founder.speciesId = 1;
 founder.populationId = 1;
 founder.traits = {
@@ -188,7 +188,7 @@ speciation.ensureSpecies(1, {
   activePopulation: 2
 });
 
-var divergent = PS.sim.organisms.make(6, 6, founder.lineageId);
+var divergent = organisms.make(6, 6, founder.lineageId);
 divergent.speciesId = 1;
 divergent.populationId = 1;
 divergent.traits = {
@@ -213,8 +213,8 @@ world.organisms.push(founder, divergent);
 var distance = speciation.traitDistance(founder.traits, divergent.traits);
 assert.ok(distance > 0.9, "normalized trait distance should include expanded AZR-284 traits");
 
-PS.sim.representatives.refresh();
-var parentPopulation = PS.sim.representatives.getPopulation(1);
+representatives.refresh();
+var parentPopulation = representatives.getPopulation(1);
 var childPopulation = world.biologyPopulations.filter(function(population) {
   return population.parentPopulationId === 1 && population.parentSpeciesId === 1;
 })[0];
@@ -246,7 +246,7 @@ assert.strictEqual(divergent.speciesId, newSpeciesId, "deterministic child subse
 assert.strictEqual(divergent.populationId, childPopulation.id, "child subset should receive child population id");
 
 world.tick += 1;
-PS.sim.representatives.refresh();
+representatives.refresh();
 assert.strictEqual(world.speciationEvents.length, 1, "guardrails should prevent immediate species explosion");
 
 console.log("speciation event checks passed");

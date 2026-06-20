@@ -145,7 +145,7 @@ world.biologyRepresentatives = [];
 world.biologyRepresentativeById = {};
 world.tick = 14;
 
-var parent = PS.sim.organisms.make(4, 4);
+var parent = organisms.make(4, 4);
 parent.energy = 240;
 parent.age = 8;
 parent.traits.vision = 5;
@@ -162,7 +162,7 @@ parent.directionX = 1;
 parent.directionY = 0;
 world.organisms.push(parent);
 
-var child = PS.sim.organisms.make(5, 4, parent.lineageId);
+var child = organisms.make(5, 4, parent.lineageId);
 child.energy = 120;
 child.age = 3;
 child.traits.vision = 7;
@@ -173,16 +173,16 @@ child.directionX = 0;
 child.directionY = 0;
 world.organisms.push(child);
 
-var other = PS.sim.organisms.make(12, 12);
+var other = organisms.make(12, 12);
 other.energy = 80;
 other.age = 2;
 world.organisms.push(other);
 addFoodAt(6, 4);
 
-var populations = PS.sim.representatives.refresh();
+var populations = representatives.refresh();
 assert.strictEqual(populations.length, 2, "refresh should create one aggregate population per lineage");
 
-var parentPopulation = PS.sim.representatives.getPopulation(parent.populationId);
+var parentPopulation = representatives.getPopulation(parent.populationId);
 assert.strictEqual(parentPopulation.count, 2, "aggregate population should count active representatives in lineage");
 assert.strictEqual(parentPopulation.representativeIds.length, 2, "aggregate population should retain representative links");
 assert.ok(parentPopulation.traitMean.vision > 0, "aggregate population should summarize trait means");
@@ -208,7 +208,7 @@ for (var territoryIndex = 1; territoryIndex < parentPopulation.territoryCells.le
 assert.strictEqual(parentPopulation.pressure.food, 0, "pressure should summarize local food occupancy");
 assert.ok(parentPopulation.pressure.scarcity >= 0, "pressure should summarize scarcity");
 
-var representative = PS.sim.representatives.syncOrganism(parent, { selected: true });
+var representative = representatives.syncOrganism(parent, { selected: true });
 assert.strictEqual(representative.populationId, parent.populationId, "representative should link to aggregate population");
 assert.strictEqual(representative.speciesId, parent.speciesId, "representative should link to species");
 assert.strictEqual(representative.selected, true, "selected representative should be marked for inspection");
@@ -222,9 +222,9 @@ assert.ok(
   "representative should expose morphology mobility preview"
 );
 
-PS.sim.representatives.pin(parent, true);
-PS.sim.representatives.bookmark(parent, 0.8);
-var inspected = PS.sim.representatives.inspect(parent.representativeId);
+representatives.pin(parent, true);
+representatives.bookmark(parent, 0.8);
+var inspected = representatives.inspect(parent.representativeId);
 assert.strictEqual(inspected.representative.pinned, true, "representatives should support player pinning");
 assert.strictEqual(inspected.representative.bookmarkScore, 0.8, "representatives should support bookmark scores");
 assert.strictEqual(inspected.population.id, parent.populationId, "inspection should include aggregate population context");
@@ -234,7 +234,7 @@ parent.x = -999;
 parent.y = WORLD_HEIGHT + 999;
 parent.latitude = NaN;
 parent.longitude = Infinity;
-var sanitizedRepresentative = PS.sim.representatives.syncOrganism(parent);
+var sanitizedRepresentative = representatives.syncOrganism(parent);
 var sanitizedHistory = sanitizedRepresentative.history[sanitizedRepresentative.history.length - 1];
 assert.strictEqual(sanitizedRepresentative.x, getWrappedWorldX(-999), "representative x should wrap out-of-bounds organism coordinates");
 assert.strictEqual(sanitizedRepresentative.y, WORLD_HEIGHT - 1, "representative y should clamp out-of-bounds organism coordinates");
@@ -246,18 +246,18 @@ assert.strictEqual(sanitizedHistory.y, sanitizedRepresentative.y, "representativ
 for (var i = 0; i < 20; i++) {
   world.tick++;
   parent.x = getWrappedWorldX(parent.x + 1);
-  PS.sim.representatives.syncOrganism(parent);
+  representatives.syncOrganism(parent);
 }
 
 assert.ok(
-  PS.sim.representatives.getRepresentative(parent.representativeId).history.length <= 12,
+  representatives.getRepresentative(parent.representativeId).history.length <= 12,
   "representative inspect history should remain bounded"
 );
 
 world.organisms.splice(world.organisms.indexOf(other), 1);
-PS.sim.representatives.refresh();
+representatives.refresh();
 assert.strictEqual(
-  PS.sim.representatives.getRepresentative(other.representativeId).isActive,
+  representatives.getRepresentative(other.representativeId).isActive,
   false,
   "representatives should retire when their active facade leaves the runtime"
 );
@@ -269,23 +269,23 @@ console.log("representative organism lifecycle checks passed");
 // Its representative has isActive = false
 
 var deadRepId = other.representativeId;
-var deadRepBeforePrune = PS.sim.representatives.getRepresentative(deadRepId);
+var deadRepBeforePrune = representatives.getRepresentative(deadRepId);
 assert.ok(deadRepBeforePrune, "dead representative should exist before pruning");
 assert.strictEqual(deadRepBeforePrune.isActive, false, "dead representative should be inactive");
 
 // Advance tick past prune interval but within prune threshold — should NOT be pruned
 world.tick += 61;
-PS.sim.representatives.refresh();
+representatives.refresh();
 assert.ok(
-  PS.sim.representatives.getRepresentative(deadRepId),
+  representatives.getRepresentative(deadRepId),
   "dead representative should survive within prune threshold"
 );
 
 // Advance tick past prune threshold (300 ticks) — should be pruned
 world.tick += 301;
-PS.sim.representatives.refresh();
+representatives.refresh();
 assert.strictEqual(
-  PS.sim.representatives.getRepresentative(deadRepId),
+  representatives.getRepresentative(deadRepId),
   null,
   "dead representative should be pruned after PRUNE_DEAD_AFTER_TICKS"
 );
@@ -301,13 +301,13 @@ for (var ri = 0; ri < world.biologyRepresentatives.length; ri++) {
 assert.strictEqual(foundInArray, false, "pruned representative should be removed from array");
 
 // Verify pinned/selected/bookmarked representatives are NOT pruned
-// parent is pinned (set above with PS.sim.representatives.pin(parent, true))
+// parent is pinned (set above with representatives.pin(parent, true))
 var parentRepId = parent.representativeId;
-var parentRep = PS.sim.representatives.getRepresentative(parentRepId);
+var parentRep = representatives.getRepresentative(parentRepId);
 assert.ok(parentRep, "pinned representative should NOT be pruned even with time elapsed");
 
 // Verify pruning stats are exposed
-var perfStats = PS.sim.representatives.getPerfStats();
+var perfStats = representatives.getPerfStats();
 assert.ok(perfStats.lastPrunedRepresentatives >= 0, "perf stats should expose pruned representative count");
 assert.ok(perfStats.lastPrunedPopulations >= 0, "perf stats should expose pruned population count");
 

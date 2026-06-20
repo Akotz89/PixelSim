@@ -228,10 +228,10 @@ world.biologyRepresentatives = [];
 world.biologyRepresentativeById = {};
 world.tick = 240;
 
-var suited = PS.sim.organisms.make(5, 5);
+var suited = organisms.make(5, 5);
 suited.energy = 600;
 suited.traits = Object.assign(suited.traits, matchedDesertTraits);
-var unsuited = PS.sim.organisms.make(5, 5);
+var unsuited = organisms.make(5, 5);
 unsuited.energy = 600;
 unsuited.traits = Object.assign(unsuited.traits, mismatchedDesertTraits);
 world.organisms.push(suited, unsuited);
@@ -243,8 +243,8 @@ unsuited.energy = unsuited.traits.reproductionEnergy + 1;
 reproduceIfReady(unsuited);
 assert.strictEqual(world.birthsRecorded || 0, beforeBirths, "terrain mismatch should suppress borderline reproduction");
 
-var populations = PS.sim.representatives.refresh();
-var population = PS.sim.representatives.getPopulation(suited.populationId);
+var populations = representatives.refresh();
+var population = representatives.getPopulation(suited.populationId);
 assert.ok(populations.length > 0, "representative refresh should produce populations");
 assert.ok(population.terrainPressure, "population should expose terrain pressure summary");
 assert.strictEqual(population.terrainPressure.terrainDriver, "desert", "population pressure should retain dominant terrain driver");
@@ -262,7 +262,7 @@ assert.ok(world.timelineEvents.some(function(event) {
 var beforeSummaryPressure = world.terrainPressureSummary.pressure;
 world.planetTiles[getTileIndex(5, 5)].biome = "jungle forest";
 world.biologyAggregateRefreshSignature = getRepresentativeAggregateSignature();
-PS.sim.representatives.refresh();
+representatives.refresh();
 assert.notStrictEqual(
   world.terrainPressureSummary.topDriver,
   "desert",

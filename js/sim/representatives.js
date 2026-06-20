@@ -11,8 +11,6 @@ import { speciation } from "./speciation.js";
 import { terrainPressure } from "./terrain-pressure.js";
 import { world } from "../systems/state.js";
 
-PS.sim = PS.sim || {};
-
 export var REPRESENTATIVE_HISTORY_LIMIT = 12;
 export var REPRESENTATIVE_TERRITORY_LIMIT = 8;
 export var REPRESENTATIVE_PRUNE_DEAD_AFTER_TICKS = 300;
@@ -1031,7 +1029,7 @@ export function inspectBiologyRepresentative(organismOrId) {
   };
 }
 
-PS.sim.representatives = {
+export const representatives = {
   refresh: refreshBiologyRepresentatives,
   syncOrganism: syncBiologyRepresentative,
   pin: setRepresentativePinned,

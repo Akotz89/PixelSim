@@ -35,6 +35,8 @@ const foodSource = read("js/sim/food.js");
 const speciationSource = read("js/sim/speciation.js");
 const massExtinctionSource = read("js/sim/mass-extinction.js");
 const settlementsSource = read("js/sim/settlements.js");
+const organismsSource = read("js/sim/organisms.js");
+const representativesSource = read("js/sim/representatives.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -153,6 +155,35 @@ const migratedMassExtinctionConsumers = [
 const migratedSettlementsConsumers = [
   "tests/settlement-progression.test.js",
   "tests/simulation-cycle.test.js"
+];
+const migratedOrganismsConsumers = [
+  "tests/body-traits-behavior.test.js",
+  "tests/entity-registry.test.js",
+  "tests/food-web.test.js",
+  "tests/mass-extinction.test.js",
+  "tests/organism-ai.test.js",
+  "tests/organism-runtime.test.js",
+  "tests/organism-update-path.test.js",
+  "tests/predation.test.js",
+  "tests/representatives-performance.test.js",
+  "tests/representatives.test.js",
+  "tests/simulation-cycle.test.js",
+  "tests/speciation-events.test.js",
+  "tests/terrain-driven-evolution.test.js"
+];
+const migratedRepresentativesConsumers = [
+  "js/main-simulation.js",
+  "js/sim/lineage-tracking.js",
+  "js/sim/mass-extinction.js",
+  "js/ui/inspect-history.js",
+  "js/ui/inspect.js",
+  "tests/food-web.test.js",
+  "tests/mass-extinction.test.js",
+  "tests/representatives-performance.test.js",
+  "tests/representatives.test.js",
+  "tests/simulation-cycle.test.js",
+  "tests/speciation-events.test.js",
+  "tests/terrain-driven-evolution.test.js"
 ];
 
 assert.ok(
@@ -878,6 +909,50 @@ assert.strictEqual(
   settlementsSource.indexOf("PS.sim.settlements"),
   -1,
   "settlements should not register through PS.sim.settlements"
+);
+
+migratedOrganismsConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.strictEqual(
+    source.indexOf("PS.sim.organisms"),
+    -1,
+    file + " should use organisms directly instead of PS.sim.organisms"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+organisms\s*=/.test(organismsSource),
+  "organisms should expose organisms as a direct ES module export"
+);
+assert.strictEqual(
+  organismsSource.indexOf("PS.sim.organisms"),
+  -1,
+  "organisms should not register through PS.sim.organisms"
+);
+
+migratedRepresentativesConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { representatives }") >= 0 || file.indexOf("tests/") === 0,
+    file + " should import representatives directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.representatives"),
+    -1,
+    file + " should use representatives directly instead of PS.sim.representatives"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+representatives\s*=/.test(representativesSource),
+  "representatives should expose representatives as a direct ES module export"
+);
+assert.strictEqual(
+  representativesSource.indexOf("PS.sim.representatives"),
+  -1,
+  "representatives should not register through PS.sim.representatives"
 );
 
 console.log("PS facade migration checks passed");

@@ -176,7 +176,7 @@ world.eventLog = [];
 world.timelineEvents = [];
 
 function makeTestOrganism(x, y, lineageId, speciesId, populationId, traits) {
-  var organism = PS.sim.organisms.make(x, y, lineageId);
+  var organism = organisms.make(x, y, lineageId);
   organism.speciesId = speciesId;
   organism.populationId = populationId;
   organism.energy = 260;
@@ -213,7 +213,7 @@ for (var j = 0; j < 4; j++) {
   world.organisms.push(makeTestOrganism(20 + j, 8, 2, 2, 2, resistantTraits));
 }
 
-PS.sim.representatives.refresh();
+representatives.refresh();
 world.foodWebSummary = {
   roles: { producer: 40, herbivore: 6, predator: 2, scavenger: 1, decomposer: 0, omnivore: 1 },
   trophicBalance: 72,
@@ -256,7 +256,7 @@ assert.ok(
   massExtinction.getRecoveryReproductionMultiplier(survivor) < 1,
   "survivor population should receive recovery reproduction boost"
 );
-assert.ok(PS.sim.representatives.getPopulation(1).isActive === false || PS.sim.representatives.getPopulation(1).count < 6, "aggregate population should reflect killed organisms");
+assert.ok(representatives.getPopulation(1).isActive === false || representatives.getPopulation(1).count < 6, "aggregate population should reflect killed organisms");
 
 console.log("mass extinction checks passed");
 `, context);

@@ -140,7 +140,7 @@ function resetOrganismFixture() {
 }
 
 function makeForagingOrganism(x, y) {
-  var organism = PS.sim.organisms.make(x, y);
+  var organism = organisms.make(x, y);
   organism.energy = 180;
   organism.traits.vision = 8;
   organism.traits.reproductionEnergy = 999;

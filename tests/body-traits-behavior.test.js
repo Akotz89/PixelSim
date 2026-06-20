@@ -171,7 +171,7 @@ function resetBodyTraitWorld() {
 }
 
 function makeBodyTraitOrganism(x, y, bodySize, limbCount) {
-  var organism = PS.sim.organisms.make(x, y);
+  var organism = organisms.make(x, y);
   organism.energy = 100;
   organism.traits.bodySize = bodySize;
   organism.traits.limbCount = limbCount;
@@ -202,8 +202,8 @@ assert.ok(
 smallBody.energy = 100;
 largeBody.energy = 100;
 world.organisms.push(smallBody, largeBody);
-PS.sim.organisms.update(smallBody);
-PS.sim.organisms.update(largeBody);
+organisms.update(smallBody);
+organisms.update(largeBody);
 assert.ok(
   smallBody.energy > largeBody.energy,
   "larger body should spend more energy on metabolism during update"
@@ -229,8 +229,8 @@ var fastMover = makeBodyTraitOrganism(40, 40, 1, 12);
 slowMover.directionX = 1;
 fastMover.directionX = 1;
 world.organisms.push(slowMover, fastMover);
-PS.sim.organisms.update(slowMover);
-PS.sim.organisms.update(fastMover);
+organisms.update(slowMover);
+organisms.update(fastMover);
 assert.strictEqual(slowMover.x, 30, "limbCount=0 organism should not cross a 100km tile in one tick");
 assert.strictEqual(fastMover.x, 41, "limbCount=12 organism should move faster and cross a 100km tile in one tick");
 

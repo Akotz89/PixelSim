@@ -6,6 +6,7 @@ import { foodWeb } from "./food-web.js";
 import { removeDeadOrganisms } from "./organisms-behavior.js";
 import { refreshLineageRegistry } from "./organisms-indexes.js";
 import { ensureOrganismTraits } from "./organisms-traits.js";
+import { representatives } from "./representatives.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
 var MASS_EXTINCTION_EVENT_TYPES = [
@@ -510,8 +511,8 @@ function triggerMassExtinction(options) {
     refreshLineageRegistry();
   }
 
-  if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function") {
-    PS.sim.representatives.refresh();
+  if (representatives && typeof representatives.refresh === "function") {
+    representatives.refresh();
   }
 
   emitMassExtinctionEventRecords(eventRecord);

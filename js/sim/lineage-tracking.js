@@ -2,6 +2,7 @@ import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
 import { collectOrganismsInRadius } from "./organisms-indexes.js";
+import { representatives } from "./representatives.js";
 import { speciation } from "./speciation.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
@@ -41,16 +42,16 @@ export function getTrackedSpecies(speciesId) {
 }
 
 export function getTrackedPopulation(populationId) {
-  if (PS.sim && PS.sim.representatives && typeof PS.sim.representatives.getPopulation === "function") {
-    return PS.sim.representatives.getPopulation(populationId);
+  if (representatives && typeof representatives.getPopulation === "function") {
+    return representatives.getPopulation(populationId);
   }
 
   return world.biologyPopulationById ? world.biologyPopulationById[String(normalizeTrackedLineageId(populationId))] || null : null;
 }
 
 export function getTrackedRepresentative(representativeId) {
-  if (PS.sim && PS.sim.representatives && typeof PS.sim.representatives.getRepresentative === "function") {
-    return PS.sim.representatives.getRepresentative(representativeId);
+  if (representatives && typeof representatives.getRepresentative === "function") {
+    return representatives.getRepresentative(representativeId);
   }
 
   return world.biologyRepresentativeById ? world.biologyRepresentativeById[String(normalizeTrackedLineageId(representativeId))] || null : null;

@@ -4,6 +4,7 @@ import { focusPlanetViewOnTile, getTileFromLatLon, isPlanetLocalView, normalizeL
 import { foodExistsAt } from "../sim/food-growth.js";
 import { lineageTracking } from "../sim/lineage-tracking.js";
 import { ensureOrganismLineage } from "../sim/organisms-traits.js";
+import { representatives } from "../sim/representatives.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { getNearestOrganismToTile, getNearestSettlementToTile, updateHud } from "./foundation.js";
 
@@ -53,8 +54,8 @@ export function getInspectableEntityFromTile(tileX, tileY) {
   }
 
   if (organism && Math.abs(organism.x - tileX) + Math.abs(organism.y - tileY) <= 1) {
-    var representative = PS.sim.representatives && PS.sim.representatives.syncOrganism
-      ? PS.sim.representatives.syncOrganism(organism, { selected: true })
+    var representative = representatives && representatives.syncOrganism
+      ? representatives.syncOrganism(organism, { selected: true })
       : null;
 
     return {
@@ -94,10 +95,10 @@ export function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspecte
   if (
     world.inspectedEntity &&
     world.inspectedEntity.representativeId &&
-    PS.sim.representatives &&
-    PS.sim.representatives.select
+    representatives &&
+    representatives.select
   ) {
-    var representative = PS.sim.representatives.select(world.inspectedEntity.representativeId);
+    var representative = representatives.select(world.inspectedEntity.representativeId);
 
     if (representative && lineageTracking && typeof lineageTracking.selectFromRepresentative === "function") {
       lineageTracking.selectFromRepresentative(representative, { pinned: true });

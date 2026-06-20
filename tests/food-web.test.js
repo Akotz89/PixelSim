@@ -140,7 +140,7 @@ world.foodWebMilestones = {};
 world.tick = 33;
 
 function makeRoleOrganism(x, y, carnivory, energy) {
-  var organism = PS.sim.organisms.make(x, y);
+  var organism = organisms.make(x, y);
   organism.energy = energy || 100;
   organism.traits.carnivory = carnivory;
   organism.traits.bodySize = carnivory > 0.5 ? 2 : 0.8;
@@ -164,7 +164,7 @@ assert.strictEqual(foodWeb.getRole(predator.traits), "predator", "high carnivory
 assert.strictEqual(foodWeb.getRole(preyA.traits), "herbivore", "low carnivory should classify as herbivore");
 assert.strictEqual(foodWeb.findNearestPrey(predator, predator.traits, 6), preyA, "food-web prey lookup should use indexed local candidates");
 
-var populations = PS.sim.representatives.refresh();
+var populations = representatives.refresh();
 var summary = foodWeb.refreshSummary(populations);
 assert.strictEqual(summary.roles.predator, 1, "food-web summary should count predators");
 assert.strictEqual(summary.roles.herbivore, 2, "food-web summary should count herbivores");
@@ -172,7 +172,7 @@ assert.ok(summary.trophicBalance >= 0 && summary.trophicBalance <= 100, "food-we
 assert.ok(world.biologyPopulations[0].foodWeb.predatorPressure >= 0, "population should expose predator pressure");
 assert.strictEqual(world.timelineEvents[0].type, "biology.first-predator", "food-web summary should emit first predator milestone");
 
-PS.sim.organisms.update(predator);
+organisms.update(predator);
 assert.strictEqual(preyA.energy, 0, "food-web predation should kill adjacent prey");
 assert.ok(world.foodWebStats.energyTransferred > 0, "food-web predation should track energy transfer");
 
