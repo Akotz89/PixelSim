@@ -155,7 +155,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(geochemistrySource, context, { filename: "js/sim/geochemistry.js" });
 
-const geo = context.PS.sim.geochemistry;
+const geo = context.geochemistry;
 geo.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "geochemistry"), "geochemistry should register WGSL manifest entry");
 

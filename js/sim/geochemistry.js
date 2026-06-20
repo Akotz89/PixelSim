@@ -3,7 +3,7 @@ import { world } from "../systems/state.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.geochemistry = PS.sim.geochemistry || {
+export const geochemistry = {
   shaderName: "geochemistry",
   shaderPath: "shaders/geochemistry.wgsl",
   configPath: "sim/configs/geochemistry.json",

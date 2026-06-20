@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { geochemistry } from "./geochemistry.js";
 import { parameters as parameterRegistry } from "./parameter-registry.js";
 
 PS.sim = PS.sim || {};
@@ -153,8 +154,8 @@ export const environmentDrivers = {
   },
 
   computeOceanPh: function (co2Ppm) {
-    if (PS.sim && PS.sim.geochemistry && typeof PS.sim.geochemistry.computeOceanPh === "function") {
-      return PS.sim.geochemistry.computeOceanPh(co2Ppm);
+    if (geochemistry && typeof geochemistry.computeOceanPh === "function") {
+      return geochemistry.computeOceanPh(co2Ppm);
     }
     return Math.max(5, Math.min(8.6, 8.1 - 0.3 * ((Math.max(0, Number(co2Ppm) || 0) / 280) - 1)));
   },
@@ -263,7 +264,7 @@ export const environmentDrivers = {
   },
 
   makeGeochemistryInputs: function (state, width, height) {
-    var geo = PS.sim && PS.sim.geochemistry;
+    var geo = geochemistry;
     var w = Math.max(1, Math.round(Number(width) || 1));
     var h = Math.max(1, Math.round(Number(height) || 1));
     var volcanicValue = Math.max(0, Number(state.fields.volcanic_emission) || 0);

@@ -12,6 +12,7 @@ const lineageTrackingSource = read("js/sim/lineage-tracking.js");
 const biomeLutSource = read("js/sim/biome-lut.js");
 const parameterRegistrySource = read("js/sim/parameter-registry.js");
 const environmentDriversSource = read("js/sim/environment-drivers.js");
+const geochemistrySource = read("js/sim/geochemistry.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -67,6 +68,10 @@ const migratedParameterRegistryConsumers = [
 ];
 const migratedEnvironmentDriversConsumers = [
   "js/epochs/state-machine.js"
+];
+const migratedGeochemistryConsumers = [
+  "js/layers/atmosphere.js",
+  "js/sim/environment-drivers.js"
 ];
 
 assert.ok(
@@ -371,6 +376,30 @@ migratedEnvironmentDriversConsumers.forEach(function(file) {
     source.indexOf("PS.sim.environmentDrivers"),
     -1,
     file + " should use environmentDrivers directly instead of PS.sim.environmentDrivers"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+geochemistry\s*=/.test(geochemistrySource),
+  "geochemistry wrapper should expose geochemistry as a direct ES module export"
+);
+assert.strictEqual(
+  geochemistrySource.indexOf("PS.sim.geochemistry"),
+  -1,
+  "geochemistry wrapper should not register through PS.sim.geochemistry"
+);
+
+migratedGeochemistryConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { geochemistry }") >= 0,
+    file + " should import geochemistry directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.geochemistry"),
+    -1,
+    file + " should use geochemistry directly instead of PS.sim.geochemistry"
   );
 });
 

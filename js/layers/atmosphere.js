@@ -1,6 +1,7 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { geochemistry } from "../sim/geochemistry.js";
 import { world } from "../systems/state.js";
 import { layerRegistry } from "./registry.js";
 
@@ -214,7 +215,6 @@ export function syncAtmosphereAliases(state) {
 }
 
 export function applyAtmosphereGeochemistrySummary(state) {
-  var geochemistry = PS.sim && PS.sim.geochemistry;
   var summary = geochemistry && geochemistry.state && geochemistry.state.summary;
 
   if (!summary) {
