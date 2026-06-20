@@ -26,7 +26,8 @@ const context = {
 vm.createContext(context);
 vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js" });
 
-const shadows = context.PS.render.shadows;
+const shadows = context.shadows;
+assert.ok(shadows, "shadow stamping should be available as a direct module export");
 assert.strictEqual(shadows.heightLookup.length, 32, "height lookup should cover heights 0-31");
 assert.strictEqual(shadows.getHeightLookup(0).iterations, 0, "height 0 should not stamp a shadow");
 assert.strictEqual(shadows.getHeightLookup(1).iterations, 1, "height 1 should stamp once");

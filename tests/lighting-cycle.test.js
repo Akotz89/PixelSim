@@ -48,6 +48,8 @@ vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-composi
 
 const lighting = context.lightingCycle;
 assert.ok(lighting, "lighting cycle should be available as a direct module export");
+const shadows = context.shadows;
+assert.ok(shadows, "shadow stamping should be available as a direct module export");
 const dawn = lighting.getState({ timeOfDay: 0.08 });
 const noon = lighting.getState({ timeOfDay: 0.5 });
 const dusk = lighting.getState({ timeOfDay: 0.7 });
@@ -64,7 +66,7 @@ assert.ok(night.indoorAmbient[0] > noon.indoorAmbient[0], "indoor ambient should
 assert.ok(night.shadowAlphaScale <= 1, "night shadow alpha scale should stay in valid alpha range");
 assert.ok(noon.shadowAlphaScale <= 1, "noon shadow alpha scale should stay in valid alpha range");
 
-const dawnRects = context.PS.render.shadows.makeStampedRects({
+const dawnRects = shadows.makeStampedRects({
   x: 0,
   y: 0,
   width: 4,
@@ -73,7 +75,7 @@ const dawnRects = context.PS.render.shadows.makeStampedRects({
   alpha: 0.3,
   timeOfDay: 0.08
 });
-const noonRects = context.PS.render.shadows.makeStampedRects({
+const noonRects = shadows.makeStampedRects({
   x: 0,
   y: 0,
   width: 4,
@@ -82,7 +84,7 @@ const noonRects = context.PS.render.shadows.makeStampedRects({
   alpha: 0.3,
   timeOfDay: 0.5
 });
-const duskRects = context.PS.render.shadows.makeStampedRects({
+const duskRects = shadows.makeStampedRects({
   x: 0,
   y: 0,
   width: 4,

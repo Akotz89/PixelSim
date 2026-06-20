@@ -4,6 +4,7 @@ import { clamp } from "../core/utils.js";
 import { getPlanetInterpolatedProjection, projectPlanetPoint } from "./planet-grid.js";
 import { projectPlanetLocalPoint } from "./planet-surface.js";
 import { ensureEntitySurfacePosition, getEntitySurfacePosition, interpolateLongitudeDeg, isGlobeRenderMode, isPlanetLocalView } from "./planet-view.js";
+import { shadows } from "./shadow-stamping.js";
 import { getSettlementById } from "../sim/settlements-state.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { canvas } from "../ui/dom-refs.js";
@@ -519,8 +520,8 @@ PS.render.entities.drawSettlementShadows = function () {
       continue;
     }
 
-    if (PS.render.shadows && typeof PS.render.shadows.appendStampedRects === "function") {
-      drawn += PS.render.shadows.appendStampedRects(rects, {
+    if (shadows && typeof shadows.appendStampedRects === "function") {
+      drawn += shadows.appendStampedRects(rects, {
         x: point.x - width / 2,
         y: point.y + size * 0.28,
         width: width,

@@ -8,6 +8,7 @@ const traitSchemaSource = read("js/core/trait-schema.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const lightingCycleSource = read("js/render/lighting-cycle.js");
+const shadowStampingSource = read("js/render/shadow-stamping.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
 const saveMigrationSource = read("js/systems/save-migration.js");
 const uiControlsSource = read("js/ui/controls.js");
@@ -78,6 +79,11 @@ const migratedLightingCycleConsumers = [
   "js/render/webgpu-globe.js",
   "js/render/webgpu-point-lights.js",
   "js/render/webgpu-surface-tile.js"
+];
+const migratedShadowStampingConsumers = [
+  "js/render/entities.js",
+  "js/render/mountain-render.js",
+  "js/render/vegetation-shadows.js"
 ];
 const migratedPersistenceConfigConsumers = [
   "js/systems/persistence-restore-entities.js",
@@ -447,6 +453,35 @@ migratedLightingCycleConsumers.forEach(function(file) {
     source.indexOf("PS.render.lightingCycle"),
     -1,
     file + " should use lightingCycle directly instead of PS.render.lightingCycle"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+shadows\s*=/.test(shadowStampingSource),
+  "shadow stamping should expose shadows as a direct ES module export"
+);
+assert.strictEqual(
+  shadowStampingSource.indexOf("namespace.js"),
+  -1,
+  "shadow stamping should not import the PS namespace"
+);
+assert.strictEqual(
+  shadowStampingSource.indexOf("PS.render.shadows"),
+  -1,
+  "shadow stamping should not register through PS.render.shadows"
+);
+
+migratedShadowStampingConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { shadows }") >= 0,
+    file + " should import shadows directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.render.shadows"),
+    -1,
+    file + " should use shadows directly instead of PS.render.shadows"
   );
 });
 

@@ -1,11 +1,8 @@
-import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { lightingCycle } from "./lighting-cycle.js";
 import { world } from "../systems/state.js";
 
-PS.render = PS.render || {};
-
-PS.render.shadows = PS.render.shadows || (function () {
+export const shadows = (function () {
   var MAX_HEIGHT = 31;
   var FALLBACK_DIRECTION = { x: 0.72, y: 0.48 };
   var LOOKUP = buildHeightLookup();
