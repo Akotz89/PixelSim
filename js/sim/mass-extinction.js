@@ -8,8 +8,6 @@ import { refreshLineageRegistry } from "./organisms-indexes.js";
 import { ensureOrganismTraits } from "./organisms-traits.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
-PS.sim = PS.sim || {};
-
 var MASS_EXTINCTION_EVENT_TYPES = [
   "volcanic-winter",
   "asteroid-impact",
@@ -611,4 +609,4 @@ function createMassExtinctionApi() {
   };
 }
 
-PS.sim.massExtinction = createMassExtinctionApi();
+export const massExtinction = createMassExtinctionApi();

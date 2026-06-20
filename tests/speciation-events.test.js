@@ -48,6 +48,7 @@ const source = [
   "js/sim/terrain-pressure.js",
   "js/sim/speciation.js",
   "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js",

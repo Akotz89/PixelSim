@@ -221,11 +221,11 @@ world.foodWebSummary = {
   predatorPressure: 0.2,
   recoveryTrend: "stable"
 };
-var pressure = PS.sim.massExtinction.evaluatePressure();
+var pressure = massExtinction.evaluatePressure();
 assert.strictEqual(pressure.eventType, "volcanic-winter", "context should prefer volcanic winter from geology and sulfur pressure");
 assert.ok(pressure.pressure >= 0.8, "catastrophe pressure should be high enough to trigger");
 
-var event = PS.sim.massExtinction.trigger({ pressureSummary: pressure, severityScore: 0.6 });
+var event = massExtinction.trigger({ pressureSummary: pressure, severityScore: 0.6 });
 assert.ok(event, "forced extinction should produce an event record");
 assert.strictEqual(event.eventType, "volcanic-winter", "event should preserve selected catastrophe type");
 assert.strictEqual(event.prePopulation, 10, "event should capture pre-loss population");
@@ -253,7 +253,7 @@ var survivor = world.organisms.filter(function(organism) {
 })[0];
 assert.ok(survivor, "resistant population should still have a survivor");
 assert.ok(
-  PS.sim.massExtinction.getRecoveryReproductionMultiplier(survivor) < 1,
+  massExtinction.getRecoveryReproductionMultiplier(survivor) < 1,
   "survivor population should receive recovery reproduction boost"
 );
 assert.ok(PS.sim.representatives.getPopulation(1).isActive === false || PS.sim.representatives.getPopulation(1).count < 6, "aggregate population should reflect killed organisms");

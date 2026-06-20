@@ -7,6 +7,7 @@ import { getEntitySurfacePosition, getPlanetCameraScaleInfo, getPlanetDistanceLa
 import { isFertile } from "../render/terrain-hydrology.js";
 import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
 import { foodExistsAt } from "../sim/food-growth.js";
+import { massExtinction } from "../sim/mass-extinction.js";
 import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { resourceRegistry } from "../sim/resource-registry.js";
 import { speciation } from "../sim/speciation.js";
@@ -216,8 +217,8 @@ export function updateInspectPanel() {
     detailChips.push(makeInspectChip("Agg Pressure", pressure ? "food " + pressure.food + " scarcity " + pressure.scarcity.toFixed(2) + " terrain " + pressure.terrain.toFixed(2) : "-"));
     detailChips.push(makeInspectChip("Terrain Driver", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.terrainDriver : "-"));
     detailChips.push(makeInspectChip("Selection", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.dominantTrait + " p" + populationRecord.terrainPressure.pressure.toFixed(2) + " iso " + populationRecord.terrainPressure.isolation.toFixed(2) : "-"));
-    if (PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
-      var extinctionSummary = PS.sim.massExtinction.getSummary();
+    if (massExtinction && typeof massExtinction.getSummary === "function") {
+      var extinctionSummary = massExtinction.getSummary();
       var extinctionLatest = extinctionSummary.latest;
       var recoveryWindow = extinctionSummary.recoveryWindow;
       var populationExtinctionLoss = extinctionLatest && extinctionLatest.losses && extinctionLatest.losses.byPopulation

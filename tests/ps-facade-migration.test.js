@@ -33,6 +33,7 @@ const evolutionSource = read("js/sim/evolution.js");
 const foodWebSource = read("js/sim/food-web.js");
 const foodSource = read("js/sim/food.js");
 const speciationSource = read("js/sim/speciation.js");
+const massExtinctionSource = read("js/sim/mass-extinction.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -140,6 +141,13 @@ const migratedSpeciationConsumers = [
   "js/sim/lineage-tracking.js",
   "js/sim/representatives.js",
   "js/ui/inspect-history.js"
+];
+const migratedMassExtinctionConsumers = [
+  "js/main-simulation.js",
+  "js/sim/organisms-behavior.js",
+  "js/ui/inspect-history.js",
+  "js/ui/observation-overlays.js",
+  "js/ui/summary.js"
 ];
 
 assert.ok(
@@ -821,6 +829,30 @@ assert.strictEqual(
   speciationSource.indexOf("PS.sim.speciation"),
   -1,
   "speciation should not register through PS.sim.speciation"
+);
+
+migratedMassExtinctionConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { massExtinction }") >= 0,
+    file + " should import massExtinction directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.massExtinction"),
+    -1,
+    file + " should use massExtinction directly instead of PS.sim.massExtinction"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+massExtinction\s*=/.test(massExtinctionSource),
+  "mass extinction should expose massExtinction as a direct ES module export"
+);
+assert.strictEqual(
+  massExtinctionSource.indexOf("PS.sim.massExtinction"),
+  -1,
+  "mass extinction should not register through PS.sim.massExtinction"
 );
 
 console.log("PS facade migration checks passed");

@@ -7,6 +7,7 @@ import { assignRandomSurfacePositionInTile, getPlanetLatitudeForTile, getPlanetL
 import { isFertile } from "../render/terrain-hydrology.js";
 import { findNearestFoodInBuckets, removeFoodAtPosition } from "./food-runtime.js";
 import { foodWeb } from "./food-web.js";
+import { massExtinction } from "./mass-extinction.js";
 import { organismAi } from "./organism-ai.js";
 import { getLimbMovementMultiplierFromValue, getOrganismTravelKmPerTick } from "./organisms-indexes.js";
 import { assignChildLineage, ensureOrganismTraits, inheritOrganismTraits, makeOrganism } from "./organisms-traits.js";
@@ -309,11 +310,10 @@ export function getResourceAdjustedReproductionEnergy(traits, scarcityPressure, 
 
   if (
     organism &&
-    PS.sim &&
-    PS.sim.massExtinction &&
-    typeof PS.sim.massExtinction.getRecoveryReproductionMultiplier === "function"
+    massExtinction &&
+    typeof massExtinction.getRecoveryReproductionMultiplier === "function"
   ) {
-    multiplier *= PS.sim.massExtinction.getRecoveryReproductionMultiplier(organism);
+    multiplier *= massExtinction.getRecoveryReproductionMultiplier(organism);
   }
 
   return traits.reproductionEnergy * multiplier;

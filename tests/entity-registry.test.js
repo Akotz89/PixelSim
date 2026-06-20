@@ -100,6 +100,7 @@ const organismSource = [
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/organisms.js"
 ].map(read).join("\n");

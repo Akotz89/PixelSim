@@ -50,6 +50,7 @@ const source = [
   "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/debug/performance.js"
 ].map((file) => file.endsWith(".js") ? read(file) : file).join("\n");

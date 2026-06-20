@@ -7,6 +7,7 @@ import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { lineageTracking } from "../sim/lineage-tracking.js";
 import { lenia } from "../sim/lenia.js";
+import { massExtinction } from "../sim/mass-extinction.js";
 import { terrainPressure } from "../sim/terrain-pressure.js";
 import { world } from "../systems/state.js";
 import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
@@ -234,8 +235,8 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     }
 
     if (activeId === "observation.extinction") {
-      var summary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
-        ? PS.sim.massExtinction.getSummary()
+      var summary = massExtinction && typeof massExtinction.getSummary === "function"
+        ? massExtinction.getSummary()
         : null;
       var latest = summary && (summary.activeEvent || summary.latest);
       var recovery = summary && summary.recoveryWindow;

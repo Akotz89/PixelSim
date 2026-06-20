@@ -6,6 +6,7 @@ import { formatMilestoneSignedNumber, getSimulationMilestoneSnapshot, recordSimu
 import { layerRegistry } from "./layers/registry.js";
 import { growFood } from "./sim/food-growth.js";
 import { lineageTracking } from "./sim/lineage-tracking.js";
+import { massExtinction } from "./sim/mass-extinction.js";
 import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePooledOrganismsForTick } from "./sim/organisms-behavior.js";
 import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./sim/settlements-routes.js";
@@ -85,8 +86,8 @@ export function refreshSimulationAlerts() {
     addSimulationAlert(alerts, "danger", "Population crash", String(world.populationDeltaThisTick), 12);
   }
 
-  if (!world.isExtinct && PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
-    var extinctionSummary = PS.sim.massExtinction.getSummary();
+  if (!world.isExtinct && massExtinction && typeof massExtinction.getSummary === "function") {
+    var extinctionSummary = massExtinction.getSummary();
     if (extinctionSummary.recoveryWindow) {
       addSimulationAlert(
         alerts,
@@ -303,8 +304,8 @@ export function updateWorld(dt) {
   removeDeadOrganisms();
   trimOrganismPopulation();
 
-  if (PS.sim.massExtinction && typeof PS.sim.massExtinction.maybeTrigger === "function") {
-    PS.sim.massExtinction.maybeTrigger();
+  if (massExtinction && typeof massExtinction.maybeTrigger === "function") {
+    massExtinction.maybeTrigger();
   }
 
   world.populationDeltaThisTick = world.organisms.length - organismsAtStartOfTick;

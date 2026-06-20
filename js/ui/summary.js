@@ -6,6 +6,7 @@ import { refreshSimulationAlerts } from "../main-simulation.js";
 import { getTileGreatCircleDistanceKm, getTileManhattanDistance } from "../render/planet-grid.js";
 import { countFoodInRadius, findNearestFoodInBuckets } from "../sim/food-runtime.js";
 import { lineageTracking } from "../sim/lineage-tracking.js";
+import { massExtinction } from "../sim/mass-extinction.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { resourceRegistry } from "../sim/resource-registry.js";
@@ -355,8 +356,8 @@ export function updateEcosystemSummary() {
   var foodWebRoles = foodWeb.roles || {};
   var terrainPressure = world.terrainPressureSummary || {};
   var speciesSummary = world.speciesSummary || {};
-  var extinctionSummary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
-    ? PS.sim.massExtinction.getSummary()
+  var extinctionSummary = massExtinction && typeof massExtinction.getSummary === "function"
+    ? massExtinction.getSummary()
     : { latest: null, recoveryWindow: null, pressureSummary: null, totalEvents: 0 };
   var extinctionLatest = extinctionSummary.latest || null;
   var recoveryWindow = extinctionSummary.recoveryWindow || null;
