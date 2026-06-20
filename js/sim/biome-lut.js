@@ -3,7 +3,7 @@ import { clamp } from "../core/utils.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.biomeLut = PS.sim.biomeLut || {
+export const biomeLut = {
   shaderName: "biome-render",
   shaderPath: "shaders/biome-render.wgsl",
   assetPath: "assets/biome-lut.png",

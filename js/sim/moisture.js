@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { biomeLut } from "./biome-lut.js";
 
 PS.sim = PS.sim || {};
 
@@ -349,7 +350,7 @@ PS.sim.moisture = PS.sim.moisture || {
       id: "moisture.biome-moisture-map",
       shaderBinding: "moisture_map",
       shaderPath: "shaders/biome-render.wgsl",
-      consumer: "PS.sim.biomeLut",
+      consumer: "biomeLut",
       sourceBufferId: this.precipitationBufferId,
       format: "r32float",
       width: dims.width,
@@ -381,8 +382,8 @@ PS.sim.moisture = PS.sim.moisture || {
   },
 
   classifyBiomeSample: function (temperatureC, precipitationMm, elevationM) {
-    if (PS.sim && PS.sim.biomeLut && typeof PS.sim.biomeLut.classifyBiome === "function") {
-      return PS.sim.biomeLut.classifyBiome(temperatureC, precipitationMm, elevationM);
+    if (biomeLut && typeof biomeLut.classifyBiome === "function") {
+      return biomeLut.classifyBiome(temperatureC, precipitationMm, elevationM);
     }
     if (Number(precipitationMm) >= 3200 && Number(temperatureC) >= 22 && Number(elevationM) >= 0) { return "tropical_rainforest"; }
     if (Number(precipitationMm) < 250 && Number(elevationM) >= 0) { return Number(temperatureC) >= 28 ? "hot_desert" : "desert"; }

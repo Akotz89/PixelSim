@@ -153,22 +153,22 @@ assert.strictEqual(epoch6.ticksPerYear, 1, "epoch 6 should run at one year per t
 assert.strictEqual(coupling.ticksPerYear, 1, "pipeline timescale should follow epoch 6");
 assert.strictEqual(context.PS.time.updateAdaptiveTimeScale(true).targetYearsPerTick, 1, "time system should use epoch 6 years per tick");
 
-context.PS.sim.biomeLut.state.stable = false;
+context.biomeLut.state.stable = false;
 const epoch3 = epochs.setEpoch(3, { pipeline: coupling });
 assert.ok(epoch3.activePasses.includes("lenia"), "epoch 3 should enable Lenia");
 assert.ok(epoch3.life.lenia_species.includes("vegetation"), "epoch 3 should spawn plant-like Lenia species after biome stabilization");
 assert.strictEqual(epoch3.life.spawn_after, "biome-stable", "epoch 3 spawn gate should wait for biome stability");
 assert.strictEqual(context.PS.sim.lenia.state.spawnedEpochSpecies, undefined, "epoch 3 Lenia species should not spawn before biome stability");
 assert.strictEqual(context.PS.sim.lenia.state.pendingEpochSpawn.gate, "biome-stable", "epoch 3 should record pending Lenia spawn gate");
-context.PS.sim.biomeLut.state.stable = true;
+context.biomeLut.state.stable = true;
 epochs.updateEpochGates();
 assert.ok(context.PS.sim.lenia.state.activeEpochSpecies.includes("vegetation"), "Lenia vegetation should spawn after biome stability gate opens");
 
 const epoch5 = epochs.setEpoch(5, { pipeline: coupling });
-assert.strictEqual(context.PS.sim.biomeLut.state.epochPaletteId, "cenozoic", "epoch transition should swap biome LUT palette id");
-assert.deepStrictEqual(context.PS.sim.biomeLut.state.epochPalette, epoch5.palette, "epoch transition should copy palette colors");
-assert.ok(context.PS.sim.biomeLut.state.currentLut && context.PS.sim.biomeLut.state.currentLut.data.length > 0, "epoch transition should regenerate active biome LUT data");
-assert.strictEqual(context.PS.sim.biomeLut.makeLutRgba(2, 2).data.length, 16, "biome LUT generation should consume active epoch palette by default");
+assert.strictEqual(context.biomeLut.state.epochPaletteId, "cenozoic", "epoch transition should swap biome LUT palette id");
+assert.deepStrictEqual(context.biomeLut.state.epochPalette, epoch5.palette, "epoch transition should copy palette colors");
+assert.ok(context.biomeLut.state.currentLut && context.biomeLut.state.currentLut.data.length > 0, "epoch transition should regenerate active biome LUT data");
+assert.strictEqual(context.biomeLut.makeLutRgba(2, 2).data.length, 16, "biome LUT generation should consume active epoch palette by default");
 
 const snapshot = epochs.getEpochState();
 snapshot.activePasses.length = 0;

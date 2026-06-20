@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { biomeLut } from "../sim/biome-lut.js";
 import { world } from "../systems/state.js";
 
 PS.epochs = PS.epochs || {};
@@ -209,7 +210,7 @@ PS.epochs.applyEpochAtmosphere = function (state, options) {
 };
 
 PS.epochs.applyEpochPalette = function (state) {
-  var biome = PS.sim && PS.sim.biomeLut;
+  var biome = biomeLut;
   if (biome && biome.state && state) {
     if (typeof biome.setEpochPalette === "function") {
       biome.setEpochPalette(state.paletteId, state.palette);
@@ -222,7 +223,7 @@ PS.epochs.applyEpochPalette = function (state) {
 };
 
 PS.epochs.isBiomeStable = function () {
-  var biome = PS.sim && PS.sim.biomeLut && PS.sim.biomeLut.state;
+  var biome = biomeLut && biomeLut.state;
   if (biome && biome.stable === true) { return true; }
   if (biome && Number(biome.stability) >= 1) { return true; }
   return typeof world !== "undefined" && world && world.biomeStable === true;

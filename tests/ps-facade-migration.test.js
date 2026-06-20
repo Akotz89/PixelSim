@@ -9,6 +9,7 @@ const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
 const lineageTrackingSource = read("js/sim/lineage-tracking.js");
+const biomeLutSource = read("js/sim/biome-lut.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -54,6 +55,10 @@ const migratedLineageTrackingConsumers = [
   "js/ui/observation-overlays.js",
   "js/ui/summary.js",
   "js/ui/timeline.js"
+];
+const migratedBiomeLutConsumers = [
+  "js/epochs/state-machine.js",
+  "js/sim/moisture.js"
 ];
 
 assert.ok(
@@ -286,6 +291,30 @@ migratedLineageTrackingConsumers.forEach(function(file) {
     source.indexOf("PS.sim.lineageTracking"),
     -1,
     file + " should use lineageTracking directly instead of PS.sim.lineageTracking"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+biomeLut\s*=/.test(biomeLutSource),
+  "biome LUT wrapper should expose biomeLut as a direct ES module export"
+);
+assert.strictEqual(
+  biomeLutSource.indexOf("PS.sim.biomeLut"),
+  -1,
+  "biome LUT wrapper should not register through PS.sim.biomeLut"
+);
+
+migratedBiomeLutConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { biomeLut }") >= 0,
+    file + " should import biomeLut directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.biomeLut"),
+    -1,
+    file + " should use biomeLut directly instead of PS.sim.biomeLut"
   );
 });
 
