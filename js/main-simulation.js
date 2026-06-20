@@ -10,6 +10,7 @@ import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePool
 import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./sim/settlements-routes.js";
 import { updateSettlements } from "./sim/settlements-runtime.js";
+import { traitRegistry } from "./sim/trait-registry.js";
 import { world } from "./systems/state.js";
 // fallow-ignore-next-line circular-dependency
 import { syncControlStates } from "./ui/foundation.js";
@@ -320,8 +321,13 @@ export function updateWorld(dt) {
   }
 
   // Update environmental modifiers periodically (AZR-493)
-  if (shouldRefreshSummaries && PS.traitRegistry && typeof PS.traitRegistry.updateEnvironmentalModifiers === "function") {
-    PS.traitRegistry.updateEnvironmentalModifiers();
+  if (
+    shouldRefreshSummaries &&
+    typeof traitRegistry !== "undefined" &&
+    traitRegistry &&
+    typeof traitRegistry.updateEnvironmentalModifiers === "function"
+  ) {
+    traitRegistry.updateEnvironmentalModifiers();
   }
 
   tickProfile.organisms = performance.now() - profileStart;

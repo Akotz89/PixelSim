@@ -1,4 +1,3 @@
-import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 
 // ── Modifier Engine (AZR-493) ──────────────────────────────────────
@@ -7,14 +6,12 @@ import { clamp } from "../core/utils.js";
 // Formula: finalValue = clamp((base + positiveAdds) × multiplier + negativeAdds, min, max)
 //
 // Usage:
-//   var stat = PS.modifiers.createStat("vision", { base: 20, min: 8, max: 36 });
-//   var mod  = PS.modifiers.addModifier("vision", { id: "clear_sky", add: 4 });
-//   PS.modifiers.compute("vision");  // → 24
-//   PS.modifiers.removeModifier("vision", "clear_sky");
+//   var stat = modifiers.createStat("vision", { base: 20, min: 8, max: 36 });
+//   var mod  = modifiers.addModifier("vision", { id: "clear_sky", add: 4 });
+//   modifiers.compute("vision");  // -> 24
+//   modifiers.removeModifier("vision", "clear_sky");
 
-PS.sim = PS.sim || {};
-
-PS.modifiers = {
+export const modifiers = {
   stats: {},
   modifierCount: 0,
 
@@ -34,18 +31,18 @@ PS.modifiers = {
     };
 
     stat.cachedValue = stat.base;
-    PS.modifiers.stats[id] = stat;
+    modifiers.stats[id] = stat;
     return stat;
   },
 
   // ── Add a modifier to a stat ──
 
   addModifier: function (statId, options) {
-    var stat = PS.modifiers.stats[statId];
+    var stat = modifiers.stats[statId];
     if (!stat) { return null; }
 
     var opts = options || {};
-    var modId = String(opts.id || ("mod_" + (++PS.modifiers.modifierCount)));
+    var modId = String(opts.id || ("mod_" + (++modifiers.modifierCount)));
     var modifier = {
       id: modId,
       add: Number(opts.add) || 0,        // Additive bonus (positive or negative)
@@ -65,7 +62,7 @@ PS.modifiers = {
   // ── Remove a modifier from a stat ──
 
   removeModifier: function (statId, modifierId) {
-    var stat = PS.modifiers.stats[statId];
+    var stat = modifiers.stats[statId];
     if (!stat || !stat.modifiers[modifierId]) { return false; }
 
     delete stat.modifiers[modifierId];
@@ -85,7 +82,7 @@ PS.modifiers = {
   // Positive additions are multiplied before negative additions are applied.
 
   compute: function (statId) {
-    var stat = PS.modifiers.stats[statId];
+    var stat = modifiers.stats[statId];
     if (!stat) { return 0; }
 
     if (!stat.dirty && stat.cachedValue !== null) {
@@ -118,7 +115,7 @@ PS.modifiers = {
   // ── Compute with a temporary base override (for per-entity evaluation) ──
 
   computeWithBase: function (statId, baseValue) {
-    var stat = PS.modifiers.stats[statId];
+    var stat = modifiers.stats[statId];
     if (!stat) { return Number(baseValue) || 0; }
 
     var positiveAdds = 0;
@@ -145,7 +142,7 @@ PS.modifiers = {
   // ── Get all active modifiers for a stat ──
 
   getModifiers: function (statId) {
-    var stat = PS.modifiers.stats[statId];
+    var stat = modifiers.stats[statId];
     if (!stat) { return []; }
 
     var result = [];
@@ -169,9 +166,9 @@ PS.modifiers = {
   // ── Mark all stats as dirty (force recompute) ──
 
   invalidateAll: function () {
-    for (var id in PS.modifiers.stats) {
-      if (Object.prototype.hasOwnProperty.call(PS.modifiers.stats, id)) {
-        PS.modifiers.stats[id].dirty = true;
+    for (var id in modifiers.stats) {
+      if (Object.prototype.hasOwnProperty.call(modifiers.stats, id)) {
+        modifiers.stats[id].dirty = true;
       }
     }
   },
@@ -179,11 +176,11 @@ PS.modifiers = {
   // ── Clear all modifiers from all stats ──
 
   clearAll: function () {
-    for (var id in PS.modifiers.stats) {
-      if (Object.prototype.hasOwnProperty.call(PS.modifiers.stats, id)) {
-        PS.modifiers.stats[id].modifiers = {};
-        PS.modifiers.stats[id].modifierOrder = [];
-        PS.modifiers.stats[id].dirty = true;
+    for (var id in modifiers.stats) {
+      if (Object.prototype.hasOwnProperty.call(modifiers.stats, id)) {
+        modifiers.stats[id].modifiers = {};
+        modifiers.stats[id].modifierOrder = [];
+        modifiers.stats[id].dirty = true;
       }
     }
   },
@@ -192,12 +189,12 @@ PS.modifiers = {
 
   getStats: function () {
     var summary = {};
-    for (var id in PS.modifiers.stats) {
-      if (Object.prototype.hasOwnProperty.call(PS.modifiers.stats, id)) {
-        var stat = PS.modifiers.stats[id];
+    for (var id in modifiers.stats) {
+      if (Object.prototype.hasOwnProperty.call(modifiers.stats, id)) {
+        var stat = modifiers.stats[id];
         summary[id] = {
           base: stat.base,
-          computed: PS.modifiers.compute(id),
+          computed: modifiers.compute(id),
           modifierCount: stat.modifierOrder.length,
           range: [stat.min, stat.max]
         };
@@ -206,5 +203,3 @@ PS.modifiers = {
     return summary;
   }
 };
-
-PS.sim.modifiers = PS.modifiers;

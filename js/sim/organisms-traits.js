@@ -5,6 +5,7 @@ import { chance, clamp, randomInt } from "../core/utils.js";
 import { getClampedWorldY, getWrappedWorldX } from "../render/planet-grid.js";
 import { getRandomLatLonInTile } from "../render/planet-view.js";
 import { world } from "../systems/state.js";
+import { traitRegistry } from "./trait-registry.js";
 
 export function varyTraitValue(defaultValue, minValue, maxValue, stepValue) {
   return clamp(defaultValue + (randomInt(3) - 1) * stepValue, minValue, maxValue);
@@ -25,8 +26,8 @@ export function makeInitialOrganismTraits(typeId) {
   var typeDefaults = EntityRegistry.getTraitDefaults(typeId || "herbivore_basic");
   var traits;
 
-  if (PS.traitRegistry && PS.traitRegistry.definitionOrder.length > 0) {
-    traits = PS.traitRegistry.makeInitial();
+  if (typeof traitRegistry !== "undefined" && traitRegistry && traitRegistry.definitionOrder.length > 0) {
+    traits = traitRegistry.makeInitial();
     return normalizeOrganismTraits(Object.assign(traits, typeDefaults));
   }
 
@@ -99,8 +100,8 @@ export function inheritOrganismTraits(parentTraits) {
   var i;
 
   // Use trait registry when available (AZR-493)
-  if (PS.traitRegistry && PS.traitRegistry.definitionOrder.length > 0) {
-    return PS.traitRegistry.inherit(parentTraits);
+  if (typeof traitRegistry !== "undefined" && traitRegistry && traitRegistry.definitionOrder.length > 0) {
+    return traitRegistry.inherit(parentTraits);
   }
 
   definitions = PS.core.traitSchema.getDefinitions();
