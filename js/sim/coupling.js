@@ -2,7 +2,7 @@ import { PS } from "../core/namespace.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.coupling = PS.sim.coupling || {
+export const coupling = {
   width: 512,
   height: 512,
   tickIndex: 0,

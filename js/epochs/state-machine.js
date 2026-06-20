@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { biomeLut } from "../sim/biome-lut.js";
+import { coupling } from "../sim/coupling.js";
 import { environmentDrivers } from "../sim/environment-drivers.js";
 import { heatDiffusion } from "../sim/heat-diffusion.js";
 import { lenia } from "../sim/lenia.js";
@@ -12,7 +13,7 @@ PS.epochs.StateMachine = function (options) {
   this.config = PS.epochs.resolveEpochConfig(spec.config);
   PS.epochs.assertValidEpochConfig(this.config);
   PS.epochs.epochConfig = this.config;
-  this.pipeline = spec.pipeline || (PS.sim && PS.sim.coupling) || null;
+  this.pipeline = spec.pipeline || coupling || null;
   this.epoch = Math.max(0, Math.round(Number(spec.epoch) || 0));
   this.history = [];
   this.state = null;
@@ -109,7 +110,7 @@ PS.epochs.assertValidEpochConfig = function (config) {
 };
 
 PS.epochs.canonicalPassIds = function (pipeline) {
-  var source = pipeline && Array.isArray(pipeline.passOrder) ? pipeline.passOrder : (PS.sim && PS.sim.coupling && PS.sim.coupling.passOrder) || [];
+  var source = pipeline && Array.isArray(pipeline.passOrder) ? pipeline.passOrder : (coupling && coupling.passOrder) || [];
   return source.map(function (pass) { return pass.id; });
 };
 

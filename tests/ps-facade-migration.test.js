@@ -21,6 +21,7 @@ const lbmOceanSource = read("js/sim/lbm-ocean.js");
 const thermohalineSource = read("js/sim/thermohaline.js");
 const heatDiffusionSource = read("js/sim/heat-diffusion.js");
 const leniaSource = read("js/sim/lenia.js");
+const couplingSource = read("js/sim/coupling.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -88,6 +89,9 @@ const migratedHeatDiffusionConsumers = [
 const migratedLeniaConsumers = [
   "js/epochs/state-machine.js",
   "js/ui/observation-overlays.js"
+];
+const migratedCouplingConsumers = [
+  "js/epochs/state-machine.js"
 ];
 
 assert.ok(
@@ -524,6 +528,30 @@ migratedLeniaConsumers.forEach(function(file) {
     source.indexOf("PS.sim.lenia"),
     -1,
     file + " should use lenia directly instead of PS.sim.lenia"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+coupling\s*=/.test(couplingSource),
+  "coupling wrapper should expose coupling as a direct ES module export"
+);
+assert.strictEqual(
+  couplingSource.indexOf("PS.sim.coupling"),
+  -1,
+  "coupling wrapper should not register through PS.sim.coupling"
+);
+
+migratedCouplingConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { coupling }") >= 0,
+    file + " should import coupling directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.coupling"),
+    -1,
+    file + " should use coupling directly instead of PS.sim.coupling"
   );
 });
 

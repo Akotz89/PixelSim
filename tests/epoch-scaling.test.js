@@ -91,7 +91,7 @@ vm.runInContext(epochStateSource, context, { filename: "js/epochs/state-machine.
 vm.runInContext(timeSource, context, { filename: "js/systems/time.js" });
 
 const epochs = context.PS.epochs;
-const coupling = context.PS.sim.coupling;
+const coupling = context.coupling;
 const config = JSON.parse(configSource);
 const greenhouseWrites = [];
 context.heatDiffusion.state = { width: 2, height: 2 };
