@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { world } from "../systems/state.js";
+import { computeHarness } from "./compute-harness.js";
 
 PS.sim = PS.sim || {};
 
@@ -473,7 +474,7 @@ export const geochemistry = {
   init: function (options) {
     var spec = options || {};
     var device = spec.device || (PS.gpu && PS.gpu.device);
-    var harness = spec.harness || PS.sim.computeHarness;
+    var harness = spec.harness || computeHarness;
     var config = this.normalizeConfig(spec.config || this.config || {});
     var state = spec.state || this.createState({ width: spec.width, height: spec.height, config: config, epoch: spec.epoch });
     var cells = this.getCellCount(state.width, state.height);

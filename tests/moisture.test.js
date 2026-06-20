@@ -247,7 +247,7 @@ assert.ok(Math.abs(paramsView.getFloat32(48, true) - config.max_precipitation_mm
 
 context.PS.render.wgslShaders.register("moisture", shaderSource, { path: "shaders/moisture.wgsl" });
 const result = moisture.init({ width: 512, height: 512, config });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.moistureBytes, 512 * 512 * 4, "moisture state should allocate float cells");
 assert.strictEqual(result.precipitationBytes, 512 * 512 * 4, "precipitation output should allocate float cells");
 assert.strictEqual(result.oceanVelocityBytes, 512 * 512 * 4 * 4, "LBM ocean velocity proxy should allocate rgba float cells");

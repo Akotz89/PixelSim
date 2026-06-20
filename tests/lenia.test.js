@@ -243,7 +243,7 @@ assert.strictEqual(paramsView.getUint32(28, true), 4, "params should encode spec
 
 context.PS.render.wgslShaders.register("lenia", shaderSource, { path: "shaders/lenia.wgsl" });
 const initResult = lenia.init({ width: 512, height: 512, config });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(initResult.speciesBytes, 512 * 512 * 4 * 4, "Lenia state should allocate rgba32float cells");
 assert.ok(harness.getState("lenia.species"), "Lenia should register species ping-pong state");
 assert.ok(harness.buffers["lenia.temperature"], "Lenia should register temperature input");

@@ -210,7 +210,7 @@ assert.strictEqual(densityParams.byteLength, 32, "density params should be unifo
 context.PS.render.wgslShaders.register("salinity", salinityShader, { path: "shaders/salinity.wgsl" });
 context.PS.render.wgslShaders.register("density", densityShader, { path: "shaders/density.wgsl" });
 const result = thermo.init({ width: 512, height: 512, config });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.scalarBytes, 512 * 512 * 4, "thermohaline scalar fields should allocate float32 cells");
 assert.ok(harness.getState("thermohaline.salinity"), "thermohaline should register salinity ping-pong state");
 assert.ok(harness.buffers["thermohaline.density"], "thermohaline should register density output");

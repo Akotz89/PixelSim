@@ -211,7 +211,7 @@ assert.ok(Math.abs(view.getFloat32(20, true) - config.photosynthesis_rate_ppm) <
 
 context.PS.render.wgslShaders.register("geochemistry", shaderSource, { path: "shaders/geochemistry.wgsl" });
 const initResult = geo.init({ width: 512, height: 512, config, epoch: "civilization" });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(initResult.atmosphereBytes, 512 * 512 * config.atmosphere_stride * 4, "atmosphere buffers should allocate ppm grid");
 assert.ok(harness.getState("geochemistry.atmosphere"), "geochemistry should register atmosphere ping-pong state");
 assert.ok(harness.buffers["geochemistry.ocean"], "geochemistry should register ocean chemistry buffer");

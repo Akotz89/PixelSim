@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { biomeLut } from "./biome-lut.js";
+import { computeHarness } from "./compute-harness.js";
 
 PS.sim = PS.sim || {};
 
@@ -426,7 +427,7 @@ export const moisture = {
 
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var dims = this.getDimensions(spec);
     var config = this.normalizeConfig(spec.config || this.config || {});
@@ -506,9 +507,9 @@ export const moisture = {
   },
 
   dispatch: function (commandEncoder, device) {
-    if (!PS.sim || !PS.sim.computeHarness) {
+    if (!computeHarness) {
       throw new Error("Compute harness is required for moisture dispatch");
     }
-    return PS.sim.computeHarness.dispatch(this.passId, commandEncoder, device);
+    return computeHarness.dispatch(this.passId, commandEncoder, device);
   }
 };

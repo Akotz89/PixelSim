@@ -267,7 +267,7 @@ const result = heat.init({
   config
 });
 
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.width, 512, "heat diffusion should initialize a 512-wide grid");
 assert.strictEqual(result.height, 512, "heat diffusion should initialize a 512-high grid");
 assert.strictEqual(result.byteLength, 512 * 512 * 4, "heat diffusion state should allocate float32 cells");

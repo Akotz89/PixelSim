@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { computeHarness } from "./compute-harness.js";
 
 PS.sim = PS.sim || {};
 
@@ -159,7 +160,7 @@ export const coupling = {
   ensureElevationBuffer: function (options) {
     var spec = options || {};
     var dims = this.getDimensions(spec);
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var initial = spec.initialElevation || new Float32Array(dims.width * dims.height);
 
@@ -280,7 +281,7 @@ export const coupling = {
 
   dispatchPassSlot: function (pass, options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var started = this.now();
     var dispatched = [];
     var activePassIds = Array.isArray(spec.activePassIds) ? spec.activePassIds : this.activePassIds;

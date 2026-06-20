@@ -8,6 +8,7 @@ const heatSource = read("js/sim/heat-diffusion.js");
 const biomeSource = read("js/sim/biome-lut.js");
 const leniaSource = read("js/sim/lenia.js");
 const couplingSource = read("js/sim/coupling.js");
+const harnessSource = read("js/sim/compute-harness.js");
 const driverSource = read("js/sim/environment-drivers.js");
 const configJsSource = read("config.js");
 const coreConfigSource = read("js/core/config.js");
@@ -82,6 +83,7 @@ vm.runInContext(configJsSource, context, { filename: "config.js" });
 vm.runInContext(coreConfigSource, context, { filename: "js/core/config.js" });
 vm.runInContext(epochRegistrySource, context, { filename: "js/epochs/registry.js" });
 vm.runInContext(driverSource, context, { filename: "js/sim/environment-drivers.js" });
+vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(couplingSource, context, { filename: "js/sim/coupling.js" });
 vm.runInContext(heatSource, context, { filename: "js/sim/heat-diffusion.js" });
 vm.runInContext(biomeSource, context, { filename: "js/sim/biome-lut.js" });
@@ -95,12 +97,10 @@ const coupling = context.coupling;
 const config = JSON.parse(configSource);
 const greenhouseWrites = [];
 context.heatDiffusion.state = { width: 2, height: 2 };
-context.PS.sim.computeHarness = {
-  buffers: { "heat.greenhouse": { id: "heat.greenhouse" } },
-  writeBuffer(id, data) {
-    greenhouseWrites.push({ id, data: Array.from(data) });
-    return this.buffers[id];
-  }
+context.computeHarness.buffers = { "heat.greenhouse": { id: "heat.greenhouse" } };
+context.computeHarness.writeBuffer = function (id, data) {
+  greenhouseWrites.push({ id, data: Array.from(data) });
+  return this.buffers[id];
 };
 
 const report = epochs.validateEpochConfig(config);

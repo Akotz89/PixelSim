@@ -22,6 +22,7 @@ const thermohalineSource = read("js/sim/thermohaline.js");
 const heatDiffusionSource = read("js/sim/heat-diffusion.js");
 const leniaSource = read("js/sim/lenia.js");
 const couplingSource = read("js/sim/coupling.js");
+const computeHarnessSource = read("js/sim/compute-harness.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -92,6 +93,18 @@ const migratedLeniaConsumers = [
 ];
 const migratedCouplingConsumers = [
   "js/epochs/state-machine.js"
+];
+const migratedComputeHarnessConsumers = [
+  "js/sim/coupling.js",
+  "js/sim/geochemistry.js",
+  "js/sim/heat-diffusion.js",
+  "js/sim/lbm-ocean.js",
+  "js/sim/lenia.js",
+  "js/sim/moisture.js",
+  "js/sim/molecular-dynamics.js",
+  "js/sim/pixel-ca.js",
+  "js/sim/reaction-diffusion.js",
+  "js/sim/thermohaline.js"
 ];
 
 assert.ok(
@@ -552,6 +565,30 @@ migratedCouplingConsumers.forEach(function(file) {
     source.indexOf("PS.sim.coupling"),
     -1,
     file + " should use coupling directly instead of PS.sim.coupling"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+computeHarness\s*=/.test(computeHarnessSource),
+  "compute harness wrapper should expose computeHarness as a direct ES module export"
+);
+assert.strictEqual(
+  computeHarnessSource.indexOf("PS.sim.computeHarness"),
+  -1,
+  "compute harness wrapper should not register through PS.sim.computeHarness"
+);
+
+migratedComputeHarnessConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { computeHarness }") >= 0,
+    file + " should import computeHarness directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.computeHarness"),
+    -1,
+    file + " should use computeHarness directly instead of PS.sim.computeHarness"
   );
 });
 

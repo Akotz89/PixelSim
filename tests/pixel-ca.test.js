@@ -224,7 +224,7 @@ assert.deepStrictEqual(Array.from(perf.expectedWorkgroups), [32, 32, 1], "512x51
 
 context.PS.render.wgslShaders.register("pixel-ca", shaderSource, { path: "shaders/pixel-ca.wgsl" });
 const result = pixelCa.init({ width: 512, height: 512, config, tick: 7 });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.elementBytes, 512 * 512 * 4, "pixel CA state should allocate packed u32 cells");
 assert.strictEqual(result.scalarBytes, 512 * 512 * 4, "pixel CA scalar coupling buffers should allocate float cells");
 assert.strictEqual(result.vectorBytes, 512 * 512 * 4 * 4, "LBM velocity coupling should allocate rgba float cells");

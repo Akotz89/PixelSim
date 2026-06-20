@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { computeHarness } from "./compute-harness.js";
 
 PS.sim = PS.sim || {};
 
@@ -357,7 +358,7 @@ export const pixelCa = {
 
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var dims = this.getDimensions(spec);
     var config = this.normalizeConfig(spec.config || this.config || {});
@@ -434,9 +435,9 @@ export const pixelCa = {
   },
 
   dispatch: function (commandEncoder, device) {
-    if (!PS.sim || !PS.sim.computeHarness) {
+    if (!computeHarness) {
       throw new Error("Compute harness is required for pixel CA dispatch");
     }
-    return PS.sim.computeHarness.dispatch(this.passId, commandEncoder, device);
+    return computeHarness.dispatch(this.passId, commandEncoder, device);
   }
 };

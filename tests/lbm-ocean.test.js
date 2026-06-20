@@ -301,7 +301,7 @@ const result = ocean.init({
   config
 });
 
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.width, 512, "LBM ocean should initialize a 512-wide grid");
 assert.strictEqual(result.height, 512, "LBM ocean should initialize a 512-high grid");
 assert.strictEqual(result.distributionBytes, 512 * 512 * 9 * 4, "LBM ocean should allocate nine float distributions per cell");
