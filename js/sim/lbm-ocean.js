@@ -8,7 +8,7 @@ import {
 
 PS.sim = PS.sim || {};
 
-PS.sim.lbmOcean = PS.sim.lbmOcean || {
+export const lbmOcean = {
   shaderName: "lbm-ocean",
   shaderPath: "shaders/lbm-ocean.wgsl",
   configPath: "sim/configs/ocean.json",
