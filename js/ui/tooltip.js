@@ -1,9 +1,6 @@
-import { PS } from "../core/namespace.js";
 import { escapeSummaryText } from "./summary.js";
 
-PS.ui = PS.ui || {};
-
-PS.ui.tooltip = PS.ui.tooltip || {
+export const tooltip = {
   element: null,
   delayMs: 200,
   showTimer: null,

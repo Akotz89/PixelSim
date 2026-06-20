@@ -108,6 +108,11 @@ vm.runInNewContext([
   read("js/ui/modal.js")
 ].join("\n"), context);
 
+const tooltip = context.tooltip;
+const modal = context.modal;
+assert.ok(tooltip, "tooltip should be available as a direct module export");
+assert.ok(modal, "modal should be available as a direct module export");
+
 const parent = createElement("div");
 const component = new context.PS.ui.UIComponent({ id: "test-panel", parent });
 let clicks = 0;
@@ -140,21 +145,21 @@ assert.strictEqual(
   "panel manager should track z-order stack"
 );
 
-context.PS.ui.tooltip.show({ title: "Organism", detail: "Tile 1, 2" }, { clientX: 4, clientY: 8 });
-assert.strictEqual(context.PS.ui.tooltip.element.hidden, false, "tooltip should appear after delay");
-assert.ok(context.PS.ui.tooltip.element.innerHTML.indexOf("Organism") >= 0, "tooltip should support rich content");
-context.PS.ui.tooltip.hide();
-assert.strictEqual(context.PS.ui.tooltip.element.hidden, true, "tooltip hide should hide tooltip");
+tooltip.show({ title: "Organism", detail: "Tile 1, 2" }, { clientX: 4, clientY: 8 });
+assert.strictEqual(tooltip.element.hidden, false, "tooltip should appear after delay");
+assert.ok(tooltip.element.innerHTML.indexOf("Organism") >= 0, "tooltip should support rich content");
+tooltip.hide();
+assert.strictEqual(tooltip.element.hidden, true, "tooltip hide should hide tooltip");
 
 const hoverTarget = createElement("canvas");
-context.PS.ui.tooltip.bindEntityHover(hoverTarget, () => ({ title: "Food", detail: "Tile 3, 4" }));
+tooltip.bindEntityHover(hoverTarget, () => ({ title: "Food", detail: "Tile 3, 4" }));
 hoverTarget.dispatch("pointermove", { clientX: 12, clientY: 14, target: hoverTarget });
-assert.strictEqual(context.PS.ui.tooltip.element.hidden, false, "tooltip should appear from hover resolver");
-assert.ok(context.PS.ui.tooltip.element.innerHTML.indexOf("Food") >= 0, "hover tooltip should use resolver content");
+assert.strictEqual(tooltip.element.hidden, false, "tooltip should appear from hover resolver");
+assert.ok(tooltip.element.innerHTML.indexOf("Food") >= 0, "hover tooltip should use resolver content");
 hoverTarget.dispatch("pointerleave", { target: hoverTarget });
-assert.strictEqual(context.PS.ui.tooltip.element.hidden, true, "tooltip should hide on pointer leave");
+assert.strictEqual(tooltip.element.hidden, true, "tooltip should hide on pointer leave");
 
-context.PS.ui.modal.confirm({ title: "Save", message: "Save now?", confirmLabel: "Save" }).then((confirmed) => {
+modal.confirm({ title: "Save", message: "Save now?", confirmLabel: "Save" }).then((confirmed) => {
   assert.strictEqual(confirmed, true, "modal confirm should resolve true when confirmed");
   console.log("ui component system checks passed");
 }).catch((error) => {
@@ -162,5 +167,5 @@ context.PS.ui.modal.confirm({ title: "Save", message: "Save now?", confirmLabel:
   process.exit(1);
 });
 
-const modalConfirm = context.PS.ui.modal.dialog.querySelector("[data-modal-action='confirm']");
+const modalConfirm = modal.dialog.querySelector("[data-modal-action='confirm']");
 modalConfirm.dispatch("click", { target: modalConfirm });

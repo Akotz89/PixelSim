@@ -10,6 +10,8 @@ const layerRegistrySource = read("js/layers/registry.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
 const saveMigrationSource = read("js/systems/save-migration.js");
 const uiControlsSource = read("js/ui/controls.js");
+const uiTooltipSource = read("js/ui/tooltip.js");
+const uiModalSource = read("js/ui/modal.js");
 const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
@@ -84,6 +86,13 @@ const migratedSaveMigrationConsumers = [
 ];
 const migratedUiControlsConsumers = [
   "js/ui/setup.js"
+];
+const migratedUiTooltipConsumers = [
+  "js/ui/setup.js"
+];
+const migratedUiModalConsumers = [
+  "js/ui/setup.js",
+  "js/ui/persistence-controls.js"
 ];
 const migratedOrganismAiConsumers = [
   "js/sim/organisms-behavior.js",
@@ -477,6 +486,64 @@ migratedUiControlsConsumers.forEach(function(file) {
     source.indexOf("PS.ui.controls"),
     -1,
     file + " should use controls directly instead of PS.ui.controls"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+tooltip\s*=/.test(uiTooltipSource),
+  "UI tooltip should expose tooltip as a direct ES module export"
+);
+assert.strictEqual(
+  uiTooltipSource.indexOf("namespace.js"),
+  -1,
+  "UI tooltip should not import the PS namespace"
+);
+assert.strictEqual(
+  uiTooltipSource.indexOf("PS.ui.tooltip"),
+  -1,
+  "UI tooltip should not register through PS.ui.tooltip"
+);
+
+migratedUiTooltipConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { tooltip }") >= 0,
+    file + " should import tooltip directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.ui.tooltip"),
+    -1,
+    file + " should use tooltip directly instead of PS.ui.tooltip"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+modal\s*=/.test(uiModalSource),
+  "UI modal should expose modal as a direct ES module export"
+);
+assert.strictEqual(
+  uiModalSource.indexOf("namespace.js"),
+  -1,
+  "UI modal should not import the PS namespace"
+);
+assert.strictEqual(
+  uiModalSource.indexOf("PS.ui.modal"),
+  -1,
+  "UI modal should not register through PS.ui.modal"
+);
+
+migratedUiModalConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { modal }") >= 0,
+    file + " should import modal directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.ui.modal"),
+    -1,
+    file + " should use modal directly instead of PS.ui.modal"
   );
 });
 
