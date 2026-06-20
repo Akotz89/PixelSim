@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { lightingCycle } from "./lighting-cycle.js";
 import { world } from "../systems/state.js";
 
 PS.render = PS.render || {};
@@ -111,8 +112,8 @@ PS.render.shadows = PS.render.shadows || (function () {
     var options = spec || {};
     var lookup = getHeightLookup(options.heightUnits !== undefined ? options.heightUnits : options.height);
     var iterations = lookup.iterations;
-    var cycle = PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
-      ? PS.render.lightingCycle.getState(options)
+    var cycle = lightingCycle && typeof lightingCycle.getState === "function"
+      ? lightingCycle.getState(options)
       : null;
     var direction = getDirection(options, cycle);
     var alpha = clamp(options.alpha === undefined ? 0.35 : options.alpha, 0, 1);

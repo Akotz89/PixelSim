@@ -7,6 +7,7 @@ const entityRegistrySource = read("js/core/entity-registry.js");
 const traitSchemaSource = read("js/core/trait-schema.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
+const lightingCycleSource = read("js/render/lighting-cycle.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
 const saveMigrationSource = read("js/systems/save-migration.js");
 const uiControlsSource = read("js/ui/controls.js");
@@ -70,6 +71,13 @@ const migratedLayerRegistryConsumers = [
   "js/layers/geology.js",
   "js/layers/atmosphere.js",
   "js/main-simulation.js"
+];
+const migratedLightingCycleConsumers = [
+  "js/render/shadow-stamping.js",
+  "js/render/webgpu-compositor.js",
+  "js/render/webgpu-globe.js",
+  "js/render/webgpu-point-lights.js",
+  "js/render/webgpu-surface-tile.js"
 ];
 const migratedPersistenceConfigConsumers = [
   "js/systems/persistence-restore-entities.js",
@@ -410,6 +418,35 @@ migratedLayerRegistryConsumers.forEach(function(file) {
     source.indexOf("PS.layers"),
     -1,
     file + " should use layerRegistry directly instead of PS.layers"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+lightingCycle\s*=/.test(lightingCycleSource),
+  "lighting cycle should expose lightingCycle as a direct ES module export"
+);
+assert.strictEqual(
+  lightingCycleSource.indexOf("namespace.js"),
+  -1,
+  "lighting cycle should not import the PS namespace"
+);
+assert.strictEqual(
+  lightingCycleSource.indexOf("PS.render.lightingCycle"),
+  -1,
+  "lighting cycle should not register through PS.render.lightingCycle"
+);
+
+migratedLightingCycleConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { lightingCycle }") >= 0,
+    file + " should import lightingCycle directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.render.lightingCycle"),
+    -1,
+    file + " should use lightingCycle directly instead of PS.render.lightingCycle"
   );
 });
 

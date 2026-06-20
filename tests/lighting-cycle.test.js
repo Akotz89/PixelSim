@@ -46,7 +46,8 @@ vm.runInContext(lightingSource, context, { filename: "js/render/lighting-cycle.j
 vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js" });
 vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-compositor.js" });
 
-const lighting = context.PS.render.lightingCycle;
+const lighting = context.lightingCycle;
+assert.ok(lighting, "lighting cycle should be available as a direct module export");
 const dawn = lighting.getState({ timeOfDay: 0.08 });
 const noon = lighting.getState({ timeOfDay: 0.5 });
 const dusk = lighting.getState({ timeOfDay: 0.7 });

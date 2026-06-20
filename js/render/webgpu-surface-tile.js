@@ -1,6 +1,7 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { lightingCycle } from "./lighting-cycle.js";
 import { world } from "../systems/state.js";
 import { canvas } from "../ui/dom-refs.js";
 
@@ -875,8 +876,8 @@ PS.render.webgpuSurfaceTile = Object.assign(PS.render.webgpuSurfaceTile || {}, {
     var startedAt = typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
     var spec = options || {};
     var policy = this.getVisualPolicy(spec.lodState);
-    var cycle = PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
-      ? PS.render.lightingCycle.getState(spec)
+    var cycle = lightingCycle && typeof lightingCycle.getState === "function"
+      ? lightingCycle.getState(spec)
       : null;
     var device = this.getDevice(spec.device);
     var context = spec.context || (PS.gpu && PS.gpu.context);

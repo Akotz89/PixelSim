@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { lightingCycle } from "./lighting-cycle.js";
 import { canvas } from "../ui/dom-refs.js";
 
 PS.render = PS.render || {};
@@ -230,8 +231,8 @@ PS.render.webgpuPointLights = Object.assign(PS.render.webgpuPointLights || {}, {
       return spec.lightingCycleState;
     }
 
-    if (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function") {
-      return PS.render.lightingCycle.getState(spec);
+    if (lightingCycle && typeof lightingCycle.getState === "function") {
+      return lightingCycle.getState(spec);
     }
 
     return null;
@@ -438,4 +439,3 @@ PS.render.webgpuPointLights = Object.assign(PS.render.webgpuPointLights || {}, {
     this.state.pipeline = null;
   }
 });
-
