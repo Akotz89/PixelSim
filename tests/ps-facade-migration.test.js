@@ -9,6 +9,7 @@ const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const lightingCycleSource = read("js/render/lighting-cycle.js");
 const shadowStampingSource = read("js/render/shadow-stamping.js");
+const surfaceReadyFeatherSource = read("js/render/surface-ready-feather.js");
 const worldSystemSource = read("js/systems/world.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
 const saveMigrationSource = read("js/systems/save-migration.js");
@@ -85,6 +86,10 @@ const migratedShadowStampingConsumers = [
   "js/render/entities.js",
   "js/render/mountain-render.js",
   "js/render/vegetation-shadows.js"
+];
+const migratedSurfaceReadyFeatherConsumers = [
+  "js/render/surface-tile-batcher.js",
+  "js/render/terrain.js"
 ];
 const migratedWorldSystemConsumers = [
   "js/render/gpu.js"
@@ -486,6 +491,35 @@ migratedShadowStampingConsumers.forEach(function(file) {
     source.indexOf("PS.render.shadows"),
     -1,
     file + " should use shadows directly instead of PS.render.shadows"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+surfaceReadyFeather\s*=/.test(surfaceReadyFeatherSource),
+  "surface ready feather should expose surfaceReadyFeather as a direct ES module export"
+);
+assert.strictEqual(
+  surfaceReadyFeatherSource.indexOf("namespace.js"),
+  -1,
+  "surface ready feather should not import the PS namespace"
+);
+assert.strictEqual(
+  surfaceReadyFeatherSource.indexOf("PS.render.surfaceReadyFeather"),
+  -1,
+  "surface ready feather should not register through PS.render.surfaceReadyFeather"
+);
+
+migratedSurfaceReadyFeatherConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { surfaceReadyFeather }") >= 0,
+    file + " should import surfaceReadyFeather directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.render.surfaceReadyFeather"),
+    -1,
+    file + " should use surfaceReadyFeather directly instead of PS.render.surfaceReadyFeather"
   );
 });
 

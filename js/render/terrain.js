@@ -5,6 +5,7 @@ import { getDeterministicUnitNoise, getPlanetProjection, getPlanetSurfaceSnowSig
 import { getPlanetSurfaceTileBlend, getPlanetTileLatitudeStepDeg, getPlanetTileLongitudeStepDeg, getPlanetView, getTileFromLatLon, isPlanetLocalView, normalizeLongitude } from "./planet-view.js";
 import { getPlanetTileCompositedColor } from "./surface-imagery.js";
 import { localSurfaceRenderChunkCache } from "./surface-render-cache.js";
+import { surfaceReadyFeather } from "./surface-ready-feather.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { canvas } from "../ui/dom-refs.js";
 
@@ -653,9 +654,7 @@ PS.render.terrain.drawLocalSurface = function (alpha, options) {
       renderSamplePixelSize: screenRect.width / Math.max(1, address.chunkSamples)
     }, extra || {});
 
-    if (PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.applyAddress === "function") {
-      PS.render.surfaceReadyFeather.applyAddress(drawAddress, canvas);
-    }
+    surfaceReadyFeather.applyAddress(drawAddress, canvas);
 
     readyChunks.push({
       address: drawAddress,

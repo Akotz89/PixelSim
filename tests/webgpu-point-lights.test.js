@@ -8,6 +8,7 @@ const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
 const lightingCycleSource = read("js/render/lighting-cycle.js");
+const surfaceReadyFeatherSource = read("js/render/surface-ready-feather.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const pointLightSource = read("js/render/webgpu-point-lights.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
@@ -95,6 +96,7 @@ vm.runInContext(targetsSource, context, { filename: "js/render/webgpu-targets.js
 vm.runInContext(gbufferSource, context, { filename: "js/render/webgpu-gbuffer.js" });
 vm.runInContext(lightingCycleSource, context, { filename: "js/render/lighting-cycle.js" });
 vm.runInContext(pointLightSource, context, { filename: "js/render/webgpu-point-lights.js" });
+vm.runInContext(surfaceReadyFeatherSource, context, { filename: "js/render/surface-ready-feather.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 
 const pointLights = context.PS.render.webgpuPointLights;
