@@ -60,8 +60,9 @@ vm.runInContext(wasmGlueSource, context, { filename: "wasm/pixeldarium-sim.js" }
 vm.runInContext(wasmSidecarSource, context, { filename: "wasm/pixeldarium-sim.wasm.js" });
 vm.runInContext(bridgeSource, context, { filename: "js/sim/wasm-bridge.js" });
 
-const runtime = context.window.PS.sim.wasmBridge.instantiateFromBase64();
-const simBuffer = context.window.PS.sim.wasmBridge.createBuffer(runtime, 3, 3);
+const bridge = context.wasmBridge;
+const runtime = bridge.instantiateFromBase64();
+const simBuffer = bridge.createBuffer(runtime, 3, 3);
 const heights = [
   9, 8, 7,
   8, 4, 6,
@@ -80,7 +81,7 @@ assert.ok(simBuffer.get_flow_order(0) < simBuffer.get_flow_order(8), "D8 flow or
 
 simBuffer.run_tectonics(1);
 simBuffer.run_erosion(2);
-const view = context.window.PS.sim.wasmBridge.makeElevationView(simBuffer, runtime.exports, 3, 3);
+const view = bridge.makeElevationView(simBuffer, runtime.exports, 3, 3);
 assert.strictEqual(view.length, 9, "WASM elevation view should match dimensions");
 for (let i = 0; i < view.length; i += 1) {
   assert.ok(Number.isFinite(view[i]), "WASM elevation values should remain finite");
@@ -95,7 +96,7 @@ const fakeDevice = {
   }
 };
 const targetBuffer = { label: "elevation.gpu" };
-const upload = context.window.PS.sim.wasmBridge.uploadElevationToGpu({
+const upload = bridge.uploadElevationToGpu({
   device: fakeDevice,
   targetBuffer: targetBuffer,
   simBuffer: simBuffer,

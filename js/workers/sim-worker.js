@@ -19,6 +19,7 @@ function postError(id, message) {
 function makeInlineClassicSource(source) {
   return String(source || "")
     .replace(/^\s*import\s+\{\s*PS\s*\}\s+from\s+["'][^"']+["'];\s*/m, "var PS = self.PS;\n")
+    .replace(/^\s*export\s+const\s+wasmBridge\s*=\s*/m, "self.wasmBridge = ")
     .replace(/^\s*export\s+let\s+wasm_bindgen\s*=/m, "var wasm_bindgen =")
     .replace(/\bwindow\.wasm_bindgen\s*=/g, "self.wasm_bindgen =");
 }
@@ -48,12 +49,12 @@ function ensureWasmRuntime(message) {
     importScripts.apply(null, message.scripts);
   }
 
-  if (!self.PS || !self.PS.sim || !self.PS.sim.wasmBridge) {
-    throw new Error("PS.sim.wasmBridge is required before wasmInit");
+  if (!self.wasmBridge) {
+    throw new Error("wasmBridge is required before wasmInit");
   }
 
-  wasmState.runtime = self.PS.sim.wasmBridge.instantiateFromBase64(message.wasmBase64);
-  wasmState.simBuffer = self.PS.sim.wasmBridge.createBuffer(wasmState.runtime, message.width, message.height);
+  wasmState.runtime = self.wasmBridge.instantiateFromBase64(message.wasmBase64);
+  wasmState.simBuffer = self.wasmBridge.createBuffer(wasmState.runtime, message.width, message.height);
 }
 
 function copyElevationIntoWasm(buffer, cellCount) {
@@ -70,7 +71,7 @@ function copyElevationIntoWasm(buffer, cellCount) {
 }
 
 function makeElevationTransfer(cellCount) {
-  var view = self.PS.sim.wasmBridge.makeElevationView(
+  var view = self.wasmBridge.makeElevationView(
     wasmState.simBuffer,
     wasmState.runtime.exports,
     wasmState.width,

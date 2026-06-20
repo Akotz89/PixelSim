@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { computeHarness } from "./compute-harness.js";
+import { wasmBridge } from "./wasm-bridge.js";
 
 PS.sim = PS.sim || {};
 
@@ -345,12 +346,12 @@ export const coupling = {
 
   uploadWasmElevation: function (options) {
     var spec = options || {};
-    var bridge = PS.sim && PS.sim.wasmBridge;
+    var bridge = wasmBridge;
     var targetBuffer = spec.targetBuffer || (this.elevationBuffer && this.elevationBuffer.buffer);
     var upload;
 
     if (!bridge || typeof bridge.uploadElevationToGpu !== "function") {
-      throw new Error("PS.sim.wasmBridge.uploadElevationToGpu is required for coupling elevation upload");
+      throw new Error("wasmBridge.uploadElevationToGpu is required for coupling elevation upload");
     }
     if (!targetBuffer) {
       this.ensureElevationBuffer(spec);

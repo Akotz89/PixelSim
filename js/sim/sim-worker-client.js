@@ -1,8 +1,4 @@
-import { PS } from "../core/namespace.js";
-
-PS.sim = PS.sim || {};
-
-PS.sim.simWorkerClient = {
+export const simWorkerClient = {
   createBlobWorker: function (source) {
     var blob;
     var url;
@@ -132,5 +128,4 @@ PS.sim.simWorkerClient = {
     };
   }
 };
-
 

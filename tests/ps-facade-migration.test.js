@@ -23,6 +23,9 @@ const heatDiffusionSource = read("js/sim/heat-diffusion.js");
 const leniaSource = read("js/sim/lenia.js");
 const couplingSource = read("js/sim/coupling.js");
 const computeHarnessSource = read("js/sim/compute-harness.js");
+const wasmBridgeSource = read("js/sim/wasm-bridge.js");
+const simWorkerClientSource = read("js/sim/sim-worker-client.js");
+const simWorkerSource = read("js/workers/sim-worker.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -105,6 +108,10 @@ const migratedComputeHarnessConsumers = [
   "js/sim/pixel-ca.js",
   "js/sim/reaction-diffusion.js",
   "js/sim/thermohaline.js"
+];
+const migratedWasmBridgeConsumers = [
+  "js/sim/coupling.js",
+  "js/workers/sim-worker.js"
 ];
 
 assert.ok(
@@ -591,5 +598,46 @@ migratedComputeHarnessConsumers.forEach(function(file) {
     file + " should use computeHarness directly instead of PS.sim.computeHarness"
   );
 });
+
+assert.ok(
+  /export\s+const\s+wasmBridge\s*=/.test(wasmBridgeSource),
+  "WASM bridge should expose wasmBridge as a direct ES module export"
+);
+assert.strictEqual(
+  wasmBridgeSource.indexOf("PS.sim.wasmBridge"),
+  -1,
+  "WASM bridge should not register through PS.sim.wasmBridge"
+);
+
+migratedWasmBridgeConsumers.forEach(function(file) {
+  const source = read(file);
+
+  if (file === "js/sim/coupling.js") {
+    assert.ok(
+      source.indexOf("import { wasmBridge }") >= 0,
+      file + " should import wasmBridge directly"
+    );
+  }
+  assert.strictEqual(
+    source.indexOf("PS.sim.wasmBridge"),
+    -1,
+    file + " should use wasmBridge directly instead of PS.sim.wasmBridge"
+  );
+});
+
+assert.ok(
+  simWorkerSource.indexOf("self.wasmBridge") >= 0,
+  "simulation worker should use the inlined direct wasmBridge binding"
+);
+
+assert.ok(
+  /export\s+const\s+simWorkerClient\s*=/.test(simWorkerClientSource),
+  "simulation worker client should expose simWorkerClient as a direct ES module export"
+);
+assert.strictEqual(
+  simWorkerClientSource.indexOf("PS.sim.simWorkerClient"),
+  -1,
+  "simulation worker client should not register through PS.sim.simWorkerClient"
+);
 
 console.log("PS facade migration checks passed");

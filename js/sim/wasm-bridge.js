@@ -1,8 +1,4 @@
-import { PS } from "../core/namespace.js";
-
-PS.sim = PS.sim || {};
-
-PS.sim.wasmBridge = {
+export const wasmBridge = {
   moduleName: "pixeldarium-sim",
   wasmScript: "wasm/pixeldarium-sim.js",
   wasmBinary: "wasm/pixeldarium-sim_bg.wasm",
@@ -129,5 +125,4 @@ PS.sim.wasmBridge = {
     };
   }
 };
-
 

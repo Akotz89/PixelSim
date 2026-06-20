@@ -43,12 +43,13 @@ assert.ok(packageJson.scripts.test.includes("tests/wasm-worker-bridge.test.js"),
   page.on("pageerror", (error) => pageErrors.push(error.message));
 
   await page.goto(pathToFileURL(path.join(root, "index.html")).href, { waitUntil: "load" });
-  await page.waitForFunction(() => Boolean(window.PS && window.PS.sim && window.PS.sim.simWorkerClient), null, {
+  await page.waitForFunction(() => Boolean(window.PS && window.PS.core && window.PS.core.loaderState && window.PS.core.loaderState.status === "complete"), null, {
     timeout: 10000
   });
 
   const evidence = await page.evaluate(async (sources) => {
-    const client = window.PS.sim.simWorkerClient;
+    const module = await import(new URL("js/sim/sim-worker-client.js", document.baseURI).href);
+    const client = module.simWorkerClient;
     const workerSetup = client.createBlobWorker(sources.workerSource);
     const requestClient = client.createRequestClient(workerSetup.worker);
     const width = 3;
