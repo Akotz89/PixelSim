@@ -70,6 +70,7 @@ var sourceFiles = [
   "js/sim/food-runtime.js",
   "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
+  "js/sim/organism-ai.js",
   "js/sim/organisms-behavior.js",
   "js/sim/trait-registry.js",
   "js/systems/persistence-config.js",

@@ -6,6 +6,7 @@ const entityRegistrySource = read("js/core/entity-registry.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const civilizationsSource = read("js/sim/civilizations.js");
+const organismAiSource = read("js/sim/organism-ai.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -31,6 +32,11 @@ const migratedLayerRegistryConsumers = [
   "js/layers/geology.js",
   "js/layers/atmosphere.js",
   "js/main-simulation.js"
+];
+const migratedOrganismAiConsumers = [
+  "js/sim/organisms-behavior.js",
+  "js/systems/persistence-db.js",
+  "js/systems/persistence-restore-entities.js"
 ];
 
 assert.ok(
@@ -188,5 +194,34 @@ assert.strictEqual(
   -1,
   "civilizations wrapper should not register through PS.sim.civilizations"
 );
+
+assert.ok(
+  /export\s+const\s+organismAi\s*=/.test(organismAiSource),
+  "organism AI wrapper should expose organismAi as a direct ES module export"
+);
+assert.strictEqual(
+  organismAiSource.indexOf("namespace.js"),
+  -1,
+  "organism AI wrapper should not import the PS namespace"
+);
+assert.strictEqual(
+  organismAiSource.indexOf("PS.sim.organismAi"),
+  -1,
+  "organism AI wrapper should not register through PS.sim.organismAi"
+);
+
+migratedOrganismAiConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { organismAi }") >= 0,
+    file + " should import organismAi directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.organismAi"),
+    -1,
+    file + " should use organismAi directly instead of PS.sim.organismAi"
+  );
+});
 
 console.log("PS facade migration checks passed");

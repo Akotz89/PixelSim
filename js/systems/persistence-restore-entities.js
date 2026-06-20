@@ -2,6 +2,7 @@ import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { normalizeLongitude } from "../render/planet-view.js";
+import { organismAi } from "../sim/organism-ai.js";
 import { ensureOrganismLineage, makeOrganism } from "../sim/organisms-traits.js";
 import { clonePersistencePlainValue } from "./persistence-db.js";
 import { getRestoredSurfacePosition, restoreNumber, restoreOrganismTraits, restorePlanetaryBody } from "./persistence-restore-core.js";
@@ -215,8 +216,8 @@ export function restoreOrganism(organism) {
     1,
     Math.round(restoreNumber(organism.representativeId, restoredOrganism.representativeId || 1))
   );
-  restoredOrganism.ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.restore === "function"
-    ? PS.sim.organismAi.restore(organism.ai)
+  restoredOrganism.ai = typeof organismAi.restore === "function"
+    ? organismAi.restore(organism.ai)
     : clonePersistencePlainValue(organism.ai || null);
 
   ensureOrganismLineage(restoredOrganism);
@@ -340,4 +341,3 @@ export function countFertileTiles() {
 export function applySaveConfig(saveConfig) {
   PS.systems.persistenceConfig.apply(saveConfig);
 }
-

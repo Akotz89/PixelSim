@@ -6,6 +6,7 @@ import { getClampedWorldY, getDirectionXToTile, getDirectionYToTile, getTileGrea
 import { assignRandomSurfacePositionInTile, getPlanetLatitudeForTile, getPlanetLongitudeForTile } from "../render/planet-view.js";
 import { isFertile } from "../render/terrain-hydrology.js";
 import { findNearestFoodInBuckets, removeFoodAtPosition } from "./food-runtime.js";
+import { organismAi } from "./organism-ai.js";
 import { getLimbMovementMultiplierFromValue, getOrganismTravelKmPerTick } from "./organisms-indexes.js";
 import { assignChildLineage, ensureOrganismTraits, inheritOrganismTraits, makeOrganism } from "./organisms-traits.js";
 import { world } from "../systems/state.js";
@@ -402,8 +403,8 @@ export function updateOrganism(organism, updateIndex) {
     ? findNearestFood(organism, traits.vision)
     : null;
   var shouldWander = !nearestFood && chance(traits.movementTendency);
-  var ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.tick === "function"
-    ? PS.sim.organismAi.tick(organism, {
+  var ai = typeof organismAi.tick === "function"
+    ? organismAi.tick(organism, {
       traits: traits,
       isCarnivore: isCarnivore,
       nearestFood: nearestFood,
@@ -424,8 +425,8 @@ export function updateOrganism(organism, updateIndex) {
   if (isCarnivore) {
     updatePredationForOrganism(organism, traits);
   } else {
-    if (eatFoodOnCurrentTile(organism) && PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.advanceStep === "function") {
-      PS.sim.organismAi.advanceStep(organism, "consume");
+    if (eatFoodOnCurrentTile(organism) && typeof organismAi.advanceStep === "function") {
+      organismAi.advanceStep(organism, "consume");
     }
   }
 
@@ -493,8 +494,8 @@ export function updatePooledOrganismsForTick(organismsAtStartOfTick) {
       ? findNearestFoodInBuckets(x, y, arrays.vision[pooledIndex])
       : null;
     var shouldWander = !nearestFood && arrays.movementTendency[pooledIndex] > 0 && chance(arrays.movementTendency[pooledIndex]);
-    var ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.tick === "function"
-      ? PS.sim.organismAi.tick(pooledOrganism, {
+    var ai = typeof organismAi.tick === "function"
+      ? organismAi.tick(pooledOrganism, {
         traits: traits,
         isCarnivore: isPooledCarnivore,
         nearestFood: nearestFood,
@@ -559,8 +560,8 @@ export function updatePooledOrganismsForTick(organismsAtStartOfTick) {
         recordFoodConsumed(1);
       }
 
-      if (PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.advanceStep === "function") {
-        PS.sim.organismAi.advanceStep(pooledOrganism, "consume");
+      if (typeof organismAi.advanceStep === "function") {
+        organismAi.advanceStep(pooledOrganism, "consume");
       }
     }
 

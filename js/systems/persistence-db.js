@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { organismAi } from "../sim/organism-ai.js";
 import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
 import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { world } from "./state.js";
@@ -98,8 +99,8 @@ export function copyOrganismForSave(organism) {
     speciesId: Math.max(1, Math.round(Number(organism.speciesId) || organism.lineageId || 1)),
     populationId: Math.max(1, Math.round(Number(organism.populationId) || organism.lineageId || 1)),
     representativeId: Math.max(1, Math.round(Number(organism.representativeId) || 1)),
-    ai: PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.serialize === "function"
-      ? PS.sim.organismAi.serialize(organism.ai)
+    ai: typeof organismAi.serialize === "function"
+      ? organismAi.serialize(organism.ai)
       : clonePersistencePlainValue(organism.ai || null)
   };
 }

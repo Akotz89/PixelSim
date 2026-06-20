@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  organismAi: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    organismAi: {}
   },
   document: {
     getElementById() {

@@ -23,8 +23,10 @@ function makeElement() {
 const context = {
   assert,
   console,
+  organismAi: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    organismAi: {}
   },
   document: {
     getElementById() {

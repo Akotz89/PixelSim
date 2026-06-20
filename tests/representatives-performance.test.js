@@ -4,8 +4,10 @@ const context = {
   assert,
   console,
   performance,
+  organismAi: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    organismAi: {}
   },
   document: {
     getElementById() {

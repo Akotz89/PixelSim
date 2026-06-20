@@ -61,8 +61,10 @@ assert.throws(
 const organismContext = {
   assert,
   console,
+  organismAi: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    organismAi: {}
   },
   document: {
     getElementById() {

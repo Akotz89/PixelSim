@@ -141,7 +141,7 @@ world.tick = 3;
 
 assert.deepStrictEqual(
   ["eat", "flee", "reproduce", "shelter", "wander"].filter(function(key) {
-    return !PS.sim.organismAi.modules[key];
+    return !organismAi.modules[key];
   }),
   [],
   "organism AI should register the five required behavior modules"
@@ -170,7 +170,7 @@ forager.ai = {
   subState: "ready"
 };
 forager.threatLevel = 1;
-PS.sim.organismAi.tick(forager, { traits: forager.traits, shouldWander: true });
+organismAi.tick(forager, { traits: forager.traits, shouldWander: true });
 assert.strictEqual(forager.ai.moduleKey, "flee", "flee should interrupt lower-priority wander");
 assert.strictEqual(forager.ai.interrupt.moduleKey, "wander", "interrupt slot should preserve the preempted plan");
 
