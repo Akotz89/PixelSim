@@ -46,7 +46,7 @@ export function cloneSaveDataForMigration(saveData) {
   return clonePersistencePlainValue(saveData);
 }
 
-PS.systems.saveMigration = {
+export const saveMigration = {
   migrations: {},
   stats: {
     lastFromVersion: 0,
@@ -152,7 +152,9 @@ PS.systems.saveMigration = {
   }
 };
 
-PS.systems.saveMigration.register(1, 2, function (data) {
+PS.systems.saveMigration = saveMigration;
+
+saveMigration.register(1, 2, function (data) {
   var organisms = Array.isArray(data.organisms) ? data.organisms : [];
 
   for (var i = 0; i < organisms.length; i++) {
@@ -164,7 +166,7 @@ PS.systems.saveMigration.register(1, 2, function (data) {
   return data;
 });
 
-PS.systems.saveMigration.register(2, 3, function (data) {
+saveMigration.register(2, 3, function (data) {
   data.terrainTileIds = getTerrainTileIdsForSave(data.terrain);
 
   // Ensure epoch state defaults for pre-epoch saves (AZR-1105)
@@ -178,4 +180,3 @@ PS.systems.saveMigration.register(2, 3, function (data) {
   data.version = 3;
   return data;
 });
-

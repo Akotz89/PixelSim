@@ -1,4 +1,4 @@
-import { PS } from "../core/namespace.js";
+import { traitSchema } from "../core/trait-schema.js";
 import { clamp } from "../core/utils.js";
 import { organismAi } from "../sim/organism-ai.js";
 import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
@@ -72,7 +72,7 @@ export function openPixeldariumDatabase() {
 }
 
 export function copyOrganismTraitsForSave(traits) {
-  return PS.core.traitSchema.copy(traits);
+  return traitSchema.copy(traits);
 }
 
 export function copyOrganismForSave(organism) {
@@ -115,7 +115,7 @@ export function copyFoodForSave(food) {
 }
 
 export function copyTraitHistorySampleForSave(sample) {
-  var traits = PS.core.traitSchema.copy(sample || {});
+  var traits = traitSchema.copy(sample || {});
   traits.tick = sample.tick;
   traits.population = sample.population;
   return traits;

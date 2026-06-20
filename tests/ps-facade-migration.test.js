@@ -4,9 +4,11 @@ const namespaceSource = read("js/core/namespace.js");
 const assertSource = read("js/core/assert.js");
 const bitsmapSource = read("js/core/bitsmap.js");
 const entityRegistrySource = read("js/core/entity-registry.js");
+const traitSchemaSource = read("js/core/trait-schema.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
+const saveMigrationSource = read("js/systems/save-migration.js");
 const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
@@ -68,6 +70,13 @@ const migratedLayerRegistryConsumers = [
 ];
 const migratedPersistenceConfigConsumers = [
   "js/systems/persistence-restore-entities.js"
+];
+const migratedTraitSchemaConsumers = [
+  "js/systems/persistence-db.js",
+  "js/systems/persistence-restore-core.js"
+];
+const migratedSaveMigrationConsumers = [
+  "js/systems/persistence-restore-core.js"
 ];
 const migratedOrganismAiConsumers = [
   "js/sim/organisms-behavior.js",
@@ -311,6 +320,25 @@ migratedEntityRegistryConsumers.forEach(function(file) {
 });
 
 assert.ok(
+  /export\s+const\s+traitSchema\s*=/.test(traitSchemaSource),
+  "trait schema should expose traitSchema as a direct ES module export"
+);
+
+migratedTraitSchemaConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { traitSchema }") >= 0,
+    file + " should import traitSchema directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.core.traitSchema"),
+    -1,
+    file + " should use traitSchema directly instead of PS.core.traitSchema"
+  );
+});
+
+assert.ok(
   /export\s+const\s+resourceRegistry\s*=/.test(resourceRegistrySource),
   "resource registry should expose resourceRegistry as a direct ES module export"
 );
@@ -384,6 +412,25 @@ migratedPersistenceConfigConsumers.forEach(function(file) {
     source.indexOf("PS.systems.persistenceConfig"),
     -1,
     file + " should use persistenceConfig directly instead of PS.systems.persistenceConfig"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+saveMigration\s*=/.test(saveMigrationSource),
+  "save migration should expose saveMigration as a direct ES module export"
+);
+
+migratedSaveMigrationConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { saveMigration }") >= 0,
+    file + " should import saveMigration directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.systems.saveMigration"),
+    -1,
+    file + " should use saveMigration directly instead of PS.systems.saveMigration"
   );
 });
 

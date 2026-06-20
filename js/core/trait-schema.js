@@ -5,7 +5,7 @@ import { clamp } from "./utils.js";
 PS.core = PS.core || {};
 PS.bio = PS.bio || {};
 
-PS.core.traitSchema = (function() {
+export const traitSchema = (function() {
   var definitions = [
     { key: "vision", configPrefix: "TRAIT_VISION", constant: "TRAIT_VISION" },
     { key: "metabolism", configPrefix: "TRAIT_METABOLISM", constant: "TRAIT_METABOLISM" },
@@ -200,3 +200,5 @@ PS.core.traitSchema = (function() {
     restore: copy
   };
 })();
+
+PS.core.traitSchema = traitSchema;
