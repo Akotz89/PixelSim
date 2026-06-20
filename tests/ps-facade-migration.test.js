@@ -20,6 +20,7 @@ const reactionDiffusionSource = read("js/sim/reaction-diffusion.js");
 const lbmOceanSource = read("js/sim/lbm-ocean.js");
 const thermohalineSource = read("js/sim/thermohaline.js");
 const heatDiffusionSource = read("js/sim/heat-diffusion.js");
+const leniaSource = read("js/sim/lenia.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -83,6 +84,10 @@ const migratedGeochemistryConsumers = [
 const migratedHeatDiffusionConsumers = [
   "js/epochs/state-machine.js",
   "js/main-loop.js"
+];
+const migratedLeniaConsumers = [
+  "js/epochs/state-machine.js",
+  "js/ui/observation-overlays.js"
 ];
 
 assert.ok(
@@ -495,6 +500,30 @@ migratedHeatDiffusionConsumers.forEach(function(file) {
     source.indexOf("PS.sim.heatDiffusion"),
     -1,
     file + " should use heatDiffusion directly instead of PS.sim.heatDiffusion"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+lenia\s*=/.test(leniaSource),
+  "Lenia wrapper should expose lenia as a direct ES module export"
+);
+assert.strictEqual(
+  leniaSource.indexOf("PS.sim.lenia"),
+  -1,
+  "Lenia wrapper should not register through PS.sim.lenia"
+);
+
+migratedLeniaConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { lenia }") >= 0,
+    file + " should import lenia directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.lenia"),
+    -1,
+    file + " should use lenia directly instead of PS.sim.lenia"
   );
 });
 

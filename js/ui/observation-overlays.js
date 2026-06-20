@@ -5,6 +5,7 @@ import { getTileManhattanDistance } from "../render/planet-grid.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { lineageTracking } from "../sim/lineage-tracking.js";
+import { lenia } from "../sim/lenia.js";
 import { terrainPressure } from "../sim/terrain-pressure.js";
 import { world } from "../systems/state.js";
 import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
@@ -264,7 +265,6 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     }
 
     if (activeId === "observation.microbial") {
-      var lenia = PS.sim && PS.sim.lenia;
       if (lenia && lenia.state && typeof lenia.getCellDensity === "function") {
         var microbes = lenia.getCellDensity(tileX, tileY, "microbes");
         var vegetation = lenia.getCellDensity(tileX, tileY, "vegetation");

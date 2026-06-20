@@ -2,6 +2,7 @@ import { PS } from "../core/namespace.js";
 import { biomeLut } from "../sim/biome-lut.js";
 import { environmentDrivers } from "../sim/environment-drivers.js";
 import { heatDiffusion } from "../sim/heat-diffusion.js";
+import { lenia } from "../sim/lenia.js";
 import { world } from "../systems/state.js";
 
 PS.epochs = PS.epochs || {};
@@ -232,7 +233,6 @@ PS.epochs.isBiomeStable = function () {
 };
 
 PS.epochs.applyEpochLife = function (state) {
-  var lenia = PS.sim && PS.sim.lenia;
   if (!state || !state.life || !lenia) { return state; }
   if (state.life.spawn_after === "biome-stable" && !this.isBiomeStable()) {
     lenia.pendingEpochSpawn = this.cloneEpochState(state);
@@ -261,7 +261,6 @@ PS.epochs.applyEpochLife = function (state) {
 };
 
 PS.epochs.updateEpochGates = function () {
-  var lenia = PS.sim && PS.sim.lenia;
   if (lenia && lenia.pendingEpochSpawn && this.isBiomeStable()) {
     var pending = lenia.pendingEpochSpawn;
     lenia.pendingEpochSpawn = null;

@@ -158,11 +158,11 @@ const epoch3 = epochs.setEpoch(3, { pipeline: coupling });
 assert.ok(epoch3.activePasses.includes("lenia"), "epoch 3 should enable Lenia");
 assert.ok(epoch3.life.lenia_species.includes("vegetation"), "epoch 3 should spawn plant-like Lenia species after biome stabilization");
 assert.strictEqual(epoch3.life.spawn_after, "biome-stable", "epoch 3 spawn gate should wait for biome stability");
-assert.strictEqual(context.PS.sim.lenia.state.spawnedEpochSpecies, undefined, "epoch 3 Lenia species should not spawn before biome stability");
-assert.strictEqual(context.PS.sim.lenia.state.pendingEpochSpawn.gate, "biome-stable", "epoch 3 should record pending Lenia spawn gate");
+assert.strictEqual(context.lenia.state.spawnedEpochSpecies, undefined, "epoch 3 Lenia species should not spawn before biome stability");
+assert.strictEqual(context.lenia.state.pendingEpochSpawn.gate, "biome-stable", "epoch 3 should record pending Lenia spawn gate");
 context.biomeLut.state.stable = true;
 epochs.updateEpochGates();
-assert.ok(context.PS.sim.lenia.state.activeEpochSpecies.includes("vegetation"), "Lenia vegetation should spawn after biome stability gate opens");
+assert.ok(context.lenia.state.activeEpochSpecies.includes("vegetation"), "Lenia vegetation should spawn after biome stability gate opens");
 
 const epoch5 = epochs.setEpoch(5, { pipeline: coupling });
 assert.strictEqual(context.biomeLut.state.epochPaletteId, "cenozoic", "epoch transition should swap biome LUT palette id");

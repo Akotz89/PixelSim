@@ -166,7 +166,7 @@ vm.runInContext(geochemistrySource, context, { filename: "js/sim/geochemistry.js
 vm.runInContext(leniaSource, context, { filename: "js/sim/lenia.js" });
 
 const geochemistry = context.geochemistry;
-const lenia = context.PS.sim.lenia;
+const lenia = context.lenia;
 lenia.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "lenia"), "Lenia should register WGSL manifest entry");
 

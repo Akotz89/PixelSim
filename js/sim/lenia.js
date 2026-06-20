@@ -3,7 +3,7 @@ import { world } from "../systems/state.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.lenia = PS.sim.lenia || {
+export const lenia = {
   shaderName: "lenia",
   shaderPath: "shaders/lenia.wgsl",
   configPath: "sim/configs/lenia.json",
