@@ -16,6 +16,7 @@ import { clonePersistencePlainValue, openPixeldariumDatabase, PIXELDARIUM_SAVE_I
 import { restoreFood, restoreLineages, restoreNumber, restoreOrbitalAssets, restoreSettlementRoutes, restoreSettlements, validateWorldSaveData } from "./persistence-restore-core.js";
 import { applySaveConfig, countFertileTiles, restoreBiologyAggregateState, restoreEcosystemHistory, restoreEmpireSectors, restoreInterstellarFleets, restoreOrganism, restorePlanetaryBodies, restoreProbeMissions, restoreSimulationEvents, restoreStarSystems, restoreTraitHistory } from "./persistence-restore-entities.js";
 import { createWorldSaveData } from "./persistence-save-data.js";
+import { saveMigration } from "./save-migration.js";
 import { world } from "./state.js";
 import { updateHud } from "../ui/foundation.js";
 
@@ -94,7 +95,7 @@ export function applySubsystemSaveFallbacks(saveData) {
 }
 
 export function applyWorldSaveData(saveData) {
-  var readySaveData = applySubsystemSaveFallbacks(PS.systems.saveMigration.migrate(saveData));
+  var readySaveData = applySubsystemSaveFallbacks(saveMigration.migrate(saveData));
 
   validateWorldSaveData(readySaveData);
   saveData = readySaveData;

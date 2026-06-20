@@ -3,6 +3,7 @@ import { openPixeldariumDatabase } from "./persistence-db.js";
 import { applyWorldSaveData, exportWorldToJsonFile, importWorldFromJsonFile, loadWorldFromIndexedDB } from "./persistence-io.js";
 import { saveWorldToIndexedDB, validateWorldSaveData } from "./persistence-restore-core.js";
 import { createWorldSaveData } from "./persistence-save-data.js";
+import { saveMigration } from "./save-migration.js";
 import { importJsonFile } from "../ui/dom-refs.js";
 
 PS.systems = PS.systems || {};
@@ -18,10 +19,10 @@ PS.persistence = {
     return validateWorldSaveData(saveData);
   },
   migrateSaveData: function(saveData) {
-    return PS.systems.saveMigration.migrate(saveData);
+    return saveMigration.migrate(saveData);
   },
   getMigrationStats: function() {
-    return PS.systems.saveMigration.getStats();
+    return saveMigration.getStats();
   },
   applySaveData: function(saveData) {
     return applyWorldSaveData(saveData);

@@ -3,6 +3,7 @@ import { PS } from "../core/namespace.js";
 import { clamp, normalizeSeedText } from "../core/utils.js";
 import { getPlanetView, normalizeLongitude } from "../render/planet-view.js";
 import { clonePersistencePlainValue, copyEcosystemHistorySampleForSave, copyEmpireSectorForSave, copyFoodForSave, copyInterstellarFleetForSave, copyOrganismForSave, copyProbeMissionForSave, copySimulationEventForSave, copyStarSystemForSave, copyTraitHistorySampleForSave, getLineagesForSave, getOrbitalAssetsForSave, getPlanetaryBodiesForSave, getSettlementRoutesForSave, getSettlementsForSave, PIXELDARIUM_SAVE_ID, PIXELDARIUM_SAVE_VERSION } from "./persistence-db.js";
+import { persistenceConfig } from "./persistence-config.js";
 import { getTerrainTileIdsForSave } from "./save-migration.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
 
@@ -61,7 +62,7 @@ export function copyLayerStateForSave(layerState) {
 }
 
 export function createSaveConfigDelta() {
-  return PS.systems.persistenceConfig.createDelta();
+  return persistenceConfig.createDelta();
 }
 
 export function createWorldSubsystemSaveData() {

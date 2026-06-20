@@ -69,13 +69,16 @@ const migratedLayerRegistryConsumers = [
   "js/main-simulation.js"
 ];
 const migratedPersistenceConfigConsumers = [
-  "js/systems/persistence-restore-entities.js"
+  "js/systems/persistence-restore-entities.js",
+  "js/systems/persistence-save-data.js"
 ];
 const migratedTraitSchemaConsumers = [
   "js/systems/persistence-db.js",
   "js/systems/persistence-restore-core.js"
 ];
 const migratedSaveMigrationConsumers = [
+  "js/systems/persistence.js",
+  "js/systems/persistence-io.js",
   "js/systems/persistence-restore-core.js"
 ];
 const migratedOrganismAiConsumers = [
