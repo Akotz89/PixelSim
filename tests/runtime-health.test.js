@@ -49,17 +49,17 @@ assert.strictEqual(result.ok, true, "healthy runtime should pass verification");
 assert.deepStrictEqual(Array.from(result.missing), [], "healthy runtime should not report missing functions");
 assert.deepStrictEqual(debugMessages, [], "healthy runtime should not show debug warnings");
 
-delete context.window.PS.sim.organisms.make;
+delete context.window.PS.time.runFrame;
 result = context.window.PS.runtime.verify();
 assert.strictEqual(result.ok, false, "missing namespace should fail verification");
-assert.ok(result.missing.includes("PS.sim.organisms.make"), "verification should report the missing function path");
+assert.ok(result.missing.includes("PS.time.runFrame"), "verification should report the missing function path");
 assert.strictEqual(
   context.window.PS.runtime.errors[0].kind,
   "runtime.verify.missing",
   "missing runtime functions should be recorded as a runtime warning"
 );
 assert.ok(
-  debugMessages[0].indexOf("PS.sim.organisms.make") >= 0,
+  debugMessages[0].indexOf("PS.time.runFrame") >= 0,
   "missing runtime function warning should be visible in debug output"
 );
 

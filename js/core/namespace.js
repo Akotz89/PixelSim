@@ -18,9 +18,6 @@ PS.runtime = PS.runtime || {};
 PS.runtime.errors = PS.runtime.errors || [];
 PS.runtime.requiredFunctions = PS.runtime.requiredFunctions || [
   "PS.gpu.initialize",
-  "PS.sim.organisms.make",
-  "PS.sim.settlements.update",
-  "PS.sim.evolution.inheritTraits",
   "PS.render.terrain.draw",
   "PS.render.pipeline.drawWorld",
   "PS.render.renderer.getActive",

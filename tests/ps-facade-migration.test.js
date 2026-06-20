@@ -1,5 +1,6 @@
 const { assert, read } = require("./helpers/world-context.js");
 
+const namespaceSource = read("js/core/namespace.js");
 const assertSource = read("js/core/assert.js");
 const bitsmapSource = read("js/core/bitsmap.js");
 const entityRegistrySource = read("js/core/entity-registry.js");
@@ -190,6 +191,12 @@ assert.ok(
   /export\s+\{\s*assertRuntime\s+as\s+assert\s*\}/.test(assertSource),
   "assert core should expose assert as a direct ES module export"
 );
+assert.strictEqual(
+  namespaceSource.indexOf("\"PS.sim."),
+  -1,
+  "runtime health should not require migrated PS.sim facades"
+);
+
 assert.strictEqual(
   assertSource.indexOf("namespace.js"),
   -1,
