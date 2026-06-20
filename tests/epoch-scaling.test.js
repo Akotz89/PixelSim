@@ -94,7 +94,7 @@ const epochs = context.PS.epochs;
 const coupling = context.PS.sim.coupling;
 const config = JSON.parse(configSource);
 const greenhouseWrites = [];
-context.PS.sim.heatDiffusion.state = { width: 2, height: 2 };
+context.heatDiffusion.state = { width: 2, height: 2 };
 context.PS.sim.computeHarness = {
   buffers: { "heat.greenhouse": { id: "heat.greenhouse" } },
   writeBuffer(id, data) {
@@ -114,7 +114,7 @@ assert.ok(!hadean.activePasses.includes("lbm-ocean"), "Hadean should not run oce
 assert.ok(hadean.activePasses.includes("heat-diffusion"), "Hadean should still run heat diffusion");
 assert.strictEqual(context.world.atmosphere.carbonDioxidePpm, 100000, "Hadean CO2 should load into world atmosphere");
 assert.ok(context.world.atmosphere.greenhouseForcing > 0, "high CO2 should immediately affect greenhouse forcing");
-assert.strictEqual(context.PS.sim.heatDiffusion.greenhouseForcing, context.world.atmosphere.greenhouseForcing, "epoch transition should update heat greenhouse forcing input");
+assert.strictEqual(context.heatDiffusion.greenhouseForcing, context.world.atmosphere.greenhouseForcing, "epoch transition should update heat greenhouse forcing input");
 assert.ok(greenhouseWrites[greenhouseWrites.length - 1].data.every((value) => Math.abs(value - context.world.atmosphere.greenhouseForcing) < 0.0001), "epoch transition should write greenhouse forcing into heat buffer");
 assert.strictEqual(coupling.ticksPerYear, 1000000, "Hadean timescale should be one million years per tick");
 assert.strictEqual(context.PS.time.updateAdaptiveTimeScale(true).targetYearsPerTick, 1000000, "time system should use Hadean epoch years per tick");

@@ -1,6 +1,7 @@
 import { PS } from "../core/namespace.js";
 import { biomeLut } from "../sim/biome-lut.js";
 import { environmentDrivers } from "../sim/environment-drivers.js";
+import { heatDiffusion } from "../sim/heat-diffusion.js";
 import { world } from "../systems/state.js";
 
 PS.epochs = PS.epochs || {};
@@ -204,8 +205,8 @@ PS.epochs.applyEpochAtmosphere = function (state, options) {
   world.atmosphere.oxygenPpm = state.atmosphere.o2Ppm;
   world.atmosphere.methanePpm = state.atmosphere.ch4Ppm;
   world.atmosphere.greenhouseForcing = state.greenhouseForcing;
-  if (PS.sim && PS.sim.heatDiffusion && typeof PS.sim.heatDiffusion.applyGreenhouseForcing === "function") {
-    PS.sim.heatDiffusion.applyGreenhouseForcing(state.greenhouseForcing);
+  if (heatDiffusion && typeof heatDiffusion.applyGreenhouseForcing === "function") {
+    heatDiffusion.applyGreenhouseForcing(state.greenhouseForcing);
   }
   return state;
 };

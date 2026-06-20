@@ -19,6 +19,7 @@ const pixelCaSource = read("js/sim/pixel-ca.js");
 const reactionDiffusionSource = read("js/sim/reaction-diffusion.js");
 const lbmOceanSource = read("js/sim/lbm-ocean.js");
 const thermohalineSource = read("js/sim/thermohaline.js");
+const heatDiffusionSource = read("js/sim/heat-diffusion.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -78,6 +79,10 @@ const migratedEnvironmentDriversConsumers = [
 const migratedGeochemistryConsumers = [
   "js/layers/atmosphere.js",
   "js/sim/environment-drivers.js"
+];
+const migratedHeatDiffusionConsumers = [
+  "js/epochs/state-machine.js",
+  "js/main-loop.js"
 ];
 
 assert.ok(
@@ -468,5 +473,29 @@ assert.strictEqual(
   -1,
   "thermohaline wrapper should not register through PS.sim.thermohaline"
 );
+
+assert.ok(
+  /export\s+const\s+heatDiffusion\s*=/.test(heatDiffusionSource),
+  "heat diffusion wrapper should expose heatDiffusion as a direct ES module export"
+);
+assert.strictEqual(
+  heatDiffusionSource.indexOf("PS.sim.heatDiffusion"),
+  -1,
+  "heat diffusion wrapper should not register through PS.sim.heatDiffusion"
+);
+
+migratedHeatDiffusionConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { heatDiffusion }") >= 0,
+    file + " should import heatDiffusion directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.heatDiffusion"),
+    -1,
+    file + " should use heatDiffusion directly instead of PS.sim.heatDiffusion"
+  );
+});
 
 console.log("PS facade migration checks passed");

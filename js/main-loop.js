@@ -4,6 +4,7 @@ import { PS } from "./core/namespace.js";
 import { clamp } from "./core/utils.js";
 import { reportRuntimeError } from "./main-runtime.js";
 import { drawWorld } from "./render/pipeline.js";
+import { heatDiffusion } from "./sim/heat-diffusion.js";
 import { seedWorld, setSimulationPaused, updateWorld } from "./main-simulation.js";
 import { world } from "./systems/state.js";
 import { syncControlStates, updateHud } from "./ui/foundation.js";
@@ -266,7 +267,7 @@ export function loadStartupShaders() {
       PS.render.webgpuPointLights,
       PS.render.webgpuWaterDisplacement,
       PS.render.webgpuEntity,
-      PS.sim && PS.sim.heatDiffusion
+      heatDiffusion
     ];
 
     for (var i = 0; i < registrars.length; i += 1) {

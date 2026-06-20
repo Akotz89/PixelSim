@@ -198,7 +198,7 @@ vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" 
 vm.runInContext(gpuSimRuntimeSource, context, { filename: "js/sim/gpu-sim-runtime.js" });
 vm.runInContext(heatSource, context, { filename: "js/sim/heat-diffusion.js" });
 
-const heat = context.PS.sim.heatDiffusion;
+const heat = context.heatDiffusion;
 assert.ok(Array.isArray(context.PS.render.wgslShaderManifest), "WGSL manifest should exist");
 heat.registerManifest();
 assert.ok(

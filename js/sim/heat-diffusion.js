@@ -8,7 +8,7 @@ import {
 
 PS.sim = PS.sim || {};
 
-PS.sim.heatDiffusion = PS.sim.heatDiffusion || {
+export const heatDiffusion = {
   shaderName: "heat-diffusion",
   shaderPath: "shaders/heat-diffusion.wgsl",
   configPath: "sim/configs/heat-diffusion.json",
