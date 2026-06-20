@@ -133,7 +133,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(mdSource, context, { filename: "js/sim/molecular-dynamics.js" });
 
-const md = context.PS.sim.molecularDynamics;
+const md = context.molecularDynamics;
 md.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "molecular-dynamics"), "MD should register WGSL manifest entry");
 

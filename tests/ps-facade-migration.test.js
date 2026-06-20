@@ -13,6 +13,7 @@ const biomeLutSource = read("js/sim/biome-lut.js");
 const parameterRegistrySource = read("js/sim/parameter-registry.js");
 const environmentDriversSource = read("js/sim/environment-drivers.js");
 const geochemistrySource = read("js/sim/geochemistry.js");
+const molecularDynamicsSource = read("js/sim/molecular-dynamics.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -402,5 +403,15 @@ migratedGeochemistryConsumers.forEach(function(file) {
     file + " should use geochemistry directly instead of PS.sim.geochemistry"
   );
 });
+
+assert.ok(
+  /export\s+const\s+molecularDynamics\s*=/.test(molecularDynamicsSource),
+  "molecular dynamics wrapper should expose molecularDynamics as a direct ES module export"
+);
+assert.strictEqual(
+  molecularDynamicsSource.indexOf("PS.sim.molecularDynamics"),
+  -1,
+  "molecular dynamics wrapper should not register through PS.sim.molecularDynamics"
+);
 
 console.log("PS facade migration checks passed");

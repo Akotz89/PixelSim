@@ -1,7 +1,7 @@
 import { PS } from "../core/namespace.js";
 
 PS.sim = PS.sim || {};
-PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
+export const molecularDynamics = {
   shaderName: "molecular-dynamics",
   shaderPath: "shaders/molecular-dynamics.wgsl",
   configPath: "sim/configs/molecular-dynamics.json",
