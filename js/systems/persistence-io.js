@@ -8,6 +8,7 @@ import { rebuildEmpireSectorIndexes } from "../sim/civilizations-empire.js";
 import { rebuildPlanetaryBodyIndexes } from "../sim/civilizations-orbital.js";
 import { rebuildStarSystemIndexes } from "../sim/civilizations-probes.js";
 import { rebuildFoodPositions } from "../sim/food-runtime.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { refreshLineageRegistry } from "../sim/organisms-indexes.js";
 import { ensureOutpostRoutes } from "../sim/settlements-routes.js";
 import { rebuildSettlementIndexes } from "../sim/settlements-state.js";
@@ -247,8 +248,8 @@ export function applyWorldSaveData(saveData) {
   world.milestonesReached = saveData.milestonesReached ? clonePersistencePlainValue(saveData.milestonesReached) : {};
   world.ecosystemSummary = null;
 
-  if (PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
-    PS.sim.lineageTracking.update(true);
+  if (lineageTracking && typeof lineageTracking.update === "function") {
+    lineageTracking.update(true);
   }
 
   if (typeof refreshEcosystemSummary === "function") {

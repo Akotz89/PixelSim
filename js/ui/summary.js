@@ -5,6 +5,7 @@ import { formatFoodRunway, refreshEcosystemSummary } from "../main-ecosystem-sum
 import { refreshSimulationAlerts } from "../main-simulation.js";
 import { getTileGreatCircleDistanceKm, getTileManhattanDistance } from "../render/planet-grid.js";
 import { countFoodInRadius, findNearestFoodInBuckets } from "../sim/food-runtime.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { resourceRegistry } from "../sim/resource-registry.js";
@@ -186,8 +187,8 @@ export function updateTraitSummary() {
 
 export function updateLineageSummary() {
   var summary = world.lineageSummary || null;
-  var trackedSummary = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getSummary === "function"
-    ? PS.sim.lineageTracking.getSummary()
+  var trackedSummary = lineageTracking && typeof lineageTracking.getSummary === "function"
+    ? lineageTracking.getSummary()
     : null;
 
   if (!summary) {

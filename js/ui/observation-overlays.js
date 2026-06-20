@@ -4,6 +4,7 @@ import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { terrainPressure } from "../sim/terrain-pressure.js";
 import { world } from "../systems/state.js";
 import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
@@ -223,8 +224,8 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
       var selection = sample ? clamp(Number(sample.pressure) || 0, 0, 1) : 0;
       var isolation = sample ? clamp(Number(sample.isolation) || 0, 0, 1) : 0;
       var innovation = sample ? clamp(Number(sample.innovationPressure) || 0, 0, 1) : 0;
-      var lineage = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getHighlightAt === "function"
-        ? PS.sim.lineageTracking.getHighlightAt(tileX, tileY)
+      var lineage = lineageTracking && typeof lineageTracking.getHighlightAt === "function"
+        ? lineageTracking.getHighlightAt(tileX, tileY)
         : 0;
 
       return this.makeSample(90 + selection * 120 + lineage * 45, 110 + innovation * 90 + lineage * 130, 210 - isolation * 80, 40 + Math.max(selection, isolation, lineage) * 185);

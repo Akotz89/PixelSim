@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { world } from "../systems/state.js";
 import { timelineFilterButtons, timelineList } from "./dom-refs.js";
 import { setElementClass, setElementHtml } from "./foundation.js";
@@ -49,8 +50,8 @@ PS.ui.timeline = (function() {
     }
 
     if (normalizedFilter === "lineage") {
-      return PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.eventMatches === "function"
-        ? PS.sim.lineageTracking.eventMatches(event)
+      return lineageTracking && typeof lineageTracking.eventMatches === "function"
+        ? lineageTracking.eventMatches(event)
         : false;
     }
 
@@ -164,11 +165,10 @@ PS.ui.timeline = (function() {
 
     if (
       (event.lineageId || event.speciesId || (event.id && String(event.type || "").indexOf("speciation") >= 0)) &&
-      PS.sim &&
-      PS.sim.lineageTracking &&
-      typeof PS.sim.lineageTracking.select === "function"
+      lineageTracking &&
+      typeof lineageTracking.select === "function"
     ) {
-      PS.sim.lineageTracking.select(event, { pinned: true });
+      lineageTracking.select(event, { pinned: true });
     }
 
     if (event.inspectTarget && event.inspectTarget.type === "tile" && typeof inspectTile === "function") {

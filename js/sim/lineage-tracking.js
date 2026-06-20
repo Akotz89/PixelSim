@@ -470,7 +470,7 @@ export function getTrackedHighlightAt(tileX, tileY) {
   return clamp(sample, 0, 1);
 }
 
-PS.sim.lineageTracking = {
+export const lineageTracking = {
   ensureState: ensureLineageTrackingState,
   select: makeTrackedLineage,
   selectFromRepresentative: function(representativeOrId, options) {
@@ -489,4 +489,3 @@ PS.sim.lineageTracking = {
   getEvents: getTrackedEvents,
   getHighlightAt: getTrackedHighlightAt
 };
-

@@ -36,10 +36,16 @@ const context = {
   console,
   performance,
   organismAi: {},
+  lineageTracking: {
+    update() {}
+  },
   terrainPressure: {},
   window: {
     addEventListener() {},
     organismAi: {},
+    lineageTracking: {
+      update() {}
+    },
     terrainPressure: {}
   },
   document: {

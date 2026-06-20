@@ -1,11 +1,19 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
+const lineageTrackingStub = {
+  select: function(target, options) {
+    context.selectedLineage = { target, options };
+    return true;
+  }
+};
+
 const context = {
   console,
   window: {
     prompt: function() {
       return "edited note";
-    }
+    },
+    lineageTracking: lineageTrackingStub
   },
   PS: {
     ui: {
@@ -17,12 +25,7 @@ const context = {
       }
     },
     sim: {
-      lineageTracking: {
-        select: function(target, options) {
-          context.selectedLineage = { target, options };
-          return true;
-        }
-      }
+      lineageTracking: lineageTrackingStub
     },
     camera: {
       getView: function() {

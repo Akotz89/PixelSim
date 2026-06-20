@@ -5,6 +5,7 @@ import { formatFoodRunway, getSimulationAlertSeverityRank, makeSimulationAlert, 
 import { formatMilestoneSignedNumber, getSimulationMilestoneSnapshot, recordSimulationEvent } from "./main-runtime.js";
 import { layerRegistry } from "./layers/registry.js";
 import { growFood } from "./sim/food-growth.js";
+import { lineageTracking } from "./sim/lineage-tracking.js";
 import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePooledOrganismsForTick } from "./sim/organisms-behavior.js";
 import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./sim/settlements-routes.js";
@@ -248,8 +249,8 @@ export function seedWorld() {
   if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function") {
     PS.sim.representatives.refresh();
   }
-  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
-    PS.sim.lineageTracking.update(true);
+  if (lineageTracking && typeof lineageTracking.update === "function") {
+    lineageTracking.update(true);
   }
 
   refreshEcosystemSummary();
@@ -314,8 +315,8 @@ export function updateWorld(dt) {
   if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function" && shouldRefreshSummaries) {
     PS.sim.representatives.refresh();
   }
-  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function" && shouldRefreshSummaries) {
-    PS.sim.lineageTracking.update(false);
+  if (lineageTracking && typeof lineageTracking.update === "function" && shouldRefreshSummaries) {
+    lineageTracking.update(false);
   }
 
   // Update environmental modifiers periodically (AZR-493)

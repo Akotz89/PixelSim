@@ -2,6 +2,7 @@ import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { focusPlanetViewOnTile, getTileFromLatLon, isPlanetLocalView, normalizeLongitude } from "../render/planet-view.js";
 import { foodExistsAt } from "../sim/food-growth.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { ensureOrganismLineage } from "../sim/organisms-traits.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { getNearestOrganismToTile, getNearestSettlementToTile, updateHud } from "./foundation.js";
@@ -98,8 +99,8 @@ export function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspecte
   ) {
     var representative = PS.sim.representatives.select(world.inspectedEntity.representativeId);
 
-    if (representative && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.selectFromRepresentative === "function") {
-      PS.sim.lineageTracking.selectFromRepresentative(representative, { pinned: true });
+    if (representative && lineageTracking && typeof lineageTracking.selectFromRepresentative === "function") {
+      lineageTracking.selectFromRepresentative(representative, { pinned: true });
     }
   }
 
@@ -110,4 +111,3 @@ export function inspectTile(tileX, tileY, shouldFocus, surfacePosition, inspecte
   world.needsRender = true;
   updateHud();
 }
-

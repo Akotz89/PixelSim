@@ -8,6 +8,7 @@ const layerRegistrySource = read("js/layers/registry.js");
 const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
+const lineageTrackingSource = read("js/sim/lineage-tracking.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -43,6 +44,16 @@ const migratedTerrainPressureConsumers = [
   "js/sim/organisms-behavior.js",
   "js/sim/representatives.js",
   "js/ui/observation-overlays.js"
+];
+const migratedLineageTrackingConsumers = [
+  "js/main-simulation.js",
+  "js/systems/persistence-io.js",
+  "js/ui/bookmarks.js",
+  "js/ui/evolutionary-tree.js",
+  "js/ui/inspect.js",
+  "js/ui/observation-overlays.js",
+  "js/ui/summary.js",
+  "js/ui/timeline.js"
 ];
 
 assert.ok(
@@ -251,6 +262,30 @@ migratedTerrainPressureConsumers.forEach(function(file) {
     source.indexOf("PS.sim.terrainPressure"),
     -1,
     file + " should use terrainPressure directly instead of PS.sim.terrainPressure"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+lineageTracking\s*=/.test(lineageTrackingSource),
+  "lineage tracking wrapper should expose lineageTracking as a direct ES module export"
+);
+assert.strictEqual(
+  lineageTrackingSource.indexOf("PS.sim.lineageTracking"),
+  -1,
+  "lineage tracking wrapper should not register through PS.sim.lineageTracking"
+);
+
+migratedLineageTrackingConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { lineageTracking }") >= 0,
+    file + " should import lineageTracking directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.lineageTracking"),
+    -1,
+    file + " should use lineageTracking directly instead of PS.sim.lineageTracking"
   );
 });
 

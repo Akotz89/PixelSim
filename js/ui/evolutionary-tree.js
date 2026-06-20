@@ -2,6 +2,7 @@ import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { focusPlanetViewOnLatLon, focusPlanetViewOnTile } from "../render/planet-view.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { canvas, evolutionTreeActionButtons, evolutionTreeFilterButtons, evolutionTreeView } from "./dom-refs.js";
 import { setElementClass, setElementHtml } from "./foundation.js";
@@ -378,8 +379,8 @@ function selectEvolutionaryTreeNode(speciesId) {
     return false;
   }
 
-  if (PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.select === "function") {
-    PS.sim.lineageTracking.select(species, { pinned: true });
+  if (lineageTracking && typeof lineageTracking.select === "function") {
+    lineageTracking.select(species, { pinned: true });
   }
 
   location = species.location || null;

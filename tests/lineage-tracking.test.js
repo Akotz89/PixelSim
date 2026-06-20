@@ -95,13 +95,14 @@ context.world.biologyRepresentativeById["19"] = context.world.biologyRepresentat
 
 vm.runInNewContext(read("js/sim/lineage-tracking.js"), context);
 
-const tracked = context.PS.sim.lineageTracking.selectFromRepresentative(19, { pinned: true });
+const lineageTracking = context.lineageTracking;
+const tracked = lineageTracking.selectFromRepresentative(19, { pinned: true });
 assert.strictEqual(tracked.lineageId, 7, "representative selection should track stable lineage id");
 assert.strictEqual(tracked.speciesId, 13, "representative selection should track stable species id");
 assert.strictEqual(tracked.pinned, true, "tracked lineage should pin to HUD state");
 assert.strictEqual(tracked.status, "active", "active population should keep tracked lineage alive");
 
-const summary = context.PS.sim.lineageTracking.getSummary();
+const summary = lineageTracking.getSummary();
 assert.strictEqual(summary.label, "S13 / L7", "summary should expose stable species/lineage label");
 assert.strictEqual(summary.parentSpeciesId, 5, "summary should expose parent species");
 assert.strictEqual(summary.population, 12, "summary should expose current population");
@@ -109,16 +110,16 @@ assert.ok(summary.traits.some((entry) => entry.indexOf("carnivory") === 0), "sum
 assert.strictEqual(summary.range, "4 cells / barren", "summary should expose bounded range and biome label");
 assert.strictEqual(summary.morphology, "large terrestrial predator", "summary should expose representative morphology");
 assert.strictEqual(summary.recentEvents.length, 2, "summary should include lineage/species extinction and speciation events");
-assert.ok(context.PS.sim.lineageTracking.eventMatches(context.world.timelineEvents[0]), "lineage event filter should match speciation payload");
-assert.ok(context.PS.sim.lineageTracking.eventMatches(context.world.timelineEvents[1]), "lineage event filter should match affected extinction species");
-assert.strictEqual(context.PS.sim.lineageTracking.eventMatches(context.world.timelineEvents[2]), false, "lineage event filter should reject unrelated events");
-assert.ok(context.PS.sim.lineageTracking.getHighlightAt(12, 9) > 0.8, "lineage highlight should mark visible members");
-assert.ok(context.PS.sim.lineageTracking.getHighlightAt(11, 9) > 0, "lineage highlight should mark aggregate range");
+assert.ok(lineageTracking.eventMatches(context.world.timelineEvents[0]), "lineage event filter should match speciation payload");
+assert.ok(lineageTracking.eventMatches(context.world.timelineEvents[1]), "lineage event filter should match affected extinction species");
+assert.strictEqual(lineageTracking.eventMatches(context.world.timelineEvents[2]), false, "lineage event filter should reject unrelated events");
+assert.ok(lineageTracking.getHighlightAt(12, 9) > 0.8, "lineage highlight should mark visible members");
+assert.ok(lineageTracking.getHighlightAt(11, 9) > 0, "lineage highlight should mark aggregate range");
 
 for (let i = 0; i < 40; i++) {
   context.world.tick++;
   context.world.species[0].activePopulation = Math.max(0, 12 - i);
-  context.PS.sim.lineageTracking.update(false);
+  lineageTracking.update(false);
 }
 
 assert.ok(context.world.trackedLineage.history.length <= 24, "lineage history should stay bounded");
