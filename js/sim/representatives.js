@@ -6,6 +6,7 @@ import { foodExistsAt } from "./food-growth.js";
 import { findNearestFoodInBuckets } from "./food-runtime.js";
 import { getTerrainMismatchForTraits } from "./organisms-behavior.js";
 import { allocateBiologyRepresentativeId, allocateLineageId, ensureOrganismTraits } from "./organisms-traits.js";
+import { terrainPressure } from "./terrain-pressure.js";
 import { world } from "../systems/state.js";
 
 PS.sim = PS.sim || {};
@@ -125,7 +126,7 @@ export function getTerrainPressureEnvironmentSignature() {
 }
 
 export function refreshTerrainPressureForExistingPopulations() {
-  if (!PS.sim || !PS.sim.terrainPressure || typeof PS.sim.terrainPressure.refreshSummary !== "function") {
+  if (typeof terrainPressure.refreshSummary !== "function") {
     return null;
   }
 
@@ -138,15 +139,15 @@ export function refreshTerrainPressureForExistingPopulations() {
       : null;
   }
 
-  var summary = PS.sim.terrainPressure.refreshSummary(populations);
-  if (typeof PS.sim.terrainPressure.emitMilestones === "function") {
-    PS.sim.terrainPressure.emitMilestones(summary);
+  var summary = terrainPressure.refreshSummary(populations);
+  if (typeof terrainPressure.emitMilestones === "function") {
+    terrainPressure.emitMilestones(summary);
   }
   return summary;
 }
 
 export function getPopulationTerrainPressureFromTerritory(population) {
-  if (!PS.sim || !PS.sim.terrainPressure || typeof PS.sim.terrainPressure.getMismatchSample !== "function") {
+  if (typeof terrainPressure.getMismatchSample !== "function") {
     return null;
   }
 
@@ -165,7 +166,7 @@ export function getPopulationTerrainPressureFromTerritory(population) {
   for (var i = 0; i < cells.length; i++) {
     var cell = cells[i];
     var weight = Math.max(1, Math.round(Number(cell && cell.density) || 1));
-    var cellSample = PS.sim.terrainPressure.getMismatchSample(traits, cell.x, cell.y);
+    var cellSample = terrainPressure.getMismatchSample(traits, cell.x, cell.y);
     var driver = cellSample.terrainDriver;
 
     driverCounts[driver] = (driverCounts[driver] || 0) + weight;
@@ -732,8 +733,8 @@ export function updatePopulationFromOrganisms(population, organisms, signature) 
   population.traitMean = stats.mean;
   population.traitVariance = stats.variance;
   population.pressure = getPopulationPressure(organisms, population.energyReserve, traitsList);
-  population.terrainPressure = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.summarizePopulation === "function"
-    ? PS.sim.terrainPressure.summarizePopulation(organisms, traitsList)
+  population.terrainPressure = typeof terrainPressure.summarizePopulation === "function"
+    ? terrainPressure.summarizePopulation(organisms, traitsList)
     : null;
   if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.evaluatePopulation === "function") {
     PS.sim.speciation.evaluatePopulation(population, organisms, traitsList);
@@ -959,10 +960,10 @@ export function refreshBiologyRepresentatives() {
       PS.sim.foodWeb.emitMilestones(world.foodWebSummary);
     }
   }
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.refreshSummary === "function") {
-    PS.sim.terrainPressure.refreshSummary(world.biologyPopulations);
-    if (typeof PS.sim.terrainPressure.emitMilestones === "function") {
-      PS.sim.terrainPressure.emitMilestones(world.terrainPressureSummary);
+  if (typeof terrainPressure.refreshSummary === "function") {
+    terrainPressure.refreshSummary(world.biologyPopulations);
+    if (typeof terrainPressure.emitMilestones === "function") {
+      terrainPressure.emitMilestones(world.terrainPressureSummary);
     }
   }
   if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.refreshSummary === "function") {

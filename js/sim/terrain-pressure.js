@@ -473,7 +473,7 @@ export function emitTerrainPressureMilestones(summary) {
   });
 }
 
-PS.sim.terrainPressure = {
+export const terrainPressure = {
   getSample: getTerrainPressureSample,
   getMismatchSample: getTerrainPressureMismatchForTraits,
   getEnergyCost: getTerrainPressureEnergyCost,

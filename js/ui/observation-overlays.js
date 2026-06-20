@@ -4,6 +4,7 @@ import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { terrainPressure } from "../sim/terrain-pressure.js";
 import { world } from "../systems/state.js";
 import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
 import { setElementText } from "./foundation.js";
@@ -216,8 +217,8 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     }
 
     if (activeId === "observation.selection") {
-      var sample = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function"
-        ? PS.sim.terrainPressure.getSample(tileX, tileY)
+      var sample = typeof terrainPressure.getSample === "function"
+        ? terrainPressure.getSample(tileX, tileY)
         : null;
       var selection = sample ? clamp(Number(sample.pressure) || 0, 0, 1) : 0;
       var isolation = sample ? clamp(Number(sample.isolation) || 0, 0, 1) : 0;

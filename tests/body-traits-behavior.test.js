@@ -47,8 +47,10 @@ function makeElement() {
 const context = {
   assert,
   console,
+  terrainPressure: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {

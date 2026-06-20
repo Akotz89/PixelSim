@@ -9,6 +9,7 @@ import { findNearestFoodInBuckets, removeFoodAtPosition } from "./food-runtime.j
 import { organismAi } from "./organism-ai.js";
 import { getLimbMovementMultiplierFromValue, getOrganismTravelKmPerTick } from "./organisms-indexes.js";
 import { assignChildLineage, ensureOrganismTraits, inheritOrganismTraits, makeOrganism } from "./organisms-traits.js";
+import { terrainPressure } from "./terrain-pressure.js";
 import { world } from "../systems/state.js";
 
 export function findNearestFood(organism, searchRadius) {
@@ -21,24 +22,24 @@ export function moveTowardFood(organism, food) {
 }
 
 export function getTerrainAffinityTargetValue(x, y) {
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function") {
-    return PS.sim.terrainPressure.getSample(x, y).target.terrainAffinity;
+  if (typeof terrainPressure.getSample === "function") {
+    return terrainPressure.getSample(x, y).target.terrainAffinity;
   }
 
   return isFertile(x, y) ? 1 : 0;
 }
 
 export function getTerrainMismatchForTraits(traits, x, y) {
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getMismatchSample === "function") {
-    return PS.sim.terrainPressure.getMismatchSample(traits, x, y).mismatch;
+  if (typeof terrainPressure.getMismatchSample === "function") {
+    return terrainPressure.getMismatchSample(traits, x, y).mismatch;
   }
 
   return Math.abs(traits.terrainAffinity - getTerrainAffinityTargetValue(x, y));
 }
 
 export function getTerrainEnergyCost(traits, x, y) {
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getEnergyCost === "function") {
-    return PS.sim.terrainPressure.getEnergyCost(traits, x, y);
+  if (typeof terrainPressure.getEnergyCost === "function") {
+    return terrainPressure.getEnergyCost(traits, x, y);
   }
 
   return getTerrainMismatchForTraits(traits, x, y) * CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
@@ -302,11 +303,9 @@ export function getResourceAdjustedReproductionEnergy(traits, scarcityPressure, 
 
   if (
     organism &&
-    PS.sim &&
-    PS.sim.terrainPressure &&
-    typeof PS.sim.terrainPressure.getReproductionMultiplier === "function"
+    typeof terrainPressure.getReproductionMultiplier === "function"
   ) {
-    multiplier *= PS.sim.terrainPressure.getReproductionMultiplier(traits, organism.x, organism.y);
+    multiplier *= terrainPressure.getReproductionMultiplier(traits, organism.x, organism.y);
   }
 
   if (

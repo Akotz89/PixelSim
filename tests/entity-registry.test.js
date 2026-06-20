@@ -62,9 +62,11 @@ const organismContext = {
   assert,
   console,
   organismAi: {},
+  terrainPressure: {},
   window: {
     addEventListener() {},
-    organismAi: {}
+    organismAi: {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {

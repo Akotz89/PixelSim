@@ -24,9 +24,11 @@ const context = {
   assert,
   console,
   organismAi: {},
+  terrainPressure: {},
   window: {
     addEventListener() {},
-    organismAi: {}
+    organismAi: {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {

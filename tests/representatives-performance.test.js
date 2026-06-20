@@ -5,9 +5,11 @@ const context = {
   console,
   performance,
   organismAi: {},
+  terrainPressure: {},
   window: {
     addEventListener() {},
-    organismAi: {}
+    organismAi: {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {

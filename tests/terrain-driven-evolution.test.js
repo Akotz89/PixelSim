@@ -152,13 +152,13 @@ setTile(11, 7, { biome: "jungle forest", fertilityScore: 0.95, riverStrength: 0.
 setTile(14, 8, { biome: "temperate grassland", fertilityScore: 0.95, riverStrength: 0.4 });
 setTile(17, 9, { biome: "coastal archipelago", coastFactor: 0.92, shallowWater: 0.35, shelfStrength: 0.5, fertilityScore: 0.65 });
 
-var aquatic = PS.sim.terrainPressure.getSample(2, 2);
-var aquaticAgain = PS.sim.terrainPressure.getSample(2, 2);
-var desert = PS.sim.terrainPressure.getSample(5, 5);
-var mountain = PS.sim.terrainPressure.getSample(8, 6);
-var forest = PS.sim.terrainPressure.getSample(11, 7);
-var lush = PS.sim.terrainPressure.getSample(14, 8);
-var archipelago = PS.sim.terrainPressure.getSample(17, 9);
+var aquatic = terrainPressure.getSample(2, 2);
+var aquaticAgain = terrainPressure.getSample(2, 2);
+var desert = terrainPressure.getSample(5, 5);
+var mountain = terrainPressure.getSample(8, 6);
+var forest = terrainPressure.getSample(11, 7);
+var lush = terrainPressure.getSample(14, 8);
+var archipelago = terrainPressure.getSample(17, 9);
 
 assert.strictEqual(aquatic.terrainDriver, "aquatic", "water tiles should favor aquatic adaptation");
 assert.strictEqual(aquaticAgain, aquatic, "terrain pressure should cache base samples per tile coordinate");
@@ -194,19 +194,19 @@ var mismatchedDesertTraits = {
 };
 
 assert.ok(
-  PS.sim.terrainPressure.getEnergyCost(mismatchedDesertTraits, 5, 5) > PS.sim.terrainPressure.getEnergyCost(matchedDesertTraits, 5, 5),
+  terrainPressure.getEnergyCost(mismatchedDesertTraits, 5, 5) > terrainPressure.getEnergyCost(matchedDesertTraits, 5, 5),
   "mismatched terrain traits should increase survival energy cost"
 );
 assert.ok(
-  PS.sim.terrainPressure.getReproductionMultiplier(mismatchedDesertTraits, 5, 5) > PS.sim.terrainPressure.getReproductionMultiplier(matchedDesertTraits, 5, 5),
+  terrainPressure.getReproductionMultiplier(mismatchedDesertTraits, 5, 5) > terrainPressure.getReproductionMultiplier(matchedDesertTraits, 5, 5),
   "mismatched terrain traits should increase reproduction threshold"
 );
 assert.ok(
-  PS.sim.terrainPressure.getReproductionMultiplier(matchedDesertTraits, 5, 5) < 1,
+  terrainPressure.getReproductionMultiplier(matchedDesertTraits, 5, 5) < 1,
   "matched difficult-terrain traits should favor faster reproduction"
 );
-var matchedDesertSample = PS.sim.terrainPressure.getMismatchSample(matchedDesertTraits, 5, 5);
-var mismatchedDesertSample = PS.sim.terrainPressure.getMismatchSample(mismatchedDesertTraits, 5, 5);
+var matchedDesertSample = terrainPressure.getMismatchSample(matchedDesertTraits, 5, 5);
+var mismatchedDesertSample = terrainPressure.getMismatchSample(mismatchedDesertTraits, 5, 5);
 assert.notStrictEqual(matchedDesertSample, desert, "terrain mismatch should not mutate cached base sample");
 assert.ok(mismatchedDesertSample.mismatch > matchedDesertSample.mismatch, "cached terrain samples should still compute trait-specific mismatch");
 

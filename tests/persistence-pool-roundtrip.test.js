@@ -38,9 +38,11 @@ const context = {
   Date,
   RegExp,
   performance: {},
+  terrainPressure: {},
   window: {
     addEventListener: function() {},
-    indexedDB: null
+    indexedDB: null,
+    terrainPressure: {}
   },
   document: {
     getElementById: function() {

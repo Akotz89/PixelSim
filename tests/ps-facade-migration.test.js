@@ -7,6 +7,7 @@ const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
+const terrainPressureSource = read("js/sim/terrain-pressure.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -37,6 +38,11 @@ const migratedOrganismAiConsumers = [
   "js/sim/organisms-behavior.js",
   "js/systems/persistence-db.js",
   "js/systems/persistence-restore-entities.js"
+];
+const migratedTerrainPressureConsumers = [
+  "js/sim/organisms-behavior.js",
+  "js/sim/representatives.js",
+  "js/ui/observation-overlays.js"
 ];
 
 assert.ok(
@@ -221,6 +227,30 @@ migratedOrganismAiConsumers.forEach(function(file) {
     source.indexOf("PS.sim.organismAi"),
     -1,
     file + " should use organismAi directly instead of PS.sim.organismAi"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+terrainPressure\s*=/.test(terrainPressureSource),
+  "terrain pressure wrapper should expose terrainPressure as a direct ES module export"
+);
+assert.strictEqual(
+  terrainPressureSource.indexOf("PS.sim.terrainPressure"),
+  -1,
+  "terrain pressure wrapper should not register through PS.sim.terrainPressure"
+);
+
+migratedTerrainPressureConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { terrainPressure }") >= 0,
+    file + " should import terrainPressure directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.terrainPressure"),
+    -1,
+    file + " should use terrainPressure directly instead of PS.sim.terrainPressure"
   );
 });
 

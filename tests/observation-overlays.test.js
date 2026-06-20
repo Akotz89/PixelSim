@@ -1,5 +1,15 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
+const terrainPressureStub = {
+  getSample() {
+    return {
+      pressure: 0.72,
+      isolation: 0.42,
+      innovationPressure: 0.58
+    };
+  }
+};
+
 const context = {
   console,
   WORLD_WIDTH: 28,
@@ -9,6 +19,7 @@ const context = {
   },
   observationOverlayButtons: [],
   observationOverlayStatus: null,
+  terrainPressure: terrainPressureStub,
   world: {
     activeObservationOverlay: "none",
     needsRender: false,
@@ -61,15 +72,7 @@ const context = {
           return Number(traits && traits.carnivory) > 0.5 ? "predator" : "herbivore";
         }
       },
-      terrainPressure: {
-        getSample() {
-          return {
-            pressure: 0.72,
-            isolation: 0.42,
-            innovationPressure: 0.58
-          };
-        }
-      },
+      terrainPressure: terrainPressureStub,
       massExtinction: {
         getSummary() {
           return {
