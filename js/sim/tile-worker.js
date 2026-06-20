@@ -1,4 +1,3 @@
-import { PS } from "../core/namespace.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
 // ── Staggered Tile Worker (AZR-492) ────────────────────────────────
@@ -6,7 +5,7 @@ import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 // cursor and pre-shuffled visitation order.
 //
 // Usage:
-//   var worker = PS.tileWorker.create("foodGrowth", {
+//   var worker = tileWorker.create("foodGrowth", {
 //     cycleFrames: 20,
 //     callback: function (tileX, tileY, tileIndex) { ... }
 //   });
@@ -16,9 +15,7 @@ import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 //
 // The entire map is processed once every `cycleFrames` frames.
 
-PS.sim = PS.sim || {};
-
-PS.tileWorker = {
+export const tileWorker = {
   workers: {},
 
   // ── Create a tile worker ──
@@ -32,7 +29,7 @@ PS.tileWorker = {
     var tilesPerFrame = Math.max(1, Math.ceil(totalTiles / cycleFrames));
 
     // Pre-shuffle tile visitation order using a Knuth multiplicative hash
-    var visitOrder = PS.tileWorker.buildShuffledOrder(totalTiles, opts.seed || 0x5DEECE66D);
+    var visitOrder = tileWorker.buildShuffledOrder(totalTiles, opts.seed || 0x5DEECE66D);
 
     var worker = {
       id: String(id),
@@ -103,7 +100,7 @@ PS.tileWorker = {
       }
     };
 
-    PS.tileWorker.workers[id] = worker;
+    tileWorker.workers[id] = worker;
     return worker;
   },
 
@@ -139,15 +136,15 @@ PS.tileWorker = {
   // ── Get a worker by id ──
 
   get: function (id) {
-    return PS.tileWorker.workers[id] || null;
+    return tileWorker.workers[id] || null;
   },
 
   // ── Reset all workers ──
 
   resetAll: function () {
-    for (var id in PS.tileWorker.workers) {
-      if (Object.prototype.hasOwnProperty.call(PS.tileWorker.workers, id)) {
-        PS.tileWorker.workers[id].reset();
+    for (var id in tileWorker.workers) {
+      if (Object.prototype.hasOwnProperty.call(tileWorker.workers, id)) {
+        tileWorker.workers[id].reset();
       }
     }
   },
@@ -157,14 +154,12 @@ PS.tileWorker = {
   getStats: function () {
     var stats = {};
 
-    for (var id in PS.tileWorker.workers) {
-      if (Object.prototype.hasOwnProperty.call(PS.tileWorker.workers, id)) {
-        stats[id] = PS.tileWorker.workers[id].getStats();
+    for (var id in tileWorker.workers) {
+      if (Object.prototype.hasOwnProperty.call(tileWorker.workers, id)) {
+        stats[id] = tileWorker.workers[id].getStats();
       }
     }
 
     return stats;
   }
 };
-
-PS.sim.tileWorker = PS.tileWorker;

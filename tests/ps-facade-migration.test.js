@@ -26,6 +26,7 @@ const computeHarnessSource = read("js/sim/compute-harness.js");
 const wasmBridgeSource = read("js/sim/wasm-bridge.js");
 const simWorkerClientSource = read("js/sim/sim-worker-client.js");
 const simWorkerSource = read("js/workers/sim-worker.js");
+const tileWorkerSource = read("js/sim/tile-worker.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -112,6 +113,9 @@ const migratedComputeHarnessConsumers = [
 const migratedWasmBridgeConsumers = [
   "js/sim/coupling.js",
   "js/workers/sim-worker.js"
+];
+const migratedTileWorkerConsumers = [
+  "js/sim/food-growth.js"
 ];
 
 assert.ok(
@@ -639,5 +643,34 @@ assert.strictEqual(
   -1,
   "simulation worker client should not register through PS.sim.simWorkerClient"
 );
+
+assert.ok(
+  /export\s+const\s+tileWorker\s*=/.test(tileWorkerSource),
+  "tile worker should expose tileWorker as a direct ES module export"
+);
+assert.strictEqual(
+  tileWorkerSource.indexOf("PS.tileWorker"),
+  -1,
+  "tile worker should not register through PS.tileWorker"
+);
+assert.strictEqual(
+  tileWorkerSource.indexOf("PS.sim.tileWorker"),
+  -1,
+  "tile worker should not register through PS.sim.tileWorker"
+);
+
+migratedTileWorkerConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { tileWorker }") >= 0,
+    file + " should import tileWorker directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.tileWorker"),
+    -1,
+    file + " should use tileWorker directly instead of PS.tileWorker"
+  );
+});
 
 console.log("PS facade migration checks passed");

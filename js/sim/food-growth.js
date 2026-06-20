@@ -5,6 +5,7 @@ import { recordFoodSpawned } from "../main-ecosystem-summary.js";
 import { isFertile } from "../render/terrain-hydrology.js";
 import { randomFertilePosition } from "../render/terrain-seeding.js";
 import { addFoodAt, collectFoodInRadius, ensureFoodPositions, getFoodPositionKey, removeFood } from "./food-runtime.js";
+import { tileWorker } from "./tile-worker.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
 export function removeFoodInRadius(x, y, radius, limit) {
@@ -99,14 +100,19 @@ export function getFoodRecoveryAttemptCount(pressure) {
 
 export var foodGrowthWorker = null;
 
+function hasTileWorker() {
+  return typeof tileWorker !== "undefined" && tileWorker && typeof tileWorker.create === "function";
+}
+
 export function ensureFoodGrowthWorker() {
   if (foodGrowthWorker) { return foodGrowthWorker; }
+  if (!hasTileWorker()) { return null; }
 
   var cycleFrames = Math.max(1, Math.round(
     Number(CONFIG.FOOD_GROWTH_CYCLE_FRAMES) || 20
   ));
 
-  foodGrowthWorker = PS.tileWorker.create("foodGrowth", {
+  foodGrowthWorker = tileWorker.create("foodGrowth", {
     cycleFrames: cycleFrames,
     seed: world && world.rngState ? world.rngState : 0x5DEECE66D,
     callback: function (tileX, tileY, tileIndex) {
@@ -147,8 +153,11 @@ export function growFood() {
   }
 
   // Tile-worker distributed growth (AZR-492)
-  if (PS.tileWorker) {
-    ensureFoodGrowthWorker().advance();
+  if (hasTileWorker()) {
+    var worker = ensureFoodGrowthWorker();
+    if (worker) {
+      worker.advance();
+    }
   } else {
     // Fallback: original random sampling
     tryGrowFoodAtPosition(randomFertilePosition(), CONFIG.FERTILE_FOOD_GROWTH_CHANCE);
@@ -173,4 +182,3 @@ export function growFood() {
     tryGrowFoodAtPosition(randomFertilePosition(), recoveryChance);
   }
 }
-
