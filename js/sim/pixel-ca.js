@@ -1,8 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
 export const pixelCa = {
   shaderName: "pixel-ca",
   shaderPath: "shaders/pixel-ca.wgsl",

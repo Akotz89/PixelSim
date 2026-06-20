@@ -186,6 +186,24 @@ const migratedRepresentativesConsumers = [
   "tests/speciation-events.test.js",
   "tests/terrain-driven-evolution.test.js"
 ];
+const migratedSimNamespaceFiles = [
+  "js/sim/biome-lut.js",
+  "js/sim/compute-harness.js",
+  "js/sim/coupling.js",
+  "js/sim/environment-drivers.js",
+  "js/sim/geochemistry.js",
+  "js/sim/heat-diffusion.js",
+  "js/sim/lbm-ocean.js",
+  "js/sim/lenia.js",
+  "js/sim/lineage-tracking.js",
+  "js/sim/moisture.js",
+  "js/sim/molecular-dynamics.js",
+  "js/sim/parameter-registry.js",
+  "js/sim/pixel-ca.js",
+  "js/sim/reaction-diffusion.js",
+  "js/sim/terrain-pressure.js",
+  "js/sim/thermohaline.js"
+];
 
 assert.ok(
   /export\s+\{\s*assertRuntime\s+as\s+assert\s*\}/.test(assertSource),
@@ -196,6 +214,14 @@ assert.strictEqual(
   -1,
   "runtime health should not require migrated PS.sim facades"
 );
+
+migratedSimNamespaceFiles.forEach(function(file) {
+  assert.strictEqual(
+    read(file).indexOf("PS.sim = PS.sim || {};"),
+    -1,
+    file + " should not initialize the migrated PS.sim namespace"
+  );
+});
 
 assert.strictEqual(
   assertSource.indexOf("namespace.js"),

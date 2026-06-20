@@ -2,8 +2,6 @@ import { PS } from "../core/namespace.js";
 import { computeHarness } from "./compute-harness.js";
 import { wasmBridge } from "./wasm-bridge.js";
 
-PS.sim = PS.sim || {};
-
 export const coupling = {
   width: 512,
   height: 512,

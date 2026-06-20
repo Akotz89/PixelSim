@@ -1,8 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 
-PS.sim = PS.sim || {};
-
 export const biomeLut = {
   shaderName: "biome-render",
   shaderPath: "shaders/biome-render.wgsl",

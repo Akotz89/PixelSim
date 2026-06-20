@@ -7,8 +7,6 @@ import {
 } from "./gpu-sim-runtime.js";
 import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
 export const lbmOcean = {
   shaderName: "lbm-ocean",
   shaderPath: "shaders/lbm-ocean.wgsl",

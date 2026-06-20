@@ -6,8 +6,6 @@ import { representatives } from "./representatives.js";
 import { speciation } from "./speciation.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
-PS.sim = PS.sim || {};
-
 export var LINEAGE_TRACK_HISTORY_LIMIT = 24;
 export var LINEAGE_TRACK_EVENT_LIMIT = 12;
 export var LINEAGE_TRACK_TRAIT_KEYS = [

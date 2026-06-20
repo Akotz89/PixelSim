@@ -2,8 +2,6 @@ import { PS } from "../core/namespace.js";
 import { biomeLut } from "./biome-lut.js";
 import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
 export const moisture = {
   shaderName: "moisture",
   shaderPath: "shaders/moisture.wgsl",

@@ -2,8 +2,6 @@ import { PS } from "../core/namespace.js";
 import { geochemistry } from "./geochemistry.js";
 import { parameters as parameterRegistry } from "./parameter-registry.js";
 
-PS.sim = PS.sim || {};
-
 export const environmentDrivers = {
   configPath: "sim/configs/environment-drivers.json",
   defaults: {

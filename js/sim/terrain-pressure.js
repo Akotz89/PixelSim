@@ -7,8 +7,6 @@ import { isFertile } from "../render/terrain-hydrology.js";
 import { ensureOrganismTraits } from "./organisms-traits.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
-PS.sim = PS.sim || {};
-
 export var TERRAIN_PRESSURE_TRAITS = [
   "terrainAffinity",
   "waterDependency",

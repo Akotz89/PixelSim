@@ -2,8 +2,6 @@ import { PS } from "../core/namespace.js";
 import { world } from "../systems/state.js";
 import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
 export const lenia = {
   shaderName: "lenia",
   shaderPath: "shaders/lenia.wgsl",
