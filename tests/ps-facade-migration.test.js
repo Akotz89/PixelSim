@@ -18,6 +18,7 @@ const moistureSource = read("js/sim/moisture.js");
 const pixelCaSource = read("js/sim/pixel-ca.js");
 const reactionDiffusionSource = read("js/sim/reaction-diffusion.js");
 const lbmOceanSource = read("js/sim/lbm-ocean.js");
+const thermohalineSource = read("js/sim/thermohaline.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -456,6 +457,16 @@ assert.strictEqual(
   lbmOceanSource.indexOf("PS.sim.lbmOcean"),
   -1,
   "LBM ocean wrapper should not register through PS.sim.lbmOcean"
+);
+
+assert.ok(
+  /export\s+const\s+thermohaline\s*=/.test(thermohalineSource),
+  "thermohaline wrapper should expose thermohaline as a direct ES module export"
+);
+assert.strictEqual(
+  thermohalineSource.indexOf("PS.sim.thermohaline"),
+  -1,
+  "thermohaline wrapper should not register through PS.sim.thermohaline"
 );
 
 console.log("PS facade migration checks passed");

@@ -157,7 +157,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(thermoSource, context, { filename: "js/sim/thermohaline.js" });
 
-const thermo = context.PS.sim.thermohaline;
+const thermo = context.thermohaline;
 thermo.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "salinity"), "thermohaline should register salinity shader");
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "density"), "thermohaline should register density shader");

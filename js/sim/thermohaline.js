@@ -2,7 +2,7 @@ import { PS } from "../core/namespace.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.thermohaline = PS.sim.thermohaline || {
+export const thermohaline = {
   salinityShaderName: "salinity",
   densityShaderName: "density",
   salinityShaderPath: "shaders/salinity.wgsl",
