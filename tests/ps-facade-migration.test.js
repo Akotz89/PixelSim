@@ -31,6 +31,7 @@ const modifiersSource = read("js/sim/modifiers.js");
 const traitRegistrySource = read("js/sim/trait-registry.js");
 const evolutionSource = read("js/sim/evolution.js");
 const foodWebSource = read("js/sim/food-web.js");
+const foodSource = read("js/sim/food.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -780,6 +781,16 @@ assert.strictEqual(
   foodWebSource.indexOf("PS.sim.foodWeb"),
   -1,
   "food web should not register through PS.sim.foodWeb"
+);
+
+assert.ok(
+  /export\s+const\s+food\s*=/.test(foodSource),
+  "food facade should expose food as a direct ES module export"
+);
+assert.strictEqual(
+  foodSource.indexOf("PS.sim.food"),
+  -1,
+  "food facade should not register through PS.sim.food"
 );
 
 console.log("PS facade migration checks passed");
