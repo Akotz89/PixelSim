@@ -34,6 +34,7 @@ const foodWebSource = read("js/sim/food-web.js");
 const foodSource = read("js/sim/food.js");
 const speciationSource = read("js/sim/speciation.js");
 const massExtinctionSource = read("js/sim/mass-extinction.js");
+const settlementsSource = read("js/sim/settlements.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -148,6 +149,10 @@ const migratedMassExtinctionConsumers = [
   "js/ui/inspect-history.js",
   "js/ui/observation-overlays.js",
   "js/ui/summary.js"
+];
+const migratedSettlementsConsumers = [
+  "tests/settlement-progression.test.js",
+  "tests/simulation-cycle.test.js"
 ];
 
 assert.ok(
@@ -853,6 +858,26 @@ assert.strictEqual(
   massExtinctionSource.indexOf("PS.sim.massExtinction"),
   -1,
   "mass extinction should not register through PS.sim.massExtinction"
+);
+
+migratedSettlementsConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.strictEqual(
+    source.indexOf("PS.sim.settlements"),
+    -1,
+    file + " should use settlements directly instead of PS.sim.settlements"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+settlements\s*=/.test(settlementsSource),
+  "settlements should expose settlements as a direct ES module export"
+);
+assert.strictEqual(
+  settlementsSource.indexOf("PS.sim.settlements"),
+  -1,
+  "settlements should not register through PS.sim.settlements"
 );
 
 console.log("PS facade migration checks passed");

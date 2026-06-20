@@ -85,7 +85,7 @@ function isFertile() {
 world.tick = 10000;
 world.settlements = [];
 world.settlementRoutes = [];
-PS.sim.settlements.ensureState();
+settlements.ensureState();
 
 var lowReadinessLineage = {
   id: 7,
@@ -135,7 +135,7 @@ assert.strictEqual(world.settlements.length, 1, "only high-readiness lineage sho
 
 world.settlements = [];
 world.settlementRoutes = [];
-PS.sim.settlements.rebuildIndexes();
+settlements.rebuildIndexes();
 
 var seamLineage = {
   id: 99,
@@ -161,8 +161,8 @@ assert.ok(
   "wrap seam settlement should be founded near the actual cluster center"
 );
 
-var westSettlement = PS.sim.settlements.makeAt(1, 0, 20, { isColony: true });
-var eastSettlement = PS.sim.settlements.makeAt(1, WORLD_WIDTH - 1, 20, { isColony: true });
+var westSettlement = settlements.makeAt(1, 0, 20, { isColony: true });
+var eastSettlement = settlements.makeAt(1, WORLD_WIDTH - 1, 20, { isColony: true });
 assert.strictEqual(
   getDistanceBetweenSettlements(westSettlement, eastSettlement),
   1,
@@ -172,16 +172,16 @@ assert.strictEqual(
 world.organisms = [];
 world.settlements = [];
 world.settlementRoutes = [];
-PS.sim.settlements.rebuildIndexes();
+settlements.rebuildIndexes();
 
-var capital = PS.sim.settlements.makeAt(1, 20, 20, { isColony: true });
+var capital = settlements.makeAt(1, 20, 20, { isColony: true });
 capital.storedFood = 500;
 capital.development = 600;
 capital.claimedTiles = 80;
 capital.isActive = true;
-PS.sim.settlements.updateMetrics(capital);
+settlements.updateMetrics(capital);
 
-var outpost = PS.sim.settlements.makeAt(1, 45, 20, {
+var outpost = settlements.makeAt(1, 45, 20, {
   parentSettlementId: capital.id,
   isOutpost: true,
   isColony: true
@@ -190,10 +190,10 @@ outpost.storedFood = 180;
 outpost.development = 260;
 outpost.claimedTiles = 40;
 outpost.isActive = true;
-PS.sim.settlements.updateMetrics(outpost);
+settlements.updateMetrics(outpost);
 
 world.settlements.push(capital, outpost);
-PS.sim.settlements.rebuildIndexes();
+settlements.rebuildIndexes();
 
 var route = ensureSettlementRoute(capital, outpost);
 route.isActive = true;
@@ -277,16 +277,16 @@ civilizations.updateEmpireLegacy();
 assert.ok(world.empireLegacyLevel > 0, "legacy progression should advance empire legacy level");
 
 settlementPopulation = 0;
-var ghostTown = PS.sim.settlements.makeAt(1, 55, 25, {});
+var ghostTown = settlements.makeAt(1, 55, 25, {});
 ghostTown.development = CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT * 2 + 2;
 ghostTown.storedFood = 0;
 ghostTown.lastGrowthTick = world.tick;
-PS.sim.settlements.updateMetrics(ghostTown);
+settlements.updateMetrics(ghostTown);
 assert.strictEqual(ghostTown.isActive, false, "test settlement should be empty before decay");
 var ghostDevelopmentBeforeDecay = ghostTown.development;
 for (var decayTick = 1; decayTick <= 100; decayTick++) {
   world.tick += 1;
-  PS.sim.settlements.updateMetrics(ghostTown);
+  settlements.updateMetrics(ghostTown);
   runSettlementGrowth(ghostTown);
 }
 assert.ok(ghostTown.development < ghostDevelopmentBeforeDecay, "empty settlement should lose development over 100 ticks");
@@ -294,15 +294,15 @@ assert.ok(ghostTown.declineTicks > 0, "empty settlement should record decline in
 assert.strictEqual(ghostTown.isActive, false, "empty settlement should not become active from preserved development");
 
 settlementPopulation = 0;
-var regressingTown = PS.sim.settlements.makeAt(1, 65, 25, {});
+var regressingTown = settlements.makeAt(1, 65, 25, {});
 regressingTown.development = CONFIG.SETTLEMENT_LEVEL_DEVELOPMENT * 2 + 2;
 regressingTown.storedFood = 0;
 regressingTown.lastGrowthTick = world.tick;
-PS.sim.settlements.updateMetrics(regressingTown);
+settlements.updateMetrics(regressingTown);
 assert.strictEqual(regressingTown.level, 3, "regression fixture should start at level 3");
 for (var regressionTick = 1; regressionTick <= 100; regressionTick++) {
   world.tick += 1;
-  PS.sim.settlements.updateMetrics(regressingTown);
+  settlements.updateMetrics(regressingTown);
   runSettlementGrowth(regressingTown);
 }
 assert.strictEqual(regressingTown.level, 2, "settlement development decay should allow level 3 to regress to level 2");

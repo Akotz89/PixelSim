@@ -240,7 +240,7 @@ function resetPerformanceFixture() {
   world.settlements = [];
   world.settlementRoutes = [];
   world.tick = 0;
-  PS.sim.settlements.rebuildIndexes();
+  settlements.rebuildIndexes();
 
   for (var perfIndex = 0; perfIndex < 1400; perfIndex++) {
     var perfX = perfIndex % WORLD_WIDTH;
