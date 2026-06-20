@@ -1,7 +1,7 @@
 import { PS } from "../core/namespace.js";
+import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
+export const molecularDynamics = {
   shaderName: "molecular-dynamics",
   shaderPath: "shaders/molecular-dynamics.wgsl",
   configPath: "sim/configs/molecular-dynamics.json",
@@ -437,7 +437,7 @@ PS.sim.molecularDynamics = PS.sim.molecularDynamics || {
   },
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var config = this.normalizeConfig(spec.config || this.config || {});
     var state = spec.state || this.createStateFromMacroCell(spec.macro || {}, { config: config, count: spec.count || 1000, seed: spec.seed });

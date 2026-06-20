@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { shadows } from "./shadow-stamping.js";
 
 PS.render = PS.render || {};
 
@@ -124,11 +125,11 @@ PS.render.mountains = PS.render.mountains || (function () {
   }
 
   function appendMountainShadow(target, info, screenX, screenY, samplePixelSize, alpha, policy) {
-    if (!target || !target.shadowRects || !PS.render.shadows || typeof PS.render.shadows.appendStampedRects !== "function") {
+    if (!target || !target.shadowRects || !shadows || typeof shadows.appendStampedRects !== "function") {
       return 0;
     }
 
-    return PS.render.shadows.appendStampedRects(target.shadowRects, {
+    return shadows.appendStampedRects(target.shadowRects, {
       x: screenX + samplePixelSize * 0.05,
       y: screenY + samplePixelSize * 0.42,
       width: samplePixelSize * 1.18,

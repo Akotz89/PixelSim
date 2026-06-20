@@ -1,8 +1,8 @@
 import { PS } from "../core/namespace.js";
+import { biomeLut } from "./biome-lut.js";
+import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.moisture = PS.sim.moisture || {
+export const moisture = {
   shaderName: "moisture",
   shaderPath: "shaders/moisture.wgsl",
   configPath: "sim/configs/moisture.json",
@@ -349,7 +349,7 @@ PS.sim.moisture = PS.sim.moisture || {
       id: "moisture.biome-moisture-map",
       shaderBinding: "moisture_map",
       shaderPath: "shaders/biome-render.wgsl",
-      consumer: "PS.sim.biomeLut",
+      consumer: "biomeLut",
       sourceBufferId: this.precipitationBufferId,
       format: "r32float",
       width: dims.width,
@@ -381,8 +381,8 @@ PS.sim.moisture = PS.sim.moisture || {
   },
 
   classifyBiomeSample: function (temperatureC, precipitationMm, elevationM) {
-    if (PS.sim && PS.sim.biomeLut && typeof PS.sim.biomeLut.classifyBiome === "function") {
-      return PS.sim.biomeLut.classifyBiome(temperatureC, precipitationMm, elevationM);
+    if (biomeLut && typeof biomeLut.classifyBiome === "function") {
+      return biomeLut.classifyBiome(temperatureC, precipitationMm, elevationM);
     }
     if (Number(precipitationMm) >= 3200 && Number(temperatureC) >= 22 && Number(elevationM) >= 0) { return "tropical_rainforest"; }
     if (Number(precipitationMm) < 250 && Number(elevationM) >= 0) { return Number(temperatureC) >= 28 ? "hot_desert" : "desert"; }
@@ -425,7 +425,7 @@ PS.sim.moisture = PS.sim.moisture || {
 
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var dims = this.getDimensions(spec);
     var config = this.normalizeConfig(spec.config || this.config || {});
@@ -505,9 +505,9 @@ PS.sim.moisture = PS.sim.moisture || {
   },
 
   dispatch: function (commandEncoder, device) {
-    if (!PS.sim || !PS.sim.computeHarness) {
+    if (!computeHarness) {
       throw new Error("Compute harness is required for moisture dispatch");
     }
-    return PS.sim.computeHarness.dispatch(this.passId, commandEncoder, device);
+    return computeHarness.dispatch(this.passId, commandEncoder, device);
   }
 };

@@ -8,6 +8,7 @@ const heatSource = read("js/sim/heat-diffusion.js");
 const biomeSource = read("js/sim/biome-lut.js");
 const leniaSource = read("js/sim/lenia.js");
 const couplingSource = read("js/sim/coupling.js");
+const harnessSource = read("js/sim/compute-harness.js");
 const driverSource = read("js/sim/environment-drivers.js");
 const configJsSource = read("config.js");
 const coreConfigSource = read("js/core/config.js");
@@ -82,6 +83,7 @@ vm.runInContext(configJsSource, context, { filename: "config.js" });
 vm.runInContext(coreConfigSource, context, { filename: "js/core/config.js" });
 vm.runInContext(epochRegistrySource, context, { filename: "js/epochs/registry.js" });
 vm.runInContext(driverSource, context, { filename: "js/sim/environment-drivers.js" });
+vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(couplingSource, context, { filename: "js/sim/coupling.js" });
 vm.runInContext(heatSource, context, { filename: "js/sim/heat-diffusion.js" });
 vm.runInContext(biomeSource, context, { filename: "js/sim/biome-lut.js" });
@@ -91,16 +93,14 @@ vm.runInContext(epochStateSource, context, { filename: "js/epochs/state-machine.
 vm.runInContext(timeSource, context, { filename: "js/systems/time.js" });
 
 const epochs = context.PS.epochs;
-const coupling = context.PS.sim.coupling;
+const coupling = context.coupling;
 const config = JSON.parse(configSource);
 const greenhouseWrites = [];
-context.PS.sim.heatDiffusion.state = { width: 2, height: 2 };
-context.PS.sim.computeHarness = {
-  buffers: { "heat.greenhouse": { id: "heat.greenhouse" } },
-  writeBuffer(id, data) {
-    greenhouseWrites.push({ id, data: Array.from(data) });
-    return this.buffers[id];
-  }
+context.heatDiffusion.state = { width: 2, height: 2 };
+context.computeHarness.buffers = { "heat.greenhouse": { id: "heat.greenhouse" } };
+context.computeHarness.writeBuffer = function (id, data) {
+  greenhouseWrites.push({ id, data: Array.from(data) });
+  return this.buffers[id];
 };
 
 const report = epochs.validateEpochConfig(config);
@@ -114,7 +114,7 @@ assert.ok(!hadean.activePasses.includes("lbm-ocean"), "Hadean should not run oce
 assert.ok(hadean.activePasses.includes("heat-diffusion"), "Hadean should still run heat diffusion");
 assert.strictEqual(context.world.atmosphere.carbonDioxidePpm, 100000, "Hadean CO2 should load into world atmosphere");
 assert.ok(context.world.atmosphere.greenhouseForcing > 0, "high CO2 should immediately affect greenhouse forcing");
-assert.strictEqual(context.PS.sim.heatDiffusion.greenhouseForcing, context.world.atmosphere.greenhouseForcing, "epoch transition should update heat greenhouse forcing input");
+assert.strictEqual(context.heatDiffusion.greenhouseForcing, context.world.atmosphere.greenhouseForcing, "epoch transition should update heat greenhouse forcing input");
 assert.ok(greenhouseWrites[greenhouseWrites.length - 1].data.every((value) => Math.abs(value - context.world.atmosphere.greenhouseForcing) < 0.0001), "epoch transition should write greenhouse forcing into heat buffer");
 assert.strictEqual(coupling.ticksPerYear, 1000000, "Hadean timescale should be one million years per tick");
 assert.strictEqual(context.PS.time.updateAdaptiveTimeScale(true).targetYearsPerTick, 1000000, "time system should use Hadean epoch years per tick");
@@ -153,22 +153,22 @@ assert.strictEqual(epoch6.ticksPerYear, 1, "epoch 6 should run at one year per t
 assert.strictEqual(coupling.ticksPerYear, 1, "pipeline timescale should follow epoch 6");
 assert.strictEqual(context.PS.time.updateAdaptiveTimeScale(true).targetYearsPerTick, 1, "time system should use epoch 6 years per tick");
 
-context.PS.sim.biomeLut.state.stable = false;
+context.biomeLut.state.stable = false;
 const epoch3 = epochs.setEpoch(3, { pipeline: coupling });
 assert.ok(epoch3.activePasses.includes("lenia"), "epoch 3 should enable Lenia");
 assert.ok(epoch3.life.lenia_species.includes("vegetation"), "epoch 3 should spawn plant-like Lenia species after biome stabilization");
 assert.strictEqual(epoch3.life.spawn_after, "biome-stable", "epoch 3 spawn gate should wait for biome stability");
-assert.strictEqual(context.PS.sim.lenia.state.spawnedEpochSpecies, undefined, "epoch 3 Lenia species should not spawn before biome stability");
-assert.strictEqual(context.PS.sim.lenia.state.pendingEpochSpawn.gate, "biome-stable", "epoch 3 should record pending Lenia spawn gate");
-context.PS.sim.biomeLut.state.stable = true;
+assert.strictEqual(context.lenia.state.spawnedEpochSpecies, undefined, "epoch 3 Lenia species should not spawn before biome stability");
+assert.strictEqual(context.lenia.state.pendingEpochSpawn.gate, "biome-stable", "epoch 3 should record pending Lenia spawn gate");
+context.biomeLut.state.stable = true;
 epochs.updateEpochGates();
-assert.ok(context.PS.sim.lenia.state.activeEpochSpecies.includes("vegetation"), "Lenia vegetation should spawn after biome stability gate opens");
+assert.ok(context.lenia.state.activeEpochSpecies.includes("vegetation"), "Lenia vegetation should spawn after biome stability gate opens");
 
 const epoch5 = epochs.setEpoch(5, { pipeline: coupling });
-assert.strictEqual(context.PS.sim.biomeLut.state.epochPaletteId, "cenozoic", "epoch transition should swap biome LUT palette id");
-assert.deepStrictEqual(context.PS.sim.biomeLut.state.epochPalette, epoch5.palette, "epoch transition should copy palette colors");
-assert.ok(context.PS.sim.biomeLut.state.currentLut && context.PS.sim.biomeLut.state.currentLut.data.length > 0, "epoch transition should regenerate active biome LUT data");
-assert.strictEqual(context.PS.sim.biomeLut.makeLutRgba(2, 2).data.length, 16, "biome LUT generation should consume active epoch palette by default");
+assert.strictEqual(context.biomeLut.state.epochPaletteId, "cenozoic", "epoch transition should swap biome LUT palette id");
+assert.deepStrictEqual(context.biomeLut.state.epochPalette, epoch5.palette, "epoch transition should copy palette colors");
+assert.ok(context.biomeLut.state.currentLut && context.biomeLut.state.currentLut.data.length > 0, "epoch transition should regenerate active biome LUT data");
+assert.strictEqual(context.biomeLut.makeLutRgba(2, 2).data.length, 16, "biome LUT generation should consume active epoch palette by default");
 
 const snapshot = epochs.getEpochState();
 snapshot.activePasses.length = 0;

@@ -1,8 +1,6 @@
 import { PS } from "../core/namespace.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.parameters = PS.sim.parameters || {
+export const parameters = {
   configPath: "sim/configs/parameters.json",
   defaults: {
     parameters: [

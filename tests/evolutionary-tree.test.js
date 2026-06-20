@@ -1,8 +1,21 @@
 const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js");
 
+const lineageTrackingStub = {
+  select(species, options) {
+    context.selected = { species, options };
+    context.world.trackedLineage = {
+      speciesId: species.id,
+      lineageId: species.lineageId
+    };
+    return context.world.trackedLineage;
+  }
+};
+
 const context = {
   console,
-  window: {},
+  window: {
+    lineageTracking: lineageTrackingStub
+  },
   PS: {
     ui: {
       timeline: {
@@ -12,16 +25,7 @@ const context = {
       }
     },
     sim: {
-      lineageTracking: {
-        select(species, options) {
-          context.selected = { species, options };
-          context.world.trackedLineage = {
-            speciesId: species.id,
-            lineageId: species.lineageId
-          };
-          return context.world.trackedLineage;
-        }
-      }
+      lineageTracking: lineageTrackingStub
     }
   },
   CONFIG: {

@@ -1,9 +1,8 @@
 import { PS } from "../core/namespace.js";
 import { world } from "../systems/state.js";
+import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.lenia = PS.sim.lenia || {
+export const lenia = {
   shaderName: "lenia",
   shaderPath: "shaders/lenia.wgsl",
   configPath: "sim/configs/lenia.json",
@@ -456,7 +455,7 @@ PS.sim.lenia = PS.sim.lenia || {
 
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var dims = this.getDimensions(spec);
     var config = this.normalizeConfig(spec.config || this.config || {});
@@ -538,9 +537,9 @@ PS.sim.lenia = PS.sim.lenia || {
   },
 
   dispatch: function (commandEncoder, device) {
-    if (!PS.sim || !PS.sim.computeHarness) {
+    if (!computeHarness) {
       throw new Error("Compute harness is required for Lenia dispatch");
     }
-    return PS.sim.computeHarness.dispatch(this.passId, commandEncoder, device);
+    return computeHarness.dispatch(this.passId, commandEncoder, device);
   }
 };

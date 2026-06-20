@@ -2,7 +2,7 @@ import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp, hashSeedText } from "../core/utils.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
-import "./registry.js";
+import { layerRegistry } from "./registry.js";
 
 export function getGeologyConfig() {
   var constants = typeof CONFIG !== "undefined" ? CONFIG : {};
@@ -216,7 +216,7 @@ export function annotateGeologyTiles(state) {
   state.continentalArea = sampledTiles > 0 ? continentalTiles / sampledTiles : state.continentalArea;
 }
 
-PS.layers.geology = PS.layers.register("geology", {
+export const geologyLayer = layerRegistry.register("geology", {
   family: "planet",
   alwaysOn: true,
   watcherOutputs: ["terrain", "overlays", "timeline", "inspect"],

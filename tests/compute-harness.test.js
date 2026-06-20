@@ -101,7 +101,7 @@ vm.createContext(context);
 vm.runInContext(wgslSource, context, { filename: "js/render/wgsl-shader-manager.js" });
 vm.runInContext(computeSource, context, { filename: "js/sim/compute-harness.js" });
 
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 const initial = new Float32Array([1, 2, 3, 4]);
 const buffer = harness.createBuffer("temperature.seed", 13, ["storage", "copyDst"], initial);
 

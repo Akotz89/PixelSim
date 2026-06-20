@@ -1,8 +1,10 @@
 import { CONFIG } from "../config.js";
+import { EntityRegistry } from "./core/entity-registry.js";
 import { PS } from "./core/namespace.js";
 import { clamp } from "./core/utils.js";
 import { reportRuntimeError } from "./main-runtime.js";
 import { drawWorld } from "./render/pipeline.js";
+import { heatDiffusion } from "./sim/heat-diffusion.js";
 import { seedWorld, setSimulationPaused, updateWorld } from "./main-simulation.js";
 import { world } from "./systems/state.js";
 import { syncControlStates, updateHud } from "./ui/foundation.js";
@@ -190,9 +192,7 @@ export function loadStartupData() {
     var transitionPairs = Array.isArray(transitionsData && transitionsData.pairs) ? transitionsData.pairs.length : 0;
     var animationGroups = animationsData && animationsData.animations ? Object.keys(animationsData.animations).length : 0;
 
-    if (PS.core && PS.core.EntityRegistry && typeof PS.core.EntityRegistry.loadFromJSON === "function") {
-      PS.core.EntityRegistry.loadFromJSON(entitiesData);
-    }
+    EntityRegistry.loadFromJSON(entitiesData);
 
     if (PS.core && PS.core.TileRegistry && typeof PS.core.TileRegistry.loadFromJSON === "function") {
       tileCount = PS.core.TileRegistry.loadFromJSON(tilesData).length;
@@ -237,7 +237,7 @@ export function loadStartupData() {
       loaded: true,
       config: configStatus && configStatus.loaded === true,
       configValues: configStatus && configStatus.valueCount ? configStatus.valueCount : 0,
-      entities: PS.core && PS.core.EntityRegistry ? PS.core.EntityRegistry.list().length : 0,
+      entities: EntityRegistry.list().length,
       tiles: tileCount,
       biomes: biomeCount,
       transitionPairs: transitionPairs,
@@ -267,7 +267,7 @@ export function loadStartupShaders() {
       PS.render.webgpuPointLights,
       PS.render.webgpuWaterDisplacement,
       PS.render.webgpuEntity,
-      PS.sim && PS.sim.heatDiffusion
+      heatDiffusion
     ];
 
     for (var i = 0; i < registrars.length; i += 1) {

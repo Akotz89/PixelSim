@@ -1,7 +1,7 @@
 import { CONFIG } from "../../config.js";
-import { PS } from "../core/namespace.js";
 import { chance, clamp, randomInt } from "../core/utils.js";
 import { world } from "../systems/state.js";
+import { modifiers } from "./modifiers.js";
 
 // ── Trait Registry (AZR-493) ───────────────────────────────────────
 // Data-driven trait definitions replacing the 48 CONFIG.TRAIT_* entries.
@@ -9,8 +9,6 @@ import { world } from "../systems/state.js";
 // mutation behavior, and modifier stat registration.
 //
 // Adding a new trait requires only a single entry in TRAIT_DEFINITIONS.
-
-PS.sim = PS.sim || {};
 
 export var TRAIT_DEFINITIONS = [
   // ── Core evolvable traits ──
@@ -183,7 +181,7 @@ export var TRAIT_DEFINITIONS = [
   }
 ];
 
-PS.traitRegistry = {
+export const traitRegistry = {
   definitions: {},
   definitionOrder: [],
   evolvableIds: [],
@@ -192,10 +190,10 @@ PS.traitRegistry = {
   // ── Initialize from TRAIT_DEFINITIONS ──
 
   init: function () {
-    PS.traitRegistry.definitions = {};
-    PS.traitRegistry.definitionOrder = [];
-    PS.traitRegistry.evolvableIds = [];
-    PS.traitRegistry.allIds = [];
+    traitRegistry.definitions = {};
+    traitRegistry.definitionOrder = [];
+    traitRegistry.evolvableIds = [];
+    traitRegistry.allIds = [];
 
     for (var i = 0; i < TRAIT_DEFINITIONS.length; i++) {
       var def = TRAIT_DEFINITIONS[i];
@@ -211,17 +209,17 @@ PS.traitRegistry = {
         integer: def.integer === true
       };
 
-      PS.traitRegistry.definitions[traitDef.id] = traitDef;
-      PS.traitRegistry.definitionOrder.push(traitDef.id);
-      PS.traitRegistry.allIds.push(traitDef.id);
+      traitRegistry.definitions[traitDef.id] = traitDef;
+      traitRegistry.definitionOrder.push(traitDef.id);
+      traitRegistry.allIds.push(traitDef.id);
 
       if (traitDef.evolvable) {
-        PS.traitRegistry.evolvableIds.push(traitDef.id);
+        traitRegistry.evolvableIds.push(traitDef.id);
       }
 
       // Register modifier stat for each trait
-      if (PS.modifiers && typeof PS.modifiers.createStat === "function") {
-        PS.modifiers.createStat(traitDef.id, {
+      if (modifiers && typeof modifiers.createStat === "function") {
+        modifiers.createStat(traitDef.id, {
           base: traitDef.defaultValue,
           min: traitDef.min,
           max: traitDef.max
@@ -230,15 +228,15 @@ PS.traitRegistry = {
     }
 
     // Register environmental modifier stats (AZR-493)
-    PS.traitRegistry.registerEnvironmentalModifiers();
+    traitRegistry.registerEnvironmentalModifiers();
 
-    return PS.traitRegistry;
+    return traitRegistry;
   },
 
   // ── Get a trait definition by id ──
 
   get: function (traitId) {
-    return PS.traitRegistry.definitions[traitId] || null;
+    return traitRegistry.definitions[traitId] || null;
   },
 
   // ── Generate initial traits using the registry ──
@@ -246,9 +244,9 @@ PS.traitRegistry = {
   makeInitial: function () {
     var traits = {};
 
-    for (var i = 0; i < PS.traitRegistry.definitionOrder.length; i++) {
-      var id = PS.traitRegistry.definitionOrder[i];
-      var def = PS.traitRegistry.definitions[id];
+    for (var i = 0; i < traitRegistry.definitionOrder.length; i++) {
+      var id = traitRegistry.definitionOrder[i];
+      var def = traitRegistry.definitions[id];
 
       if (def.evolvable && def.mutationStep > 0) {
         traits[id] = clamp(
@@ -273,9 +271,9 @@ PS.traitRegistry = {
   inherit: function (parentTraits) {
     var traits = {};
 
-    for (var i = 0; i < PS.traitRegistry.definitionOrder.length; i++) {
-      var id = PS.traitRegistry.definitionOrder[i];
-      var def = PS.traitRegistry.definitions[id];
+    for (var i = 0; i < traitRegistry.definitionOrder.length; i++) {
+      var id = traitRegistry.definitionOrder[i];
+      var def = traitRegistry.definitions[id];
       var parentValue = Number(parentTraits[id]);
 
       if (!Number.isFinite(parentValue)) {
@@ -300,8 +298,8 @@ PS.traitRegistry = {
   // Returns the modified value for an organism at a given position.
 
   applyEnvironmentalModifiers: function (traitId, baseValue, x, y) {
-    if (!PS.modifiers) { return baseValue; }
-    return PS.modifiers.computeWithBase(traitId, baseValue);
+    if (!modifiers) { return baseValue; }
+    return modifiers.computeWithBase(traitId, baseValue);
   },
 
   // ── Register environment-driven modifiers ──
@@ -309,10 +307,10 @@ PS.traitRegistry = {
   // environmental conditions to organism stats.
 
   registerEnvironmentalModifiers: function () {
-    if (!PS.modifiers) { return; }
+    if (!modifiers) { return; }
 
     // Forest/dense vegetation reduces vision (obstruction)
-    PS.modifiers.addModifier("vision", {
+    modifiers.addModifier("vision", {
       id: "terrain_obstruction",
       add: 0,  // Base obstruction is 0; will be updated per-tick based on terrain
       source: "environment",
@@ -321,7 +319,7 @@ PS.traitRegistry = {
     });
 
     // Cold conditions increase metabolism (need more energy to stay warm)
-    PS.modifiers.addModifier("metabolism", {
+    modifiers.addModifier("metabolism", {
       id: "cold_stress",
       add: 0,  // Updated per-tick based on temperature
       source: "environment",
@@ -334,7 +332,7 @@ PS.traitRegistry = {
   // Called periodically (not every tick) to update global modifiers.
 
   updateEnvironmentalModifiers: function () {
-    if (!PS.modifiers) { return; }
+    if (!modifiers) { return; }
 
     // Example: at high population density, vision is slightly reduced
     // (crowding/obstruction effect)
@@ -342,11 +340,11 @@ PS.traitRegistry = {
     var maxPop = CONFIG.MAX_ORGANISMS || 1000;
     var densityPenalty = -Math.round(clamp(pop / maxPop, 0, 1) * 4);
 
-    var visionMod = PS.modifiers.stats.vision &&
-      PS.modifiers.stats.vision.modifiers.terrain_obstruction;
+    var visionMod = modifiers.stats.vision &&
+      modifiers.stats.vision.modifiers.terrain_obstruction;
     if (visionMod) {
       visionMod.add = densityPenalty;
-      PS.modifiers.stats.vision.dirty = true;
+      modifiers.stats.vision.dirty = true;
     }
 
     // Example: low food availability increases metabolic stress
@@ -354,11 +352,11 @@ PS.traitRegistry = {
     var maxFood = CONFIG.MAX_FOOD || 1;
     var scarcityStress = Math.round(clamp(1 - foodCount / maxFood, 0, 1));
 
-    var metabMod = PS.modifiers.stats.metabolism &&
-      PS.modifiers.stats.metabolism.modifiers.cold_stress;
+    var metabMod = modifiers.stats.metabolism &&
+      modifiers.stats.metabolism.modifiers.cold_stress;
     if (metabMod) {
       metabMod.add = scarcityStress;
-      PS.modifiers.stats.metabolism.dirty = true;
+      modifiers.stats.metabolism.dirty = true;
     }
   },
 
@@ -366,10 +364,10 @@ PS.traitRegistry = {
 
   getStats: function () {
     return {
-      traitCount: PS.traitRegistry.definitionOrder.length,
-      evolvableCount: PS.traitRegistry.evolvableIds.length,
-      categories: PS.traitRegistry.definitionOrder.reduce(function (cats, id) {
-        var cat = PS.traitRegistry.definitions[id].category;
+      traitCount: traitRegistry.definitionOrder.length,
+      evolvableCount: traitRegistry.evolvableIds.length,
+      categories: traitRegistry.definitionOrder.reduce(function (cats, id) {
+        var cat = traitRegistry.definitions[id].category;
         cats[cat] = (cats[cat] || 0) + 1;
         return cats;
       }, {})
@@ -378,7 +376,4 @@ PS.traitRegistry = {
 };
 
 // Auto-initialize on load
-PS.traitRegistry.init();
-
-PS.sim.traitRegistry = PS.traitRegistry;
-
+traitRegistry.init();

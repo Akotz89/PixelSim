@@ -352,8 +352,8 @@ function estimateOldCompositorBrightness(lightingState) {
   return preShadedAlbedo * luma * Math.max(0.20, Math.min(1.22, lit));
 }
 
-const nightCycle = context.PS.render.lightingCycle.getState({ timeOfDay: 0.86 });
-const noonCycle = context.PS.render.lightingCycle.getState({ timeOfDay: 0.5 });
+const nightCycle = context.lightingCycle.getState({ timeOfDay: 0.86 });
+const noonCycle = context.lightingCycle.getState({ timeOfDay: 0.5 });
 const nightShadowCycle = Object.assign({}, nightCycle, {
   sunDirection: { x: 0, y: 0, z: -1 }
 });

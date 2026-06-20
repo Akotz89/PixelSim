@@ -1,11 +1,12 @@
 import { CONFIG } from "../../config.js";
-import { PS } from "../core/namespace.js";
+import { traitSchema } from "../core/trait-schema.js";
 import { clamp } from "../core/utils.js";
 import { getPlanetTileCenterLatLon, normalizeLongitude } from "../render/planet-view.js";
 import { makeFood } from "../sim/food-runtime.js";
 import { countSettlementClaimedTiles, getSettlementInfluenceRadius } from "../sim/settlements-state.js";
 import { openPixeldariumDatabase, PIXELDARIUM_SAVE_STORE } from "./persistence-db.js";
 import { createWorldSaveData } from "./persistence-save-data.js";
+import { saveMigration } from "./save-migration.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
 
 export function saveWorldToIndexedDB() {
@@ -31,7 +32,7 @@ export function saveWorldToIndexedDB() {
 }
 
 export function validateWorldSaveData(saveData) {
-  return PS.systems.saveMigration.validate(saveData);
+  return saveMigration.validate(saveData);
 }
 
 export function restoreFood(food) {
@@ -69,7 +70,7 @@ export function restoreClampedNumber(value, fallback, minValue, maxValue) {
 }
 
 export function restoreOrganismTraits(traits) {
-  return PS.core.traitSchema.restore(traits);
+  return traitSchema.restore(traits);
 }
 
 export function restoreLineageRecord(lineage) {
@@ -260,4 +261,3 @@ export function restorePlanetaryBody(body) {
 
   return restoredBody;
 }
-

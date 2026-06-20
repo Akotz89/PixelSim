@@ -56,6 +56,10 @@ function prepareSourceForVM(source) {
             return `var ${localName} = ${getManifestArrayLiteral()}`;
           }
 
+          if (importedName === "assert") {
+            return `try { if (typeof ${localName} === "undefined") { eval("var ${localName} = window.assert || (window.PS && window.PS.assert);"); } } catch(e) {}`;
+          }
+
           return `try { if (typeof ${localName} === "undefined") { eval("var ${localName} = window.${importedName};"); } } catch(e) {}`;
         })
         .filter(Boolean)
@@ -67,6 +71,7 @@ function prepareSourceForVM(source) {
   // Strip 'export ' prefix from declarations (syntax error in non-module)
   source = source.replace(/^export function /gm, "function ");
   source = source.replace(/^export (const|var|let) ([A-Za-z_$][\w$]*)\s*=/gm, "var $2 =");
+  source = source.replace(/^export\s+\{[^}]+\};\s*$/gm, "");
   source = source.replace(/^export default /gm, "");
 
   // Convert preamble `var X = window.X;` to safe conditional form

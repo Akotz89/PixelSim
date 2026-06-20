@@ -1,6 +1,4 @@
-import { PS } from "../core/namespace.js";
-
-PS.layers = {
+export const layerRegistry = {
   entries: {},
   order: [],
   register: function(id, layer) {

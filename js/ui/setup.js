@@ -6,11 +6,14 @@ import { exportWorldToJsonFile, importWorldFromJsonFile, loadWorldFromIndexedDB 
 import { saveWorldToIndexedDB } from "../systems/persistence-restore-core.js";
 import { world } from "../systems/state.js";
 import { getCanvasPointFromEvent, getSurfacePositionFromCanvasEvent, getTileFromCanvasEvent, planetDragState, prepareTouchInput } from "./camera-input.js";
+import { controls } from "./controls.js";
 import { canvas, exportJsonButton, foodGrowthSlider, foodSizeSlider, importJsonButton, importJsonFile, loadButton, menuBackdrop, menuTabs, menuToggleButton, organismSizeSlider, pauseButton, restartButton, saveButton, seedInput, seedRandomButton, speedDownButton, speedSlider, speedUpButton, startingFoodSlider, stepButton, timeScaleSlider } from "./dom-refs.js";
 import { applyTuningFromControls, setMenuOpen, setMenuPage, syncControlStates, syncMenuPage, syncMenuState, syncTuningControls, toggleMenuOpen, updateHud } from "./foundation.js";
 import { getInspectableEntityFromTile, inspectTile } from "./inspect.js";
 import { handleSimulationShortcut, registerSimulationInputActions } from "./interaction.js";
+import { modal } from "./modal.js";
 import { requestRestartSimulationFromControls, setPersistenceStatus } from "./persistence-controls.js";
+import { tooltip } from "./tooltip.js";
 
 export function setupControls() {
   var tabButtons = menuTabs.querySelectorAll("[data-menu-target]");
@@ -77,8 +80,8 @@ export function setupControls() {
     PS.input.handlePointer("wheel_zoom", event);
   }, { passive: false });
 
-  if (PS.ui && PS.ui.tooltip) {
-    PS.ui.tooltip.bindEntityHover(canvas, function(event) {
+  if (tooltip) {
+    tooltip.bindEntityHover(canvas, function(event) {
       var tile = getTileFromCanvasEvent(event);
       var entity = getInspectableEntityFromTile(tile.x, tile.y);
 
@@ -171,8 +174,8 @@ export function setupControls() {
   });
 
   saveButton.addEventListener("click", function() {
-    var confirmSave = PS.ui && PS.ui.modal && typeof PS.ui.modal.confirm === "function"
-      ? PS.ui.modal.confirm({
+    var confirmSave = modal && typeof modal.confirm === "function"
+      ? modal.confirm({
         title: "Save simulation",
         message: "Save the current Pixeldarium state?",
         confirmLabel: "Save",
@@ -245,17 +248,11 @@ export function setupControls() {
       PS.ui.panels.setup();
     }
 
-    if (PS.ui.tooltip) {
-      PS.ui.tooltip.setup();
-    }
+    tooltip.setup();
 
-    if (PS.ui.modal) {
-      PS.ui.modal.setup();
-    }
+    modal.setup();
 
-    if (PS.ui.controls) {
-      PS.ui.controls.setup();
-    }
+    controls.setup();
 
     if (PS.ui.notifications) {
       PS.ui.notifications.setup();

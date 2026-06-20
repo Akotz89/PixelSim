@@ -1,8 +1,4 @@
-import { PS } from "./namespace.js";
-
-PS.core = PS.core || {};
-
-PS.core.EntityRegistry = PS.core.EntityRegistry || {
+export const EntityRegistry = {
   types: new Map(),
   categoryIndex: new Map(),
 

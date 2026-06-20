@@ -2,8 +2,13 @@ import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
+import { foodWeb } from "../sim/food-web.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
+import { lenia } from "../sim/lenia.js";
+import { massExtinction } from "../sim/mass-extinction.js";
+import { terrainPressure } from "../sim/terrain-pressure.js";
 import { world } from "../systems/state.js";
 import { canvas, observationOverlayButtons, observationOverlayStatus } from "./dom-refs.js";
 import { setElementText } from "./foundation.js";
@@ -200,8 +205,8 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
 
       for (var nearbyIndex = 0; nearbyIndex < nearby.length; nearbyIndex++) {
         var nearbyTraits = typeof ensureOrganismTraits === "function" ? ensureOrganismTraits(nearby[nearbyIndex]) : nearby[nearbyIndex].traits;
-        var role = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
-          ? PS.sim.foodWeb.getRole(nearbyTraits)
+        var role = foodWeb && typeof foodWeb.getRole === "function"
+          ? foodWeb.getRole(nearbyTraits)
           : (Number(nearbyTraits && nearbyTraits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD ? "predator" : "herbivore");
 
         if (role === "predator") {
@@ -216,22 +221,22 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     }
 
     if (activeId === "observation.selection") {
-      var sample = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function"
-        ? PS.sim.terrainPressure.getSample(tileX, tileY)
+      var sample = typeof terrainPressure.getSample === "function"
+        ? terrainPressure.getSample(tileX, tileY)
         : null;
       var selection = sample ? clamp(Number(sample.pressure) || 0, 0, 1) : 0;
       var isolation = sample ? clamp(Number(sample.isolation) || 0, 0, 1) : 0;
       var innovation = sample ? clamp(Number(sample.innovationPressure) || 0, 0, 1) : 0;
-      var lineage = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getHighlightAt === "function"
-        ? PS.sim.lineageTracking.getHighlightAt(tileX, tileY)
+      var lineage = lineageTracking && typeof lineageTracking.getHighlightAt === "function"
+        ? lineageTracking.getHighlightAt(tileX, tileY)
         : 0;
 
       return this.makeSample(90 + selection * 120 + lineage * 45, 110 + innovation * 90 + lineage * 130, 210 - isolation * 80, 40 + Math.max(selection, isolation, lineage) * 185);
     }
 
     if (activeId === "observation.extinction") {
-      var summary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
-        ? PS.sim.massExtinction.getSummary()
+      var summary = massExtinction && typeof massExtinction.getSummary === "function"
+        ? massExtinction.getSummary()
         : null;
       var latest = summary && (summary.activeEvent || summary.latest);
       var recovery = summary && summary.recoveryWindow;
@@ -262,7 +267,6 @@ PS.render.observationOverlays = PS.render.observationOverlays || {
     }
 
     if (activeId === "observation.microbial") {
-      var lenia = PS.sim && PS.sim.lenia;
       if (lenia && lenia.state && typeof lenia.getCellDensity === "function") {
         var microbes = lenia.getCellDensity(tileX, tileY, "microbes");
         var vegetation = lenia.getCellDensity(tileX, tileY, "vegetation");

@@ -13,8 +13,6 @@ assert.ok(manifestSource.indexOf("js/core/bitsmap.js") > manifestSource.indexOf(
 assert.ok(manifestSource.indexOf("js/core/bitsmap.js") < manifestSource.indexOf("js/sim/vegetation.js"), "Bitsmap should load before tile systems consume it");
 
 const context = {
-  window: {},
-  PS: { core: {} },
   Uint32Array,
   Array,
   Math,
@@ -22,12 +20,11 @@ const context = {
   RangeError
 };
 
-context.window.window = context.window;
-context.window.PS = context.PS;
 vm.createContext(context);
 vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
 
-const Bitsmap = context.PS.core.Bitsmap;
+const Bitsmap = context.Bitsmap;
+assert.strictEqual(typeof Bitsmap, "function", "Bitsmap should be exposed as a direct module export");
 
 [1, 2, 4, 8, 16].forEach(function(bits) {
   const map = new Bitsmap(bits, 80);

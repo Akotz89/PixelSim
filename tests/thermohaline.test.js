@@ -157,7 +157,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(thermoSource, context, { filename: "js/sim/thermohaline.js" });
 
-const thermo = context.PS.sim.thermohaline;
+const thermo = context.thermohaline;
 thermo.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "salinity"), "thermohaline should register salinity shader");
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "density"), "thermohaline should register density shader");
@@ -210,7 +210,7 @@ assert.strictEqual(densityParams.byteLength, 32, "density params should be unifo
 context.PS.render.wgslShaders.register("salinity", salinityShader, { path: "shaders/salinity.wgsl" });
 context.PS.render.wgslShaders.register("density", densityShader, { path: "shaders/density.wgsl" });
 const result = thermo.init({ width: 512, height: 512, config });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.scalarBytes, 512 * 512 * 4, "thermohaline scalar fields should allocate float32 cells");
 assert.ok(harness.getState("thermohaline.salinity"), "thermohaline should register salinity ping-pong state");
 assert.ok(harness.buffers["thermohaline.density"], "thermohaline should register density output");

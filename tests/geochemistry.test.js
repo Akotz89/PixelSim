@@ -155,7 +155,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(geochemistrySource, context, { filename: "js/sim/geochemistry.js" });
 
-const geo = context.PS.sim.geochemistry;
+const geo = context.geochemistry;
 geo.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "geochemistry"), "geochemistry should register WGSL manifest entry");
 
@@ -211,7 +211,7 @@ assert.ok(Math.abs(view.getFloat32(20, true) - config.photosynthesis_rate_ppm) <
 
 context.PS.render.wgslShaders.register("geochemistry", shaderSource, { path: "shaders/geochemistry.wgsl" });
 const initResult = geo.init({ width: 512, height: 512, config, epoch: "civilization" });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(initResult.atmosphereBytes, 512 * 512 * config.atmosphere_stride * 4, "atmosphere buffers should allocate ppm grid");
 assert.ok(harness.getState("geochemistry.atmosphere"), "geochemistry should register atmosphere ping-pong state");
 assert.ok(harness.buffers["geochemistry.ocean"], "geochemistry should register ocean chemistry buffer");
@@ -221,8 +221,8 @@ assert.ok(harness.passes.geochemistry, "geochemistry should register compute pas
 
 vm.runInContext(layerRegistrySource, context, { filename: "js/layers/registry.js" });
 vm.runInContext(atmosphereSource, context, { filename: "js/layers/atmosphere.js" });
-context.PS.layers.atmosphere.ensureState();
-context.PS.layers.atmosphere.update(1000);
+context.layerRegistry.get("atmosphere").ensureState();
+context.layerRegistry.get("atmosphere").update(1000);
 assert.strictEqual(context.world.atmosphere.carbonDioxidePpm, geo.state.summary.co2Ppm, "atmosphere layer should surface geochemistry CO2 ppm when available");
 assert.ok(Array.isArray(context.world.atmosphere.debugOverlayRows), "atmosphere layer should surface debug rows");
 

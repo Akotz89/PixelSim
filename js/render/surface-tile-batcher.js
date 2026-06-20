@@ -1,6 +1,7 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { surfaceReadyFeather } from "./surface-ready-feather.js";
 import { world } from "../systems/state.js";
 
 PS.render = PS.render || {};
@@ -1212,7 +1213,7 @@ PS.render.surfaceTileBatcher.appendBatches = function (batches, address, cellCac
     var page = PS.render.surfaceTileBatcher.getPageBuffer(target, cell.pageIndex);
     var screenX = screenOffsetX + cellData.screenX * (samplePixelSize / CONFIG.TILE_SIZE);
     var screenY = screenOffsetY + cellData.screenY * (samplePixelSize / CONFIG.TILE_SIZE);
-    var featherAlpha = PS.render.surfaceReadyFeather && typeof PS.render.surfaceReadyFeather.getAlpha === "function" ? PS.render.surfaceReadyFeather.getAlpha(address, screenX, screenY, samplePixelSize) : 1;
+    var featherAlpha = surfaceReadyFeather.getAlpha(address, screenX, screenY, samplePixelSize);
     var waterInfo = !hasCivilizationMaterial && PS.render.waterRendering && typeof PS.render.waterRendering.getRenderInfo === "function"
       ? PS.render.waterRendering.getRenderInfo(sample, biome, tileX, tileY, lodState)
       : null;

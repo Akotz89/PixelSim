@@ -1,10 +1,6 @@
-import { PS } from "../core/namespace.js";
 import { world } from "../systems/state.js";
-import { getSettlementSummary } from "../ui/summary.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.resources = {
+export const resourceRegistry = {
   definitions: [
     { id: "food", label: "Food", category: "edible", stackLimit: 500, spoilagePerTick: 0.0005, production: [] },
     { id: "wood", label: "Wood", category: "growable", stackLimit: 400, spoilagePerTick: 0, production: ["forest", "tools"] },
@@ -216,5 +212,4 @@ PS.sim.resources = {
     };
   }
 };
-
 

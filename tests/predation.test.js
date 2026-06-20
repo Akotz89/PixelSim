@@ -23,8 +23,12 @@ function makeElement() {
 const context = {
   assert,
   console,
+  organismAi: {},
+  terrainPressure: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    organismAi: {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {
@@ -53,9 +57,11 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -128,7 +134,7 @@ function recordOrganismDeath(count) {
 }
 
 function makeTestOrganism(x, y, carnivory, bodySize, limbCount, energy) {
-  var organism = PS.sim.organisms.make(x, y);
+  var organism = organisms.make(x, y);
   organism.energy = energy == null ? 100 : energy;
   organism.traits.carnivory = carnivory;
   organism.traits.bodySize = bodySize;
@@ -164,7 +170,7 @@ resetPredationWorld();
 var predator = makeTestOrganism(10, 10, 0.9, 2.0, 6, 50);
 var prey = makeTestOrganism(11, 10, 0, 0.7, 2, 40);
 world.organisms.push(predator, prey);
-PS.sim.organisms.update(predator);
+organisms.update(predator);
 assert.strictEqual(prey.energy, 0, "larger carnivore should kill adjacent prey");
 assert.strictEqual(predator.energy, 82, "successful predation should transfer victim energy");
 assert.strictEqual(prey.deathCause, "predation", "predation death cause should be distinguishable");
@@ -175,7 +181,7 @@ resetPredationWorld();
 var smallPredator = makeTestOrganism(10, 10, 0.9, 0.6, 2, 50);
 var largePrey = makeTestOrganism(11, 10, 0, 2.0, 8, 40);
 world.organisms.push(smallPredator, largePrey);
-PS.sim.organisms.update(smallPredator);
+organisms.update(smallPredator);
 assert.ok(largePrey.energy > 0, "undersized carnivore should fail against larger prey");
 
 resetPredationWorld();
@@ -183,8 +189,8 @@ var starvingCarnivore = makeTestOrganism(12, 12, 0.9, 1.2, 4, 1);
 starvingCarnivore.traits.metabolism = 3;
 world.organisms.push(starvingCarnivore);
 world.tick = 3;
-PS.sim.organisms.update(starvingCarnivore);
-PS.sim.organisms.removeDead();
+organisms.update(starvingCarnivore);
+organisms.removeDead();
 assert.strictEqual(world.organisms.length, 0, "pure carnivore should die when no prey exists");
 assert.strictEqual(world.deathsRecorded, 1, "starved carnivore removal should record a death");
 
@@ -195,9 +201,9 @@ var mixedPreyB = makeTestOrganism(23, 20, 0, 0.7, 2, 50);
 var mixedPreyC = makeTestOrganism(25, 20, 0, 0.7, 2, 50);
 world.organisms.push(mixedPredator, mixedPreyA, mixedPreyB, mixedPreyC);
 for (var i = 0; i < world.organisms.length; i++) {
-  PS.sim.organisms.update(world.organisms[i]);
+  organisms.update(world.organisms[i]);
 }
-PS.sim.organisms.removeDead();
+organisms.removeDead();
 assert.ok(world.organisms.indexOf(mixedPredator) >= 0, "mixed population should keep predator alive after first hunt");
 assert.ok(world.organisms.length >= 3, "mixed population should not immediately collapse");
 
@@ -205,7 +211,7 @@ resetPredationWorld();
 var pooledPredator = makeTestOrganism(10, 10, 0.9, 2.0, 6, 50);
 var pooledPrey = makeTestOrganism(11, 10, 0, 0.7, 2, 40);
 world.organisms.push(pooledPredator, pooledPrey);
-PS.sim.organisms.update(world.organisms[0]);
+organisms.update(world.organisms[0]);
 assert.strictEqual(world.organisms[1].energy, 0, "pooled prey object should be killed by predation");
 assert.strictEqual(PS.pools.organism.arrays.energy[world.organisms[1].poolIndex], 0, "pooled prey energy array should sync predation death");
 assert.strictEqual(PS.pools.organism.arrays.energy[world.organisms[0].poolIndex], 82, "pooled predator energy array should sync transferred energy");

@@ -48,7 +48,7 @@ assert.ok(globeRenderer.includes("data[12] = sun.x"), "globe uniform data should
 assert.ok(globeRenderer.includes("data[13] = sun.y"), "globe uniform data should write sun direction y");
 assert.ok(globeRenderer.includes("data[14] = sun.z"), "globe uniform data should write sun direction z");
 assert.ok(globeRenderer.includes("data[15] = Math.max(0, Math.min(1, spec.alpha"), "globe uniform data should write render alpha");
-assert.ok(globeRenderer.includes("PS.render.lightingCycle.getState"), "globe renderer should use the shared lighting cycle");
+assert.ok(globeRenderer.includes("lightingCycle.getState"), "globe renderer should use the shared lighting cycle");
 assert.ok(globeRenderer.includes("data[16] = spec.ambient"), "globe uniform data should write ambient intensity");
 assert.ok(globeRenderer.includes("data[20] = Math.max"), "globe uniform data should write ambient tint");
 assert.ok(globeRenderer.includes('srcFactor: "src-alpha"'), "globe pipeline should enable source alpha blending");

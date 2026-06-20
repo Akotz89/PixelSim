@@ -202,7 +202,7 @@ vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" 
 vm.runInContext(gpuSimRuntimeSource, context, { filename: "js/sim/gpu-sim-runtime.js" });
 vm.runInContext(oceanSource, context, { filename: "js/sim/lbm-ocean.js" });
 
-const ocean = context.PS.sim.lbmOcean;
+const ocean = context.lbmOcean;
 assert.strictEqual(ocean.velocities.length, 9, "LBM should expose D2Q9 velocities");
 assert.deepStrictEqual(Array.from(ocean.opposite), [0, 3, 4, 1, 2, 7, 8, 5, 6], "LBM should expose bounce-back opposite directions");
 assert.ok(Math.abs(ocean.weights.reduce((sum, value) => sum + value, 0) - 1) < 1e-12, "D2Q9 weights should sum to one");
@@ -301,7 +301,7 @@ const result = ocean.init({
   config
 });
 
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.width, 512, "LBM ocean should initialize a 512-wide grid");
 assert.strictEqual(result.height, 512, "LBM ocean should initialize a 512-high grid");
 assert.strictEqual(result.distributionBytes, 512 * 512 * 9 * 4, "LBM ocean should allocate nine float distributions per cell");

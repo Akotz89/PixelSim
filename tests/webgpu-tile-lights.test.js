@@ -7,6 +7,7 @@ const mainLoopSource = read("js/main-loop.js");
 const managerSource = read("js/render/wgsl-shader-manager.js");
 const targetsSource = read("js/render/webgpu-targets.js");
 const gbufferSource = read("js/render/webgpu-gbuffer.js");
+const surfaceReadyFeatherSource = read("js/render/surface-ready-feather.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const tileLightSource = read("js/render/webgpu-tile-lights.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
@@ -75,6 +76,7 @@ vm.runInContext(managerSource, context, { filename: "js/render/wgsl-shader-manag
 vm.runInContext(targetsSource, context, { filename: "js/render/webgpu-targets.js" });
 vm.runInContext(gbufferSource, context, { filename: "js/render/webgpu-gbuffer.js" });
 vm.runInContext(tileLightSource, context, { filename: "js/render/webgpu-tile-lights.js" });
+vm.runInContext(surfaceReadyFeatherSource, context, { filename: "js/render/surface-ready-feather.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 
 const tileLights = context.PS.render.webgpuTileLights;

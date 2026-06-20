@@ -40,11 +40,12 @@ const source = [
 
 vm.runInNewContext(`${source}
 
-var manifest = PS.layers.getManifest();
+var manifest = layerRegistry.getManifest();
 assert.strictEqual(manifest[0].id, "geology", "geology should register in the layer manifest");
 assert.strictEqual(manifest[0].alwaysOn, true, "geology should be always-on");
 
-var state = PS.layers.geology.ensureState();
+var geologyLayer = layerRegistry.get("geology");
+var state = geologyLayer.ensureState();
 assert.ok(state.plates.length >= CONFIG.GEOLOGY_PLATE_MIN, "world creation should define at least the configured minimum plates");
 assert.ok(state.plates.length <= CONFIG.GEOLOGY_PLATE_MAX, "world creation should define no more than the configured maximum plates");
 assert.ok(state.plates.every(function(plate) {
@@ -63,7 +64,7 @@ assert.ok(state.volcanicActivity > 0, "volcanic activity should include hotspots
 var firstPlate = state.plates[0];
 var driftX = firstPlate.driftX;
 var mountainMass = state.mountainMass;
-var updated = PS.layers.updateAll(1000);
+var updated = layerRegistry.updateAll(1000);
 
 assert.deepStrictEqual(updated, ["geology"], "layer registry should update geology as an always-on layer");
 assert.notStrictEqual(firstPlate.driftX, driftX, "plate drift should advance with layer updates");
@@ -87,6 +88,6 @@ const mainLoopSource = read("js/main-simulation.js");
 
 assert.ok(
   /function updateWorld\(dt\)/.test(mainLoopSource) &&
-    mainLoopSource.includes("PS.layers.updateAll(dt)"),
+    mainLoopSource.includes("layerRegistry.updateAll(dt)"),
   "main simulation tick should advance always-on layers"
 );

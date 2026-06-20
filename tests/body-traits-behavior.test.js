@@ -47,8 +47,10 @@ function makeElement() {
 const context = {
   assert,
   console,
+  terrainPressure: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {
@@ -76,9 +78,12 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/organism-ai.js",
+  "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -166,7 +171,7 @@ function resetBodyTraitWorld() {
 }
 
 function makeBodyTraitOrganism(x, y, bodySize, limbCount) {
-  var organism = PS.sim.organisms.make(x, y);
+  var organism = organisms.make(x, y);
   organism.energy = 100;
   organism.traits.bodySize = bodySize;
   organism.traits.limbCount = limbCount;
@@ -197,8 +202,8 @@ assert.ok(
 smallBody.energy = 100;
 largeBody.energy = 100;
 world.organisms.push(smallBody, largeBody);
-PS.sim.organisms.update(smallBody);
-PS.sim.organisms.update(largeBody);
+organisms.update(smallBody);
+organisms.update(largeBody);
 assert.ok(
   smallBody.energy > largeBody.energy,
   "larger body should spend more energy on metabolism during update"
@@ -224,14 +229,14 @@ var fastMover = makeBodyTraitOrganism(40, 40, 1, 12);
 slowMover.directionX = 1;
 fastMover.directionX = 1;
 world.organisms.push(slowMover, fastMover);
-PS.sim.organisms.update(slowMover);
-PS.sim.organisms.update(fastMover);
+organisms.update(slowMover);
+organisms.update(fastMover);
 assert.strictEqual(slowMover.x, 30, "limbCount=0 organism should not cross a 100km tile in one tick");
 assert.strictEqual(fastMover.x, 41, "limbCount=12 organism should move faster and cross a 100km tile in one tick");
 
 var originalMutationChance = CONFIG.TRAIT_MUTATION_CHANCE;
 CONFIG.TRAIT_MUTATION_CHANCE = 0;
-var inheritedFromCorruptParent = PS.sim.evolution.inheritTraits({
+var inheritedFromCorruptParent = evolution.inheritTraits({
   vision: NaN,
   metabolism: Infinity,
   reproductionEnergy: -Infinity,
@@ -267,7 +272,7 @@ var divergenceChild = Object.assign({}, divergenceParent, {
   waterDependency: divergenceParent.waterDependency + CONFIG.TRAIT_WATER_DEPENDENCY_MUTATION_STEP
 });
 assert.ok(
-  PS.sim.evolution.divergenceScore(divergenceParent, divergenceChild) >= 7,
+  evolution.divergenceScore(divergenceParent, divergenceChild) >= 7,
   "trait divergence should include body and visual traits"
 );
 

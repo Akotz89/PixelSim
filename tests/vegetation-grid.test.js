@@ -20,7 +20,6 @@ assert.ok(
 );
 
 const context = {
-  window: {},
   PS: { core: {} },
   Uint8Array,
   Uint32Array,
@@ -31,7 +30,6 @@ const context = {
   WORLD_HEIGHT: 3
 };
 
-context.window.window = context.window;
 vm.createContext(context);
 vm.runInContext(bitsmapSource, context, { filename: "js/core/bitsmap.js" });
 vm.runInContext(vegetationSource, context, { filename: "js/sim/vegetation.js" });
@@ -51,7 +49,7 @@ assert.strictEqual(vegetation.width, 5, "init should store width");
 assert.strictEqual(vegetation.height, 3, "init should store height");
 assert.strictEqual(vegetation.data.length, 15, "grid should allocate one byte per tile");
 assert.ok(vegetation.data instanceof Uint8Array, "grid should use a Uint8Array backing store");
-assert.ok(vegetation.grassDensityMap instanceof context.PS.core.Bitsmap, "grass density should use the shared Bitsmap primitive");
+assert.ok(vegetation.grassDensityMap instanceof context.Bitsmap, "grass density should use the shared Bitsmap primitive");
 assert.strictEqual(vegetation.grassDensityData.byteLength, 8, "grass density should allocate a packed 4-bit map");
 
 assert.deepStrictEqual(plain(vegetation.get(1, 1)), { type: 0, variant: 0 }, "empty cells should read as NONE variant 0");

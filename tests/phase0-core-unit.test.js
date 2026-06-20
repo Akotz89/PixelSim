@@ -226,35 +226,35 @@ equal(context.PS.tileGrid.countEntitiesInTile(3, 2), 1, "remove should unlink en
 check(context.PS.tileGrid.collectInRadius(3, 2, 1).length >= 1, "radius collection should find nearby active entities");
 
 // Modifier engine coverage.
-context.PS.modifiers.stats = {};
-context.PS.modifiers.modifierCount = 0;
-context.PS.modifiers.createStat("vision", { base: 10, min: 0, max: 100 });
-equal(context.PS.modifiers.compute("vision"), 10, "zero modifiers should return base value");
-context.PS.modifiers.addModifier("vision", { id: "flat", add: 5 });
-equal(context.PS.modifiers.compute("vision"), 15, "additive modifier should add to base");
-context.PS.modifiers.addModifier("vision", { id: "boost", mul: 0.5 });
-equal(context.PS.modifiers.compute("vision"), 22.5, "multiplicative modifier should apply after positive additions");
-context.PS.modifiers.addModifier("vision", { id: "penalty", add: -2 });
-equal(context.PS.modifiers.compute("vision"), 20.5, "negative additions should apply after multiplier");
-equal(context.PS.modifiers.computeWithBase("vision", 20), 35.5, "computeWithBase should use temporary base");
-equal(context.PS.modifiers.removeModifier("vision", "flat"), true, "removeModifier should remove active modifier");
-equal(context.PS.modifiers.compute("vision"), 13, "removed modifier should no longer affect value");
-context.PS.modifiers.clearAll();
-equal(context.PS.modifiers.compute("vision"), 10, "clearAll should restore base-only value");
+context.modifiers.stats = {};
+context.modifiers.modifierCount = 0;
+context.modifiers.createStat("vision", { base: 10, min: 0, max: 100 });
+equal(context.modifiers.compute("vision"), 10, "zero modifiers should return base value");
+context.modifiers.addModifier("vision", { id: "flat", add: 5 });
+equal(context.modifiers.compute("vision"), 15, "additive modifier should add to base");
+context.modifiers.addModifier("vision", { id: "boost", mul: 0.5 });
+equal(context.modifiers.compute("vision"), 22.5, "multiplicative modifier should apply after positive additions");
+context.modifiers.addModifier("vision", { id: "penalty", add: -2 });
+equal(context.modifiers.compute("vision"), 20.5, "negative additions should apply after multiplier");
+equal(context.modifiers.computeWithBase("vision", 20), 35.5, "computeWithBase should use temporary base");
+equal(context.modifiers.removeModifier("vision", "flat"), true, "removeModifier should remove active modifier");
+equal(context.modifiers.compute("vision"), 13, "removed modifier should no longer affect value");
+context.modifiers.clearAll();
+equal(context.modifiers.compute("vision"), 10, "clearAll should restore base-only value");
 
 // Trait registry coverage.
-context.PS.modifiers.stats = {};
-context.PS.traitRegistry.init();
-check(context.PS.traitRegistry.get("vision"), "registered trait should be retrievable by id");
-equal(context.PS.traitRegistry.get("missing"), null, "missing trait should return null");
-equal(context.PS.traitRegistry.get("vision").defaultValue, 12, "trait defaults should come from CONFIG");
-check(context.PS.traitRegistry.evolvableIds.indexOf("vision") >= 0, "evolvable trait should be indexed");
-const initialTraits = context.PS.traitRegistry.makeInitial();
+context.modifiers.stats = {};
+context.traitRegistry.init();
+check(context.traitRegistry.get("vision"), "registered trait should be retrievable by id");
+equal(context.traitRegistry.get("missing"), null, "missing trait should return null");
+equal(context.traitRegistry.get("vision").defaultValue, 12, "trait defaults should come from CONFIG");
+check(context.traitRegistry.evolvableIds.indexOf("vision") >= 0, "evolvable trait should be indexed");
+const initialTraits = context.traitRegistry.makeInitial();
 check(initialTraits.vision >= 4 && initialTraits.vision <= 24, "initial trait should stay within bounds");
-const inheritedTraits = context.PS.traitRegistry.inherit({ vision: 100, metabolism: -100 });
+const inheritedTraits = context.traitRegistry.inherit({ vision: 100, metabolism: -100 });
 equal(inheritedTraits.vision, 24, "inherited trait should clamp to max");
 equal(inheritedTraits.metabolism, 1, "inherited trait should clamp to min");
-check(context.PS.modifiers.stats.vision, "trait registry should register modifier stat");
+check(context.modifiers.stats.vision, "trait registry should register modifier stat");
 
 // Event bus coverage.
 context.PS.events.listeners = {};

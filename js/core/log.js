@@ -1,4 +1,5 @@
 import { PS } from "./namespace.js";
+import { assert } from "./assert.js";
 
 PS.log = function (category, level, message, details) {
   var normalizedCategory = String(category || "core");
@@ -65,7 +66,7 @@ PS.log.shouldWrite = function (category, level) {
 };
 
 PS.log.setLevel = function (level) {
-  PS.assert(PS.log.levels[String(level).toUpperCase()] !== undefined, "Unknown log level: " + level);
+  assert(PS.log.levels[String(level).toUpperCase()] !== undefined, "Unknown log level: " + level);
   PS.config.log.level = String(level).toUpperCase();
 };
 

@@ -32,6 +32,7 @@ const source = [
   "js/core/world-grid.js",
   "js/systems/pool-manager.js",
   "js/systems/pools.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js"
 ].map(read).join("\n");
 

@@ -1,8 +1,6 @@
 import { PS } from "../core/namespace.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.computeHarness = PS.sim.computeHarness || {
+export const computeHarness = {
   buffers: {},
   pingPongs: {},
   states: {},

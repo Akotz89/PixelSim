@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  organismAi: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    organismAi: {}
   },
   document: {
     getElementById() {
@@ -40,11 +42,13 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/terrain-pressure.js",
   "js/sim/speciation.js",
   "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js",
@@ -155,7 +159,7 @@ world.timelineEvents = [];
 world.tick = 300;
 world.nextSpeciesId = 2;
 
-var founder = PS.sim.organisms.make(2, 6);
+var founder = organisms.make(2, 6);
 founder.speciesId = 1;
 founder.populationId = 1;
 founder.traits = {
@@ -175,7 +179,7 @@ founder.traits = {
   thermalTolerance: 0,
   waterDependency: 0
 };
-PS.sim.speciation.ensureSpecies(1, {
+speciation.ensureSpecies(1, {
   lineageId: founder.lineageId,
   founderTraits: founder.traits,
   traitMean: founder.traits,
@@ -184,7 +188,7 @@ PS.sim.speciation.ensureSpecies(1, {
   activePopulation: 2
 });
 
-var divergent = PS.sim.organisms.make(6, 6, founder.lineageId);
+var divergent = organisms.make(6, 6, founder.lineageId);
 divergent.speciesId = 1;
 divergent.populationId = 1;
 divergent.traits = {
@@ -206,16 +210,16 @@ divergent.traits = {
 };
 world.organisms.push(founder, divergent);
 
-var distance = PS.sim.speciation.traitDistance(founder.traits, divergent.traits);
+var distance = speciation.traitDistance(founder.traits, divergent.traits);
 assert.ok(distance > 0.9, "normalized trait distance should include expanded AZR-284 traits");
 
-PS.sim.representatives.refresh();
-var parentPopulation = PS.sim.representatives.getPopulation(1);
+representatives.refresh();
+var parentPopulation = representatives.getPopulation(1);
 var childPopulation = world.biologyPopulations.filter(function(population) {
   return population.parentPopulationId === 1 && population.parentSpeciesId === 1;
 })[0];
 var newSpeciesId = childPopulation ? childPopulation.speciesId : 0;
-var speciesRecord = PS.sim.speciation.getSpecies(newSpeciesId);
+var speciesRecord = speciation.getSpecies(newSpeciesId);
 
 assert.ok(newSpeciesId > 1, "speciation should assign a new stable species id");
 assert.strictEqual(speciesRecord.parentId, 1, "new species should preserve parent species link");
@@ -242,7 +246,7 @@ assert.strictEqual(divergent.speciesId, newSpeciesId, "deterministic child subse
 assert.strictEqual(divergent.populationId, childPopulation.id, "child subset should receive child population id");
 
 world.tick += 1;
-PS.sim.representatives.refresh();
+representatives.refresh();
 assert.strictEqual(world.speciationEvents.length, 1, "guardrails should prevent immediate species explosion");
 
 console.log("speciation event checks passed");

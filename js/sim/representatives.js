@@ -3,12 +3,13 @@ import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getClampedWorldY, getWrappedWorldX } from "../render/planet-grid.js";
 import { foodExistsAt } from "./food-growth.js";
+import { foodWeb } from "./food-web.js";
 import { findNearestFoodInBuckets } from "./food-runtime.js";
 import { getTerrainMismatchForTraits } from "./organisms-behavior.js";
 import { allocateBiologyRepresentativeId, allocateLineageId, ensureOrganismTraits } from "./organisms-traits.js";
+import { speciation } from "./speciation.js";
+import { terrainPressure } from "./terrain-pressure.js";
 import { world } from "../systems/state.js";
-
-PS.sim = PS.sim || {};
 
 export var REPRESENTATIVE_HISTORY_LIMIT = 12;
 export var REPRESENTATIVE_TERRITORY_LIMIT = 8;
@@ -125,7 +126,7 @@ export function getTerrainPressureEnvironmentSignature() {
 }
 
 export function refreshTerrainPressureForExistingPopulations() {
-  if (!PS.sim || !PS.sim.terrainPressure || typeof PS.sim.terrainPressure.refreshSummary !== "function") {
+  if (typeof terrainPressure.refreshSummary !== "function") {
     return null;
   }
 
@@ -138,15 +139,15 @@ export function refreshTerrainPressureForExistingPopulations() {
       : null;
   }
 
-  var summary = PS.sim.terrainPressure.refreshSummary(populations);
-  if (typeof PS.sim.terrainPressure.emitMilestones === "function") {
-    PS.sim.terrainPressure.emitMilestones(summary);
+  var summary = terrainPressure.refreshSummary(populations);
+  if (typeof terrainPressure.emitMilestones === "function") {
+    terrainPressure.emitMilestones(summary);
   }
   return summary;
 }
 
 export function getPopulationTerrainPressureFromTerritory(population) {
-  if (!PS.sim || !PS.sim.terrainPressure || typeof PS.sim.terrainPressure.getMismatchSample !== "function") {
+  if (typeof terrainPressure.getMismatchSample !== "function") {
     return null;
   }
 
@@ -165,7 +166,7 @@ export function getPopulationTerrainPressureFromTerritory(population) {
   for (var i = 0; i < cells.length; i++) {
     var cell = cells[i];
     var weight = Math.max(1, Math.round(Number(cell && cell.density) || 1));
-    var cellSample = PS.sim.terrainPressure.getMismatchSample(traits, cell.x, cell.y);
+    var cellSample = terrainPressure.getMismatchSample(traits, cell.x, cell.y);
     var driver = cellSample.terrainDriver;
 
     driverCounts[driver] = (driverCounts[driver] || 0) + weight;
@@ -732,11 +733,11 @@ export function updatePopulationFromOrganisms(population, organisms, signature) 
   population.traitMean = stats.mean;
   population.traitVariance = stats.variance;
   population.pressure = getPopulationPressure(organisms, population.energyReserve, traitsList);
-  population.terrainPressure = PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.summarizePopulation === "function"
-    ? PS.sim.terrainPressure.summarizePopulation(organisms, traitsList)
+  population.terrainPressure = typeof terrainPressure.summarizePopulation === "function"
+    ? terrainPressure.summarizePopulation(organisms, traitsList)
     : null;
-  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.evaluatePopulation === "function") {
-    PS.sim.speciation.evaluatePopulation(population, organisms, traitsList);
+  if (speciation && typeof speciation.evaluatePopulation === "function") {
+    speciation.evaluatePopulation(population, organisms, traitsList);
     for (var speciesIndex = 0; speciesIndex < representativeIds.length; speciesIndex++) {
       var representative = getBiologyRepresentativeById(representativeIds[speciesIndex]);
       if (representative) {
@@ -744,8 +745,8 @@ export function updatePopulationFromOrganisms(population, organisms, signature) 
       }
     }
   }
-  population.foodWeb = PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getPopulationMetrics === "function"
-    ? PS.sim.foodWeb.getPopulationMetrics(organisms, traitsList, population.pressure)
+  population.foodWeb = foodWeb && typeof foodWeb.getPopulationMetrics === "function"
+    ? foodWeb.getPopulationMetrics(organisms, traitsList, population.pressure)
     : null;
   population.representativeIds = representativeIds;
   population.lastUpdatedTick = Math.max(0, Math.round(Number(world.tick) || 0));
@@ -953,20 +954,20 @@ export function refreshBiologyRepresentatives() {
 
   representativePerfStats.lastRefreshMs = (typeof performance !== "undefined" && performance.now ? performance.now() : Date.now()) - startedAt;
   world.biologyAggregateRefreshSignature = getRepresentativeAggregateSignature();
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.refreshSummary === "function") {
-    PS.sim.foodWeb.refreshSummary(world.biologyPopulations);
-    if (typeof PS.sim.foodWeb.emitMilestones === "function") {
-      PS.sim.foodWeb.emitMilestones(world.foodWebSummary);
+  if (foodWeb && typeof foodWeb.refreshSummary === "function") {
+    foodWeb.refreshSummary(world.biologyPopulations);
+    if (typeof foodWeb.emitMilestones === "function") {
+      foodWeb.emitMilestones(world.foodWebSummary);
     }
   }
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.refreshSummary === "function") {
-    PS.sim.terrainPressure.refreshSummary(world.biologyPopulations);
-    if (typeof PS.sim.terrainPressure.emitMilestones === "function") {
-      PS.sim.terrainPressure.emitMilestones(world.terrainPressureSummary);
+  if (typeof terrainPressure.refreshSummary === "function") {
+    terrainPressure.refreshSummary(world.biologyPopulations);
+    if (typeof terrainPressure.emitMilestones === "function") {
+      terrainPressure.emitMilestones(world.terrainPressureSummary);
     }
   }
-  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.refreshSummary === "function") {
-    PS.sim.speciation.refreshSummary(world.biologyPopulations);
+  if (speciation && typeof speciation.refreshSummary === "function") {
+    speciation.refreshSummary(world.biologyPopulations);
   }
   return world.biologyPopulations;
 }
@@ -1028,7 +1029,7 @@ export function inspectBiologyRepresentative(organismOrId) {
   };
 }
 
-PS.sim.representatives = {
+export const representatives = {
   refresh: refreshBiologyRepresentatives,
   syncOrganism: syncBiologyRepresentative,
   pin: setRepresentativePinned,

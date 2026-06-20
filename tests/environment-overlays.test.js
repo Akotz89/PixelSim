@@ -86,7 +86,7 @@ vm.runInContext(overlaySource, context, { filename: "js/render/environment-overl
 
 const overlays = context.PS.render.environmentOverlays;
 overlays.initSnowBase(4, 3);
-assert.ok(overlays.snowBaseMap instanceof context.PS.core.Bitsmap, "snow base should use the shared Bitsmap primitive");
+assert.ok(overlays.snowBaseMap instanceof context.Bitsmap, "snow base should use the shared Bitsmap primitive");
 assert.strictEqual(overlays.snowBaseData.byteLength, 4, "2-bit snow base should pack into one 32-bit word for this test grid");
 assert.strictEqual(overlays.setSnowBase(0, 0, 1), 1, "snow base setter should store low two bits");
 assert.strictEqual(overlays.setSnowBase(1, 0, 2), 2, "snow base setter should store second packed pair");

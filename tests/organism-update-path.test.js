@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  terrainPressure: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {
@@ -37,9 +39,12 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/organism-ai.js",
+  "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -135,7 +140,7 @@ function resetOrganismFixture() {
 }
 
 function makeForagingOrganism(x, y) {
-  var organism = PS.sim.organisms.make(x, y);
+  var organism = organisms.make(x, y);
   organism.energy = 180;
   organism.traits.vision = 8;
   organism.traits.reproductionEnergy = 999;

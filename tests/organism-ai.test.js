@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  terrainPressure: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {
@@ -43,9 +45,12 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/organism-ai.js",
+  "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -140,20 +145,20 @@ world.tick = 3;
 
 assert.deepStrictEqual(
   ["eat", "flee", "reproduce", "shelter", "wander"].filter(function(key) {
-    return !PS.sim.organismAi.modules[key];
+    return !organismAi.modules[key];
   }),
   [],
   "organism AI should register the five required behavior modules"
 );
 
-var forager = PS.sim.organisms.make(10, 10);
+var forager = organisms.make(10, 10);
 forager.energy = 120;
 forager.traits.vision = 5;
 forager.traits.movementTendency = 0;
 forager.traits.reproductionEnergy = 9999;
 world.organisms.push(forager);
 var food = addFoodAt(12, 10);
-PS.sim.organisms.update(forager);
+organisms.update(forager);
 
 assert.strictEqual(forager.ai.moduleKey, "eat", "nearby food should select the eat module");
 assert.strictEqual(forager.ai.planKey, "forage-food", "eat module should create a named forage plan");
@@ -169,7 +174,7 @@ forager.ai = {
   subState: "ready"
 };
 forager.threatLevel = 1;
-PS.sim.organismAi.tick(forager, { traits: forager.traits, shouldWander: true });
+organismAi.tick(forager, { traits: forager.traits, shouldWander: true });
 assert.strictEqual(forager.ai.moduleKey, "flee", "flee should interrupt lower-priority wander");
 assert.strictEqual(forager.ai.interrupt.moduleKey, "wander", "interrupt slot should preserve the preempted plan");
 

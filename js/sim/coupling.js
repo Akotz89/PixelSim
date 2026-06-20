@@ -1,8 +1,8 @@
 import { PS } from "../core/namespace.js";
+import { computeHarness } from "./compute-harness.js";
+import { wasmBridge } from "./wasm-bridge.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.coupling = PS.sim.coupling || {
+export const coupling = {
   width: 512,
   height: 512,
   tickIndex: 0,
@@ -159,7 +159,7 @@ PS.sim.coupling = PS.sim.coupling || {
   ensureElevationBuffer: function (options) {
     var spec = options || {};
     var dims = this.getDimensions(spec);
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var initial = spec.initialElevation || new Float32Array(dims.width * dims.height);
 
@@ -280,7 +280,7 @@ PS.sim.coupling = PS.sim.coupling || {
 
   dispatchPassSlot: function (pass, options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var started = this.now();
     var dispatched = [];
     var activePassIds = Array.isArray(spec.activePassIds) ? spec.activePassIds : this.activePassIds;
@@ -344,12 +344,12 @@ PS.sim.coupling = PS.sim.coupling || {
 
   uploadWasmElevation: function (options) {
     var spec = options || {};
-    var bridge = PS.sim && PS.sim.wasmBridge;
+    var bridge = wasmBridge;
     var targetBuffer = spec.targetBuffer || (this.elevationBuffer && this.elevationBuffer.buffer);
     var upload;
 
     if (!bridge || typeof bridge.uploadElevationToGpu !== "function") {
-      throw new Error("PS.sim.wasmBridge.uploadElevationToGpu is required for coupling elevation upload");
+      throw new Error("wasmBridge.uploadElevationToGpu is required for coupling elevation upload");
     }
     if (!targetBuffer) {
       this.ensureElevationBuffer(spec);

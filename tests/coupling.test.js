@@ -125,8 +125,8 @@ vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" 
 vm.runInContext(wasmBridgeSource, context, { filename: "js/sim/wasm-bridge.js" });
 vm.runInContext(couplingSource, context, { filename: "js/sim/coupling.js" });
 
-const harness = context.PS.sim.computeHarness;
-const coupling = context.PS.sim.coupling;
+const harness = context.computeHarness;
+const coupling = context.coupling;
 const passIds = [
   "heat-diffusion",
   "lbm-ocean",

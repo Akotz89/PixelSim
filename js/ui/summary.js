@@ -1,12 +1,15 @@
-import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { traitSchema } from "../core/trait-schema.js";
 import { formatEcosystemStabilityFactorScore } from "../main-ecosystem-stability.js";
 import { formatFoodRunway, refreshEcosystemSummary } from "../main-ecosystem-summary.js";
 import { refreshSimulationAlerts } from "../main-simulation.js";
 import { getTileGreatCircleDistanceKm, getTileManhattanDistance } from "../render/planet-grid.js";
 import { countFoodInRadius, findNearestFoodInBuckets } from "../sim/food-runtime.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
+import { massExtinction } from "../sim/mass-extinction.js";
 import { collectOrganismsInRadius } from "../sim/organisms-indexes.js";
 import { ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { resourceRegistry } from "../sim/resource-registry.js";
 import { getDistanceToNearestSettlement } from "../sim/settlements-founding.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "../sim/settlements-routes.js";
 import { getSettlementRouteStats } from "../sim/settlements-state.js";
@@ -102,16 +105,7 @@ export function getRouteSummaryForSettlement(settlementId) {
 }
 
 export function getResourceSummaryForSettlement(settlement) {
-  if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
-    return PS.sim.resources.getSettlementSummary(settlement);
-  }
-
-  return {
-    entries: [],
-    totalStock: 0,
-    net: 0,
-    top: null
-  };
+  return resourceRegistry.getSettlementSummary(settlement);
 }
 
 export function formatResourceBreakdown(summary) {
@@ -158,8 +152,8 @@ export function getSummaryTraitValue(summary, key) {
     return value;
   }
 
-  return PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.normalizeTraitValue === "function"
-    ? PS.core.traitSchema.normalizeTraitValue(key, undefined)
+  return traitSchema && typeof traitSchema.normalizeTraitValue === "function"
+    ? traitSchema.normalizeTraitValue(key, undefined)
     : 0;
 }
 
@@ -194,8 +188,8 @@ export function updateTraitSummary() {
 
 export function updateLineageSummary() {
   var summary = world.lineageSummary || null;
-  var trackedSummary = PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.getSummary === "function"
-    ? PS.sim.lineageTracking.getSummary()
+  var trackedSummary = lineageTracking && typeof lineageTracking.getSummary === "function"
+    ? lineageTracking.getSummary()
     : null;
 
   if (!summary) {
@@ -362,8 +356,8 @@ export function updateEcosystemSummary() {
   var foodWebRoles = foodWeb.roles || {};
   var terrainPressure = world.terrainPressureSummary || {};
   var speciesSummary = world.speciesSummary || {};
-  var extinctionSummary = PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function"
-    ? PS.sim.massExtinction.getSummary()
+  var extinctionSummary = massExtinction && typeof massExtinction.getSummary === "function"
+    ? massExtinction.getSummary()
     : { latest: null, recoveryWindow: null, pressureSummary: null, totalEvents: 0 };
   var extinctionLatest = extinctionSummary.latest || null;
   var recoveryWindow = extinctionSummary.recoveryWindow || null;
@@ -371,9 +365,8 @@ export function updateEcosystemSummary() {
   var stats = typeof getStatisticsDashboardSnapshot === "function"
     ? getStatisticsDashboardSnapshot(summary)
     : null;
-  var resourceRegistry = PS.sim && PS.sim.resources ? PS.sim.resources : null;
-  var worldResourceSummary = resourceRegistry ? resourceRegistry.getWorldSummary() : null;
-  var resourceDefinitions = resourceRegistry ? resourceRegistry.getDefinitions() : [];
+  var worldResourceSummary = resourceRegistry.getWorldSummary();
+  var resourceDefinitions = resourceRegistry.getDefinitions();
   var cards = [
     makeDashboardCard("Planet Stats", "status",
       makePrimaryMetric("Epoch", stats ? stats.epoch : world.era, stats ? stats.deepTime : "-") +

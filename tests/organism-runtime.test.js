@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  terrainPressure: {},
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    terrainPressure: {}
   },
   document: {
     getElementById() {
@@ -37,9 +39,12 @@ const source = [
   "js/sim/food-runtime.js",
   "js/sim/food-growth.js",
   "js/sim/food.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
   "js/sim/organisms-indexes.js",
   "js/sim/organism-ai.js",
+  "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js"
@@ -132,7 +137,7 @@ world.organismBuckets = {};
 world.organismsByLineage = {};
 world.tick = 3;
 
-var parent = PS.sim.organisms.make(10, 10);
+var parent = organisms.make(10, 10);
 world.organisms.push(parent);
 parent.energy = 500;
 parent.traits.vision = 4;
@@ -144,7 +149,7 @@ parent.directionY = 0;
 var firstFood = addFoodAt(10, 10);
 assert.strictEqual(findNearestFood(parent, parent.traits.vision), firstFood, "organism should find indexed food on current tile");
 
-PS.sim.organisms.update(parent);
+organisms.update(parent);
 assert.strictEqual(world.foodConsumed, 1, "update should consume food on the current tile");
 assert.strictEqual(world.food.length, 0, "eaten food should be removed from the food index");
 assert.strictEqual(world.birthsRecorded, 1, "high-energy organism should reproduce");
@@ -158,15 +163,15 @@ assert.strictEqual(child.populationId, child.lineageId, "child should expose pop
 assert.ok(child.traits.bodySize >= CONFIG.TRAIT_BODY_SIZE_MIN, "child traits should include body-plan fields");
 
 refreshLineageRegistry();
-assert.strictEqual(PS.sim.organisms.byLineage(parent.lineageId).length, 2, "lineage index should include parent and child");
+assert.strictEqual(organisms.byLineage(parent.lineageId).length, 2, "lineage index should include parent and child");
 assert.strictEqual(
-  PS.sim.organisms.countInRadiusForLineage(parent.x, parent.y, 3, parent.lineageId),
+  organisms.countInRadiusForLineage(parent.x, parent.y, 3, parent.lineageId),
   2,
   "radius lookup should filter by lineage"
 );
-assert.strictEqual(PS.sim.organisms.nearestInRadius(parent.x, parent.y, 3), parent, "nearest lookup should return local organism");
+assert.strictEqual(organisms.nearestInRadius(parent.x, parent.y, 3), parent, "nearest lookup should return local organism");
 
-var traveler = PS.sim.organisms.make(20, 20);
+var traveler = organisms.make(20, 20);
 traveler.traits.vision = 8;
 traveler.traits.reproductionEnergy = 999;
 traveler.traits.movementTendency = 0;
@@ -176,12 +181,12 @@ traveler.directionY = 0;
 world.organisms.push(traveler);
 addFoodAt(22, 20);
 
-PS.sim.organisms.update(traveler);
+organisms.update(traveler);
 assert.strictEqual(traveler.x, 21, "organism should move toward nearby food");
 assert.strictEqual(traveler.y, 20, "organism movement should preserve row when food is horizontal");
 
 traveler.energy = 0;
-PS.sim.organisms.removeDead();
+organisms.removeDead();
 assert.strictEqual(world.deathsRecorded, 1, "dead organism removal should record a death");
 assert.strictEqual(world.organisms.indexOf(traveler), -1, "dead organism should be removed from active representatives");
 

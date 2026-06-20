@@ -1,10 +1,7 @@
-import { PS } from "../core/namespace.js";
 import { getTraitAdjustedMetabolismCost } from "./organisms-behavior.js";
 import { ensureOrganismTraits } from "./organisms-traits.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.organismAi = (function () {
+export const organismAi = (function () {
   var modules = {};
   var orderedModules = [];
 

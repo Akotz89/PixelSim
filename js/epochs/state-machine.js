@@ -1,4 +1,9 @@
 import { PS } from "../core/namespace.js";
+import { biomeLut } from "../sim/biome-lut.js";
+import { coupling } from "../sim/coupling.js";
+import { environmentDrivers } from "../sim/environment-drivers.js";
+import { heatDiffusion } from "../sim/heat-diffusion.js";
+import { lenia } from "../sim/lenia.js";
 import { world } from "../systems/state.js";
 
 PS.epochs = PS.epochs || {};
@@ -8,7 +13,7 @@ PS.epochs.StateMachine = function (options) {
   this.config = PS.epochs.resolveEpochConfig(spec.config);
   PS.epochs.assertValidEpochConfig(this.config);
   PS.epochs.epochConfig = this.config;
-  this.pipeline = spec.pipeline || (PS.sim && PS.sim.coupling) || null;
+  this.pipeline = spec.pipeline || coupling || null;
   this.epoch = Math.max(0, Math.round(Number(spec.epoch) || 0));
   this.history = [];
   this.state = null;
@@ -105,7 +110,7 @@ PS.epochs.assertValidEpochConfig = function (config) {
 };
 
 PS.epochs.canonicalPassIds = function (pipeline) {
-  var source = pipeline && Array.isArray(pipeline.passOrder) ? pipeline.passOrder : (PS.sim && PS.sim.coupling && PS.sim.coupling.passOrder) || [];
+  var source = pipeline && Array.isArray(pipeline.passOrder) ? pipeline.passOrder : (coupling && coupling.passOrder) || [];
   return source.map(function (pass) { return pass.id; });
 };
 
@@ -120,7 +125,7 @@ PS.epochs.filterActivePasses = function (activePasses, pipeline) {
 PS.epochs.makeEpochState = function (config, previous, pipeline) {
   var co2 = Number(config.atmosphere.co2_ppm) || 0;
   var o2 = Number(config.atmosphere.o2_ppm) || 0;
-  var drivers = PS.sim && PS.sim.environmentDrivers;
+  var drivers = environmentDrivers;
   var activePasses = this.filterActivePasses(config.active_passes, pipeline);
   var greenhouse = drivers && typeof drivers.computeGreenhouse === "function" ? drivers.computeGreenhouse(co2) : Math.max(0, Math.log(Math.max(1, co2) / 280) / Math.log(2));
   return {
@@ -202,14 +207,14 @@ PS.epochs.applyEpochAtmosphere = function (state, options) {
   world.atmosphere.oxygenPpm = state.atmosphere.o2Ppm;
   world.atmosphere.methanePpm = state.atmosphere.ch4Ppm;
   world.atmosphere.greenhouseForcing = state.greenhouseForcing;
-  if (PS.sim && PS.sim.heatDiffusion && typeof PS.sim.heatDiffusion.applyGreenhouseForcing === "function") {
-    PS.sim.heatDiffusion.applyGreenhouseForcing(state.greenhouseForcing);
+  if (heatDiffusion && typeof heatDiffusion.applyGreenhouseForcing === "function") {
+    heatDiffusion.applyGreenhouseForcing(state.greenhouseForcing);
   }
   return state;
 };
 
 PS.epochs.applyEpochPalette = function (state) {
-  var biome = PS.sim && PS.sim.biomeLut;
+  var biome = biomeLut;
   if (biome && biome.state && state) {
     if (typeof biome.setEpochPalette === "function") {
       biome.setEpochPalette(state.paletteId, state.palette);
@@ -222,14 +227,13 @@ PS.epochs.applyEpochPalette = function (state) {
 };
 
 PS.epochs.isBiomeStable = function () {
-  var biome = PS.sim && PS.sim.biomeLut && PS.sim.biomeLut.state;
+  var biome = biomeLut && biomeLut.state;
   if (biome && biome.stable === true) { return true; }
   if (biome && Number(biome.stability) >= 1) { return true; }
   return typeof world !== "undefined" && world && world.biomeStable === true;
 };
 
 PS.epochs.applyEpochLife = function (state) {
-  var lenia = PS.sim && PS.sim.lenia;
   if (!state || !state.life || !lenia) { return state; }
   if (state.life.spawn_after === "biome-stable" && !this.isBiomeStable()) {
     lenia.pendingEpochSpawn = this.cloneEpochState(state);
@@ -258,7 +262,6 @@ PS.epochs.applyEpochLife = function (state) {
 };
 
 PS.epochs.updateEpochGates = function () {
-  var lenia = PS.sim && PS.sim.lenia;
   if (lenia && lenia.pendingEpochSpawn && this.isBiomeStable()) {
     var pending = lenia.pendingEpochSpawn;
     lenia.pendingEpochSpawn = null;

@@ -8,8 +8,6 @@ import { getBiologyRepresentativeById } from "./representatives.js";
 import { clonePersistencePlainValue } from "../systems/persistence-db.js";
 import { world } from "../systems/state.js";
 
-PS.sim = PS.sim || {};
-
 export var SPECIATION_DISTANCE_DEFAULT = 0.58;
 export var SPECIATION_ISOLATION_WEIGHT_DEFAULT = 0.28;
 export var SPECIATION_MIN_POPULATION_DEFAULT = 2;
@@ -465,7 +463,7 @@ export function refreshSpeciesSummary(populations) {
   return world.speciesSummary;
 }
 
-PS.sim.speciation = {
+export const speciation = {
   ensureState: ensureSpeciesState,
   ensureSpecies: ensureSpeciesRecord,
   getSpecies: getSpeciesById,
@@ -473,4 +471,3 @@ PS.sim.speciation = {
   evaluatePopulation: evaluatePopulationForSpeciation,
   refreshSummary: refreshSpeciesSummary
 };
-

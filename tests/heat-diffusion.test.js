@@ -198,7 +198,7 @@ vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" 
 vm.runInContext(gpuSimRuntimeSource, context, { filename: "js/sim/gpu-sim-runtime.js" });
 vm.runInContext(heatSource, context, { filename: "js/sim/heat-diffusion.js" });
 
-const heat = context.PS.sim.heatDiffusion;
+const heat = context.heatDiffusion;
 assert.ok(Array.isArray(context.PS.render.wgslShaderManifest), "WGSL manifest should exist");
 heat.registerManifest();
 assert.ok(
@@ -267,7 +267,7 @@ const result = heat.init({
   config
 });
 
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.width, 512, "heat diffusion should initialize a 512-wide grid");
 assert.strictEqual(result.height, 512, "heat diffusion should initialize a 512-high grid");
 assert.strictEqual(result.byteLength, 512 * 512 * 4, "heat diffusion state should allocate float32 cells");

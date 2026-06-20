@@ -34,6 +34,7 @@ uiFiles.forEach(function(file) {
   "js/ui/camera-input.js",
   "js/ui/persistence-controls.js",
   "js/ui/interaction.js",
+  "js/ui/controls.js",
   "js/ui/setup.js"
 ].forEach(function(file, index, orderedFiles) {
   if (index === 0) {

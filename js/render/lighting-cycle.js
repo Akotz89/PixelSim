@@ -1,10 +1,6 @@
-import { PS } from "../core/namespace.js";
-import { clamp } from "../core/utils.js";
 import { world } from "../systems/state.js";
 
-PS.render = PS.render || {};
-
-PS.render.lightingCycle = PS.render.lightingCycle || (function () {
+export const lightingCycle = (function () {
   var DAY_TICKS = 24000;
   var TWO_PI = Math.PI * 2;
   var INDOOR_NIGHT = [0.7, 0.5, 0.3];

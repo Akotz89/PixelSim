@@ -38,9 +38,11 @@ const context = {
   Date,
   RegExp,
   performance: {},
+  terrainPressure: {},
   window: {
     addEventListener: function() {},
-    indexedDB: null
+    indexedDB: null,
+    terrainPressure: {}
   },
   document: {
     getElementById: function() {
@@ -68,7 +70,11 @@ var sourceFiles = [
   "js/systems/pool-manager.js",
   "js/systems/pools.js",
   "js/sim/food-runtime.js",
+  "js/core/entity-registry.js",
   "js/sim/organisms-traits.js",
+  "js/sim/organism-ai.js",
+  "js/sim/food-web.js",
+  "js/sim/mass-extinction.js",
   "js/sim/organisms-behavior.js",
   "js/sim/trait-registry.js",
   "js/systems/persistence-config.js",

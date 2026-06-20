@@ -6,8 +6,12 @@ import { getClampedWorldY, getDirectionXToTile, getDirectionYToTile, getTileGrea
 import { assignRandomSurfacePositionInTile, getPlanetLatitudeForTile, getPlanetLongitudeForTile } from "../render/planet-view.js";
 import { isFertile } from "../render/terrain-hydrology.js";
 import { findNearestFoodInBuckets, removeFoodAtPosition } from "./food-runtime.js";
+import { foodWeb } from "./food-web.js";
+import { massExtinction } from "./mass-extinction.js";
+import { organismAi } from "./organism-ai.js";
 import { getLimbMovementMultiplierFromValue, getOrganismTravelKmPerTick } from "./organisms-indexes.js";
 import { assignChildLineage, ensureOrganismTraits, inheritOrganismTraits, makeOrganism } from "./organisms-traits.js";
+import { terrainPressure } from "./terrain-pressure.js";
 import { world } from "../systems/state.js";
 
 export function findNearestFood(organism, searchRadius) {
@@ -20,24 +24,24 @@ export function moveTowardFood(organism, food) {
 }
 
 export function getTerrainAffinityTargetValue(x, y) {
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getSample === "function") {
-    return PS.sim.terrainPressure.getSample(x, y).target.terrainAffinity;
+  if (typeof terrainPressure.getSample === "function") {
+    return terrainPressure.getSample(x, y).target.terrainAffinity;
   }
 
   return isFertile(x, y) ? 1 : 0;
 }
 
 export function getTerrainMismatchForTraits(traits, x, y) {
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getMismatchSample === "function") {
-    return PS.sim.terrainPressure.getMismatchSample(traits, x, y).mismatch;
+  if (typeof terrainPressure.getMismatchSample === "function") {
+    return terrainPressure.getMismatchSample(traits, x, y).mismatch;
   }
 
   return Math.abs(traits.terrainAffinity - getTerrainAffinityTargetValue(x, y));
 }
 
 export function getTerrainEnergyCost(traits, x, y) {
-  if (PS.sim && PS.sim.terrainPressure && typeof PS.sim.terrainPressure.getEnergyCost === "function") {
-    return PS.sim.terrainPressure.getEnergyCost(traits, x, y);
+  if (typeof terrainPressure.getEnergyCost === "function") {
+    return terrainPressure.getEnergyCost(traits, x, y);
   }
 
   return getTerrainMismatchForTraits(traits, x, y) * CONFIG.TERRAIN_MISMATCH_MAX_ENERGY_COST;
@@ -124,9 +128,7 @@ export function eatFoodOnCurrentTile(organism) {
 }
 
 export function isCarnivoreTraitSet(traits) {
-  return PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getRole === "function"
-    ? PS.sim.foodWeb.getRole(traits) === "predator"
-    : Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
+  return Number(traits && traits.carnivory) > CONFIG.PREDATION_CARNIVORY_THRESHOLD;
 }
 
 export function getPredationSearchRadius(traits) {
@@ -149,8 +151,8 @@ export function isPredationPrey(candidate, attacker) {
 
 export function findNearestPrey(organism, traits) {
   var radius = getPredationSearchRadius(traits);
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.findNearestPrey === "function") {
-    return PS.sim.foodWeb.findNearestPrey(organism, traits, radius);
+  if (foodWeb && typeof foodWeb.findNearestPrey === "function") {
+    return foodWeb.findNearestPrey(organism, traits, radius);
   }
 
   var nearestPrey = null;
@@ -180,8 +182,8 @@ export function moveTowardPrey(organism, prey) {
 }
 
 export function getPredationAttackAdvantage(attackerTraits, victimTraits) {
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.getAttackAdvantage === "function") {
-    return PS.sim.foodWeb.getAttackAdvantage(attackerTraits, victimTraits);
+  if (foodWeb && typeof foodWeb.getAttackAdvantage === "function") {
+    return foodWeb.getAttackAdvantage(attackerTraits, victimTraits);
   }
 
   var attackerSize = Number(attackerTraits.bodySize) || CONFIG.TRAIT_BODY_SIZE_DEFAULT;
@@ -220,8 +222,8 @@ export function tryAttackPrey(attacker, prey, attackerTraits) {
   syncPooledOrganismEnergy(attacker);
   attacker.lastPredationTick = world.tick;
   prey.deathCause = "predation";
-  if (PS.sim && PS.sim.foodWeb && typeof PS.sim.foodWeb.recordPredation === "function") {
-    PS.sim.foodWeb.recordPredation(attacker, prey, transferredEnergy);
+  if (foodWeb && typeof foodWeb.recordPredation === "function") {
+    foodWeb.recordPredation(attacker, prey, transferredEnergy);
   }
   return true;
 }
@@ -301,20 +303,17 @@ export function getResourceAdjustedReproductionEnergy(traits, scarcityPressure, 
 
   if (
     organism &&
-    PS.sim &&
-    PS.sim.terrainPressure &&
-    typeof PS.sim.terrainPressure.getReproductionMultiplier === "function"
+    typeof terrainPressure.getReproductionMultiplier === "function"
   ) {
-    multiplier *= PS.sim.terrainPressure.getReproductionMultiplier(traits, organism.x, organism.y);
+    multiplier *= terrainPressure.getReproductionMultiplier(traits, organism.x, organism.y);
   }
 
   if (
     organism &&
-    PS.sim &&
-    PS.sim.massExtinction &&
-    typeof PS.sim.massExtinction.getRecoveryReproductionMultiplier === "function"
+    massExtinction &&
+    typeof massExtinction.getRecoveryReproductionMultiplier === "function"
   ) {
-    multiplier *= PS.sim.massExtinction.getRecoveryReproductionMultiplier(organism);
+    multiplier *= massExtinction.getRecoveryReproductionMultiplier(organism);
   }
 
   return traits.reproductionEnergy * multiplier;
@@ -402,8 +401,8 @@ export function updateOrganism(organism, updateIndex) {
     ? findNearestFood(organism, traits.vision)
     : null;
   var shouldWander = !nearestFood && chance(traits.movementTendency);
-  var ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.tick === "function"
-    ? PS.sim.organismAi.tick(organism, {
+  var ai = typeof organismAi.tick === "function"
+    ? organismAi.tick(organism, {
       traits: traits,
       isCarnivore: isCarnivore,
       nearestFood: nearestFood,
@@ -424,8 +423,8 @@ export function updateOrganism(organism, updateIndex) {
   if (isCarnivore) {
     updatePredationForOrganism(organism, traits);
   } else {
-    if (eatFoodOnCurrentTile(organism) && PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.advanceStep === "function") {
-      PS.sim.organismAi.advanceStep(organism, "consume");
+    if (eatFoodOnCurrentTile(organism) && typeof organismAi.advanceStep === "function") {
+      organismAi.advanceStep(organism, "consume");
     }
   }
 
@@ -493,8 +492,8 @@ export function updatePooledOrganismsForTick(organismsAtStartOfTick) {
       ? findNearestFoodInBuckets(x, y, arrays.vision[pooledIndex])
       : null;
     var shouldWander = !nearestFood && arrays.movementTendency[pooledIndex] > 0 && chance(arrays.movementTendency[pooledIndex]);
-    var ai = PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.tick === "function"
-      ? PS.sim.organismAi.tick(pooledOrganism, {
+    var ai = typeof organismAi.tick === "function"
+      ? organismAi.tick(pooledOrganism, {
         traits: traits,
         isCarnivore: isPooledCarnivore,
         nearestFood: nearestFood,
@@ -559,8 +558,8 @@ export function updatePooledOrganismsForTick(organismsAtStartOfTick) {
         recordFoodConsumed(1);
       }
 
-      if (PS.sim && PS.sim.organismAi && typeof PS.sim.organismAi.advanceStep === "function") {
-        PS.sim.organismAi.advanceStep(pooledOrganism, "consume");
+      if (typeof organismAi.advanceStep === "function") {
+        organismAi.advanceStep(pooledOrganism, "consume");
       }
     }
 

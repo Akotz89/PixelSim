@@ -5,6 +5,7 @@ const manifestSource = read("js/core/manifest.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const shadowSource = read("js/render/shadow-stamping.js");
 const mountainSource = read("js/render/mountain-render.js");
+const surfaceReadyFeatherSource = read("js/render/surface-ready-feather.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 
 assert.ok(manifestSource.indexOf("js/render/shadow-stamping.js") < manifestSource.indexOf("js/render/mountain-render.js"), "mountain renderer should load after shadow stamping");
@@ -97,6 +98,7 @@ vm.createContext(context);
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
 vm.runInContext(shadowSource, context, { filename: "js/render/shadow-stamping.js" });
 vm.runInContext(mountainSource, context, { filename: "js/render/mountain-render.js" });
+vm.runInContext(surfaceReadyFeatherSource, context, { filename: "js/render/surface-ready-feather.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 
 const centerInfo = context.PS.render.mountains.getFormationInfo(4, 4, {

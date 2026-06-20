@@ -2,9 +2,9 @@ import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
 import { collectOrganismsInRadius } from "./organisms-indexes.js";
+import { representatives } from "./representatives.js";
+import { speciation } from "./speciation.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
-
-PS.sim = PS.sim || {};
 
 export var LINEAGE_TRACK_HISTORY_LIMIT = 24;
 export var LINEAGE_TRACK_EVENT_LIMIT = 12;
@@ -32,24 +32,24 @@ export function normalizeTrackedLineageId(value) {
 }
 
 export function getTrackedSpecies(speciesId) {
-  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function") {
-    return PS.sim.speciation.getSpecies(speciesId);
+  if (speciation && typeof speciation.getSpecies === "function") {
+    return speciation.getSpecies(speciesId);
   }
 
   return world.speciesById ? world.speciesById[String(normalizeTrackedLineageId(speciesId))] || null : null;
 }
 
 export function getTrackedPopulation(populationId) {
-  if (PS.sim && PS.sim.representatives && typeof PS.sim.representatives.getPopulation === "function") {
-    return PS.sim.representatives.getPopulation(populationId);
+  if (representatives && typeof representatives.getPopulation === "function") {
+    return representatives.getPopulation(populationId);
   }
 
   return world.biologyPopulationById ? world.biologyPopulationById[String(normalizeTrackedLineageId(populationId))] || null : null;
 }
 
 export function getTrackedRepresentative(representativeId) {
-  if (PS.sim && PS.sim.representatives && typeof PS.sim.representatives.getRepresentative === "function") {
-    return PS.sim.representatives.getRepresentative(representativeId);
+  if (representatives && typeof representatives.getRepresentative === "function") {
+    return representatives.getRepresentative(representativeId);
   }
 
   return world.biologyRepresentativeById ? world.biologyRepresentativeById[String(normalizeTrackedLineageId(representativeId))] || null : null;
@@ -470,7 +470,7 @@ export function getTrackedHighlightAt(tileX, tileY) {
   return clamp(sample, 0, 1);
 }
 
-PS.sim.lineageTracking = {
+export const lineageTracking = {
   ensureState: ensureLineageTrackingState,
   select: makeTrackedLineage,
   selectFromRepresentative: function(representativeOrId, options) {
@@ -489,4 +489,3 @@ PS.sim.lineageTracking = {
   getEvents: getTrackedEvents,
   getHighlightAt: getTrackedHighlightAt
 };
-

@@ -7,7 +7,11 @@ import { getEntitySurfacePosition, getPlanetCameraScaleInfo, getPlanetDistanceLa
 import { isFertile } from "../render/terrain-hydrology.js";
 import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
 import { foodExistsAt } from "../sim/food-growth.js";
+import { massExtinction } from "../sim/mass-extinction.js";
 import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
+import { representatives } from "../sim/representatives.js";
+import { resourceRegistry } from "../sim/resource-registry.js";
+import { speciation } from "../sim/speciation.js";
 import { world } from "../systems/state.js";
 import { eventLogText, inspectDetailsText, inspectSummaryText, traitHistoryCanvas } from "./dom-refs.js";
 import { getNearestOrganismToTile, getNearestSettlementToTile, setElementClass, setElementHtml, setElementText } from "./foundation.js";
@@ -188,15 +192,15 @@ export function updateInspectPanel() {
     var parentText = lineageRecord && lineageRecord.parentId > 0 ? " parent L" + lineageRecord.parentId : " founder";
     var traits = ensureOrganismTraits(organism);
     var organismSurfacePosition = getEntitySurfacePosition(organism);
-    var representativeContext = PS.sim.representatives && PS.sim.representatives.inspect
-      ? PS.sim.representatives.inspect(organism)
+    var representativeContext = representatives && representatives.inspect
+      ? representatives.inspect(organism)
       : null;
     var representativeRecord = representativeContext ? representativeContext.representative : null;
     var populationRecord = representativeContext ? representativeContext.population : null;
     var pressure = populationRecord && populationRecord.pressure ? populationRecord.pressure : null;
     var foodWeb = populationRecord && populationRecord.foodWeb ? populationRecord.foodWeb : null;
-    var speciesRecord = PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function"
-      ? PS.sim.speciation.getSpecies(organism.speciesId)
+    var speciesRecord = speciation && typeof speciation.getSpecies === "function"
+      ? speciation.getSpecies(organism.speciesId)
       : null;
 
     detailChips.push(makeInspectChip("Organism", "L" + ensureOrganismLineage(organism) + parentText));
@@ -214,8 +218,8 @@ export function updateInspectPanel() {
     detailChips.push(makeInspectChip("Agg Pressure", pressure ? "food " + pressure.food + " scarcity " + pressure.scarcity.toFixed(2) + " terrain " + pressure.terrain.toFixed(2) : "-"));
     detailChips.push(makeInspectChip("Terrain Driver", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.terrainDriver : "-"));
     detailChips.push(makeInspectChip("Selection", populationRecord && populationRecord.terrainPressure ? populationRecord.terrainPressure.dominantTrait + " p" + populationRecord.terrainPressure.pressure.toFixed(2) + " iso " + populationRecord.terrainPressure.isolation.toFixed(2) : "-"));
-    if (PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
-      var extinctionSummary = PS.sim.massExtinction.getSummary();
+    if (massExtinction && typeof massExtinction.getSummary === "function") {
+      var extinctionSummary = massExtinction.getSummary();
       var extinctionLatest = extinctionSummary.latest;
       var recoveryWindow = extinctionSummary.recoveryWindow;
       var populationExtinctionLoss = extinctionLatest && extinctionLatest.losses && extinctionLatest.losses.byPopulation
@@ -252,12 +256,10 @@ export function updateInspectPanel() {
     detailChips.push(makeInspectChip("Population", settlement.population));
     detailChips.push(makeInspectChip("Nearby Food", settlement.foodStock));
     detailChips.push(makeInspectChip("Stored", settlement.storedFood));
-    if (PS.sim && PS.sim.resources && typeof PS.sim.resources.getSettlementSummary === "function") {
-      var resourceSummary = PS.sim.resources.getSettlementSummary(settlement);
-      detailChips.push(makeInspectChip("Resources", resourceSummary.entries.map(function(entry) {
-        return entry.id + " " + Math.round(entry.stock);
-      }).slice(0, 5).join(" / ")));
-    }
+    var resourceSummary = resourceRegistry.getSettlementSummary(settlement);
+    detailChips.push(makeInspectChip("Resources", resourceSummary.entries.map(function(entry) {
+      return entry.id + " " + Math.round(entry.stock);
+    }).slice(0, 5).join(" / ")));
     detailChips.push(makeInspectChip("Dev", settlement.development.toFixed(1)));
     detailChips.push(makeInspectChip("Growth", "last " + settlement.lastGrowthTick + " supply " + settlement.lastSupplyGrowthTick));
     detailChips.push(makeInspectChip("Outpost", "last " + settlement.lastOutpostTick));

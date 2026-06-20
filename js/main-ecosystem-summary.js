@@ -1,8 +1,8 @@
 import { CONFIG } from "../config.js";
-import { PS } from "./core/namespace.js";
 import { clamp } from "./core/utils.js";
 import { getActiveLineageCount, getEcosystemMomentum, getEcosystemPressure, getEcosystemStabilityProfile, getEcosystemTrend, getLatestEcosystemHistorySample } from "./main-ecosystem-stability.js";
 import { ensureOrganismTraits } from "./sim/organisms-traits.js";
+import { pools } from "./systems/pools.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./systems/state.js";
 
 export function getEcosystemRecoveryAction(summary) {
@@ -120,7 +120,7 @@ export function refreshEcosystemSummary() {
   var totalEnergy = 0;
   var totalAge = 0;
   var matureOrganisms = 0;
-  var pooledArrays = PS.pools && PS.pools.organism ? PS.pools.organism.arrays : null;
+  var pooledArrays = pools && pools.organism ? pools.organism.arrays : null;
 
   for (var i = 0; i < world.organisms.length; i++) {
     var organism = world.organisms[i];
@@ -322,4 +322,3 @@ export function getSimulationAlertSeverityRank(severity) {
 
   return 3;
 }
-

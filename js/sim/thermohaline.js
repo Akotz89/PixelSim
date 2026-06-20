@@ -1,8 +1,7 @@
 import { PS } from "../core/namespace.js";
+import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.thermohaline = PS.sim.thermohaline || {
+export const thermohaline = {
   salinityShaderName: "salinity",
   densityShaderName: "density",
   salinityShaderPath: "shaders/salinity.wgsl",
@@ -359,7 +358,7 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
 
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var dims = this.getDimensions(spec);
     var config = this.normalizeConfig(spec.config || this.config || {});
@@ -474,10 +473,10 @@ PS.sim.thermohaline = PS.sim.thermohaline || {
   },
 
   dispatch: function (commandEncoder, device) {
-    if (!PS.sim || !PS.sim.computeHarness) {
+    if (!computeHarness) {
       throw new Error("Compute harness is required for thermohaline dispatch");
     }
-    PS.sim.computeHarness.dispatch(this.salinityPassId, commandEncoder, device);
-    return PS.sim.computeHarness.dispatch(this.densityPassId, commandEncoder, device);
+    computeHarness.dispatch(this.salinityPassId, commandEncoder, device);
+    return computeHarness.dispatch(this.densityPassId, commandEncoder, device);
   }
 };

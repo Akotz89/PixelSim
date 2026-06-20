@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { lightingCycle } from "./lighting-cycle.js";
 import { world } from "../systems/state.js";
 
 PS.render = PS.render || {};
@@ -72,8 +73,8 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
   getSunDirection: function (options) {
     var spec = options || {};
     var currentWorld = typeof world !== "undefined" ? world : null;
-    var cycle = spec.lightingCycleState || (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
-      ? PS.render.lightingCycle.getState(spec)
+    var cycle = spec.lightingCycleState || (lightingCycle && typeof lightingCycle.getState === "function"
+      ? lightingCycle.getState(spec)
       : null);
     var value = spec.sunDirection || (currentWorld && currentWorld.sunDirection ? currentWorld.sunDirection : null) || (cycle ? cycle.sunDirection : null);
     var x;
@@ -107,8 +108,8 @@ PS.render.webgpuCompositor = PS.render.webgpuCompositor || {
 
   makeUniformData: function (options) {
     var spec = options || {};
-    var cycle = spec.lightingCycleState || (PS.render.lightingCycle && typeof PS.render.lightingCycle.getState === "function"
-      ? PS.render.lightingCycle.getState(spec)
+    var cycle = spec.lightingCycleState || (lightingCycle && typeof lightingCycle.getState === "function"
+      ? lightingCycle.getState(spec)
       : null);
     var previousCycle = spec.lightingCycleState;
     var sun;

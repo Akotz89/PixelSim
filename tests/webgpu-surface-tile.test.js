@@ -13,6 +13,7 @@ const compositorSource = read("js/render/webgpu-compositor.js");
 const entitySource = read("js/render/webgpu-entity.js");
 const equivalenceSource = read("js/assets/equivalence.js");
 const waterRenderingSource = read("js/render/water-rendering.js");
+const surfaceReadyFeatherSource = read("js/render/surface-ready-feather.js");
 const batcherSource = read("js/render/surface-tile-batcher.js");
 const surfaceTileSource = read("js/render/webgpu-surface-tile.js");
 const terrainWgsl = read("shaders/terrain.wgsl");
@@ -30,8 +31,9 @@ assert.ok(
 );
 assert.ok(
   manifestSource.indexOf("js/render/water-rendering.js") < manifestSource.indexOf("js/render/surface-tile-batcher.js") &&
+    manifestSource.indexOf("js/render/surface-ready-feather.js") < manifestSource.indexOf("js/render/surface-tile-batcher.js") &&
     manifestSource.indexOf("js/render/surface-tile-batcher.js") < manifestSource.indexOf("js/render/webgpu-surface-tile.js"),
-  "water rendering helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
+  "surface tile helpers should load before the neutral surface tile batcher and WebGPU surface tile renderer"
 );
 assert.strictEqual(manifestSource.indexOf("js/render/surface-tile-webgl.js"), -1, "runtime manifest must not load the legacy WebGL surface tile renderer");
 assert.strictEqual(surfaceTileSource.indexOf("surfaceTileWebgl"), -1, "WebGPU surface tile renderer must not call the legacy WebGL batcher");
@@ -356,6 +358,7 @@ vm.runInContext(compositorSource, context, { filename: "js/render/webgpu-composi
 vm.runInContext(entitySource, context, { filename: "js/render/webgpu-entity.js" });
 vm.runInContext(equivalenceSource, context, { filename: "js/assets/equivalence.js" });
 vm.runInContext(waterRenderingSource, context, { filename: "js/render/water-rendering.js" });
+vm.runInContext(surfaceReadyFeatherSource, context, { filename: "js/render/surface-ready-feather.js" });
 vm.runInContext(batcherSource, context, { filename: "js/render/surface-tile-batcher.js" });
 vm.runInContext(surfaceTileSource, context, { filename: "js/render/webgpu-surface-tile.js" });
 

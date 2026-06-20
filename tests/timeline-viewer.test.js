@@ -25,24 +25,27 @@ const speciationButton = makeButton("speciation");
 const lineageButton = makeButton("lineage");
 const civilizationButton = makeButton("civilization");
 
+const lineageTrackingStub = {
+  selected: [],
+  eventMatches(event) {
+    return event.lineageId === 7 || event.speciesId === 13;
+  },
+  select(event) {
+    this.selected.push(event);
+    return event;
+  }
+};
+
 const context = {
   console,
   focusedTiles: [],
   focusedLocations: [],
   inspectedTiles: [],
+  lineageTracking: lineageTrackingStub,
   PS: {
     ui: {},
     sim: {
-      lineageTracking: {
-        selected: [],
-        eventMatches(event) {
-          return event.lineageId === 7 || event.speciesId === 13;
-        },
-        select(event) {
-          this.selected.push(event);
-          return event;
-        }
-      }
+      lineageTracking: lineageTrackingStub
     }
   },
   world: {
@@ -147,6 +150,6 @@ context.world.timelineFilter = "speciation";
 context.PS.ui.timeline.focusEvent(context.PS.ui.timeline.getFilteredEvents()[0]);
 assert.deepStrictEqual(context.focusedLocations[0], { latitude: 12.5, longitude: -44 }, "location event should focus lat/lon");
 assert.strictEqual(context.world.needsRender, true, "location focus should request render");
-assert.strictEqual(context.PS.sim.lineageTracking.selected.length, 1, "timeline focus should select matching lineage target");
+assert.strictEqual(context.lineageTracking.selected.length, 1, "timeline focus should select matching lineage target");
 
 console.log("timeline viewer checks passed");

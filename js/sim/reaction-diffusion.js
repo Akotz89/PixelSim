@@ -1,8 +1,7 @@
 import { PS } from "../core/namespace.js";
+import { computeHarness } from "./compute-harness.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
+export const reactionDiffusion = {
   shaderName: "reaction-diffusion",
   shaderPath: "shaders/reaction-diffusion.wgsl",
   configPath: "sim/configs/reaction-diffusion.json",
@@ -321,7 +320,7 @@ PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
 
   init: function (options) {
     var spec = options || {};
-    var harness = PS.sim && PS.sim.computeHarness;
+    var harness = computeHarness;
     var device = spec.device || (PS.gpu && PS.gpu.device);
     var dims = this.getDimensions(spec);
     var config = this.normalizeConfig(spec.config || this.config || {});
@@ -386,9 +385,9 @@ PS.sim.reactionDiffusion = PS.sim.reactionDiffusion || {
   },
 
   dispatch: function (commandEncoder, device) {
-    if (!PS.sim || !PS.sim.computeHarness) {
+    if (!computeHarness) {
       throw new Error("Compute harness is required for reaction diffusion dispatch");
     }
-    return PS.sim.computeHarness.dispatch(this.passId, commandEncoder, device);
+    return computeHarness.dispatch(this.passId, commandEncoder, device);
   }
 };

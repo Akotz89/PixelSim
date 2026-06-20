@@ -1,6 +1,7 @@
 import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { normalizeLongitude } from "../render/planet-view.js";
+import { lineageTracking } from "../sim/lineage-tracking.js";
 import { clonePersistencePlainValue } from "../systems/persistence-db.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 import { bookmarkAddButton, bookmarkLabelInput, bookmarkList, bookmarkNoteInput } from "./dom-refs.js";
@@ -352,8 +353,8 @@ function jumpToBookmarkRecord(id) {
     if (PS.ui.timeline && typeof PS.ui.timeline.focusEvent === "function") {
       PS.ui.timeline.focusEvent(event);
     }
-  } else if (target.type === "lineage" && PS.sim && PS.sim.lineageTracking && typeof PS.sim.lineageTracking.select === "function") {
-    PS.sim.lineageTracking.select(target, { pinned: true });
+  } else if (target.type === "lineage" && lineageTracking && typeof lineageTracking.select === "function") {
+    lineageTracking.select(target, { pinned: true });
   } else if (target.type === "tile" && typeof inspectTile === "function") {
     inspectTile(target.x, target.y, false, target.surface || null, target.entity || null);
   }

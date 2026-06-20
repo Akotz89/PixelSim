@@ -124,7 +124,7 @@ context.window.window = context.window;
 vm.createContext(context);
 vm.runInContext(biomeSource, context, { filename: "js/sim/biome-lut.js" });
 
-const biomeLut = context.PS.sim.biomeLut;
+const biomeLut = context.biomeLut;
 assert.strictEqual(biomeLut.biomes.length, 13, "biome LUT should define 13 biomes");
 assert.deepStrictEqual(
   Array.from(biomeLut.debugModes.map(function (mode) { return mode.id; })),

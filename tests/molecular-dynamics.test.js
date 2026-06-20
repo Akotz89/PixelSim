@@ -133,7 +133,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(mdSource, context, { filename: "js/sim/molecular-dynamics.js" });
 
-const md = context.PS.sim.molecularDynamics;
+const md = context.molecularDynamics;
 md.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "molecular-dynamics"), "MD should register WGSL manifest entry");
 
@@ -205,7 +205,7 @@ assert.strictEqual(view.getUint32(24, true), 64, "params should encode workgroup
 
 context.PS.render.wgslShaders.register("molecular-dynamics", shaderSource, { path: "shaders/molecular-dynamics.wgsl" });
 const initState = md.init({ count: 1000, config, macro: { temperatureC: 25, salinityPsu: 35, pressureKpa: 101.3, medium: "water" } });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 const packed = md.packParticleData(initState);
 const packedView = new DataView(packed.buffer);
 assert.strictEqual(packed.byteLength, 1000 * 32, "particle upload should pack the GPU struct bytes");

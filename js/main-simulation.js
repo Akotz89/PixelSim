@@ -3,11 +3,16 @@ import { PS } from "./core/namespace.js";
 import { formatEcosystemStabilityFactorScore, formatEcosystemTrendDelta, recordSimulationMilestones } from "./main-ecosystem-stability.js";
 import { formatFoodRunway, getSimulationAlertSeverityRank, makeSimulationAlert, recordEcosystemHistorySample, refreshEcosystemSummary, resetFoodFlowCounters, resetPopulationFlowCounters } from "./main-ecosystem-summary.js";
 import { formatMilestoneSignedNumber, getSimulationMilestoneSnapshot, recordSimulationEvent } from "./main-runtime.js";
+import { layerRegistry } from "./layers/registry.js";
 import { growFood } from "./sim/food-growth.js";
+import { lineageTracking } from "./sim/lineage-tracking.js";
+import { massExtinction } from "./sim/mass-extinction.js";
 import { removeDeadOrganisms, trimOrganismPopulation, updateOrganism, updatePooledOrganismsForTick } from "./sim/organisms-behavior.js";
 import { refreshLineageRegistry } from "./sim/organisms-indexes.js";
+import { representatives } from "./sim/representatives.js";
 import { refreshEarlyProgressionSummaryCache, refreshSettlementSummaryCache } from "./sim/settlements-routes.js";
 import { updateSettlements } from "./sim/settlements-runtime.js";
+import { traitRegistry } from "./sim/trait-registry.js";
 import { world } from "./systems/state.js";
 // fallow-ignore-next-line circular-dependency
 import { syncControlStates } from "./ui/foundation.js";
@@ -82,8 +87,8 @@ export function refreshSimulationAlerts() {
     addSimulationAlert(alerts, "danger", "Population crash", String(world.populationDeltaThisTick), 12);
   }
 
-  if (!world.isExtinct && PS.sim && PS.sim.massExtinction && typeof PS.sim.massExtinction.getSummary === "function") {
-    var extinctionSummary = PS.sim.massExtinction.getSummary();
+  if (!world.isExtinct && massExtinction && typeof massExtinction.getSummary === "function") {
+    var extinctionSummary = massExtinction.getSummary();
     if (extinctionSummary.recoveryWindow) {
       addSimulationAlert(
         alerts,
@@ -244,11 +249,11 @@ export function syncLifecycleState() {
 export function seedWorld() {
   PS.core.worldGen.generateWorld(world.seedText, CONFIG);
 
-  if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function") {
-    PS.sim.representatives.refresh();
+  if (representatives && typeof representatives.refresh === "function") {
+    representatives.refresh();
   }
-  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function") {
-    PS.sim.lineageTracking.update(true);
+  if (lineageTracking && typeof lineageTracking.update === "function") {
+    lineageTracking.update(true);
   }
 
   refreshEcosystemSummary();
@@ -274,9 +279,7 @@ export function updateWorld(dt) {
   var profileStart = performance.now();
 
   world.tick++;
-  if (PS.layers && typeof PS.layers.updateAll === "function") {
-    PS.layers.updateAll(dt);
-  }
+  layerRegistry.updateAll(dt);
 
   if (PS.epochs && typeof PS.epochs.updateCurrent === "function") {
     PS.epochs.updateCurrent(dt);
@@ -302,8 +305,8 @@ export function updateWorld(dt) {
   removeDeadOrganisms();
   trimOrganismPopulation();
 
-  if (PS.sim.massExtinction && typeof PS.sim.massExtinction.maybeTrigger === "function") {
-    PS.sim.massExtinction.maybeTrigger();
+  if (massExtinction && typeof massExtinction.maybeTrigger === "function") {
+    massExtinction.maybeTrigger();
   }
 
   world.populationDeltaThisTick = world.organisms.length - organismsAtStartOfTick;
@@ -312,16 +315,21 @@ export function updateWorld(dt) {
     refreshLineageRegistry();
   }
 
-  if (PS.sim.representatives && typeof PS.sim.representatives.refresh === "function" && shouldRefreshSummaries) {
-    PS.sim.representatives.refresh();
+  if (representatives && typeof representatives.refresh === "function" && shouldRefreshSummaries) {
+    representatives.refresh();
   }
-  if (PS.sim.lineageTracking && typeof PS.sim.lineageTracking.update === "function" && shouldRefreshSummaries) {
-    PS.sim.lineageTracking.update(false);
+  if (lineageTracking && typeof lineageTracking.update === "function" && shouldRefreshSummaries) {
+    lineageTracking.update(false);
   }
 
   // Update environmental modifiers periodically (AZR-493)
-  if (shouldRefreshSummaries && PS.traitRegistry && typeof PS.traitRegistry.updateEnvironmentalModifiers === "function") {
-    PS.traitRegistry.updateEnvironmentalModifiers();
+  if (
+    shouldRefreshSummaries &&
+    typeof traitRegistry !== "undefined" &&
+    traitRegistry &&
+    typeof traitRegistry.updateEnvironmentalModifiers === "function"
+  ) {
+    traitRegistry.updateEnvironmentalModifiers();
   }
 
   tickProfile.organisms = performance.now() - profileStart;

@@ -1,8 +1,8 @@
 import { PS } from "../core/namespace.js";
+import { geochemistry } from "./geochemistry.js";
+import { parameters as parameterRegistry } from "./parameter-registry.js";
 
-PS.sim = PS.sim || {};
-
-PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
+export const environmentDrivers = {
   configPath: "sim/configs/environment-drivers.json",
   defaults: {
     drivers: [
@@ -122,7 +122,7 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
 
   createState: function (options) {
     var spec = options || {};
-    var parameters = PS.sim && PS.sim.parameters;
+    var parameters = parameterRegistry;
     var baseline = spec.baseline || (parameters ? parameters.createBaseline(spec) : { values: {}, provenance: {} });
     var co2 = Number(baseline.values["atmosphere.co2_ppm"]) || 420;
     var o2 = Number(baseline.values["atmosphere.o2_ppm"]) || 209500;
@@ -152,8 +152,8 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
   },
 
   computeOceanPh: function (co2Ppm) {
-    if (PS.sim && PS.sim.geochemistry && typeof PS.sim.geochemistry.computeOceanPh === "function") {
-      return PS.sim.geochemistry.computeOceanPh(co2Ppm);
+    if (geochemistry && typeof geochemistry.computeOceanPh === "function") {
+      return geochemistry.computeOceanPh(co2Ppm);
     }
     return Math.max(5, Math.min(8.6, 8.1 - 0.3 * ((Math.max(0, Number(co2Ppm) || 0) / 280) - 1)));
   },
@@ -262,7 +262,7 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
   },
 
   makeGeochemistryInputs: function (state, width, height) {
-    var geo = PS.sim && PS.sim.geochemistry;
+    var geo = geochemistry;
     var w = Math.max(1, Math.round(Number(width) || 1));
     var h = Math.max(1, Math.round(Number(height) || 1));
     var volcanicValue = Math.max(0, Number(state.fields.volcanic_emission) || 0);

@@ -1,5 +1,6 @@
 import { CONFIG } from "../../config.js";
 import { PS } from "../core/namespace.js";
+import { shadows } from "./shadow-stamping.js";
 
 PS.render = PS.render || {};
 PS.render.vegetation = PS.render.vegetation || {};
@@ -38,8 +39,8 @@ Object.assign(PS.render.vegetation, {
 
     width = Math.max(2, size * (this.isTreeType(type) ? 0.92 : 0.72));
     height = Math.max(1, shadowHeight * Math.max(0.4, size / Math.max(1, Number(typeof CONFIG !== "undefined" && CONFIG ? CONFIG.TILE_SIZE : 8) || 8)));
-    if (PS.render.shadows && typeof PS.render.shadows.appendStampedRects === "function") {
-      return PS.render.shadows.appendStampedRects(rects, {
+    if (shadows && typeof shadows.appendStampedRects === "function") {
+      return shadows.appendStampedRects(rects, {
         x: pointX - width * 0.5 + size * 0.06,
         y: pointY + size * 0.22,
         width: width,

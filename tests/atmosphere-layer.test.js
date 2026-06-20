@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  geochemistry: null,
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    geochemistry: null
   },
   world: {
     tick: 1,
@@ -39,11 +41,12 @@ const source = [
 
 vm.runInNewContext(`${source}
 
-var manifest = PS.layers.getManifest();
+var manifest = layerRegistry.getManifest();
 assert.strictEqual(manifest[0].id, "atmosphere", "atmosphere should register in the layer manifest");
 assert.strictEqual(manifest[0].alwaysOn, true, "atmosphere should be always-on");
 
-var state = PS.layers.atmosphere.ensureState();
+var atmosphereLayer = layerRegistry.get("atmosphere");
+var state = atmosphereLayer.ensureState();
 assert.ok(state.gases, "atmosphere should expose gas composition");
 assert.ok(["co2", "o2", "n2", "ch4", "h2o", "o3", "sulfur"].every(function(gas) {
   return Number.isFinite(state.gases[gas]);
@@ -53,7 +56,7 @@ var initialCo2 = state.gases.co2;
 var initialSulfur = state.gases.sulfur;
 var initialO2 = state.gases.o2;
 var initialEnergy = world.organisms[0].energy;
-var updated = PS.layers.updateAll(1000);
+var updated = layerRegistry.updateAll(1000);
 
 assert.deepStrictEqual(updated, ["atmosphere"], "layer registry should update atmosphere as an always-on layer");
 assert.ok(state.volcanicOutgassing > 0, "volcanic outgassing should accumulate from geology");
@@ -65,12 +68,12 @@ assert.ok(Number.isFinite(state.temperatureC), "greenhouse effect should update 
 
 state.gases.o2 = CONFIG.ATMOSPHERE_OZONE_O2_THRESHOLD + 0.05;
 state.gases.o3 = 0;
-PS.layers.atmosphere.update(1000);
+atmosphereLayer.update(1000);
 assert.ok(state.gases.o3 > 0, "ozone should form when O2 exceeds threshold");
 
 state.gases.o2 = 0.001;
 world.organisms[0].energy = initialEnergy;
-PS.layers.atmosphere.update(1000);
+atmosphereLayer.update(1000);
 assert.ok(world.organisms[0].energy < initialEnergy, "low O2 atmosphere should reduce organism energy");
 assert.ok(world.organisms[0].atmosphericOxygenStress > 0, "organisms should carry oxygen stress evidence");
 

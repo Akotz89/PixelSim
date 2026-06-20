@@ -149,7 +149,7 @@ vm.runInContext(wgslManagerSource, context, { filename: "js/render/wgsl-shader-m
 vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" });
 vm.runInContext(source, context, { filename: "js/sim/reaction-diffusion.js" });
 
-const rd = context.PS.sim.reactionDiffusion;
+const rd = context.reactionDiffusion;
 rd.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "reaction-diffusion" && entry.path === "shaders/reaction-diffusion.wgsl"), "reaction diffusion should register WGSL manifest entry");
 
@@ -196,7 +196,7 @@ assert.strictEqual(paramsView.getUint32(28, true), 0, "vegetation layer kind sho
 
 context.PS.render.wgslShaders.register("reaction-diffusion", shaderSource, { path: "shaders/reaction-diffusion.wgsl" });
 const result = rd.init({ width: 512, height: 512, config, regime: "spots", layer: "vegetation", co2Ppm: 380 });
-const harness = context.PS.sim.computeHarness;
+const harness = context.computeHarness;
 assert.strictEqual(result.chemicalBytes, 512 * 512 * 4 * 4, "reaction state should allocate rgba32float cells");
 assert.ok(harness.getState("reaction-diffusion.chemicals"), "reaction diffusion should register chemical ping-pong state");
 assert.ok(harness.buffers["reaction-diffusion.moisture"], "reaction diffusion should register moisture input");

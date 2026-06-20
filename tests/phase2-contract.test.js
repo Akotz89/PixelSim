@@ -3,8 +3,10 @@ const { assert, fs, path, vm, root, read } = require("./helpers/world-context.js
 const context = {
   assert,
   console,
+  geochemistry: null,
   window: {
-    addEventListener() {}
+    addEventListener() {},
+    geochemistry: null
   },
   world: {
     tick: 42,
@@ -28,10 +30,10 @@ const source = [
 
 vm.runInNewContext(`${source}
 
-assert.ok(PS.layers.geology, "geology layer should register");
-assert.ok(PS.layers.atmosphere, "atmosphere layer should register");
+assert.ok(layerRegistry.get("geology"), "geology layer should register");
+assert.ok(layerRegistry.get("atmosphere"), "atmosphere layer should register");
 
-var layerManifest = PS.layers.getManifest();
+var layerManifest = layerRegistry.getManifest();
 assert.strictEqual(layerManifest.length, 2, "layer manifest should include always-on layer contracts");
 assert.deepStrictEqual(
   layerManifest.map(function(layer) { return layer.id; }),
@@ -41,7 +43,7 @@ assert.deepStrictEqual(
 assert.strictEqual(layerManifest[0].alwaysOn, true, "geology should be always-on");
 assert.ok(layerManifest[0].watcherOutputs.indexOf("timeline") >= 0, "geology should identify watcher outputs");
 
-var updatedLayers = PS.layers.updateAll(33);
+var updatedLayers = layerRegistry.updateAll(33);
 assert.deepStrictEqual(updatedLayers, ["geology", "atmosphere"], "all always-on layers should update");
 assert.strictEqual(world.geology.ageTicks, 1, "geology state should update");
 assert.strictEqual(world.atmosphere.ageTicks, 1, "atmosphere state should update");
