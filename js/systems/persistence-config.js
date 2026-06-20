@@ -5,7 +5,7 @@ import { clonePersistencePlainValue } from "./persistence-db.js";
 
 PS.systems = PS.systems || {};
 
-PS.systems.persistenceConfig = (function() {
+export const persistenceConfig = (function() {
   var schemaVersion = 1;
   var sanitizers = {
     DEFAULT_SEED: function(value) {
@@ -172,3 +172,5 @@ PS.systems.persistenceConfig = (function() {
     constantToLegacySaveKey: constantToLegacySaveKey
   };
 })();
+
+PS.systems.persistenceConfig = persistenceConfig;

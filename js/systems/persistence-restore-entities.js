@@ -1,9 +1,9 @@
 import { CONFIG } from "../../config.js";
-import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { normalizeLongitude } from "../render/planet-view.js";
 import { organismAi } from "../sim/organism-ai.js";
 import { ensureOrganismLineage, makeOrganism } from "../sim/organisms-traits.js";
+import { persistenceConfig } from "./persistence-config.js";
 import { clonePersistencePlainValue } from "./persistence-db.js";
 import { getRestoredSurfacePosition, restoreNumber, restoreOrganismTraits, restorePlanetaryBody } from "./persistence-restore-core.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "./state.js";
@@ -339,5 +339,5 @@ export function countFertileTiles() {
 }
 
 export function applySaveConfig(saveConfig) {
-  PS.systems.persistenceConfig.apply(saveConfig);
+  persistenceConfig.apply(saveConfig);
 }

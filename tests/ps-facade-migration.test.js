@@ -6,6 +6,7 @@ const bitsmapSource = read("js/core/bitsmap.js");
 const entityRegistrySource = read("js/core/entity-registry.js");
 const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
+const persistenceConfigSource = read("js/systems/persistence-config.js");
 const civilizationsSource = read("js/sim/civilizations.js");
 const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
@@ -64,6 +65,9 @@ const migratedLayerRegistryConsumers = [
   "js/layers/geology.js",
   "js/layers/atmosphere.js",
   "js/main-simulation.js"
+];
+const migratedPersistenceConfigConsumers = [
+  "js/systems/persistence-restore-entities.js"
 ];
 const migratedOrganismAiConsumers = [
   "js/sim/organisms-behavior.js",
@@ -361,6 +365,25 @@ migratedLayerRegistryConsumers.forEach(function(file) {
     source.indexOf("PS.layers"),
     -1,
     file + " should use layerRegistry directly instead of PS.layers"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+persistenceConfig\s*=/.test(persistenceConfigSource),
+  "persistence config should expose persistenceConfig as a direct ES module export"
+);
+
+migratedPersistenceConfigConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { persistenceConfig }") >= 0,
+    file + " should import persistenceConfig directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.systems.persistenceConfig"),
+    -1,
+    file + " should use persistenceConfig directly instead of PS.systems.persistenceConfig"
   );
 });
 
