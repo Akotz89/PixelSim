@@ -1,5 +1,5 @@
 import { PS } from "../core/namespace.js";
-import { world } from "../systems/state.js";
+import { worldSystem } from "../systems/world.js";
 import { canvas } from "../ui/dom-refs.js";
 
 PS.gpu = PS.gpu || {};
@@ -113,12 +113,8 @@ PS.gpu.handleDeviceLost = function (info) {
   PS.gpu.status = "lost";
   PS.gpu.error = "WebGPU device lost: " + reason;
 
-  if (typeof world !== "undefined" && world) {
-    world.isPaused = true;
-  }
-
-  if (PS.world) {
-    PS.world.isPaused = true;
+  if (worldSystem && worldSystem.state) {
+    worldSystem.state.isPaused = true;
   }
 
   if (PS.render && PS.render.surfaceWorker && typeof PS.render.surfaceWorker.terminate === "function") {

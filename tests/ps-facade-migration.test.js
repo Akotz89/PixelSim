@@ -9,6 +9,7 @@ const resourceRegistrySource = read("js/sim/resource-registry.js");
 const layerRegistrySource = read("js/layers/registry.js");
 const lightingCycleSource = read("js/render/lighting-cycle.js");
 const shadowStampingSource = read("js/render/shadow-stamping.js");
+const worldSystemSource = read("js/systems/world.js");
 const persistenceConfigSource = read("js/systems/persistence-config.js");
 const saveMigrationSource = read("js/systems/save-migration.js");
 const uiControlsSource = read("js/ui/controls.js");
@@ -84,6 +85,9 @@ const migratedShadowStampingConsumers = [
   "js/render/entities.js",
   "js/render/mountain-render.js",
   "js/render/vegetation-shadows.js"
+];
+const migratedWorldSystemConsumers = [
+  "js/render/gpu.js"
 ];
 const migratedPersistenceConfigConsumers = [
   "js/systems/persistence-restore-entities.js",
@@ -482,6 +486,40 @@ migratedShadowStampingConsumers.forEach(function(file) {
     source.indexOf("PS.render.shadows"),
     -1,
     file + " should use shadows directly instead of PS.render.shadows"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+worldSystem\s*=/.test(worldSystemSource),
+  "world system should expose worldSystem as a direct ES module export"
+);
+assert.strictEqual(
+  worldSystemSource.indexOf("namespace.js"),
+  -1,
+  "world system should not import the PS namespace"
+);
+assert.strictEqual(
+  worldSystemSource.indexOf("PS.world"),
+  -1,
+  "world system should not register through PS.world"
+);
+assert.strictEqual(
+  worldSystemSource.indexOf("PS.systems.world"),
+  -1,
+  "world system should not register through PS.systems.world"
+);
+
+migratedWorldSystemConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { worldSystem }") >= 0,
+    file + " should import worldSystem directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.world"),
+    -1,
+    file + " should use worldSystem directly instead of PS.world"
   );
 });
 
