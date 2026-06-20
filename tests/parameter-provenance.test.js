@@ -54,7 +54,7 @@ vm.runInContext(parameterSource, context, { filename: "js/sim/parameter-registry
 vm.runInContext(geochemistrySource, context, { filename: "js/sim/geochemistry.js" });
 vm.runInContext(driverSource, context, { filename: "js/sim/environment-drivers.js" });
 
-const parameters = context.PS.sim.parameters;
+const parameters = context.parameters;
 const drivers = context.PS.sim.environmentDrivers;
 const geo = context.PS.sim.geochemistry;
 const parameterConfig = JSON.parse(parameterConfigSource);

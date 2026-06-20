@@ -1,4 +1,5 @@
 import { PS } from "../core/namespace.js";
+import { parameters as parameterRegistry } from "./parameter-registry.js";
 
 PS.sim = PS.sim || {};
 
@@ -122,7 +123,7 @@ PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
 
   createState: function (options) {
     var spec = options || {};
-    var parameters = PS.sim && PS.sim.parameters;
+    var parameters = parameterRegistry;
     var baseline = spec.baseline || (parameters ? parameters.createBaseline(spec) : { values: {}, provenance: {} });
     var co2 = Number(baseline.values["atmosphere.co2_ppm"]) || 420;
     var o2 = Number(baseline.values["atmosphere.o2_ppm"]) || 209500;

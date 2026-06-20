@@ -10,6 +10,7 @@ const organismAiSource = read("js/sim/organism-ai.js");
 const terrainPressureSource = read("js/sim/terrain-pressure.js");
 const lineageTrackingSource = read("js/sim/lineage-tracking.js");
 const biomeLutSource = read("js/sim/biome-lut.js");
+const parameterRegistrySource = read("js/sim/parameter-registry.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -59,6 +60,9 @@ const migratedLineageTrackingConsumers = [
 const migratedBiomeLutConsumers = [
   "js/epochs/state-machine.js",
   "js/sim/moisture.js"
+];
+const migratedParameterRegistryConsumers = [
+  "js/sim/environment-drivers.js"
 ];
 
 assert.ok(
@@ -315,6 +319,30 @@ migratedBiomeLutConsumers.forEach(function(file) {
     source.indexOf("PS.sim.biomeLut"),
     -1,
     file + " should use biomeLut directly instead of PS.sim.biomeLut"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+parameters\s*=/.test(parameterRegistrySource),
+  "parameter registry should expose parameters as a direct ES module export"
+);
+assert.strictEqual(
+  parameterRegistrySource.indexOf("PS.sim.parameters"),
+  -1,
+  "parameter registry should not register through PS.sim.parameters"
+);
+
+migratedParameterRegistryConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { parameters") >= 0,
+    file + " should import parameters directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.parameters"),
+    -1,
+    file + " should use parameters directly instead of PS.sim.parameters"
   );
 });
 
