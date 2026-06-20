@@ -11,6 +11,7 @@ const terrainPressureSource = read("js/sim/terrain-pressure.js");
 const lineageTrackingSource = read("js/sim/lineage-tracking.js");
 const biomeLutSource = read("js/sim/biome-lut.js");
 const parameterRegistrySource = read("js/sim/parameter-registry.js");
+const environmentDriversSource = read("js/sim/environment-drivers.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -63,6 +64,9 @@ const migratedBiomeLutConsumers = [
 ];
 const migratedParameterRegistryConsumers = [
   "js/sim/environment-drivers.js"
+];
+const migratedEnvironmentDriversConsumers = [
+  "js/epochs/state-machine.js"
 ];
 
 assert.ok(
@@ -343,6 +347,30 @@ migratedParameterRegistryConsumers.forEach(function(file) {
     source.indexOf("PS.sim.parameters"),
     -1,
     file + " should use parameters directly instead of PS.sim.parameters"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+environmentDrivers\s*=/.test(environmentDriversSource),
+  "environment drivers should expose environmentDrivers as a direct ES module export"
+);
+assert.strictEqual(
+  environmentDriversSource.indexOf("PS.sim.environmentDrivers"),
+  -1,
+  "environment drivers should not register through PS.sim.environmentDrivers"
+);
+
+migratedEnvironmentDriversConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { environmentDrivers }") >= 0,
+    file + " should import environmentDrivers directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.environmentDrivers"),
+    -1,
+    file + " should use environmentDrivers directly instead of PS.sim.environmentDrivers"
   );
 });
 

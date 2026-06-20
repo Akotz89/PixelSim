@@ -1,5 +1,6 @@
 import { PS } from "../core/namespace.js";
 import { biomeLut } from "../sim/biome-lut.js";
+import { environmentDrivers } from "../sim/environment-drivers.js";
 import { world } from "../systems/state.js";
 
 PS.epochs = PS.epochs || {};
@@ -121,7 +122,7 @@ PS.epochs.filterActivePasses = function (activePasses, pipeline) {
 PS.epochs.makeEpochState = function (config, previous, pipeline) {
   var co2 = Number(config.atmosphere.co2_ppm) || 0;
   var o2 = Number(config.atmosphere.o2_ppm) || 0;
-  var drivers = PS.sim && PS.sim.environmentDrivers;
+  var drivers = environmentDrivers;
   var activePasses = this.filterActivePasses(config.active_passes, pipeline);
   var greenhouse = drivers && typeof drivers.computeGreenhouse === "function" ? drivers.computeGreenhouse(co2) : Math.max(0, Math.log(Math.max(1, co2) / 280) / Math.log(2));
   return {

@@ -3,7 +3,7 @@ import { parameters as parameterRegistry } from "./parameter-registry.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.environmentDrivers = PS.sim.environmentDrivers || {
+export const environmentDrivers = {
   configPath: "sim/configs/environment-drivers.json",
   defaults: {
     drivers: [
