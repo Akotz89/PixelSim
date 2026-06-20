@@ -234,7 +234,7 @@ assert.strictEqual(fastMover.x, 41, "limbCount=12 organism should move faster an
 
 var originalMutationChance = CONFIG.TRAIT_MUTATION_CHANCE;
 CONFIG.TRAIT_MUTATION_CHANCE = 0;
-var inheritedFromCorruptParent = PS.sim.evolution.inheritTraits({
+var inheritedFromCorruptParent = evolution.inheritTraits({
   vision: NaN,
   metabolism: Infinity,
   reproductionEnergy: -Infinity,
@@ -270,7 +270,7 @@ var divergenceChild = Object.assign({}, divergenceParent, {
   waterDependency: divergenceParent.waterDependency + CONFIG.TRAIT_WATER_DEPENDENCY_MUTATION_STEP
 });
 assert.ok(
-  PS.sim.evolution.divergenceScore(divergenceParent, divergenceChild) >= 7,
+  evolution.divergenceScore(divergenceParent, divergenceChild) >= 7,
   "trait divergence should include body and visual traits"
 );
 

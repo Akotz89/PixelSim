@@ -29,6 +29,7 @@ const simWorkerSource = read("js/workers/sim-worker.js");
 const tileWorkerSource = read("js/sim/tile-worker.js");
 const modifiersSource = read("js/sim/modifiers.js");
 const traitRegistrySource = read("js/sim/trait-registry.js");
+const evolutionSource = read("js/sim/evolution.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -739,5 +740,15 @@ migratedTraitRegistryConsumers.forEach(function(file) {
     file + " should use traitRegistry directly instead of PS.traitRegistry"
   );
 });
+
+assert.ok(
+  /export\s+const\s+evolution\s*=/.test(evolutionSource),
+  "evolution should expose evolution as a direct ES module export"
+);
+assert.strictEqual(
+  evolutionSource.indexOf("PS.sim.evolution"),
+  -1,
+  "evolution should not register through PS.sim.evolution"
+);
 
 console.log("PS facade migration checks passed");
