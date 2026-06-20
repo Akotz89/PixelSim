@@ -2,6 +2,7 @@ import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
 import { getTileManhattanDistance } from "../render/planet-grid.js";
 import { collectOrganismsInRadius } from "./organisms-indexes.js";
+import { speciation } from "./speciation.js";
 import { world, WORLD_HEIGHT, WORLD_WIDTH } from "../systems/state.js";
 
 PS.sim = PS.sim || {};
@@ -32,8 +33,8 @@ export function normalizeTrackedLineageId(value) {
 }
 
 export function getTrackedSpecies(speciesId) {
-  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function") {
-    return PS.sim.speciation.getSpecies(speciesId);
+  if (speciation && typeof speciation.getSpecies === "function") {
+    return speciation.getSpecies(speciesId);
   }
 
   return world.speciesById ? world.speciesById[String(normalizeTrackedLineageId(speciesId))] || null : null;

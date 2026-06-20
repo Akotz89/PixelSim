@@ -9,6 +9,7 @@ import { getCompletedProbeMissionCount } from "../sim/civilizations-probes.js";
 import { foodExistsAt } from "../sim/food-growth.js";
 import { ensureOrganismLineage, ensureOrganismTraits } from "../sim/organisms-traits.js";
 import { resourceRegistry } from "../sim/resource-registry.js";
+import { speciation } from "../sim/speciation.js";
 import { world } from "../systems/state.js";
 import { eventLogText, inspectDetailsText, inspectSummaryText, traitHistoryCanvas } from "./dom-refs.js";
 import { getNearestOrganismToTile, getNearestSettlementToTile, setElementClass, setElementHtml, setElementText } from "./foundation.js";
@@ -196,8 +197,8 @@ export function updateInspectPanel() {
     var populationRecord = representativeContext ? representativeContext.population : null;
     var pressure = populationRecord && populationRecord.pressure ? populationRecord.pressure : null;
     var foodWeb = populationRecord && populationRecord.foodWeb ? populationRecord.foodWeb : null;
-    var speciesRecord = PS.sim.speciation && typeof PS.sim.speciation.getSpecies === "function"
-      ? PS.sim.speciation.getSpecies(organism.speciesId)
+    var speciesRecord = speciation && typeof speciation.getSpecies === "function"
+      ? speciation.getSpecies(organism.speciesId)
       : null;
 
     detailChips.push(makeInspectChip("Organism", "L" + ensureOrganismLineage(organism) + parentText));

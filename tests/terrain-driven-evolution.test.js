@@ -50,6 +50,7 @@ const source = [
   "js/sim/organisms-behavior.js",
   "js/sim/evolution.js",
   "js/sim/organisms.js",
+  "js/sim/speciation.js",
   "js/sim/representatives.js"
 ].map(read).join("\n");
 

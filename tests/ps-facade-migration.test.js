@@ -32,6 +32,7 @@ const traitRegistrySource = read("js/sim/trait-registry.js");
 const evolutionSource = read("js/sim/evolution.js");
 const foodWebSource = read("js/sim/food-web.js");
 const foodSource = read("js/sim/food.js");
+const speciationSource = read("js/sim/speciation.js");
 const migratedAssertConsumers = [
   "js/core/events.js",
   "js/core/log.js",
@@ -134,6 +135,11 @@ const migratedFoodWebConsumers = [
   "js/sim/organisms-behavior.js",
   "js/sim/representatives.js",
   "js/ui/observation-overlays.js"
+];
+const migratedSpeciationConsumers = [
+  "js/sim/lineage-tracking.js",
+  "js/sim/representatives.js",
+  "js/ui/inspect-history.js"
 ];
 
 assert.ok(
@@ -791,6 +797,30 @@ assert.strictEqual(
   foodSource.indexOf("PS.sim.food"),
   -1,
   "food facade should not register through PS.sim.food"
+);
+
+migratedSpeciationConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { speciation }") >= 0,
+    file + " should import speciation directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.sim.speciation"),
+    -1,
+    file + " should use speciation directly instead of PS.sim.speciation"
+  );
+});
+
+assert.ok(
+  /export\s+const\s+speciation\s*=/.test(speciationSource),
+  "speciation should expose speciation as a direct ES module export"
+);
+assert.strictEqual(
+  speciationSource.indexOf("PS.sim.speciation"),
+  -1,
+  "speciation should not register through PS.sim.speciation"
 );
 
 console.log("PS facade migration checks passed");

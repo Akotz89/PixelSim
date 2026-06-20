@@ -178,7 +178,7 @@ founder.traits = {
   thermalTolerance: 0,
   waterDependency: 0
 };
-PS.sim.speciation.ensureSpecies(1, {
+speciation.ensureSpecies(1, {
   lineageId: founder.lineageId,
   founderTraits: founder.traits,
   traitMean: founder.traits,
@@ -209,7 +209,7 @@ divergent.traits = {
 };
 world.organisms.push(founder, divergent);
 
-var distance = PS.sim.speciation.traitDistance(founder.traits, divergent.traits);
+var distance = speciation.traitDistance(founder.traits, divergent.traits);
 assert.ok(distance > 0.9, "normalized trait distance should include expanded AZR-284 traits");
 
 PS.sim.representatives.refresh();
@@ -218,7 +218,7 @@ var childPopulation = world.biologyPopulations.filter(function(population) {
   return population.parentPopulationId === 1 && population.parentSpeciesId === 1;
 })[0];
 var newSpeciesId = childPopulation ? childPopulation.speciesId : 0;
-var speciesRecord = PS.sim.speciation.getSpecies(newSpeciesId);
+var speciesRecord = speciation.getSpecies(newSpeciesId);
 
 assert.ok(newSpeciesId > 1, "speciation should assign a new stable species id");
 assert.strictEqual(speciesRecord.parentId, 1, "new species should preserve parent species link");

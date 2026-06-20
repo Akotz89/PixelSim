@@ -7,6 +7,7 @@ import { foodWeb } from "./food-web.js";
 import { findNearestFoodInBuckets } from "./food-runtime.js";
 import { getTerrainMismatchForTraits } from "./organisms-behavior.js";
 import { allocateBiologyRepresentativeId, allocateLineageId, ensureOrganismTraits } from "./organisms-traits.js";
+import { speciation } from "./speciation.js";
 import { terrainPressure } from "./terrain-pressure.js";
 import { world } from "../systems/state.js";
 
@@ -737,8 +738,8 @@ export function updatePopulationFromOrganisms(population, organisms, signature) 
   population.terrainPressure = typeof terrainPressure.summarizePopulation === "function"
     ? terrainPressure.summarizePopulation(organisms, traitsList)
     : null;
-  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.evaluatePopulation === "function") {
-    PS.sim.speciation.evaluatePopulation(population, organisms, traitsList);
+  if (speciation && typeof speciation.evaluatePopulation === "function") {
+    speciation.evaluatePopulation(population, organisms, traitsList);
     for (var speciesIndex = 0; speciesIndex < representativeIds.length; speciesIndex++) {
       var representative = getBiologyRepresentativeById(representativeIds[speciesIndex]);
       if (representative) {
@@ -967,8 +968,8 @@ export function refreshBiologyRepresentatives() {
       terrainPressure.emitMilestones(world.terrainPressureSummary);
     }
   }
-  if (PS.sim && PS.sim.speciation && typeof PS.sim.speciation.refreshSummary === "function") {
-    PS.sim.speciation.refreshSummary(world.biologyPopulations);
+  if (speciation && typeof speciation.refreshSummary === "function") {
+    speciation.refreshSummary(world.biologyPopulations);
   }
   return world.biologyPopulations;
 }
