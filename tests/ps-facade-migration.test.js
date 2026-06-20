@@ -77,7 +77,8 @@ const migratedPersistenceConfigConsumers = [
 ];
 const migratedTraitSchemaConsumers = [
   "js/systems/persistence-db.js",
-  "js/systems/persistence-restore-core.js"
+  "js/systems/persistence-restore-core.js",
+  "js/ui/summary.js"
 ];
 const migratedSaveMigrationConsumers = [
   "js/systems/persistence.js",

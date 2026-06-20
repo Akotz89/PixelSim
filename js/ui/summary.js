@@ -1,5 +1,5 @@
-import { PS } from "../core/namespace.js";
 import { clamp } from "../core/utils.js";
+import { traitSchema } from "../core/trait-schema.js";
 import { formatEcosystemStabilityFactorScore } from "../main-ecosystem-stability.js";
 import { formatFoodRunway, refreshEcosystemSummary } from "../main-ecosystem-summary.js";
 import { refreshSimulationAlerts } from "../main-simulation.js";
@@ -152,8 +152,8 @@ export function getSummaryTraitValue(summary, key) {
     return value;
   }
 
-  return PS.core && PS.core.traitSchema && typeof PS.core.traitSchema.normalizeTraitValue === "function"
-    ? PS.core.traitSchema.normalizeTraitValue(key, undefined)
+  return traitSchema && typeof traitSchema.normalizeTraitValue === "function"
+    ? traitSchema.normalizeTraitValue(key, undefined)
     : 0;
 }
 
