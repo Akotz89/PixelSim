@@ -3,7 +3,7 @@ import { biomeLut } from "./biome-lut.js";
 
 PS.sim = PS.sim || {};
 
-PS.sim.moisture = PS.sim.moisture || {
+export const moisture = {
   shaderName: "moisture",
   shaderPath: "shaders/moisture.wgsl",
   configPath: "sim/configs/moisture.json",

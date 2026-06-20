@@ -164,7 +164,7 @@ vm.runInContext(harnessSource, context, { filename: "js/sim/compute-harness.js" 
 vm.runInContext(biomeSource, context, { filename: "js/sim/biome-lut.js" });
 vm.runInContext(source, context, { filename: "js/sim/moisture.js" });
 
-const moisture = context.PS.sim.moisture;
+const moisture = context.moisture;
 moisture.registerManifest();
 assert.ok(context.PS.render.wgslShaderManifest.some((entry) => entry.name === "moisture" && entry.path === "shaders/moisture.wgsl"), "moisture should register WGSL manifest entry");
 
