@@ -277,7 +277,7 @@ export function createFoodPool(capacity) {
   };
 }
 
-PS.pools = {
+export const pools = {
   organism: null,
   food: null,
   ensure: function() {
@@ -323,5 +323,5 @@ PS.pools = {
   }
 };
 
-PS.systems.pools = PS.pools;
-
+PS.pools = pools;
+PS.systems.pools = pools;

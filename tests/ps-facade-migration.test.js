@@ -24,6 +24,7 @@ const heatDiffusionSource = read("js/sim/heat-diffusion.js");
 const leniaSource = read("js/sim/lenia.js");
 const couplingSource = read("js/sim/coupling.js");
 const computeHarnessSource = read("js/sim/compute-harness.js");
+const poolsSource = read("js/systems/pools.js");
 const wasmBridgeSource = read("js/sim/wasm-bridge.js");
 const simWorkerClientSource = read("js/sim/sim-worker-client.js");
 const simWorkerSource = read("js/workers/sim-worker.js");
@@ -120,6 +121,9 @@ const migratedComputeHarnessConsumers = [
   "js/sim/pixel-ca.js",
   "js/sim/reaction-diffusion.js",
   "js/sim/thermohaline.js"
+];
+const migratedPoolsConsumers = [
+  "js/main-ecosystem-summary.js"
 ];
 const migratedWasmBridgeConsumers = [
   "js/sim/coupling.js",
@@ -689,6 +693,25 @@ assert.strictEqual(
   -1,
   "compute harness wrapper should not register through PS.sim.computeHarness"
 );
+
+assert.ok(
+  /export\s+const\s+pools\s*=/.test(poolsSource),
+  "pools should expose pools as a direct ES module export"
+);
+
+migratedPoolsConsumers.forEach(function(file) {
+  const source = read(file);
+
+  assert.ok(
+    source.indexOf("import { pools }") >= 0,
+    file + " should import pools directly"
+  );
+  assert.strictEqual(
+    source.indexOf("PS.pools"),
+    -1,
+    file + " should use pools directly instead of PS.pools"
+  );
+});
 
 migratedComputeHarnessConsumers.forEach(function(file) {
   const source = read(file);
